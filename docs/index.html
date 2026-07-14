@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<!-- IRISH HEAT SPLIT - SITE_VERSION 0.1.0
+     x.y.z - x new source/panel, y source update, z wording/format.
+     Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Irish Heat Split – how the island of Ireland heats itself, weekly</title>
+<meta name="description" content="A live weekly picture of heat on the island of Ireland – oil, gas, electricity and the geothermal alternative. Most of Ireland's heat has no meter: this site makes it visible.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<style>
+:root{
+  --bg:#0e1d23; --panel:#16323B; --panel2:#122831; --line:#24444f;
+  --green:#3AAA35; --green2:#568F59; --petrol:#1F4E5F; --amber:#D98E2B;
+  --teal:#2F8F8C; --ink:#E9F1EF; --muted:#9FB8B4; --faint:#6E8B88;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font-family:'Lato',system-ui,sans-serif;line-height:1.55}
+.mono{font-family:'IBM Plex Mono',monospace}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+h1,h2{font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+h1{font-size:clamp(1.5rem,4.5vw,2.4rem)}
+h2{font-size:1.02rem;color:var(--green);margin-bottom:14px}
+a{color:var(--green)}
+header{padding:34px 0 10px;border-bottom:1px solid var(--line)}
+.strap{color:var(--muted);margin-top:6px;max-width:640px}
+.badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:.72rem}
+.badge{border:1px solid var(--line);border-radius:3px;padding:2px 8px;
+  color:var(--muted)}
+.badge b{font-weight:700}
+.ok b{color:var(--green)} .lagging b{color:var(--amber)}
+.stale b,.pending b{color:var(--faint)}
+section{padding:34px 0;border-bottom:1px solid var(--line)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:840px){.grid4{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--panel);border:1px solid var(--line);
+  border-radius:6px;padding:16px 16px 13px}
+.stat .lab{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted)}
+.stat .val{font-family:'IBM Plex Mono',monospace;font-weight:600;
+  font-size:clamp(1.15rem,2.6vw,1.55rem);margin-top:6px;color:var(--ink)}
+.stat .sub{font-size:.72rem;color:var(--faint);margin-top:4px}
+.whatif{margin-top:16px;background:linear-gradient(0deg,rgba(47,143,140,.14),rgba(47,143,140,.14));
+  border:1px solid var(--teal);border-radius:6px;padding:14px 16px}
+.whatif .wtitle{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--teal);font-weight:700;margin-bottom:10px}
+.wrow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:840px){.wrow{grid-template-columns:repeat(2,1fr)}}
+.wcell .val{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.05rem}
+.wcell .lab{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.note{font-size:.74rem;color:var(--faint);margin-top:12px}
+.panelbox{background:var(--panel2);border:1px solid var(--line);
+  border-radius:6px;padding:18px}
+.plot{width:100%;min-height:340px}
+.big{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.5rem}
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:840px){.split2{grid-template-columns:1fr}}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.74rem;color:var(--muted);
+  margin-top:10px}
+.k{display:inline-block;width:11px;height:11px;border-radius:2px;
+  vertical-align:-1px;margin-right:6px}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em}
+footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
+.err{background:var(--panel);border:1px solid var(--amber);border-radius:6px;
+  padding:16px;margin:26px 0;font-size:.85rem}
+.dag{color:var(--amber)}
+@media(prefers-reduced-motion:no-preference){
+  .stat,.panelbox{transition:border-color .2s}
+  .stat:hover,.panelbox:hover{border-color:var(--green2)}
+}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Irish Heat Split</h1>
+    <p class="strap">How the island of Ireland heats itself, weekly –
+      and how much of that heat no one can see. Sibling of the
+      <a href="https://causewaygt.github.io/uk-heatsplit/">UK Heat Split</a>,
+      by <a href="https://causewaygt.com">Causeway Energies</a>.</p>
+    <div class="badges" id="badges" aria-label="Data feed status"></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="hero" aria-labelledby="hero-h">
+  <h2 id="hero-h">This week, all island <span class="dag">†</span></h2>
+  <div class="grid4" id="heroCards"></div>
+  <div class="whatif" id="whatif" hidden>
+    <div class="wtitle">What if 20% of this heat came from geothermal heat pumps</div>
+    <div class="wrow" id="whatifRow"></div>
+  </div>
+  <p class="note" id="heroNote"></p>
+</section>
+
+<section id="invisible" aria-labelledby="inv-h">
+  <h2 id="inv-h">The invisible majority</h2>
+  <div class="panelbox">
+    <p style="max-width:640px;margin-bottom:16px">Most of Ireland's heat is
+      invisible – no meter, no grid, no daily data. It arrives by tanker and
+      burns at around 82%<span class="dag">†</span> efficiency. The hatched
+      share below is heat the island cannot watch; the solid share is what
+      the metered feeds on this page can see.</p>
+    <svg id="invBar" viewBox="0 0 1000 130" width="100%" height="130"
+         role="img" aria-label="Delivered building heat split into unmetered and metered shares">
+      <defs>
+        <pattern id="hatch" width="9" height="9" patternTransform="rotate(45)"
+                 patternUnits="userSpaceOnUse">
+          <rect width="9" height="9" fill="#1c3a44"></rect>
+          <line x1="0" y1="0" x2="0" y2="9" stroke="#D98E2B" stroke-width="2.4"></line>
+        </pattern>
+      </defs>
+      <g id="invSegs"></g>
+    </svg>
+    <div class="legend">
+      <span><span class="k" style="background:url(#hatch);border:1px solid var(--amber);background:repeating-linear-gradient(45deg,#1c3a44,#1c3a44 4px,#D98E2B 4px,#D98E2B 6px)"></span>Unmetered – oil, peat, other</span>
+      <span><span class="k" style="background:var(--petrol)"></span>Gas – metered</span>
+      <span><span class="k" style="background:var(--green)"></span>Electric – metered</span>
+    </div>
+    <p class="note">Delivered (useful) building heat, annual basis, ROI + NI
+      anchors.<span class="dag">†</span> That data gap is the story this site
+      exists to close.</p>
+  </div>
+</section>
+
+<section id="oil" aria-labelledby="oil-h">
+  <h2 id="oil-h">The oil ticker</h2>
+  <div class="split2">
+    <div class="panelbox">
+      <div class="stat" style="background:none;border:none;padding:0">
+        <div class="lab">Northern Ireland – 900 L, daily survey</div>
+        <div class="big" id="oilNI">–</div>
+        <div class="sub" id="oilNIdate"></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="stat" style="background:none;border:none;padding:0">
+        <div class="lab">Republic of Ireland – heating gas oil, 1 000 L, weekly</div>
+        <div class="big" id="oilROI">–</div>
+        <div class="sub" id="oilROIdate"></div>
+      </div>
+    </div>
+    <div class="panelbox"><div id="oilPlot" class="plot" style="min-height:300px"></div></div>
+  </div>
+  <p class="note">NI: Consumer Council for Northern Ireland daily price
+    checker. ROI: European Commission Weekly Oil Bulletin – bulletin product
+    is gas oil; most Irish homes burn kerosene, adjustment pending.<span class="dag">†</span>
+    Twin currencies are native here: two price regimes, one island.</p>
+</section>
+
+<section id="gas" aria-labelledby="gas-h">
+  <h2 id="gas-h">The gas engine room <span id="gasBadge" class="badge lagging" style="font-size:.62rem"></span></h2>
+  <div class="panelbox"><div id="gasPlot" class="plot"></div></div>
+  <p class="note">Daily non-daily-metered gas demand (ROI – homes and SMEs,
+    power stations excluded) against population-weighted heating degree days.
+    The temperature-sensitive slope is space heat. Calibration series via
+    data.gov.ie (CC BY 4.0), quarterly refresh – the live GNI feed lands next.
+    Naive OLS shown; month-demeaned estimator to follow before this figure
+    is quoted anywhere.</p>
+</section>
+
+<section id="geo" aria-labelledby="geo-h">
+  <h2 id="geo-h">Geothermal – the empty bar</h2>
+  <div class="panelbox">
+    <p style="max-width:660px">Operational deep geothermal heat on the island
+      of Ireland today is close to zero. The Permo-Triassic Sherwood Sandstone
+      beneath both jurisdictions can supply heat at town scale
+      (Todd et al., <em>Geoenergy</em>, 2026 –
+      <a href="https://doi.org/10.1144/geoenergy2025-057">10.1144/geoenergy2025-057</a>).
+      NI's licensing framework is in consultation with a register expected
+      ~2027; this dashboard is built to ingest it the day it exists. The gap
+      between the bar below and the what-if strip above is the argument.</p>
+    <div id="geoPlot" class="plot" style="min-height:220px"></div>
+  </div>
+</section>
+
+<section id="method" aria-labelledby="method-h">
+  <h2 id="method-h">Method &amp; sources</h2>
+  <div class="panelbox">
+    <p style="max-width:720px;margin-bottom:12px">Annual buildings-heat
+      anchors – SEAI Energy in Ireland 2025 and National Energy Balance (ROI);
+      DfE Energy in Northern Ireland and NISRA Continuous Household Survey
+      (NI) – are shaped by each week's population-weighted heating degree days
+      (ERA5 via Open-Meteo). Gas gets a live regression where daily data
+      exists; oil, the island's majority fuel, has no daily data anywhere –
+      it is carried as an anchor plus a live price. Figures marked
+      <span class="dag">†</span> are current Causeway Energies estimates –
+      challenge and input welcome at
+      <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
+    <table aria-label="Feed status detail"><thead>
+      <tr><th>Feed</th><th>Source</th><th>Status</th><th>Latest</th></tr>
+    </thead><tbody id="feedTable"></tbody></table>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Irish Heat Split – Causeway Energies (Causeway Geothermal NI Ltd).
+    Contains data from Gas Networks Ireland (CC BY 4.0 via data.gov.ie),
+    EirGrid Group, SEMOpx, the European Commission Weekly Oil Bulletin, the
+    Consumer Council for Northern Ireland, the European Central Bank, and
+    ERA5/Copernicus via Open-Meteo. Sourced figures cite their publisher;
+    daggered figures are ours to defend – <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
+    <p style="margin-top:8px" id="buildStamp"></p>
+  </div>
+</footer>
+
+<script>
+const CLR = {green:'#3AAA35', green2:'#568F59', petrol:'#1F4E5F',
+             amber:'#D98E2B', teal:'#2F8F8C', ink:'#E9F1EF',
+             muted:'#9FB8B4', faint:'#6E8B88', line:'#24444f',
+             panel:'#122831'};
+const PL_BASE = {
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{family:'Lato, sans-serif', color:CLR.muted, size:12},
+  margin:{l:56,r:56,t:24,b:44},
+  xaxis:{gridcolor:CLR.line, zeroline:false},
+  yaxis:{gridcolor:CLR.line, zeroline:false},
+};
+const CONF = {displayModeBar:false, responsive:true};
+const fmt = (x,d=1)=> x==null ? '–' :
+  Number(x).toLocaleString('en-IE',{maximumFractionDigits:d,minimumFractionDigits:0});
+
+function el(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"]/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+function statusBadges(feeds){
+  const label = {eirgrid:'Electricity', hdd:'Degree days', ecb_fx:'FX',
+    gni_ckan:'Gas (calibration)', gni_live:'Gas (live)', semopx:'Power price',
+    oil_bulletin:'Oil € ', ccni_oil:'Oil £'};
+  const holder = el('badges'); holder.innerHTML='';
+  Object.entries(feeds).forEach(([k,f])=>{
+    const st = f.pending_note ? 'pending' : (f.status||'stale');
+    const b = document.createElement('span');
+    b.className = 'badge '+st;
+    b.innerHTML = esc(label[k]||k)+' <b>'+esc(
+      st==='pending'?'pending probe':st)+'</b>';
+    b.title = f.source||''; holder.appendChild(b);
+  });
+}
+
+function heroCards(h){
+  const cards = [
+    ['Heat purchased', fmt(h.heat_purchased_gwh,0)+' GWh',
+     fmt(h.heat_delivered_gwh,0)+' GWh delivered'],
+    ['Indigenous share of heat delivered', fmt(h.indigenous_share_pct)+' %',
+     'origin of each delivered unit, services basis'],
+    ['The island\u2019s heat bill', '\u20ac'+fmt(h.bill_eur_m,0)+'m \u2002|\u2002 \u00a3'+fmt(h.bill_gbp_m,0)+'m',
+     'twin currencies, ECB reference rate'],
+    ['Emissions', fmt(h.emissions_kt_co2,0)+' kt CO\u2082e',
+     'combustion + grid electricity'],
+  ];
+  el('heroCards').innerHTML = cards.map(c=>
+    '<div class="stat"><div class="lab">'+c[0]+'</div>'+
+    '<div class="val">'+c[1]+'</div><div class="sub">'+c[2]+'</div></div>').join('');
+  const w = h.what_if_20pct_geothermal;
+  if(w){
+    el('whatif').hidden = false;
+    const rows = [
+      [fmt(w.heat_purchased_gwh,0)+' GWh','heat purchased'],
+      [fmt(w.indigenous_share_pct)+' %','indigenous share'],
+      ['\u20ac'+fmt(w.bill_eur_m,0)+'m | \u00a3'+fmt(w.bill_gbp_m,0)+'m','the bill'],
+      [fmt(w.emissions_kt_co2,0)+' kt','CO\u2082e'],
+    ];
+    el('whatifRow').innerHTML = rows.map(r=>
+      '<div class="wcell"><div class="val">'+r[0]+'</div>'+
+      '<div class="lab">'+r[1]+'</div></div>').join('');
+  }
+  el('heroNote').textContent = 'Week ending '+h.week_ending+' \u2013 '+
+    fmt(h.hdd_week)+' heating degree days. '+h.basis;
+}
+
+function invisibleBar(h){
+  const a = h.anchors_used; if(!a) return;
+  let unmet=0, gas=0, elec=0;
+  for(const j of ['roi','ni']){
+    const heat=(a[j].residential_heat_twh+a[j].services_heat_twh);
+    for(const [f,s] of Object.entries(a[j].fuel_shares)){
+      const useful=heat*s*a.efficiency[f];
+      if(f==='gas') gas+=useful;
+      else if(f==='electricity') elec+=useful;
+      else unmet+=useful;
+    }
+  }
+  const tot=unmet+gas+elec, W=1000, H=78, y=14;
+  const segs=[
+    {v:unmet, fill:'url(#hatch)', lab:'Unmetered '+Math.round(100*unmet/tot)+'%',
+     sub:fmt(unmet,1)+' TWh\u2020/yr', tc:CLR.amber},
+    {v:gas, fill:CLR.petrol, lab:'Gas '+Math.round(100*gas/tot)+'%',
+     sub:fmt(gas,1)+' TWh', tc:CLR.ink},
+    {v:elec, fill:CLR.green, lab:'Electric '+Math.round(100*elec/tot)+'%',
+     sub:fmt(elec,1)+' TWh', tc:CLR.ink},
+  ];
+  let x=0, out='';
+  for(const s of segs){
+    const w=W*s.v/tot;
+    out+='<rect x="'+x+'" y="'+y+'" width="'+(w-3)+'" height="'+H+
+      '" rx="4" fill="'+s.fill+'"></rect>';
+    const anchor = w>170 ? 'middle':'start';
+    const tx = w>170 ? x+w/2 : x+8;
+    out+='<text x="'+tx+'" y="'+(y+H/2-4)+'" fill="'+s.tc+
+      '" font-family="Lato" font-weight="700" font-size="21" text-anchor="'+anchor+'">'+s.lab+'</text>';
+    out+='<text x="'+tx+'" y="'+(y+H/2+20)+'" fill="'+CLR.muted+
+      '" font-family="IBM Plex Mono" font-size="14" text-anchor="'+anchor+'">'+s.sub+'</text>';
+    x+=w;
+  }
+  el('invSegs').innerHTML=out;
+}
+
+function oilTicker(feeds, fx){
+  const ni=((feeds.ccni_oil||{}).series_gbp||{}).daily||{};
+  const s900=ni['900l']||{};
+  const days=Object.keys(s900).sort();
+  if(days.length){
+    const last=days[days.length-1];
+    el('oilNI').textContent='\u00a3'+fmt(s900[last],2);
+    el('oilNIdate').textContent=last+' \u2013 also \u20ac'+
+      fmt(s900[last]/(fx||0.855),2)+' at ECB rate';
+  }
+  const roi=(feeds.oil_bulletin||{}).roi_heating_gasoil_eur_per_1000l||{};
+  const rdays=Object.keys(roi).sort();
+  if(rdays.length){
+    const last=rdays[rdays.length-1];
+    el('oilROI').textContent='\u20ac'+fmt(roi[last],2);
+    el('oilROIdate').textContent=last+' \u2013 also \u00a3'+
+      fmt(roi[last]*(fx||0.855),2)+' at ECB rate';
+  }
+  if(!days.length && !rdays.length) return;
+  const traces=[];
+  if(days.length) traces.push({x:days,y:days.map(d=>s900[d]),name:'NI 900 L (\u00a3)',
+    mode:'lines',line:{color:CLR.amber,width:2.2}});
+  if(rdays.length) traces.push({x:rdays,y:rdays.map(d=>roi[d]),
+    name:'ROI 1 000 L (\u20ac)',yaxis:'y2',mode:'lines+markers',
+    line:{color:CLR.green,width:2},marker:{size:5}});
+  Plotly.newPlot('oilPlot',traces,Object.assign({},PL_BASE,{
+    yaxis:Object.assign({},PL_BASE.yaxis,{title:'\u00a3 / 900 L',titlefont:{color:CLR.amber}}),
+    yaxis2:{overlaying:'y',side:'right',title:'\u20ac / 1 000 L',
+      gridcolor:'rgba(0,0,0,0)',titlefont:{color:CLR.green}},
+    legend:{orientation:'h',y:1.12},
+  }),CONF);
+}
+
+function gasEngine(feeds, derived){
+  const gas=(feeds.gni_ckan||{}).ndm_gwh||{};
+  const hdd=(feeds.hdd||{}).hdd_roi||{};
+  const days=Object.keys(gas).filter(d=>hdd[d]!=null);
+  if(days.length<30){el('gasPlot').textContent='Calibration series unavailable this build.';return}
+  el('gasBadge').innerHTML='<b>'+esc((feeds.gni_ckan||{}).status||'')+'</b> to '+
+    esc((feeds.gni_ckan||{}).latest_day||'');
+  const x=days.map(d=>hdd[d]), y=days.map(d=>gas[d]);
+  const traces=[{x,y,mode:'markers',name:'day',
+    marker:{color:CLR.petrol,size:5,opacity:.65,
+      line:{color:CLR.green2,width:.4}}}];
+  const reg=(derived||{}).roi_space_heat_regression;
+  if(reg){
+    const xs=[0,Math.max.apply(null,x)];
+    traces.push({x:xs,y:xs.map(v=>reg.baseload_gwh_per_day+reg.slope_gwh_per_hdd*v),
+      mode:'lines',name:reg.slope_gwh_per_hdd+' GWh/HDD (naive OLS)',
+      line:{color:CLR.amber,width:2,dash:'dot'}});
+  }
+  Plotly.newPlot('gasPlot',traces,Object.assign({},PL_BASE,{
+    xaxis:Object.assign({},PL_BASE.xaxis,{title:'ROI heating degree days (base 15.5\u00b0C)'}),
+    yaxis:Object.assign({},PL_BASE.yaxis,{title:'NDM gas \u2013 GWh/day'}),
+    legend:{orientation:'h',y:1.12},
+  }),CONF);
+}
+
+function geoBar(h){
+  const cats=['Today','2031','2050'];
+  const vals=[0.05, 1.5, 6.0];   // TWh/yr, dagger placeholders pending pass
+  Plotly.newPlot('geoPlot',[{x:cats,y:vals,type:'bar',
+    marker:{color:[CLR.faint,CLR.green2,CLR.green]},width:.5,
+    text:vals.map((v,i)=>i===0?'\u2248 0':fmt(v,1)+' TWh\u2020'),
+    textposition:'outside',textfont:{family:'IBM Plex Mono',color:CLR.muted}}],
+    Object.assign({},PL_BASE,{
+      yaxis:Object.assign({},PL_BASE.yaxis,{title:'TWh heat / yr',
+        range:[0, 8]}),
+      margin:{l:56,r:20,t:10,b:36},
+    }),CONF);
+}
+
+function feedTable(feeds){
+  el('feedTable').innerHTML=Object.entries(feeds).map(([k,f])=>{
+    const st=f.pending_note?'pending probe':(f.status||'stale');
+    return '<tr><td class="mono">'+esc(k)+'</td><td>'+esc(f.source||'')+
+      '</td><td>'+esc(st)+'</td><td class="mono">'+esc(f.latest_day||'\u2013')+
+      '</td></tr>';
+  }).join('');
+}
+
+fetch('data.json').then(r=>{
+  if(!r.ok) throw new Error('data.json returned '+r.status);
+  return r.json();
+}).then(D=>{
+  statusBadges(D.feeds||{});
+  const hero=(D.derived||{}).hero;
+  if(hero){heroCards(hero); invisibleBar(hero);}
+  else el('heroCards').innerHTML='<div class="stat"><div class="lab">Hero</div>'+
+    '<div class="sub">Waiting for the first build with degree-day history \u2013 '+
+    'check back after the next daily run.</div></div>';
+  oilTicker(D.feeds||{}, ((D.feeds||{}).ecb_fx||{}).eur_gbp);
+  gasEngine(D.feeds||{}, D.derived);
+  geoBar(hero);
+  feedTable(D.feeds||{});
+  el('buildStamp').textContent='Site 0.1.0 \u00b7 pipeline '+
+    (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
+    ' \u00b7 daily at 04:17 UTC';
+}).catch(e=>{
+  const main=document.querySelector('main');
+  const div=document.createElement('div');
+  div.className='err';
+  div.textContent='The data file did not load ('+e.message+'). The daily '+
+    'build may not have run yet \u2013 data.json appears after the first '+
+    'successful GitHub Action.';
+  main.prepend(div);
+});
+</script>
+</body>
+</html>
