@@ -52,7 +52,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.2.0"
+PIPELINE_VERSION = "0.3.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -83,9 +83,8 @@ STATIONS = {
 }
 HDD_BASE_C = 15.5
 
-# Fill after browser XHR probes
+# Fill after browser XHR probe (the one remaining probe)
 EIRGRID_ENDPOINT = None    # replacement for DashboardService.svc/data
-GNI_LIVE_ENDPOINT = None   # GNI Data Transparency "Export all data" backend
 
 NTFY_TOPIC = None
 
@@ -535,12 +534,89 @@ def feed_gni_ckan():
     return out, recency_status(out["latest_day"], 100)
 
 
+def parse_gni_series(series_list) -> dict:
+    """
+    Pure parser for the GNI gasconsumption JSON API. Input: list of series
+    objects {name, location, group, ..., data: [[unix_ms, value], ...]}.
+    Output: {location: {iso_date: value}}. Keys off `location`, tolerates
+    missing fields, skips unparseable points.
+    """
+    out = {}
+    for s in series_list or []:
+        loc = (s or {}).get("location")
+        if not loc:
+            continue
+        pts = {}
+        for pair in s.get("data") or []:
+            try:
+                ms, val = pair[0], pair[1]
+                d = dt.datetime.fromtimestamp(
+                    ms / 1000.0, tz=dt.timezone.utc).date().isoformat()
+                pts[d] = float(val)
+            except (TypeError, ValueError, IndexError, OSError):
+                continue
+        if pts:
+            out.setdefault(loc, {}).update(pts)
+    return out
+
+
 def feed_gni_live():
-    """STUB - fill GNI_LIVE_ENDPOINT after the dev-tools XHR probe."""
-    if GNI_LIVE_ENDPOINT is None:
-        raise NotImplementedError(
-            "GNI live endpoint not yet probed - see scripts/build.py header")
-    raise NotImplementedError("probe done? then implement the parser here")
+    """
+    GNI Data Transparency JSON API - probed 14 Jul 2026, daily/hourly/
+    monthly all 200. The CSV export route 503s and is not used. Window per
+    call unknown: anchor four dates a month apart, log the observed span,
+    merge across runs. Values arrive in kWh by default - unit autodetected.
+    """
+    base = "https://www.gasnetworks.ie/api/v1/gasconsumption"
+    raw = {}
+    for back in (0, 30, 60, 90):
+        anchor = (today_utc() - dt.timedelta(days=back)).isoformat()
+        try:
+            body = http_get(base, params={
+                "date": anchor, "frequency": "daily", "unit": ""}).json()
+        except Exception as e:
+            log(f"gni_live: anchor {anchor} failed - {e.__class__.__name__}: {e}")
+            continue
+        if not isinstance(body, list):
+            log("gni_live: unexpected shape for", anchor, "-",
+                str(body)[:300])
+            continue
+        parsed = parse_gni_series(body)
+        if back == 0:
+            log("gni_live: locations seen:", sorted(parsed))
+        for loc, pts in parsed.items():
+            raw.setdefault(loc, {}).update(pts)
+    if not raw:
+        raise ValueError("gni_live: no series parsed from any anchor")
+
+    spans = {loc: (min(p), max(p), len(p)) for loc, p in raw.items()}
+    log("gni_live: spans:", spans)
+
+    ndm_vals = list(raw.get("NDM", {}).values())
+    scale, unit_note = autodetect_scale_to_gwh(
+        ndm_vals or [v for p in raw.values() for v in p.values()])
+
+    def keyname(loc):
+        return loc.lower().replace(" ", "_")
+
+    out = {"unit_detection": unit_note,
+           "jurisdiction_note": ("DM/NDM carry no ROI prefix while LDM and "
+                                 "Power Gen do - whether unprefixed series "
+                                 "include NI exits is unconfirmed; regression "
+                                 "remains on the confirmed-ROI calibration "
+                                 "series until resolved"),
+           "source": ("Gas Networks Ireland Data Transparency - "
+                      "gasconsumption API, daily by market sector")}
+    latest = None
+    for loc, pts in raw.items():
+        merged = prev_series("gni_live", f"{keyname(loc)}_gwh")
+        merged.update({d: round(v * scale, 3) for d, v in pts.items()})
+        merged = trim_series(clip_days(merged))
+        out[f"{keyname(loc)}_gwh"] = merged
+        if merged:
+            latest = max(latest or "", max(merged))
+    out["latest_day"] = latest
+    return out, recency_status(latest, 3)
 
 
 def feed_semopx():
