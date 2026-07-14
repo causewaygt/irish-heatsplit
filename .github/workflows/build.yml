@@ -50,9 +50,11 @@ jobs:
 
       - name: Notify on failure
         if: failure()
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
-          # set NTFY_TOPIC as a repo Actions variable; silent no-op if unset
-          if [ -n "${{ vars.NTFY_TOPIC }}" ]; then
-            curl -s -d "ioi-heatsplit build FAILED - $(date -u +%F) run ${{ github.run_id }}" \
-              "https://ntfy.sh/${{ vars.NTFY_TOPIC }}" || true
+          # repo is public: secrets are masked in logs, variables are not
+          if [ -n "$NTFY_TOPIC" ]; then
+            curl -s -d "irish-heatsplit build FAILED - $(date -u +%F) run ${{ github.run_id }}" \
+              "https://ntfy.sh/$NTFY_TOPIC" || true
           fi
