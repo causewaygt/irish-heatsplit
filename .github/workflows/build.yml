@@ -1,1 +1,58 @@
+name: build
 
+on:
+  schedule:
+    - cron: "17 4 * * *"        # 04:17 UTC daily - offset from uk-heatsplit 03:43
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests openpyxl
+
+      - name: Synthetic tests (confound-injected)
+        run: python3 tests/test_synthetic.py
+
+      - name: Build data.json
+        id: build
+        run: python3 scripts/build.py
+
+      - name: Commit and push
+        if: always()
+        run: |
+          git config user.name "ioi-heatsplit-bot"
+          git config user.email "actions@github.com"
+          git add docs/data.json
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "data: daily build $(date -u +%F)"
+            # mid-run manual commits once raced the bot on uk-heatsplit -
+            # rebase before push, always
+            git pull --rebase origin main
+            git push origin main
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          # set NTFY_TOPIC as a repo Actions variable; silent no-op if unset
+          if [ -n "${{ vars.NTFY_TOPIC }}" ]; then
+            curl -s -d "ioi-heatsplit build FAILED - $(date -u +%F) run ${{ github.run_id }}" \
+              "https://ntfy.sh/${{ vars.NTFY_TOPIC }}" || true
+          fi
