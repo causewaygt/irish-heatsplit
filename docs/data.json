@@ -1,6 +1,85 @@
 {
- "built_utc": "2026-07-14T11:49:17+00:00",
+ "built_utc": "2026-07-14T17:47:36+00:00",
  "derived": {
+  "hero": {
+   "anchors_used": {
+    "ef_g_per_kwh": {
+     "electricity": 280,
+     "gas": 205,
+     "oil": 257,
+     "other": 100,
+     "peat": 340
+    },
+    "efficiency": {
+     "electricity": 1.0,
+     "gas": 0.85,
+     "oil": 0.82,
+     "other": 0.7,
+     "peat": 0.6
+    },
+    "geothermal_spf": 4.0,
+    "indigenous": {
+     "oil": 0.0,
+     "other": 0.9,
+     "peat": 1.0
+    },
+    "kerosene_kwh_per_litre": 10.35,
+    "ni": {
+     "elec_indigenous": 0.46,
+     "fuel_shares": {
+      "electricity": 0.08,
+      "gas": 0.26,
+      "oil": 0.62,
+      "other": 0.04,
+      "peat": 0.0
+     },
+     "gas_indigenous": 0.0,
+     "residential_heat_twh": 10.0,
+     "services_heat_twh": 3.0
+    },
+    "retail_eur_per_kwh": {
+     "electricity": 0.36,
+     "gas": 0.115
+    },
+    "retail_gbp_per_kwh": {
+     "electricity": 0.27,
+     "gas": 0.075
+    },
+    "roi": {
+     "elec_indigenous": 0.413,
+     "fuel_shares": {
+      "electricity": 0.08,
+      "gas": 0.251,
+      "oil": 0.565,
+      "other": 0.037,
+      "peat": 0.067
+     },
+     "gas_indigenous": 0.18,
+     "residential_heat_twh": 22.3,
+     "services_heat_twh": 8.5
+    },
+    "space_heat_fraction": 0.72,
+    "year": 2024
+   },
+   "basis": "Scaffold estimator (dagger throughout) - annual anchors shaped by the week's island HDD; SEAI 2024, DfE/NISRA, Causeway estimates. Challenge and input welcome at contact@causewaygt.com",
+   "bill_eur_m": 29.4,
+   "bill_gbp_m": 25.1,
+   "emissions_kt_co2": 57.5,
+   "hdd_week": 0.0,
+   "hdd_year": 1783.6,
+   "heat_delivered_gwh": 195.1,
+   "heat_purchased_gwh": 235.8,
+   "indigenous_share_pct": 13.7,
+   "week_ending": "2026-07-14",
+   "what_if_20pct_geothermal": {
+    "bill_eur_m": 26.9,
+    "bill_gbp_m": 22.9,
+    "emissions_kt_co2": 48.7,
+    "geothermal_spf": 4.0,
+    "heat_purchased_gwh": 198.4,
+    "indigenous_share_pct": 28.1
+   }
+  },
   "roi_space_heat_regression": {
    "baseload_gwh_per_day": 9.48,
    "n_days": 206,
@@ -10,7 +89,7 @@
  },
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-14T11:49:17+00:00",
+   "fetched_utc": "2026-07-14T17:47:36+00:00",
    "latest_day": "2026-07-10",
    "series_gbp": {
     "daily": {
@@ -302,11 +381,11 @@
    "status": "ok"
   },
   "ecb_fx": {
-   "eur_gbp": 0.8533,
-   "fetched_utc": "2026-07-14T11:49:13+00:00",
-   "gbp_eur": 1.17192,
-   "latest_day": "2026-07-13",
-   "rate_date": "2026-07-13",
+   "eur_gbp": 0.85215,
+   "fetched_utc": "2026-07-14T17:47:28+00:00",
+   "gbp_eur": 1.1735,
+   "latest_day": "2026-07-14",
+   "rate_date": "2026-07-14",
    "source": "ECB euro foreign exchange reference rates (daily)",
    "status": "ok"
   },
@@ -3240,7 +3319,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-14T11:49:14+00:00",
+   "fetched_utc": "2026-07-14T17:47:30+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -14948,7 +15027,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-14T11:49:13+00:00",
+   "fetched_utc": "2026-07-14T17:47:27+00:00",
    "forecast_tail": true,
    "hdd_island": {
     "2025-06-09": 2.23,
@@ -16165,7 +16244,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-14T11:49:17+00:00",
+   "fetched_utc": "2026-07-14T17:47:36+00:00",
    "kerosene_caveat": "Bulletin product is gas oil - Irish homes mostly burn kerosene; adjustment is a current Causeway Energies estimate pending CSO CPI cross-check",
    "latest_day": "2026-07-06",
    "latest_value": 1151.6,
@@ -16179,7 +16258,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 137.71,
    "dam_avg_gbp_mwh": 117.75,
-   "fetched_utc": "2026-07-14T11:49:16+00:00",
+   "fetched_utc": "2026-07-14T17:47:31+00:00",
    "latest_day": "2026-07-12",
    "markets": {
     "NI-DA": {
@@ -16197,5 +16276,5 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "0.1.2"
+ "pipeline_version": "0.2.0"
 }
