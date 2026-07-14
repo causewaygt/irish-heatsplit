@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-14T17:53:38+00:00",
+ "built_utc": "2026-07-14T18:09:51+00:00",
  "derived": {
   "hero": {
    "anchors_used": {
@@ -89,7 +89,7 @@
  },
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-14T17:53:38+00:00",
+   "fetched_utc": "2026-07-14T18:09:51+00:00",
    "latest_day": "2026-07-10",
    "series_gbp": {
     "daily": {
@@ -382,7 +382,7 @@
   },
   "ecb_fx": {
    "eur_gbp": 0.85215,
-   "fetched_utc": "2026-07-14T17:53:33+00:00",
+   "fetched_utc": "2026-07-14T18:09:45+00:00",
    "gbp_eur": 1.1735,
    "latest_day": "2026-07-14",
    "rate_date": "2026-07-14",
@@ -3319,7 +3319,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-14T17:53:34+00:00",
+   "fetched_utc": "2026-07-14T18:09:46+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15055,7 +15055,7 @@
     "2026-07-12": 4.964,
     "2026-07-13": 6.892
    },
-   "fetched_utc": "2026-07-14T17:53:38+00:00",
+   "fetched_utc": "2026-07-14T18:09:51+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-13",
    "ndm_gwh": {
@@ -15196,7 +15196,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-14T17:53:33+00:00",
+   "fetched_utc": "2026-07-14T18:09:44+00:00",
    "forecast_tail": true,
    "hdd_island": {
     "2025-06-09": 2.23,
@@ -16413,7 +16413,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-14T17:53:36+00:00",
+   "fetched_utc": "2026-07-14T18:09:49+00:00",
    "kerosene_caveat": "Bulletin product is gas oil - Irish homes mostly burn kerosene; adjustment is a current Causeway Energies estimate pending CSO CPI cross-check",
    "latest_day": "2026-07-06",
    "latest_value": 1151.6,
@@ -16427,7 +16427,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 137.71,
    "dam_avg_gbp_mwh": 117.75,
-   "fetched_utc": "2026-07-14T17:53:35+00:00",
+   "fetched_utc": "2026-07-14T18:09:48+00:00",
    "latest_day": "2026-07-12",
    "markets": {
     "NI-DA": {
