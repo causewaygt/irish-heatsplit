@@ -52,7 +52,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.1.2"
+PIPELINE_VERSION = "0.2.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -720,6 +720,165 @@ def space_heat_split(gas_daily: dict, hdd_daily: dict):
             "r2": round(1 - ss_res / ss_tot, 3), "n_days": n}
 
 
+
+
+# ------------------------------------------------- annual anchors (v0.2.0)
+# Sourced figures cite their publication; every judgement figure is marked
+# with a dagger and is a current Causeway Energies estimate - challenge and
+# input welcome at contact@causewaygt.com.
+
+ANCHORS = {
+    "year": 2024,
+    "roi": {
+        "residential_heat_twh": 22.3,      # SEAI Energy in Ireland 2025
+        "services_heat_twh": 8.5,          # dagger - from SEAI sector shares
+        "fuel_shares": {"oil": 0.565, "gas": 0.251, "peat": 0.067,
+                        "electricity": 0.08, "other": 0.037},
+        #             oil/gas/peat SEAI 2024; electricity/other dagger
+        "gas_indigenous": 0.18,            # SEAI H1-2025, Corrib, falling
+        "elec_indigenous": 0.413,          # SEAI RES-E 2024
+    },
+    "ni": {
+        "residential_heat_twh": 10.0,      # dagger - NISRA stock x intensity
+        "services_heat_twh": 3.0,          # dagger
+        "fuel_shares": {"oil": 0.62, "gas": 0.26, "peat": 0.0,
+                        "electricity": 0.08, "other": 0.04},
+        #             oil NISRA CHS 2024/25; gas/electricity/other dagger
+        "gas_indigenous": 0.0,             # all NI gas arrives via Moffat
+        "elec_indigenous": 0.46,           # dagger - DfE yr-to-Mar-2026 ~48%
+    },
+    "efficiency": {"oil": 0.82, "gas": 0.85, "peat": 0.60,
+                   "electricity": 1.0, "other": 0.70},          # dagger
+    "geothermal_spf": 4.0,                                       # dagger
+    "ef_g_per_kwh": {"oil": 257, "gas": 205, "peat": 340,
+                     "other": 100, "electricity": 280},          # dagger -
+    # electricity factor replaced by live grid intensity once eirgrid returns
+    "indigenous": {"oil": 0.0, "peat": 1.0, "other": 0.9},      # dagger
+    "space_heat_fraction": 0.72,                                 # dagger
+    "kerosene_kwh_per_litre": 10.35,                             # dagger
+    "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},  # dagger ROI
+    "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.27},  # dagger NI
+}
+
+
+def derive_hero(feeds, anchors=None):
+    """
+    Weekly hero four-stat + what-if, all-island, twin currencies.
+    Scaffold estimator: annual buildings-heat anchors shaped by the week's
+    island HDD (space-heat fraction HDD-proportional, remainder flat).
+    Pure function - unit tested. Returns None until HDD data is present.
+    """
+    a = anchors or ANCHORS
+    hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
+    if len(hdd) < 200:
+        return None
+    days = sorted(hdd)
+    week_days = days[-7:]
+    hdd_week = sum(hdd[d] for d in week_days)
+    hdd_year = sum(hdd[d] for d in days[-365:])
+    if hdd_year <= 0:
+        return None
+    shf = a["space_heat_fraction"]
+
+    fx = (feeds.get("ecb_fx") or {}).get("eur_gbp")  # GBP per EUR
+    fx = fx or 0.855
+
+    # live oil prices per input kWh, else None
+    oil_eur_kwh = None
+    ob = (feeds.get("oil_bulletin") or {}).get("latest_value")
+    if ob:
+        oil_eur_kwh = ob / 1000.0 / a["kerosene_kwh_per_litre"]
+    oil_gbp_kwh = None
+    ccni = ((feeds.get("ccni_oil") or {}).get("series_gbp") or {}).get(
+        "daily", {}).get("900l") or {}
+    if ccni:
+        oil_gbp_kwh = ccni[max(ccni)] / 900.0 / a["kerosene_kwh_per_litre"]
+
+    def week_input_gwh(annual_twh):
+        annual_gwh = annual_twh * 1000.0
+        return annual_gwh * ((1 - shf) / 52.0 + shf * hdd_week / hdd_year)
+
+    totals = {"input_gwh": 0.0, "useful_gwh": 0.0, "indig_gwh": 0.0,
+              "kt_co2": 0.0, "bill_eur_m": 0.0, "bill_gbp_m": 0.0}
+    for jur, cur in (("roi", "eur"), ("ni", "gbp")):
+        j = a[jur]
+        heat_twh = j["residential_heat_twh"] + j["services_heat_twh"]
+        for fuel, share in j["fuel_shares"].items():
+            inp = week_input_gwh(heat_twh) * share
+            eff = a["efficiency"][fuel]
+            useful = inp * eff
+            indig = useful * (
+                j["gas_indigenous"] if fuel == "gas" else
+                j["elec_indigenous"] if fuel == "electricity" else
+                a["indigenous"].get(fuel, 0.0))
+            # GWh x g/kWh -> tonnes; /1000 -> kt
+            kt = inp * a["ef_g_per_kwh"][fuel] / 1000.0
+            if fuel == "oil":
+                price = oil_eur_kwh if cur == "eur" else oil_gbp_kwh
+                if price is None:
+                    price = 0.11 if cur == "eur" else 0.09  # dagger fallback
+            else:
+                table = a["retail_eur_per_kwh"] if cur == "eur" \
+                    else a["retail_gbp_per_kwh"]
+                price = table.get(fuel, table["gas"])
+            bill_m = inp * 1e6 * price / 1e6  # GWh->kWh, price/kWh, ->millions
+            totals["input_gwh"] += inp
+            totals["useful_gwh"] += useful
+            totals["indig_gwh"] += indig
+            totals["kt_co2"] += kt
+            if cur == "eur":
+                totals["bill_eur_m"] += bill_m
+            else:
+                totals["bill_gbp_m"] += bill_m
+
+    bill_eur_total = totals["bill_eur_m"] + totals["bill_gbp_m"] / fx
+    bill_gbp_total = totals["bill_eur_m"] * fx + totals["bill_gbp_m"]
+
+    # what-if: 20% of useful heat served by geothermal heat pumps
+    spf = a["geothermal_spf"]
+    moved_useful = totals["useful_gwh"] * 0.20
+    elec_in = moved_useful / spf
+    ambient = moved_useful - elec_in
+    # displaced proportionally from the fossil-weighted current mix
+    scale = 0.80
+    wf_input = totals["input_gwh"] * scale + elec_in
+    wf_indig = (totals["indig_gwh"] * scale + ambient
+                + elec_in * (a["roi"]["elec_indigenous"] * 0.7
+                             + a["ni"]["elec_indigenous"] * 0.3))
+    wf_kt = totals["kt_co2"] * scale + elec_in * \
+        a["ef_g_per_kwh"]["electricity"] / 1000.0
+    blend_eur = a["retail_eur_per_kwh"]["electricity"]
+    blend_gbp = a["retail_gbp_per_kwh"]["electricity"]
+    wf_bill_eur = bill_eur_total * scale + elec_in * 1e3 * blend_eur / 1e3 * 0.7 \
+        + (elec_in * 1e3 * blend_gbp / 1e3 * 0.3) / fx
+    wf_bill_gbp = wf_bill_eur * fx
+
+    r1 = lambda x: round(x, 1)
+    return {
+        "week_ending": week_days[-1],
+        "hdd_week": r1(hdd_week), "hdd_year": r1(hdd_year),
+        "heat_purchased_gwh": r1(totals["input_gwh"]),
+        "heat_delivered_gwh": r1(totals["useful_gwh"]),
+        "indigenous_share_pct": r1(100 * totals["indig_gwh"]
+                                   / max(totals["useful_gwh"], 1e-9)),
+        "bill_eur_m": r1(bill_eur_total), "bill_gbp_m": r1(bill_gbp_total),
+        "emissions_kt_co2": r1(totals["kt_co2"]),
+        "what_if_20pct_geothermal": {
+            "heat_purchased_gwh": r1(wf_input),
+            "indigenous_share_pct": r1(100 * wf_indig
+                                       / max(totals["useful_gwh"], 1e-9)),
+            "bill_eur_m": r1(wf_bill_eur), "bill_gbp_m": r1(wf_bill_gbp),
+            "emissions_kt_co2": r1(wf_kt),
+            "geothermal_spf": spf,
+        },
+        "basis": ("Scaffold estimator (dagger throughout) - annual anchors "
+                  "shaped by the week's island HDD; SEAI 2024, DfE/NISRA, "
+                  "Causeway estimates. Challenge and input welcome at "
+                  "contact@causewaygt.com"),
+        "anchors_used": a,
+    }
+
+
 # ---------------------------------------------------------------- assembly
 
 FEEDS = {
@@ -773,6 +932,13 @@ def main():
     derived = {"roi_space_heat_regression": reg} if reg else {}
     if reg:
         log("regression:", reg)
+    hero = derive_hero(feeds)
+    if hero:
+        derived["hero"] = hero
+        log("hero:", {k: hero[k] for k in
+                      ("week_ending", "heat_purchased_gwh",
+                       "indigenous_share_pct", "bill_eur_m", "bill_gbp_m",
+                       "emissions_kt_co2")})
 
     doc = {
         "pipeline_version": PIPELINE_VERSION,
