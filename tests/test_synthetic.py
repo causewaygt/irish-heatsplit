@@ -279,6 +279,38 @@ def test_hero_weekly_sums_to_annual():
     assert abs(h["heat_purchased_gwh"] - expected) < expected * 0.02
 
 
+# ------------------------------------- gni_live parser - probed format
+
+def test_gni_series_parse():
+    from build import parse_gni_series
+    import datetime as dt
+    ms = lambda iso: int(dt.datetime.fromisoformat(
+        iso + "T00:00:00+00:00").timestamp() * 1000)
+    sample = [
+        {"name": "Non Daily Metered", "location": "NDM", "group": "demand",
+         "color": "#123456", "showInLegend": True, "visible": True,
+         "data": [[ms("2026-07-12"), 5.2e6], [ms("2026-07-13"), 4.9e6]]},
+        {"name": "ROI Power Generation", "location": "ROI Power Gen",
+         "data": [[ms("2026-07-12"), 8.8e7]]},
+        {"name": "broken", "location": "DM",
+         "data": [[None, 1], ["x", 2], [ms("2026-07-13"), 3.1e7]]},
+        {"name": "no location", "data": [[ms("2026-07-13"), 1.0]]},
+    ]
+    p = parse_gni_series(sample)
+    assert p["NDM"]["2026-07-12"] == 5.2e6
+    assert p["NDM"]["2026-07-13"] == 4.9e6
+    assert p["ROI Power Gen"]["2026-07-12"] == 8.8e7
+    assert p["DM"] == {"2026-07-13": 3.1e7}   # bad points skipped
+    assert "no location" not in str(p)
+
+
+def test_gni_series_empty_and_malformed():
+    from build import parse_gni_series
+    assert parse_gni_series(None) == {}
+    assert parse_gni_series([]) == {}
+    assert parse_gni_series([{"location": "NDM", "data": []}]) == {}
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
