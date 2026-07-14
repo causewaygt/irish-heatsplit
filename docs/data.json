@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-14T11:14:26+00:00",
+ "built_utc": "2026-07-14T11:49:17+00:00",
  "derived": {
   "roi_space_heat_regression": {
    "baseload_gwh_per_day": 9.48,
@@ -10,7 +10,7 @@
  },
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-14T11:14:26+00:00",
+   "fetched_utc": "2026-07-14T11:49:17+00:00",
    "latest_day": "2026-07-10",
    "series_gbp": {
     "daily": {
@@ -298,12 +298,12 @@
      }
     }
    },
-   "source": "Consumer Council for Northern Ireland home heating oil price checker - daily (Mon-Fri) and weekly survey, NI average, 300/500/900 L",
+   "source": "Consumer Council for Northern Ireland home heating oil price checker - daily (Mon-Fri), NI average, 300/500/900 L",
    "status": "ok"
   },
   "ecb_fx": {
    "eur_gbp": 0.8533,
-   "fetched_utc": "2026-07-14T11:14:20+00:00",
+   "fetched_utc": "2026-07-14T11:49:13+00:00",
    "gbp_eur": 1.17192,
    "latest_day": "2026-07-13",
    "rate_date": "2026-07-13",
@@ -311,6 +311,7 @@
    "status": "ok"
   },
   "eirgrid": {
+   "pending_note": "Smart Grid Dashboard redesigned ~09 Jul 2026 - DashboardService.svc returns 503 from all networks; awaiting browser XHR probe for the replacement endpoint",
    "source": "previous run retained",
    "status": "stale"
   },
@@ -3239,7 +3240,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-14T11:14:22+00:00",
+   "fetched_utc": "2026-07-14T11:49:14+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -14947,7 +14948,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-14T11:14:19+00:00",
+   "fetched_utc": "2026-07-14T11:49:13+00:00",
    "forecast_tail": true,
    "hdd_island": {
     "2025-06-09": 2.23,
@@ -16164,14 +16165,37 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "source": "previous run retained",
-   "status": "stale"
+   "fetched_utc": "2026-07-14T11:49:17+00:00",
+   "kerosene_caveat": "Bulletin product is gas oil - Irish homes mostly burn kerosene; adjustment is a current Causeway Energies estimate pending CSO CPI cross-check",
+   "latest_day": "2026-07-06",
+   "latest_value": 1151.6,
+   "roi_heating_gasoil_eur_per_1000l": {
+    "2026-07-06": 1151.6
+   },
+   "source": "European Commission Weekly Oil Bulletin - prices with taxes",
+   "status": "ok"
   },
   "semopx": {
-   "source": "previous run retained",
-   "status": "stale"
+   "auction": "SEM-DA",
+   "dam_avg_eur_mwh": 137.71,
+   "dam_avg_gbp_mwh": 117.75,
+   "fetched_utc": "2026-07-14T11:49:16+00:00",
+   "latest_day": "2026-07-12",
+   "markets": {
+    "NI-DA": {
+     "EUR": 137.71,
+     "GBP": 117.75
+    },
+    "ROI-DA": {
+     "EUR": 137.71
+    }
+   },
+   "sem_fx_eur_gbp": 0.85506627,
+   "source": "SEMOpx day-ahead market results - dual currency (EUR/GBP), incl. SEM trading-day FX rate",
+   "status": "ok",
+   "trade_day": "2026-07-12"
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "0.1.1"
+ "pipeline_version": "0.1.2"
 }
