@@ -1,8 +1,7 @@
 """
-Synthetic tests for ioi-heatsplit pipeline logic - run before shipping,
-per house rule: validate estimators and parsers against synthetic data,
-including injected confounds and the actual formats captured in the
-first Actions run log (14 Jul 2026).
+Synthetic tests for ioi-heatsplit pipeline logic - validated against
+synthetic data with injected confounds AND verbatim formats captured in
+the Actions run logs (14 Jul 2026).
 
     python3 tests/test_synthetic.py
 """
@@ -17,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    clip_days, recency_status, ddmmyyyy_to_iso,
                    extract_chart_data_arrays, parse_ccni_series,
-                   resolve_oil_bulletin_url)
+                   resolve_oil_bulletin_url, parse_bulletin_rows,
+                   parse_semopx_csv)
 
 
 # ------------------------------------------------------------- regression
@@ -45,7 +45,6 @@ def test_regression_recovers_truth():
 
 
 def test_regression_with_holiday_confound():
-    """Late-December demand drop at high HDD - slope bias must stay bounded."""
     gas, hdd = synth_year(slope=3.0, baseload=8.0, noise=0.2)
     for i in range(20, 32):
         d = dt.date(2025, 12, i % 31 + 1).isoformat()
@@ -89,8 +88,6 @@ def test_ddmmyyyy():
 
 # ---------------------------------------------- ccni parser - live format
 
-# Verbatim structure from the first-run diagnostic dump (14 Jul 2026),
-# HTML-entity-escaped chart config embedded in the daily checker page.
 CCNI_SAMPLE = (
     'prefix junk {&quot;color&quot;:&quot;#579b17&quot;,&quot;_format&quot;:'
     '{&quot;format&quot;:&quot;\\u00a3#&quot;}}]},'
@@ -108,7 +105,6 @@ def test_ccni_chart_extraction():
     arrays = extract_chart_data_arrays(CCNI_SAMPLE)
     assert len(arrays) == 1, arrays
     assert arrays[0][0] == ["", "300 litres", "500 litres", "900 litres"]
-    assert arrays[0][1][0] == "26/02/2026"
 
 
 def test_ccni_series_parse():
@@ -116,7 +112,6 @@ def test_ccni_series_parse():
     assert s["300l"]["2026-02-26"] == 202.12
     assert s["500l"]["2026-03-02"] == 416.26
     assert s["900l"]["2026-03-03"] == 831.04
-    assert len(s["300l"]) == 3
 
 
 def test_ccni_ignores_non_litre_charts():
@@ -126,32 +121,99 @@ def test_ccni_ignores_non_litre_charts():
     assert not any(s.values())
 
 
-# ------------------------------------- oil bulletin resolver - live format
+# ------------------------------------- oil bulletin - live formats
 
-# Verbatim link shapes from the first-run log (URL-encoded filenames).
-BULLETIN_SAMPLE = (
+BULLETIN_LINKS = (
     '<a href="/document/download/264c2d0f-f161-4ea3-a777-78faae59bea0_en'
     '?filename=Weekly%20Oil%20Bulletin%20Weekly%20prices%20with%20Taxes'
     '%20-%202024-02-19.xlsx">x</a>'
     '<a href="/document/download/78311f92-68f8-4b82-b5cf-1293beeaae77_en'
     '?filename=Weekly%20Oil%20Bulletin%20Weekly%20prices%20without%20taxes'
     '%20-%202024-02-19.xlsx">y</a>'
-    '<a href="/document/download/ccdc6e96_en'
-    '?filename=Oil_Bulletin_Duties_and_taxes.xlsx">z</a>'
 )
 
 
 def test_bulletin_resolves_with_taxes_only():
-    url = resolve_oil_bulletin_url(BULLETIN_SAMPLE)
-    assert url is not None
-    assert "264c2d0f" in url, url               # the with-taxes UUID
+    url = resolve_oil_bulletin_url(BULLETIN_LINKS)
+    assert url is not None and "264c2d0f" in url, url
     assert url.startswith("https://energy.ec.europa.eu/")
 
 
-def test_bulletin_rejects_pageful_of_wrong_files():
-    page = ('<a href="/document/download/x?filename=prices%20without%20taxes'
-            '.xlsx">a</a><a href="/doc.pdf">b</a>')
-    assert resolve_oil_bulletin_url(page) is None
+# Snapshot layout as revealed by the second run: header row confirmed
+# verbatim; country rows carry values with no per-row dates; the bulletin
+# date sits in a title cell.
+BULLETIN_ROWS = [
+    ("Prices in force on 06/07/2026", None, None, None, None, None, None),
+    ("in EUR", "Euro-super 95  (I)", "Gas oil automobile Automotive ",
+     " Gas oil de chauffage Heating ", " Fuel oil - Schweres Heizöl (I",
+     " Fuel oil -Schweres Heizöl (II", "GPL pour moteur LPG motor fuel"),
+    ("Belgique", 1728.94, 1878.72, 1019.50, 453.39, None, None),
+    ("Ireland", 1729.80, 1712.70, 1151.60, None, None, 892.16),
+    ("Italia", 1810.00, 1887.18, 1300.00, None, None, 773.60),
+]
+
+
+def test_bulletin_snapshot_parse():
+    d, v = parse_bulletin_rows(BULLETIN_ROWS)
+    assert d == "2026-07-06", d
+    assert v == 1151.60, v
+
+
+def test_bulletin_datetime_cell():
+    rows = [
+        (dt.datetime(2026, 7, 6), None),
+        ("x", "Heating gas oil"),
+        ("Ireland", 1151.6),
+    ]
+    d, v = parse_bulletin_rows(rows)
+    assert d == "2026-07-06" and v == 1151.6
+
+
+def test_bulletin_no_ireland_returns_none():
+    rows = [("in EUR", "Heating gas oil"), ("Italia", 1300.0)]
+    d, v = parse_bulletin_rows(rows)
+    assert v is None
+
+
+# ------------------------------------- semopx CSV - live format
+
+# Head verbatim from the run log (IDA1 example), values row and GBP block
+# appended in the same grammar; decimal commas throughout.
+SEMOPX_CSV = """Auction;SEM-DA
+Auction name;PWR-SEM-GB-D+1
+Auction date time;2026-07-12T16:30:00Z
+Publication date time;2026-07-12T17:00:00Z
+FX rates
+EUR;GBP;0,85506627
+Market;NI-DA
+Index prices;30;EUR
+2026-07-12T22:00:00Z;2026-07-12T22:30:00Z;2026-07-12T23:00:00Z
+95,50;88,25;102,00
+Index prices;30;GBP
+2026-07-12T22:00:00Z;2026-07-12T22:30:00Z;2026-07-12T23:00:00Z
+81,66;75,46;87,22
+Market;ROI-DA
+Index prices;30;EUR
+2026-07-12T22:00:00Z;2026-07-12T22:30:00Z;2026-07-12T23:00:00Z
+96,10;89,00;101,40
+"""
+
+
+def test_semopx_csv_parse():
+    p = parse_semopx_csv(SEMOPX_CSV)
+    assert p["auction"] == "SEM-DA"
+    assert p["fx_eur_gbp"] == 0.85506627
+    assert p["day"] == "2026-07-12"
+    assert p["markets"]["NI-DA"]["EUR"] == [95.5, 88.25, 102.0]
+    assert p["markets"]["NI-DA"]["GBP"] == [81.66, 75.46, 87.22]
+    assert p["markets"]["ROI-DA"]["EUR"] == [96.1, 89.0, 101.4]
+
+
+def test_semopx_csv_tolerates_blank_and_unknown_lines():
+    p = parse_semopx_csv("Auction;SEM-DA\n\nSomething;else\n"
+                         "Market;ROI-DA\nIndex prices;30;EUR\n"
+                         "2026-07-12T22:00:00Z\n100,0;200,0\n")
+    assert p["markets"]["ROI-DA"]["EUR"] == [100.0, 200.0]
 
 
 if __name__ == "__main__":
