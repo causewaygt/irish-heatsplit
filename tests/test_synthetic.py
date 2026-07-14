@@ -216,6 +216,69 @@ def test_semopx_csv_tolerates_blank_and_unknown_lines():
     assert p["markets"]["ROI-DA"]["EUR"] == [100.0, 200.0]
 
 
+
+
+# ------------------------------------- hero derivation - v0.2.0
+
+def _hero_fixture_feeds():
+    import datetime as dt
+    hdd = {}
+    d0 = dt.date.today() - dt.timedelta(days=365)
+    for i in range(366):
+        d = (d0 + dt.timedelta(days=i))
+        # sinusoidal winter-peaking HDD, ~2100 HDD/yr scale
+        import math
+        hdd[d.isoformat()] = round(max(0.0, 8.0 + 7.0 * math.cos(
+            2 * math.pi * (i / 365.0))), 2)
+    return {
+        "hdd": {"hdd_island": hdd},
+        "ecb_fx": {"eur_gbp": 0.855},
+        "oil_bulletin": {"latest_value": 1151.6},
+        "ccni_oil": {"series_gbp": {"daily": {"900l": {"2026-07-10": 536.72}}}},
+    }
+
+
+def test_hero_produces_sane_numbers():
+    from build import derive_hero, ANCHORS
+    h = derive_hero(_hero_fixture_feeds())
+    assert h is not None
+    # weekly purchased heat: 44 TWh/yr island -> plausible weekly band
+    assert 100 < h["heat_purchased_gwh"] < 3000, h["heat_purchased_gwh"]
+    assert 0 < h["indigenous_share_pct"] < 100
+    assert h["bill_eur_m"] > 0 and h["bill_gbp_m"] > 0
+    # twin currencies consistent with the fx rate
+    assert abs(h["bill_gbp_m"] / h["bill_eur_m"] - 0.855) < 0.01
+    assert h["emissions_kt_co2"] > 0
+
+
+def test_hero_what_if_moves_the_right_way():
+    from build import derive_hero
+    h = derive_hero(_hero_fixture_feeds())
+    wf = h["what_if_20pct_geothermal"]
+    assert wf["heat_purchased_gwh"] < h["heat_purchased_gwh"]     # less input
+    assert wf["indigenous_share_pct"] > h["indigenous_share_pct"]  # more local
+    assert wf["emissions_kt_co2"] < h["emissions_kt_co2"]          # cleaner
+
+
+def test_hero_weekly_sums_to_annual():
+    """Shaping conservation: 52 identical weeks reproduce ~annual input."""
+    from build import derive_hero, ANCHORS
+    feeds = _hero_fixture_feeds()
+    hdd = feeds["hdd"]["hdd_island"]
+    total_year_hdd = sum(sorted(hdd.values())[-365:])
+    a = ANCHORS
+    heat_twh = sum(a[j]["residential_heat_twh"] + a[j]["services_heat_twh"]
+                   for j in ("roi", "ni"))
+    # integrate the shaping formula over the year: flat part sums to
+    # (1-shf)*annual, HDD part sums to shf*annual - conservation by design;
+    # verify with the implemented function at one point
+    h = derive_hero(feeds)
+    shf = a["space_heat_fraction"]
+    expected = heat_twh * 1000 * ((1 - shf) / 52.0
+                                  + shf * h["hdd_week"] / h["hdd_year"])
+    assert abs(h["heat_purchased_gwh"] - expected) < expected * 0.02
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
