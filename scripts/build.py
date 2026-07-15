@@ -39,7 +39,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.5.1"
+PIPELINE_VERSION = "0.5.2"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -146,8 +146,9 @@ FEED_FLAGS = {
                      "heating-oil (kerosene) price level - Causeway "
                      "judgement"],
     "hdd": ["Population weights are Causeway estimates"],
-    "ons_gb_oil": ["Monthly official series - lags the daily NI survey by "
-                   "design; unit basis autodetected"],
+    "gb_oil": ["BoilerJuice site average of lowest quotes, not a survey "
+               "average - basis differs from CCNI; ONS kj5u discontinued "
+               "Jan 2025"],
 }
 
 
@@ -439,6 +440,36 @@ def parse_gni_series(series_list) -> dict:
     return out
 
 
+
+
+def parse_gb_oil_page(text: str) -> tuple:
+    """
+    BoilerJuice prices page - server-rendered sentence:
+      'Our average heating oil price for today, Saturday 25th March 2017
+       is 40.32 pence per litre (inc. VAT)'
+    Returns (iso_date | None, pence_per_litre | None). Date falls back to
+    None if unparseable - caller may substitute the run date.
+    """
+    m = re.search(
+        r"average heating oil price for today[^0-9]*?"
+        r"(?:(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4}))?"
+        r"[^0-9]*?is\s*(\d{1,3}\.\d{1,2})\s*pence per litre",
+        text, re.I | re.S)
+    if not m:
+        return None, None
+    day, month_name, year, ppl = m.group(1), m.group(2), m.group(3), m.group(4)
+    iso = None
+    if day and month_name and year:
+        months = {"january": 1, "february": 2, "march": 3, "april": 4,
+                  "may": 5, "june": 6, "july": 7, "august": 8,
+                  "september": 9, "october": 10, "november": 11,
+                  "december": 12}
+        mo = months.get(month_name.lower())
+        if mo:
+            iso = f"{int(year):04d}-{mo:02d}-{int(day):02d}"
+    return iso, float(ppl)
+
+
 # ---------------------------------------------------------------- feeds
 
 def feed_eirgrid():
@@ -636,7 +667,8 @@ def feed_gni_live():
     """
     base = "https://www.gasnetworks.ie/api/v1/gasconsumption"
     raw = {}
-    for back in (0, 30, 60, 90):
+    for back in range(0, 92, 7):   # API window ~8 trailing days
+        time.sleep(0.3)
         anchor = (today_utc() - dt.timedelta(days=back)).isoformat()
         try:
             body = http_get(base, params={
@@ -874,56 +906,40 @@ def feed_ccni_oil():
     return out, recency_status(out["latest_day"], 7)
 
 
-def feed_ons_gb_oil():
+def feed_gb_oil():
     """
-    ONS average heating oil price, GB context line - series kj5u
-    (RPI: ave price, heating oil per 1000 litres), keyless JSON. Monthly.
-    Same tax regime as NI: the NI-GB gap isolates market structure.
+    GB heating-oil context line - BoilerJuice daily site average (lowest
+    quote per postcode district, kerosene 1000 L, incl 5% VAT), parsed from
+    the server-rendered sentence on the prices page. History accumulates
+    across daily runs. ONS kj5u was the first choice but the series was
+    discontinued at Jan 2025 (confirmed 15 Jul 2026). The chart XHR behind
+    the page would give history in one go - on the browser probe list.
     """
-    j = http_get("https://www.ons.gov.uk/economy/inflationandpriceindices/"
-                 "timeseries/kj5u/mm23/data").json()
-    months = j.get("months", [])
-    if not months:
-        log("ons_gb_oil: no months in response - keys:", list(j)[:15])
-        raise ValueError("ons_gb_oil: unexpected response shape")
-    mon = {"JANUARY": 1, "FEBRUARY": 2, "MARCH": 3, "APRIL": 4, "MAY": 5,
-           "JUNE": 6, "JULY": 7, "AUGUST": 8, "SEPTEMBER": 9, "OCTOBER": 10,
-           "NOVEMBER": 11, "DECEMBER": 12}
-    raw = {}
-    for m in months:
-        try:
-            y, name = m["date"].split()
-            d = f"{int(y):04d}-{mon[name.upper()]:02d}-01"
-            raw[d] = float(m["value"])
-        except (KeyError, ValueError):
-            continue
-    log(f"ons_gb_oil: {len(months)} months in response, "
-        f"first={months[0] if months else None}, "
-        f"last={months[-1] if months else None}, parsed={len(raw)}")
-    if not raw:
-        raise ValueError("ons_gb_oil: no parseable months - see items above")
-    med = statistics.median(raw.values())
-    # per-1000L in pence vs pounds vs already p/L: autodetect
-    if med > 2000:
-        scale, unit_note = 0.001, "p/1000L->p/L"
-    elif med > 200:
-        scale, unit_note = 0.1, "GBP/1000L->p/L"
-    else:
-        scale, unit_note = 1.0, "p/L"
-    series = trim_series(clip_days(
-        {d: round(v * scale, 2) for d, v in raw.items()}))
-    if not series:
-        log(f"ons_gb_oil: {len(raw)} raw points all clipped/trimmed - "
-            f"raw span {min(raw)}..{max(raw)}, sample:",
-            dict(list(raw.items())[:3]))
-        raise ValueError("ons_gb_oil: series empty after clip/trim - "
-                         "inspect raw span above")
-    latest = max(series) if series else None
-    out = {"gb_ppl_monthly": series, "unit_detection": unit_note,
-           "latest_day": latest,
-           "source": ("ONS average heating oil price, GB (series kj5u) - "
-                      "monthly, same tax regime as NI")}
-    return out, recency_status(latest, 62)
+    page = http_get("https://www.boilerjuice.com/heating-oil-prices/",
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; "
+                             "ioi-heatsplit/0.5; contact@causewaygt.com)"}).text
+    d, ppl = parse_gb_oil_page(page)
+    if ppl is None:
+        i = page.lower().find("pence per litre")
+        log("gb_oil: sentence not parsed - context:",
+            re.sub(r"\s+", " ", page)[max(0, i - 400):i + 100]
+            if i >= 0 else page[:400])
+        raise ValueError("gb_oil: average-price sentence not found")
+    if d is None:
+        d = today_utc().isoformat()
+        log("gb_oil: date not parsed from sentence - using run date")
+    if d < (today_utc() - dt.timedelta(days=30)).isoformat():
+        log(f"gb_oil: WARNING - page reports {d}, looks like a stale cache; "
+            "storing under reported date, recency will show lagging")
+    log(f"gb_oil: {ppl} p/L at {d}")
+    series = prev_series("gb_oil", "gb_ppl_daily")
+    series[d] = ppl
+    series = trim_series(clip_days(series))
+    out = {"gb_ppl_daily": series, "latest_day": max(series) if series else None,
+           "source": ("BoilerJuice UK daily average heating oil price - "
+                      "lowest quote per postcode district, kerosene, "
+                      "incl 5% VAT")}
+    return out, recency_status(out["latest_day"], 5)
 
 
 # ------------------------------------------------- analysis (pure functions)
@@ -1128,7 +1144,7 @@ FEEDS = {
     "oil_bulletin": feed_oil_bulletin,
     "gni_live": feed_gni_live,
     "ccni_oil": feed_ccni_oil,
-    "ons_gb_oil": feed_ons_gb_oil,
+    "gb_oil": feed_gb_oil,
 }
 
 
