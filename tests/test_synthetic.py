@@ -17,7 +17,8 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    clip_days, recency_status, ddmmyyyy_to_iso,
                    extract_chart_data_arrays, parse_ccni_series,
                    resolve_oil_bulletin_url, parse_bulletin_rows,
-                   parse_semopx_csv)
+                   parse_semopx_csv, parse_gni_series,
+                   derive_hero, derive_heat_gap, ANCHORS)
 
 
 # ------------------------------------------------------------- regression
@@ -45,6 +46,7 @@ def test_regression_recovers_truth():
 
 
 def test_regression_with_holiday_confound():
+    """Late-December demand drop at high HDD - slope bias must stay bounded."""
     gas, hdd = synth_year(slope=3.0, baseload=8.0, noise=0.2)
     for i in range(20, 32):
         d = dt.date(2025, 12, i % 31 + 1).isoformat()
@@ -139,14 +141,16 @@ def test_bulletin_resolves_with_taxes_only():
     assert url.startswith("https://energy.ec.europa.eu/")
 
 
-# Snapshot layout as revealed by the second run: header row confirmed
-# verbatim; country rows carry values with no per-row dates; the bulletin
-# date sits in a title cell.
+def test_bulletin_resolves_without_taxes():
+    url = resolve_oil_bulletin_url(BULLETIN_LINKS, with_tax=False)
+    assert url is not None and "78311f92" in url, url
+
+
 BULLETIN_ROWS = [
     ("Prices in force on 06/07/2026", None, None, None, None, None, None),
     ("in EUR", "Euro-super 95  (I)", "Gas oil automobile Automotive ",
-     " Gas oil de chauffage Heating ", " Fuel oil - Schweres Heizöl (I",
-     " Fuel oil -Schweres Heizöl (II", "GPL pour moteur LPG motor fuel"),
+     " Gas oil de chauffage Heating ", " Fuel oil - Schweres Heiz\u00f6l (I",
+     " Fuel oil -Schweres Heiz\u00f6l (II", "GPL pour moteur LPG motor fuel"),
     ("Belgique", 1728.94, 1878.72, 1019.50, 453.39, None, None),
     ("Ireland", 1729.80, 1712.70, 1151.60, None, None, 892.16),
     ("Italia", 1810.00, 1887.18, 1300.00, None, None, 773.60),
@@ -177,8 +181,6 @@ def test_bulletin_no_ireland_returns_none():
 
 # ------------------------------------- semopx CSV - live format
 
-# Head verbatim from the run log (IDA1 example), values row and GBP block
-# appended in the same grammar; decimal commas throughout.
 SEMOPX_CSV = """Auction;SEM-DA
 Auction name;PWR-SEM-GB-D+1
 Auction date time;2026-07-12T16:30:00Z
@@ -216,74 +218,9 @@ def test_semopx_csv_tolerates_blank_and_unknown_lines():
     assert p["markets"]["ROI-DA"]["EUR"] == [100.0, 200.0]
 
 
-
-
-# ------------------------------------- hero derivation - v0.2.0
-
-def _hero_fixture_feeds():
-    import datetime as dt
-    hdd = {}
-    d0 = dt.date.today() - dt.timedelta(days=365)
-    for i in range(366):
-        d = (d0 + dt.timedelta(days=i))
-        # sinusoidal winter-peaking HDD, ~2100 HDD/yr scale
-        import math
-        hdd[d.isoformat()] = round(max(0.0, 8.0 + 7.0 * math.cos(
-            2 * math.pi * (i / 365.0))), 2)
-    return {
-        "hdd": {"hdd_island": hdd},
-        "ecb_fx": {"eur_gbp": 0.855},
-        "oil_bulletin": {"latest_value": 1151.6},
-        "ccni_oil": {"series_gbp": {"daily": {"900l": {"2026-07-10": 536.72}}}},
-    }
-
-
-def test_hero_produces_sane_numbers():
-    from build import derive_hero, ANCHORS
-    h = derive_hero(_hero_fixture_feeds())
-    assert h is not None
-    # weekly purchased heat: 44 TWh/yr island -> plausible weekly band
-    assert 100 < h["heat_purchased_gwh"] < 3000, h["heat_purchased_gwh"]
-    assert 0 < h["indigenous_share_pct"] < 100
-    assert h["bill_eur_m"] > 0 and h["bill_gbp_m"] > 0
-    # twin currencies consistent with the fx rate
-    assert abs(h["bill_gbp_m"] / h["bill_eur_m"] - 0.855) < 0.01
-    assert h["emissions_kt_co2"] > 0
-
-
-def test_hero_what_if_moves_the_right_way():
-    from build import derive_hero
-    h = derive_hero(_hero_fixture_feeds())
-    wf = h["what_if_20pct_geothermal"]
-    assert wf["heat_purchased_gwh"] < h["heat_purchased_gwh"]     # less input
-    assert wf["indigenous_share_pct"] > h["indigenous_share_pct"]  # more local
-    assert wf["emissions_kt_co2"] < h["emissions_kt_co2"]          # cleaner
-
-
-def test_hero_weekly_sums_to_annual():
-    """Shaping conservation: 52 identical weeks reproduce ~annual input."""
-    from build import derive_hero, ANCHORS
-    feeds = _hero_fixture_feeds()
-    hdd = feeds["hdd"]["hdd_island"]
-    total_year_hdd = sum(sorted(hdd.values())[-365:])
-    a = ANCHORS
-    heat_twh = sum(a[j]["residential_heat_twh"] + a[j]["services_heat_twh"]
-                   for j in ("roi", "ni"))
-    # integrate the shaping formula over the year: flat part sums to
-    # (1-shf)*annual, HDD part sums to shf*annual - conservation by design;
-    # verify with the implemented function at one point
-    h = derive_hero(feeds)
-    shf = a["space_heat_fraction"]
-    expected = heat_twh * 1000 * ((1 - shf) / 52.0
-                                  + shf * h["hdd_week"] / h["hdd_year"])
-    assert abs(h["heat_purchased_gwh"] - expected) < expected * 0.02
-
-
 # ------------------------------------- gni_live parser - probed format
 
 def test_gni_series_parse():
-    from build import parse_gni_series
-    import datetime as dt
     ms = lambda iso: int(dt.datetime.fromisoformat(
         iso + "T00:00:00+00:00").timestamp() * 1000)
     sample = [
@@ -300,15 +237,86 @@ def test_gni_series_parse():
     assert p["NDM"]["2026-07-12"] == 5.2e6
     assert p["NDM"]["2026-07-13"] == 4.9e6
     assert p["ROI Power Gen"]["2026-07-12"] == 8.8e7
-    assert p["DM"] == {"2026-07-13": 3.1e7}   # bad points skipped
+    assert p["DM"] == {"2026-07-13": 3.1e7}
     assert "no location" not in str(p)
 
 
 def test_gni_series_empty_and_malformed():
-    from build import parse_gni_series
     assert parse_gni_series(None) == {}
     assert parse_gni_series([]) == {}
     assert parse_gni_series([{"location": "NDM", "data": []}]) == {}
+
+
+# ------------------------------------- hero derivation
+
+def _hero_fixture_feeds():
+    hdd = {}
+    d0 = dt.date.today() - dt.timedelta(days=365)
+    for i in range(366):
+        d = (d0 + dt.timedelta(days=i))
+        hdd[d.isoformat()] = round(max(0.0, 8.0 + 7.0 * math.cos(
+            2 * math.pi * (i / 365.0))), 2)
+    return {
+        "hdd": {"hdd_island": hdd},
+        "ecb_fx": {"eur_gbp": 0.855},
+        "oil_bulletin": {"latest_value": 1151.6},
+        "ccni_oil": {"series_gbp": {"daily": {"900l": {"2026-07-10": 536.72},
+                                              "500l": {}, "300l": {}}}},
+    }
+
+
+def test_hero_produces_sane_numbers():
+    h = derive_hero(_hero_fixture_feeds())
+    assert h is not None
+    assert 100 < h["heat_purchased_gwh"] < 3000, h["heat_purchased_gwh"]
+    assert 0 < h["indigenous_share_pct"] < 100
+    assert h["bill_eur_m"] > 0 and h["bill_gbp_m"] > 0
+    assert abs(h["bill_gbp_m"] / h["bill_eur_m"] - 0.855) < 0.01
+    assert h["emissions_kt_co2"] > 0
+
+
+def test_hero_what_if_moves_the_right_way():
+    h = derive_hero(_hero_fixture_feeds())
+    wf = h["what_if_20pct_geothermal"]
+    assert wf["heat_purchased_gwh"] < h["heat_purchased_gwh"]
+    assert wf["indigenous_share_pct"] > h["indigenous_share_pct"]
+    assert wf["emissions_kt_co2"] < h["emissions_kt_co2"]
+
+
+def test_hero_weekly_sums_to_annual():
+    feeds = _hero_fixture_feeds()
+    h = derive_hero(feeds)
+    a = ANCHORS
+    heat_twh = sum(a[j]["residential_heat_twh"] + a[j]["services_heat_twh"]
+                   for j in ("roi", "ni"))
+    shf = a["space_heat_fraction"]
+    expected = heat_twh * 1000 * ((1 - shf) / 52.0
+                                  + shf * h["hdd_week"] / h["hdd_year"])
+    assert abs(h["heat_purchased_gwh"] - expected) < expected * 0.02
+
+
+# ------------------------------------- heat gap derivation
+
+def test_heat_gap_sane_and_matches_hand_calc():
+    hg = derive_heat_gap(_hero_fixture_feeds())
+    assert hg is not None
+    ni, roi = hg["ni"], hg["roi"]
+    # hand calc: NI oil 536.72*100/900 = 59.64 p/L -> /10.35/0.82 = 7.03 p
+    assert abs(ni["oil_boiler"] - 7.03) < 0.05, ni
+    # NI breakeven = 32.5 / 7.03 = 4.62
+    assert abs(ni["breakeven_spf_vs_oil"] - 4.62) < 0.05, ni
+    # ROI oil 115.16 c/L -> 13.57 c useful; breakeven 36/13.57 = 2.65
+    assert abs(roi["oil_boiler"] - 13.57) < 0.05, roi
+    assert abs(roi["breakeven_spf_vs_oil"] - 2.65) < 0.05, roi
+    # geothermal beats oil in ROI, loses in NI at these prices
+    assert roi["geothermal_spf40"] < roi["oil_boiler"]
+    assert ni["geothermal_spf40"] > ni["oil_boiler"]
+
+
+def test_heat_gap_missing_oil_returns_none():
+    feeds = _hero_fixture_feeds()
+    feeds["ccni_oil"] = {}
+    assert derive_heat_gap(feeds) is None
 
 
 if __name__ == "__main__":
