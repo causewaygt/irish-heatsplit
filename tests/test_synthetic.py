@@ -18,7 +18,8 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    extract_chart_data_arrays, parse_ccni_series,
                    resolve_oil_bulletin_url, parse_bulletin_rows,
                    parse_semopx_csv, parse_gni_series,
-                   derive_hero, derive_heat_gap, ANCHORS,
+                   derive_hero, derive_heat_gap, derive_ashp_spf,
+                   ANCHORS,
                    parse_gb_oil_page)
 
 
@@ -299,7 +300,10 @@ def test_hero_weekly_sums_to_annual():
 # ------------------------------------- heat gap derivation
 
 def test_heat_gap_sane_and_matches_hand_calc():
-    hg = derive_heat_gap(_hero_fixture_feeds())
+    feeds = _hero_fixture_feeds()
+    feeds["hdd"]["hdd_ni"] = feeds["hdd"]["hdd_island"]
+    feeds["hdd"]["hdd_roi"] = feeds["hdd"]["hdd_island"]
+    hg = derive_heat_gap(feeds)
     assert hg is not None
     ni, roi = hg["ni"], hg["roi"]
     # hand calc: NI oil 536.72*100/900 = 59.64 p/L -> /10.35/0.82 = 7.03 p
@@ -312,6 +316,26 @@ def test_heat_gap_sane_and_matches_hand_calc():
     # geothermal beats oil in ROI, loses in NI at these prices
     assert roi["geothermal_spf40"] < roi["oil_boiler"]
     assert ni["geothermal_spf40"] > ni["oil_boiler"]
+    # climate ASHP lands in the field-trial band and under 3
+    assert 2.4 <= ni["ashp_spf"] < 3.0, ni["ashp_spf"]
+    assert 2.4 <= roi["ashp_spf"] < 3.0, roi["ashp_spf"]
+
+
+def test_ashp_spf_model():
+    import math as _m
+    hdd = {}
+    d0 = dt.date.today() - dt.timedelta(days=365)
+    for i in range(366):
+        d = (d0 + dt.timedelta(days=i)).isoformat()
+        hdd[d] = round(max(0.0, 8.0 + 7.0 * _m.cos(2 * _m.pi * i / 365)), 2)
+    r = derive_ashp_spf(hdd)
+    assert r is not None and 2.4 <= r["spf"] < 3.0, r
+    # colder climate (2C shift) must lower the SPF
+    colder = {d: round(v + 2.0, 2) if v > 0 else v for d, v in hdd.items()}
+    rc = derive_ashp_spf(colder)
+    assert rc["spf"] < r["spf"], (r, rc)
+    # insufficient season -> None
+    assert derive_ashp_spf({k: hdd[k] for k in sorted(hdd)[-30:]}) is None
 
 
 def test_heat_gap_missing_oil_returns_none():
