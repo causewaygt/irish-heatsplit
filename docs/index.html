@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 0.7.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 0.8.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -290,19 +290,25 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
             Greener Homes grant legacy, in hardware<span class="dag">†</span></div>
         </div>
         <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Deep geothermal plants, island</div>
+          <div class="lab">Deeper geothermal</div>
           <div class="big" id="geoDeep">–</div>
-          <div class="sub">Grangegorman 2 km drills late 2027 (GEMINI);
-            CAFRE doublet consented</div>
+          <div class="sub">operating plants island-wide – Grangegorman 2 km
+            drills late 2027 (GEMINI); CAFRE doublet consented</div>
         </div>
       </div>
     </div>
-    <div class="panelbox"><div id="geoPlot" class="plot" style="min-height:300px"></div></div>
+    <div class="panelbox">
+      <div class="seg" role="tablist" aria-label="Geothermal jurisdiction">
+        <button class="segbtn active" id="geoAllBtn" role="tab">All island</button>
+        <button class="segbtn" id="geoNIBtn" role="tab">NI</button>
+        <button class="segbtn" id="geoROIBtn" role="tab">ROI</button>
+      </div>
+      <div id="geoPlot" class="plot" style="min-height:300px"></div>
+    </div>
   </div>
-  <p class="note">Right: Northern Ireland's entire documented ground-source
+  <p class="note">NI view: Northern Ireland's entire documented ground-source
     track record above 60 kW – cumulative installed capacity from the
-    Causeway register<span class="dag">†</span>, solid where confirmed,
-    hollow where a candidate awaits confirmation. Every system is named,
+    Causeway register<span class="dag">†</span>. Every system is named,
     dated and statused in data.json, including the two that teach the
     hardest lessons: one never commissioned through a design error, one
     running at 60% through an installation error – the case for resource
@@ -312,6 +318,10 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
     Sherwood Sandstone beneath both jurisdictions can supply heat at town
     scale (Todd et al., <em>Geoenergy</em>, 2026 –
     <a href="https://doi.org/10.1144/geoenergy2025-057">10.1144/geoenergy2025-057</a>).
+    ROI view: a market that grew fast to 2009, stalled, and is now 85%
+    residential with ground-source at just 4% of heat-pump sales – the
+    growth that remains is migrating to exactly the larger open- and
+    closed-loop systems the WGC2026 authors frame as energy infrastructure.
     ROI anchors: WGC2026 Country Update. Corrections welcome at
     <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
 </section>
@@ -710,41 +720,86 @@ function geoPanel(D){
   el('geoROIsub').textContent=fmt(roi.units,0)+' systems \u00b7 '+
     fmt(roi.heat_gwh,0)+' GWh/yr heat \u00b7 WGC2026 country update';
   el('geoNI').textContent='\u2248 0.6 MWth\u2020';
-  el('geoNIsub').textContent='>60 kW register (right) \u00b7 plus '+
+  el('geoNIsub').textContent='>60 kW register \u00b7 plus '+
     fmt((g.ni_domestic||{}).low,0)+'\u2013'+fmt((g.ni_domestic||{}).high,0)+
     '\u2020 domestic units';
   const pc=g.per_capita_w||{};
   el('geoCap').textContent=fmt(pc.roi,0)+' W vs '+fmt(pc.ni,0)+' W\u2020';
   el('geoDeep').textContent=String((roi.deep_plants!=null?roi.deep_plants:0));
 
-  // cumulative step chart from the register - confirmed vs candidate
-  const rows=(g.ni_register||[]).filter(r=>r.year&&r.kw!=null);
-  rows.sort((a,b)=>a.year-b.year);
-  const yrs=[2008], conf=[0], all=[0];
-  let c=0, a=0;
-  rows.forEach(r=>{
-    if(r.confirmed) c+=r.kw;
-    a+=r.kw;
-    yrs.push(r.year); conf.push(c); all.push(a);
-  });
-  const thisYear=new Date().getFullYear();
-  yrs.push(thisYear); conf.push(c); all.push(a);
-  const labels=rows.map(r=>r.site.split(',')[0]+' +'+r.kw+' kW');
-  Plotly.newPlot('geoPlot',[
-    {x:yrs,y:all,name:'incl. candidates\u2020',mode:'lines',
-     line:{color:CLR.green2,width:1.4,dash:'dot',shape:'hv'}},
-    {x:yrs,y:conf,name:'confirmed',mode:'lines',
-     line:{color:CLR.green,width:2.4,shape:'hv'},
-     fill:'tozeroy',fillcolor:'rgba(58,170,53,.12)'},
-  ],Object.assign({},PL_BASE,{
-    xaxis:Object.assign({},PL_BASE.xaxis,{dtick:2}),
-    yaxis:Object.assign({},PL_BASE.yaxis,{title:'cumulative kW (>60 kW systems)',
-      rangemode:'tozero'}),
-    legend:{orientation:'h',y:1.14},
-    annotations:rows.map((r,i)=>({x:r.year,y:(r.confirmed?conf:all)[i+1],
-      text:esc(r.site.split(',')[0]),showarrow:false,yanchor:'bottom',
-      xanchor:'left',font:{size:9,color:CLR.faint}})),
-  }),CONF);
+  const layout = extra => Object.assign({},PL_BASE,{
+    margin:{l:56,r:20,t:34,b:44}},extra);
+
+  function renderNI(){
+    const rows=(g.ni_register||[]).filter(r=>r.year&&r.kw!=null)
+      .sort((a,b)=>a.year-b.year);
+    const yrs=[2008], cum=[0]; let c=0;
+    rows.forEach(r=>{c+=r.kw; yrs.push(r.year); cum.push(c);});
+    const thisYear=new Date().getFullYear();
+    yrs.push(thisYear); cum.push(c);
+    const ann=rows.map((r,i)=>({
+      x:r.year, y:cum[i+1],
+      text:esc(r.site.split(',')[0])+(r.kw?' +'+r.kw+' kW':' +0 kW'),
+      showarrow:true, arrowcolor:CLR.line, arrowwidth:1, arrowhead:0,
+      ax:6, ay:(r.kw===0?26:-(20+(i%2)*16)),
+      xanchor:'left', font:{size:9,color:CLR.muted}}));
+    ann.push({x:thisYear,y:c,text:'\u2248 '+fmt(c/1000,2)+' MWth total\u2020',
+      showarrow:false,xanchor:'right',yanchor:'bottom',
+      font:{size:11,color:CLR.green,family:'IBM Plex Mono'}});
+    Plotly.newPlot('geoPlot',[
+      {x:yrs,y:cum,mode:'lines',name:'confirmed systems',
+       line:{color:CLR.green,width:2.4,shape:'hv'},
+       fill:'tozeroy',fillcolor:'rgba(58,170,53,.12)'},
+    ],layout({
+      xaxis:Object.assign({},PL_BASE.xaxis,{dtick:2,range:[2008,thisYear+1]}),
+      yaxis:Object.assign({},PL_BASE.yaxis,{title:'cumulative kW',
+        rangemode:'tozero'}),
+      showlegend:false, annotations:ann,
+    }),CONF);
+  }
+  function renderROI(){
+    const s=(roi.sector_share_pct||{});
+    const cats=['Residential','Commercial','Industrial'];
+    const vals=[s.residential||0,s.commercial||0,s.industrial||0];
+    Plotly.newPlot('geoPlot',[{x:cats,y:vals,type:'bar',
+      marker:{color:[CLR.green,CLR.teal,CLR.petrol]},
+      text:vals.map(v=>fmt(v,0)+'%\u2020'),textposition:'outside',
+      textfont:{family:'IBM Plex Mono',color:CLR.muted}}],
+      layout({
+        xaxis:Object.assign({},PL_BASE.xaxis,{type:'category'}),
+        yaxis:Object.assign({},PL_BASE.yaxis,{title:'% of systems',
+          rangemode:'tozero'}),
+        annotations:[{x:0.98,y:0.95,xref:'paper',yref:'paper',
+          text:fmt(roi.units,0)+' systems \u00b7 +'+fmt(roi.new_2024_mwth,1)+
+            ' MWth in 2024 \u00b7 '+fmt(roi.proj_2028_mwth,0)+
+            ' MWth by 2028 (proj.) \u00b7 '+
+            fmt(roi.gshp_share_of_hp_market_pct,0)+'% of heat-pump sales',
+          showarrow:false,xanchor:'right',font:{size:10,color:CLR.faint}}],
+      }),CONF);
+  }
+  function renderAll(){
+    Plotly.newPlot('geoPlot',[{x:['ROI','NI\u2020'],y:[pc.roi||0,pc.ni||0],
+      type:'bar',width:.45,marker:{color:[CLR.green,CLR.amber]},
+      text:[fmt(pc.roi,0)+' W',fmt(pc.ni,0)+' W'],textposition:'outside',
+      textfont:{family:'IBM Plex Mono',color:CLR.muted,size:13}}],
+      layout({
+        xaxis:Object.assign({},PL_BASE.xaxis,{type:'category'}),
+        yaxis:Object.assign({},PL_BASE.yaxis,{
+          title:'installed ground-source Wth per person',rangemode:'tozero'}),
+        annotations:[{x:0.5,y:0.92,xref:'paper',yref:'paper',
+          text:'one island, a '+fmt((pc.roi||42)/(pc.ni||3),0)+
+            '\u00d7 gap \u2013 the incentive history, in hardware\u2020',
+          showarrow:false,font:{size:11,color:CLR.faint}}],
+      }),CONF);
+  }
+  function setActive(id){
+    ['geoAllBtn','geoNIBtn','geoROIBtn'].forEach(b=>el(b).classList.remove('active'));
+    el(id).classList.add('active');
+  }
+  el('geoAllBtn').onclick=()=>{setActive('geoAllBtn');renderAll();};
+  el('geoNIBtn').onclick=()=>{setActive('geoNIBtn');renderNI();};
+  el('geoROIBtn').onclick=()=>{setActive('geoROIBtn');renderROI();};
+  renderAll();
 }
 
 function feedTable(feeds){
@@ -773,7 +828,7 @@ fetch('data.json').then(r=>{
   coolSide(D);
   geoPanel(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 0.7.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 0.8.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
