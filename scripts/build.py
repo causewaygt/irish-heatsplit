@@ -39,13 +39,17 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.5.2"
+PIPELINE_VERSION = "0.5.3"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
+
+# Best-effort context feeds - failure marks stale but never pages or
+# fails the run; regressions stay visible via status badges and flags.
+SOFT_FEEDS = {"gb_oil"}
 
 # Feeds known broken for reasons outside this pipeline - marked stale,
 # logged, but neither paged nor allowed to fail the run.
@@ -451,7 +455,7 @@ def parse_gb_oil_page(text: str) -> tuple:
     None if unparseable - caller may substitute the run date.
     """
     m = re.search(
-        r"average heating oil price for today[^0-9]*?"
+        r"average (?:kerosene|heating oil) price for today[^0-9]*?"
         r"(?:(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4}))?"
         r"[^0-9]*?is\s*(\d{1,3}\.\d{1,2})\s*pence per litre",
         text, re.I | re.S)
@@ -915,7 +919,9 @@ def feed_gb_oil():
     discontinued at Jan 2025 (confirmed 15 Jul 2026). The chart XHR behind
     the page would give history in one go - on the browser probe list.
     """
-    page = http_get("https://www.boilerjuice.com/heating-oil-prices/",
+    # /heating-oil-prices/ lost the server-rendered sentence in a
+    # redesign; /kerosene-prices/ retains it (confirmed 15 Jul 2026)
+    page = http_get("https://www.boilerjuice.com/kerosene-prices/",
                     headers={"User-Agent": "Mozilla/5.0 (compatible; "
                              "ioi-heatsplit/0.5; contact@causewaygt.com)"}).text
     d, ppl = parse_gb_oil_page(page)
@@ -1169,7 +1175,8 @@ def main():
             feeds[name] = payload
             log(f"{name}: {status}, latest_day={payload.get('latest_day')}")
         except Exception as e:
-            expected = isinstance(e, NotImplementedError) or name in EXPECTED_DOWN
+            expected = (isinstance(e, NotImplementedError)
+                        or name in EXPECTED_DOWN or name in SOFT_FEEDS)
             log(f"{name}: {'EXPECTED DOWN' if expected else 'FAILED'} - "
                 f"{e.__class__.__name__}: {e}")
             if not expected:
