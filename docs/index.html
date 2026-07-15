@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 0.3.2
+<!-- IRISH HEAT SPLIT - SITE_VERSION 0.3.4
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -173,7 +173,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
     Dashed lines strip the tax – ROI from the bulletin's without-taxes
     series, NI by removing the 5% VAT, kerosene's only NI tax – so the
     distance between solid and dashed is the tax wedge, live. The grey line
-    is Great Britain, monthly – the same tax regime as NI, so the NI–GB gap
+    is Great Britain, daily – the same tax regime as NI, so the NI–GB gap
     is pure market structure: half a million oil-heated homes in a compact
     geography make NI's the densest, most competitive kerosene market in
     Europe. Vertical markers are policy events. Same fuel, two price
@@ -254,8 +254,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
     <p>Irish Heat Split – Causeway Energies (Causeway Geothermal NI Ltd).
     Contains data from Gas Networks Ireland (CC BY 4.0 via data.gov.ie),
     EirGrid Group, SEMOpx, the European Commission Weekly Oil Bulletin, the
-    Consumer Council for Northern Ireland, the Office for National
-    Statistics, the European Central Bank, and ERA5/Copernicus via
+    Consumer Council for Northern Ireland, BoilerJuice, the European Central Bank, and ERA5/Copernicus via
     Open-Meteo. Sourced figures cite their publisher; daggered figures are
     ours to defend – <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
     <p style="margin-top:8px" id="buildStamp"></p>
@@ -285,7 +284,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,
 function statusBadges(feeds){
   const label = {eirgrid:'Electricity', hdd:'Degree days', ecb_fx:'FX',
     gni_ckan:'Gas (calibration)', gni_live:'Gas (live)', semopx:'Power price',
-    oil_bulletin:'Oil €', ccni_oil:'Oil £', ons_gb_oil:'Oil GB'};
+    oil_bulletin:'Oil €', ccni_oil:'Oil £', gb_oil:'Oil GB'};
   const holder = el('badges'); holder.innerHTML='';
   Object.entries(feeds).forEach(([k,f])=>{
     const st = f.pending_note ? 'pending' : (f.status||'stale');
@@ -420,7 +419,7 @@ function oilTicker(feeds, fx, events){
       fmt(wedge,1)+' p/L ('+fmt(wedge/fx,1)+' c/L) at ECB rate';
   }
   // GB control line - same tax regime as NI, monthly ONS average
-  const gb=(feeds.ons_gb_oil||{}).gb_ppl_monthly||{};
+  const gb=(feeds.gb_oil||{}).gb_ppl_daily||{};
   const gbDays=Object.keys(gb).sort();
 
   const pVals = days.map(niPpl).concat(rdays.map(d=>roiCpl(d)*fx))
@@ -442,7 +441,7 @@ function oilTicker(feeds, fx, events){
     name:'ROI pre-tax',yaxis:'y2',mode:'lines+markers',
     line:{color:CLR.green,width:1.2,dash:'dash'},marker:{size:4}});
   if(gbDays.length) traces.push({x:gbDays,y:gbDays.map(d=>gb[d]),
-    name:'GB retail \u2013 p/L (ONS, monthly)',mode:'lines',
+    name:'GB retail \u2013 p/L (daily avg)',mode:'lines',
     line:{color:CLR.faint,width:1.6,dash:'dot'}});
 
   const allDays=days.concat(rdays,gbDays).sort();
@@ -503,7 +502,7 @@ function heatGap(D){
     let traces, ytitle;
     if(state==='ni'){
       el('segNI').classList.add('active');
-      traces=[{x:cats,y:vals(hg.ni),type:'bar',width:.55,
+      traces=[{x:cats,y:vals(hg.ni),type:'bar',
         marker:{color:perBarColors},
         text:vals(hg.ni).map(v=>fmt(v,1)+'p'),textposition:'outside',
         textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
@@ -515,7 +514,7 @@ function heatGap(D){
         fmt(hg.ni.inputs.electricity_per_kwh*100,1)+' p/kWh\u2020';
     } else if(state==='roi'){
       el('segROI').classList.add('active');
-      traces=[{x:cats,y:vals(hg.roi),type:'bar',width:.55,
+      traces=[{x:cats,y:vals(hg.roi),type:'bar',
         marker:{color:perBarColors},
         text:vals(hg.roi).map(v=>fmt(v,1)+'c'),textposition:'outside',
         textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
@@ -528,11 +527,11 @@ function heatGap(D){
     } else {
       el('segAll').classList.add('active');
       traces=[
-        {x:cats,y:vals(hg.ni).map(v=>v/fx),type:'bar',name:'NI',width:.32,
+        {x:cats,y:vals(hg.ni).map(v=>v/fx),type:'bar',name:'NI',
          marker:{color:CLR.amber},
          text:vals(hg.ni).map(v=>fmt(v/fx,1)+'c'),textposition:'outside',
          textfont:{family:'IBM Plex Mono',size:10,color:CLR.muted}},
-        {x:cats,y:vals(hg.roi),type:'bar',name:'ROI',width:.32,
+        {x:cats,y:vals(hg.roi),type:'bar',name:'ROI',
          marker:{color:CLR.green},
          text:vals(hg.roi).map(v=>fmt(v,1)+'c'),textposition:'outside',
          textfont:{family:'IBM Plex Mono',size:10,color:CLR.muted}}];
@@ -544,6 +543,7 @@ function heatGap(D){
     }
     Plotly.newPlot('gapPlot',traces,Object.assign({},PL_BASE,{
       barmode:'group',
+      xaxis:Object.assign({},PL_BASE.xaxis,{type:'category'}),
       yaxis:Object.assign({},PL_BASE.yaxis,{title:ytitle,rangemode:'tozero'}),
       legend:{orientation:'h',y:1.12},
       margin:{l:56,r:20,t:30,b:60},
@@ -594,7 +594,7 @@ fetch('data.json').then(r=>{
   heatGap(D);
   geoBar();
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 0.3.2 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 0.3.4 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
