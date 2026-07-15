@@ -19,7 +19,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    resolve_oil_bulletin_url, parse_bulletin_rows,
                    parse_semopx_csv, parse_gni_series,
                    derive_hero, derive_heat_gap, derive_ashp_spf,
-                   derive_cool,
+                   derive_cool, derive_geo_percap,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -396,6 +396,23 @@ def test_cool_derivation():
     assert c["waste_vs_roi_residential_pct"] > 20
     # no HDD -> None
     assert derive_cool({"hdd": {}}) is None
+
+
+# ------------------------------------- geo per-capita
+
+def test_geo_percap():
+    p = derive_geo_percap()
+    # current: ROI ~42 W/person, NI a few W, island in between
+    assert 38 <= p["roi"]["current_w_pp"] <= 46, p["roi"]
+    assert 2 <= p["ni"]["current_w_pp"] <= 5, p["ni"]
+    assert p["ni"]["current_w_pp"] < p["island"]["current_w_pp"] \
+        < p["roi"]["current_w_pp"]
+    # what-if requirement dwarfs current everywhere; NI worst per person
+    for j in ("roi", "ni", "island"):
+        assert p[j]["whatif_w_pp"] > 8 * p[j]["current_w_pp"], j
+    assert p["ni"]["whatif_w_pp"] > p["roi"]["whatif_w_pp"]
+    # hand check ROI: useful ~25.3 TWh -> 0.2*25.3e12/2000/5.3e6 ~ 477
+    assert abs(p["roi"]["whatif_w_pp"] - 477) < 15, p["roi"]
 
 
 if __name__ == "__main__":
