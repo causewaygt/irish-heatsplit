@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 0.3.4
+<!-- IRISH HEAT SPLIT - SITE_VERSION 0.4.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -207,10 +207,14 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
     <div id="gapPlot" class="plot" style="min-height:300px"></div>
   </div>
   <p class="note" id="gapNote">Cost of one useful kWh of heat by route, at
-    live oil prices and standard tariffs<span class="dag">†</span>. The same
-    fuel, the same physics, and the investment signal flips at the border –
-    made almost entirely of tax. Time-of-use and night tariffs materially
-    improve the heat-pump case; this is the standard-tariff view.</p>
+    live oil prices and standard tariffs<span class="dag">†</span>. The
+    air-source SPF is modelled from each jurisdiction's own climate –
+    HDD-weighted outdoor temperature through a Carnot-fraction COP with
+    defrost and hot-water shares<span class="dag">†</span>, calibrated to
+    field-trial medians – so it moves with the weather year, not the
+    brochure. Geothermal's stable source temperature is exactly why its SPF
+    escapes this ceiling. Time-of-use and night tariffs materially improve
+    the heat-pump case; this is the standard-tariff view.</p>
 </section>
 
 <section id="geo" aria-labelledby="geo-h">
@@ -491,9 +495,9 @@ function heatGap(D){
     return;
   }
   const cats=['Oil boiler 82%\u2020','Gas boiler 85%\u2020',
-              'Heat pump SPF '+hg.hp_spf+'\u2020',
+              'Air-source heat pump\u2020',
               'Geothermal SPF '+hg.geo_spf+'\u2020'];
-  const vals=j=>[j.oil_boiler,j.gas_boiler,j.heat_pump_spf32,j.geothermal_spf40];
+  const vals=j=>[j.oil_boiler,j.gas_boiler,j.ashp,j.geothermal_spf40];
   const fx=hg.fx_eur_gbp||0.855;
   const perBarColors=[CLR.faint,CLR.petrol,CLR.teal,CLR.green];
 
@@ -509,7 +513,8 @@ function heatGap(D){
       ytitle='pence per useful kWh';
       el('gapStat').textContent='SPF '+fmt(hg.ni.breakeven_spf_vs_oil,2);
       el('gapStatSub').textContent='NI \u2013 above this, electric heat beats '+
-        'untaxed kerosene; below it, nothing does. Oil at '+
+        'untaxed kerosene. ASHP models at SPF '+fmt(hg.ni.ashp_spf,2)+
+        ' in the NI climate\u2020. Oil at '+
         fmt(hg.ni.inputs.oil_per_litre,1)+' p/L, tariff '+
         fmt(hg.ni.inputs.electricity_per_kwh*100,1)+' p/kWh\u2020';
     } else if(state==='roi'){
@@ -520,10 +525,10 @@ function heatGap(D){
         textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
       ytitle='cent per useful kWh';
       el('gapStat').textContent='SPF '+fmt(hg.roi.breakeven_spf_vs_oil,2);
-      el('gapStatSub').textContent='ROI \u2013 an ordinary heat pump already '+
-        'clears this. Oil at '+fmt(hg.roi.inputs.oil_per_litre,1)+
-        ' c/L, tariff '+fmt(hg.roi.inputs.electricity_per_kwh*100,1)+
-        ' c/kWh\u2020';
+      el('gapStatSub').textContent='ROI \u2013 the climate-modelled ASHP (SPF '+
+        fmt(hg.roi.ashp_spf,2)+'\u2020) sits at the margin of this. Oil at '+
+        fmt(hg.roi.inputs.oil_per_litre,1)+' c/L, tariff '+
+        fmt(hg.roi.inputs.electricity_per_kwh*100,1)+' c/kWh\u2020';
     } else {
       el('segAll').classList.add('active');
       traces=[
@@ -538,8 +543,9 @@ function heatGap(D){
       ytitle='euro cent per useful kWh (ECB rate)';
       el('gapStat').textContent='SPF '+fmt(hg.ni.breakeven_spf_vs_oil,2)+
         ' (NI) \u00b7 '+fmt(hg.roi.breakeven_spf_vs_oil,2)+' (ROI)';
-      el('gapStatSub').textContent='Same fuel, same physics \u2013 the '+
-        'investment signal flips at the border, and the flip is made of tax';
+      el('gapStatSub').textContent='Same fuel, same physics \u2013 the signal '+
+        'flips at the border. ASHP climate SPF: NI '+fmt(hg.ni.ashp_spf,2)+
+        ', ROI '+fmt(hg.roi.ashp_spf,2)+'\u2020';
     }
     Plotly.newPlot('gapPlot',traces,Object.assign({},PL_BASE,{
       barmode:'group',
@@ -594,7 +600,7 @@ fetch('data.json').then(r=>{
   heatGap(D);
   geoBar();
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 0.3.4 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 0.4.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
