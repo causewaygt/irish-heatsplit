@@ -19,6 +19,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    resolve_oil_bulletin_url, parse_bulletin_rows,
                    parse_semopx_csv, parse_gni_series,
                    derive_hero, derive_heat_gap, derive_ashp_spf,
+                   derive_cool,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -372,6 +373,20 @@ def test_gb_oil_sentence_no_date():
 
 def test_gb_oil_sentence_absent():
     assert parse_gb_oil_page("no prices here") == (None, None)
+
+
+# ------------------------------------- cool side
+
+def test_cool_derivation():
+    feeds = _hero_fixture_feeds()
+    c = derive_cool(feeds)
+    assert c is not None
+    # sinusoidal HDD with a summer zero-floor strands a big minority
+    assert 20 <= c["stranded_summer_pct"] <= 60, c
+    assert abs(c["dc_twh"] - 31.0 * 0.22) < 0.1
+    assert c["waste_vs_roi_residential_pct"] > 20
+    # no HDD -> None
+    assert derive_cool({"hdd": {}}) is None
 
 
 if __name__ == "__main__":
