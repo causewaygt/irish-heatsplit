@@ -39,7 +39,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.5.0"
+PIPELINE_VERSION = "0.5.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -650,6 +650,9 @@ def feed_gni_live():
         parsed = parse_gni_series(body)
         if back == 0:
             log("gni_live: locations seen:", sorted(parsed))
+        ndm = parsed.get("NDM", {})
+        log(f"gni_live: anchor {anchor} -> NDM {len(ndm)} pts "
+            f"{min(ndm) if ndm else '-'}..{max(ndm) if ndm else '-'}")
         for loc, pts in parsed.items():
             raw.setdefault(loc, {}).update(pts)
     if not raw:
@@ -825,6 +828,16 @@ def feed_ccni_oil():
     """
     url = "https://www.consumercouncil.org.uk/home-heating/price-checker/daily"
     page = http_get(url).text
+    # per-chart diagnostics: the page can embed more than one litre-labelled
+    # chart, and 14/15 Jul runs stored different values for the same date -
+    # log every candidate so the series identity question is answerable
+    for i, arr in enumerate(extract_chart_data_arrays(page)):
+        if arr and isinstance(arr[0], list) \
+                and any("litre" in str(c).lower() for c in arr[0]):
+            body = [r for r in arr[1:] if r]
+            log(f"ccni_oil: chart {i} header={arr[0]} n={len(body)} "
+                f"first={body[0] if body else None} "
+                f"last={body[-1] if body else None}")
     parsed = parse_ccni_series(page)
     n = sum(len(v) for v in parsed.values())
     if not n:
@@ -836,12 +849,22 @@ def feed_ccni_oil():
     log(f"ccni_oil: {n} datapoints across "
         f"{[k for k, v in parsed.items() if v]}")
 
-    merged = {}
+    merged, conflicts = {}, 0
     for k, new in parsed.items():
         old = prev_series("ccni_oil", "series_gbp", "daily", k)
+        for d, v in new.items():
+            if d in old and old[d] and abs(v - old[d]) / old[d] > 0.05:
+                conflicts += 1
+                if conflicts <= 3:
+                    log(f"ccni_oil: SERIES BREAK {k} {d}: stored "
+                        f"{old[d]} -> page {v}")
         old.update(new)
         merged[k] = trim_series(clip_days(old))
-    out = {"series_gbp": {"daily": merged}}
+    if conflicts:
+        log(f"ccni_oil: {conflicts} same-date value conflicts vs stored "
+            "history - series identity unstable, new values kept")
+    out = {"series_gbp": {"daily": merged},
+           "series_conflicts_this_run": conflicts}
 
     all_days = [d for s in merged.values() for d in s]
     out["latest_day"] = max(all_days) if all_days else None
@@ -874,8 +897,11 @@ def feed_ons_gb_oil():
             raw[d] = float(m["value"])
         except (KeyError, ValueError):
             continue
+    log(f"ons_gb_oil: {len(months)} months in response, "
+        f"first={months[0] if months else None}, "
+        f"last={months[-1] if months else None}, parsed={len(raw)}")
     if not raw:
-        raise ValueError("ons_gb_oil: no parseable months")
+        raise ValueError("ons_gb_oil: no parseable months - see items above")
     med = statistics.median(raw.values())
     # per-1000L in pence vs pounds vs already p/L: autodetect
     if med > 2000:
@@ -886,6 +912,12 @@ def feed_ons_gb_oil():
         scale, unit_note = 1.0, "p/L"
     series = trim_series(clip_days(
         {d: round(v * scale, 2) for d, v in raw.items()}))
+    if not series:
+        log(f"ons_gb_oil: {len(raw)} raw points all clipped/trimmed - "
+            f"raw span {min(raw)}..{max(raw)}, sample:",
+            dict(list(raw.items())[:3]))
+        raise ValueError("ons_gb_oil: series empty after clip/trim - "
+                         "inspect raw span above")
     latest = max(series) if series else None
     out = {"gb_ppl_monthly": series, "unit_detection": unit_note,
            "latest_day": latest,
