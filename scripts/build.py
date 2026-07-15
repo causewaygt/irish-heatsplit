@@ -39,7 +39,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.9.0"
+PIPELINE_VERSION = "0.9.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -226,6 +226,11 @@ GEO = {
     "roi": {"capacity_mwth": 225, "heat_gwh": 293, "cooling_gwh": 11.9,
             "units": 20128, "new_2024_mwth": 7.4, "proj_2028_mwth": 261,
             "deep_plants": 0,
+            # sector shares per WGC2026 text (approximate - sum > 100 in
+            # the source; presented as reported)
+            "sector_share_pct": {"residential": 85, "commercial": 14,
+                                 "industrial": 4},
+            "gshp_share_of_hp_market_pct": 4,
             "source": ("WGC2026 Country Update: Ireland - Ireland, Blake, "
                        "Pasquali, Dunphy & Hunter Williams, June 2026")},
     "per_capita_w": {"roi": 42, "ni": 3,
