@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 0.3.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 0.3.2
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -48,6 +48,7 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
   border:1px solid var(--teal);border-radius:6px;padding:14px 16px}
 .whatif .wtitle{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;
   color:var(--teal);font-weight:700;margin-bottom:10px}
+.whatif .wtitle .wbig{font-size:2em;line-height:1;vertical-align:-.08em}
 .wrow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 @media(max-width:840px){.wrow{grid-template-columns:repeat(2,1fr)}}
 .wcell .val{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.05rem}
@@ -102,7 +103,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
   <h2 id="hero-h">This week, all island <span class="dag">†</span></h2>
   <div class="grid4" id="heroCards"></div>
   <div class="whatif" id="whatif" hidden>
-    <div class="wtitle">What if 20% of this heat came from geothermal heat pumps</div>
+    <div class="wtitle">What if <span class="wbig">20%</span> of this heat came from <span class="wbig">geothermal</span></div>
     <div class="wrow" id="whatifRow"></div>
   </div>
   <p class="note" id="heroNote"></p>
@@ -353,8 +354,11 @@ function invisibleBar(h){
     const w=W*s.v/tot;
     out+='<rect x="'+x+'" y="'+y+'" width="'+(w-3)+'" height="'+H+
       '" rx="4" fill="'+s.fill+'"></rect>';
-    const anchor = w>170 ? 'middle':'start';
-    const tx = w>170 ? x+w/2 : x+8;
+    // narrow segments at the right edge anchor to their end so text
+    // stays inside the viewBox (the 'Electric 10%' clip, 15 Jul)
+    const nearRight = x + w > W - 150;
+    const anchor = w>170 ? 'middle' : (nearRight ? 'end' : 'start');
+    const tx = w>170 ? x+w/2 : (nearRight ? x+w-8 : x+8);
     out+='<text x="'+tx+'" y="'+(y+H/2-4)+'" fill="'+s.tc+
       '" font-family="Lato" font-weight="700" font-size="21" text-anchor="'+anchor+'">'+s.lab+'</text>';
     out+='<text x="'+tx+'" y="'+(y+H/2+20)+'" fill="'+CLR.muted+
@@ -590,7 +594,7 @@ fetch('data.json').then(r=>{
   heatGap(D);
   geoBar();
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 0.3.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 0.3.2 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
