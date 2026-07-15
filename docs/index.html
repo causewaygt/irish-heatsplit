@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 0.9.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 1.0.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -17,6 +17,7 @@
   --green:#3AAA35; --green2:#568F59; --petrol:#1F4E5F; --amber:#D98E2B;
   --teal:#2F8F8C; --ink:#E9F1EF; --muted:#9FB8B4; --faint:#6E8B88;
 }
+html{font-size:17px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);
   font-family:'Lato',system-ui,sans-serif;line-height:1.55}
@@ -28,7 +29,7 @@ h2{font-size:1.02rem;color:var(--green);margin-bottom:14px}
 a{color:var(--green)}
 header{padding:34px 0 10px;border-bottom:1px solid var(--line)}
 .strap{color:var(--muted);margin-top:6px;max-width:640px}
-.badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:.72rem}
+.badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:.76rem}
 .badge{border:1px solid var(--line);border-radius:3px;padding:2px 8px;
   color:var(--muted)}
 .badge b{font-weight:700}
@@ -39,42 +40,42 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 @media(max-width:840px){.grid4{grid-template-columns:repeat(2,1fr)}}
 .stat{background:var(--panel);border:1px solid var(--line);
   border-radius:6px;padding:16px 16px 13px}
-.stat .lab{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;
+.stat .lab{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;
   color:var(--muted)}
 .stat .val{font-family:'IBM Plex Mono',monospace;font-weight:600;
   font-size:clamp(1.15rem,2.6vw,1.55rem);margin-top:6px;color:var(--ink)}
-.stat .sub{font-size:.72rem;color:var(--faint);margin-top:4px}
+.stat .sub{font-size:.76rem;color:var(--faint);margin-top:4px}
 .whatif{margin-top:16px;background:linear-gradient(0deg,rgba(47,143,140,.14),rgba(47,143,140,.14));
   border:1px solid var(--teal);border-radius:6px;padding:14px 16px}
-.whatif .wtitle{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;
+.whatif .wtitle{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;
   color:var(--teal);font-weight:700;margin-bottom:10px}
 .whatif .wtitle .wbig{font-size:2em;line-height:1;vertical-align:-.08em}
 .wrow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 @media(max-width:840px){.wrow{grid-template-columns:repeat(2,1fr)}}
 .wcell .val{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.05rem}
-.wcell .lab{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.note{font-size:.74rem;color:var(--faint);margin-top:12px}
+.wcell .lab{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.note{font-size:.8rem;color:var(--faint);margin-top:12px}
 .panelbox{background:var(--panel2);border:1px solid var(--line);
   border-radius:6px;padding:18px}
 .plot{width:100%;min-height:340px}
 .big{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.5rem}
 .split2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media(max-width:840px){.split2{grid-template-columns:1fr}}
-.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.74rem;color:var(--muted);
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);
   margin-top:10px}
 .k{display:inline-block;width:11px;height:11px;border-radius:2px;
   vertical-align:-1px;margin-right:6px}
-table{width:100%;border-collapse:collapse;font-size:.8rem}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
 td,th{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
-th{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em}
-footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
+th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 .err{background:var(--panel);border:1px solid var(--amber);border-radius:6px;
   padding:16px;margin:26px 0;font-size:.85rem}
 .dag{color:var(--amber)}
 .seg{display:flex;gap:8px;margin-bottom:14px}
 .segbtn{background:none;border:1px solid var(--line);border-radius:4px;
   color:var(--muted);font-family:'Lato',sans-serif;font-weight:700;
-  font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;
+  font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;
   padding:6px 14px;cursor:pointer}
 .segbtn.active{border-color:var(--green);color:var(--ink)}
 @media(prefers-reduced-motion:no-preference){
@@ -317,8 +318,8 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
     market grew fast to 2009, stalled, and is now 85% residential with
     ground-source at 4% of heat-pump sales – remaining growth is migrating
     to exactly the infrastructure-scale systems the WGC2026 authors
-    describe. The Permo-Triassic Sherwood Sandstone beneath both
-    jurisdictions can supply heat at town scale (Todd et al.,
+    describe. The Permo-Triassic Sherwood Sandstone beneath
+    Northern Ireland can supply heat at town scale (Todd et al.,
     <em>Geoenergy</em>, 2026 –
     <a href="https://doi.org/10.1144/geoenergy2025-057">10.1144/geoenergy2025-057</a>).
     ROI anchors: WGC2026 Country Update. Corrections welcome at
@@ -365,7 +366,7 @@ const CLR = {green:'#3AAA35', green2:'#568F59', petrol:'#1F4E5F',
              panel:'#122831'};
 const PL_BASE = {
   paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
-  font:{family:'Lato, sans-serif', color:CLR.muted, size:12},
+  font:{family:'Lato, sans-serif', color:CLR.muted, size:13},
   margin:{l:56,r:56,t:24,b:44},
   xaxis:{gridcolor:CLR.line, zeroline:false},
   yaxis:{gridcolor:CLR.line, zeroline:false},
@@ -796,7 +797,7 @@ fetch('data.json').then(r=>{
   coolSide(D);
   geoPanel(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 0.9.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 1.0.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
