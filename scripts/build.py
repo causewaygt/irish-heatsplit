@@ -1,36 +1,23 @@
 #!/usr/bin/env python3
 """
-Irish Heat Split - daily build pipeline. PIPELINE_VERSION 0.1.2.
+Irish Heat Split - daily build pipeline. PIPELINE_VERSION 0.5.0.
 
-Changes 0.1.1 -> 0.1.2 (from second Actions run log, 14 Jul 2026):
-  - eirgrid: old DashboardService.svc endpoint confirmed dead from two
-    independent networks (503) - the dashboard was redesigned ~09 Jul 2026
-    and community tooling still points at the retired endpoint. Moved to
-    EXPECTED_DOWN pending a browser XHR probe (same probe session as GNI).
-    Set EIRGRID_ENDPOINT once probed. Expected-down feeds mark stale but
-    do not page ntfy or fail the run.
-  - semopx: strategy 1 (DPuG_ID=EA-001) works but the listing mixes DA
-    with three intraday auctions per day - now selects _SEM-DA_ resources
-    explicitly. Document format is semicolon-CSV with decimal commas, not
-    JSON - parse_semopx_csv() added as a pure, unit-tested function, and
-    the SEM trading-day EUR/GBP FX rate in the file is captured as a
-    cross-check against ECB.
-  - oil_bulletin: the resolved xlsx is a one-week snapshot (country rows,
-    bulletin date in a title cell, no per-row dates) - parse_bulletin_rows()
-    added as a pure function; weekly snapshots accumulate into a history
-    series in data.json across runs.
-  - ccni_oil: weekly page carries no chart (confirmed) - daily page only,
-    and the parsed series now merges with previous runs so history extends
-    beyond the page's rolling window.
+Changelog:
+  0.5.0 - ONS GB heating-oil feed (kj5u - same-tax control for the NI-GB
+          market-structure gap); EVENTS register rendered as chart
+          annotations; FEED_FLAGS register for value-level caveats distinct
+          from fetch status; tariff anchors re-based on the July 2026
+          sourced pass (Power NI/UR review, ROI standard rates);
+          derive_heat_gap() - cost of useful heat by route per jurisdiction
+          with break-even SPF vs the incumbent oil boiler.
+  0.4.0 - oil bulletin fetches with- AND without-taxes files; ex-tax series.
+  0.3.0 - gni_live implemented against the probed gasconsumption JSON API.
+  0.2.0 - ANCHORS + derive_hero() weekly four-stat and geothermal what-if.
+  0.1.x - scaffold, feed fixes from first-run logs.
 
-Feed status:
-  LIVE          hdd, ecb_fx, gni_ckan, ccni_oil
-  VERIFY        semopx, oil_bulletin   - parsers rebuilt against live format
-  PROBE PENDING eirgrid (dashboard XHR), gni_live (portal export XHR)
-
-House rules honoured: self-resolve IDs/links at runtime; dump available
-names on failure; every feed try/except with previous values retained and
-status "stale"; fetch health vs data recency tracked separately; unit
+House rules: self-resolve IDs/links at runtime; dump available names on
+failure; every feed try/except with previous values retained and status
+"stale"; fetch health vs data recency tracked separately; unit
 autodetection; clip future-dated rows; en dashes in user-facing strings.
 """
 
@@ -52,17 +39,16 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.3.0"
+PIPELINE_VERSION = "0.5.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
-UA = {"User-Agent": "ioi-heatsplit/0.1 (contact@causewaygt.com)"}
+UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
 
 # Feeds known broken for reasons outside this pipeline - marked stale,
-# logged, but neither paged nor allowed to fail the run. Remove from the
-# set the moment the fix lands.
+# logged, but neither paged nor allowed to fail the run.
 EXPECTED_DOWN = {
     "eirgrid": ("Smart Grid Dashboard redesigned ~09 Jul 2026 - "
                 "DashboardService.svc returns 503 from all networks; "
@@ -90,6 +76,79 @@ NTFY_TOPIC = None
 
 # Set by main() before the feed loop - lets feeds merge history across runs
 PREVIOUS_FEEDS: dict = {}
+
+# ------------------------------------------------- annual anchors
+# Sourced figures cite their publication; every judgement figure is marked
+# with a dagger and is a current Causeway Energies estimate - challenge and
+# input welcome at contact@causewaygt.com.
+
+ANCHORS = {
+    "year": 2024,
+    "roi": {
+        "residential_heat_twh": 22.3,      # SEAI Energy in Ireland 2025
+        "services_heat_twh": 8.5,          # dagger - from SEAI sector shares
+        "fuel_shares": {"oil": 0.565, "gas": 0.251, "peat": 0.067,
+                        "electricity": 0.08, "other": 0.037},
+        #             oil/gas/peat SEAI 2024; electricity/other dagger
+        "gas_indigenous": 0.18,            # SEAI H1-2025, Corrib, falling
+        "elec_indigenous": 0.413,          # SEAI RES-E 2024
+    },
+    "ni": {
+        "residential_heat_twh": 10.0,      # dagger - NISRA stock x intensity
+        "services_heat_twh": 3.0,          # dagger
+        "fuel_shares": {"oil": 0.62, "gas": 0.26, "peat": 0.0,
+                        "electricity": 0.08, "other": 0.04},
+        #             oil NISRA CHS 2024/25; gas/electricity/other dagger
+        "gas_indigenous": 0.0,             # all NI gas arrives via Moffat
+        "elec_indigenous": 0.46,           # dagger - DfE yr-to-Mar-2026 ~48%
+    },
+    "efficiency": {"oil": 0.82, "gas": 0.85, "peat": 0.60,
+                   "electricity": 1.0, "other": 0.70},          # dagger
+    "geothermal_spf": 4.0,                                       # dagger
+    "ef_g_per_kwh": {"oil": 257, "gas": 205, "peat": 340,
+                     "other": 100, "electricity": 280},          # dagger -
+    # electricity factor replaced by live grid intensity once eirgrid returns
+    "indigenous": {"oil": 0.0, "peat": 1.0, "other": 0.9},      # dagger
+    "space_heat_fraction": 0.72,                                 # dagger
+    "kerosene_kwh_per_litre": 10.35,   # industry standard figure
+    # Tariff anchors, July 2026 pass. Sourced bands, dagger on the point:
+    #  ROI electricity: standard 24h ~35c (Electric Ireland, May 2026);
+    #    Eurostat H2-2025 all-in ~40c; anchor 36c.
+    #  ROI gas: standard unit ~11-12c incl 9% VAT; anchor 11.5c.
+    #  NI electricity: Power NI 1 Jul 2026 review - GBP1,093/yr at 3,200 kWh
+    #    -> ~32.5p unit ex-standing; anchor 32.5p.
+    #  NI gas: Ten Towns GBP972/yr at 12,000 kWh (1 Jul 2026) -> ~7.5p unit.
+    # Standard-tariff basis - time-of-use/night rates materially lower for
+    # heat-pump households; see heat_gap basis note.
+    "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},
+    "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.325},
+}
+
+# Policy events rendered as chart annotations - date, jurisdiction, label.
+EVENTS = [
+    {"date": "2025-10-08", "jur": "ROI",
+     "label": "Carbon tax to \u20ac71/t \u2013 motor fuels"},
+    {"date": "2026-03-16", "jur": "UK",
+     "label": "UK \u00a350m oil support; CMA review"},
+    {"date": "2026-04-01", "jur": "ROI",
+     "label": "NORA levy paused (two months)"},
+    {"date": "2026-05-01", "jur": "ROI",
+     "label": "Heating-fuel carbon increase postponed"},
+    {"date": "2026-10-14", "jur": "ROI",
+     "label": "Carbon tax \u20ac63.50\u2192\u20ac71/t \u2013 heating fuels (due)"},
+]
+
+# Value-level caveats, distinct from fetch status - machine-carried nuance.
+FEED_FLAGS = {
+    "ccni_oil": ["Verification pending that parsed values are the NI "
+                 "average series, not a council-area series"],
+    "oil_bulletin": ["Bulletin heading is gas oil; treated as ROI "
+                     "heating-oil (kerosene) price level - Causeway "
+                     "judgement"],
+    "hdd": ["Population weights are Causeway estimates"],
+    "ons_gb_oil": ["Monthly official series - lags the daily NI survey by "
+                   "design; unit basis autodetected"],
+}
 
 
 # ---------------------------------------------------------------- utilities
@@ -125,6 +184,7 @@ def today_utc():
 
 
 def clip_days(day_values: dict) -> dict:
+    """Drop future-dated keys (NESO lesson)."""
     cut = today_utc().isoformat()
     return {k: v for k, v in day_values.items() if k <= cut}
 
@@ -233,14 +293,18 @@ def parse_ccni_series(page_html: str) -> dict:
     return series
 
 
-def resolve_oil_bulletin_url(page_html: str) -> str | None:
-    """'Weekly prices WITH taxes' xlsx - unquote before matching."""
+def resolve_oil_bulletin_url(page_html: str, with_tax: bool = True) -> str | None:
+    """Weekly prices xlsx, with or without taxes - unquote before matching."""
     for m in re.finditer(r'href="([^"]+)"', page_html):
         u = m.group(1)
         decoded = urllib.parse.unquote(u).lower()
         if ".xlsx" not in decoded:
             continue
-        if re.search(r"with[ _]tax", decoded) and "without" not in decoded:
+        has_without = "without" in decoded
+        has_with = re.search(r"with[ _]tax", decoded) is not None
+        hit = (has_with and not has_without) if with_tax \
+            else (has_without and "tax" in decoded)
+        if hit:
             return u if u.startswith("http") else "https://energy.ec.europa.eu" + u
     return None
 
@@ -309,7 +373,7 @@ def parse_semopx_csv(text: str) -> dict:
         Index prices;30;EUR
         <row of ISO delivery timestamps>
         <row of prices>
-    Returns {"fx_eur_gbp", "day", "markets": {market: {currency: [prices]}}}.
+    Returns {"fx_eur_gbp", "day", "auction", "markets"}.
     """
     fx, day, auction = None, None, None
     markets: dict = {}
@@ -349,6 +413,32 @@ def parse_semopx_csv(text: str) -> dict:
             "markets": markets}
 
 
+def parse_gni_series(series_list) -> dict:
+    """
+    Pure parser for the GNI gasconsumption JSON API. Input: list of series
+    objects {name, location, group, ..., data: [[unix_ms, value], ...]}.
+    Output: {location: {iso_date: value}}. Keys off `location`, tolerates
+    missing fields, skips unparseable points.
+    """
+    out = {}
+    for s in series_list or []:
+        loc = (s or {}).get("location")
+        if not loc:
+            continue
+        pts = {}
+        for pair in s.get("data") or []:
+            try:
+                ms, val = pair[0], pair[1]
+                d = dt.datetime.fromtimestamp(
+                    ms / 1000.0, tz=dt.timezone.utc).date().isoformat()
+                pts[d] = float(val)
+            except (TypeError, ValueError, IndexError, OSError):
+                continue
+        if pts:
+            out.setdefault(loc, {}).update(pts)
+    return out
+
+
 # ---------------------------------------------------------------- feeds
 
 def feed_eirgrid():
@@ -356,8 +446,7 @@ def feed_eirgrid():
     Smart Grid Dashboard - PROBE PENDING. The pre-redesign endpoint
     (DashboardService.svc/data) returns 503 from all networks since
     ~09 Jul 2026. Set EIRGRID_ENDPOINT after the browser XHR probe and
-    adapt the parser to the response shape; the daily-aggregation logic
-    below is endpoint-agnostic and stays.
+    implement the parser against the captured response shape.
     """
     if EIRGRID_ENDPOINT is None:
         raise NotImplementedError(EXPECTED_DOWN["eirgrid"])
@@ -534,38 +623,16 @@ def feed_gni_ckan():
     return out, recency_status(out["latest_day"], 100)
 
 
-def parse_gni_series(series_list) -> dict:
-    """
-    Pure parser for the GNI gasconsumption JSON API. Input: list of series
-    objects {name, location, group, ..., data: [[unix_ms, value], ...]}.
-    Output: {location: {iso_date: value}}. Keys off `location`, tolerates
-    missing fields, skips unparseable points.
-    """
-    out = {}
-    for s in series_list or []:
-        loc = (s or {}).get("location")
-        if not loc:
-            continue
-        pts = {}
-        for pair in s.get("data") or []:
-            try:
-                ms, val = pair[0], pair[1]
-                d = dt.datetime.fromtimestamp(
-                    ms / 1000.0, tz=dt.timezone.utc).date().isoformat()
-                pts[d] = float(val)
-            except (TypeError, ValueError, IndexError, OSError):
-                continue
-        if pts:
-            out.setdefault(loc, {}).update(pts)
-    return out
-
-
 def feed_gni_live():
     """
     GNI Data Transparency JSON API - probed 14 Jul 2026, daily/hourly/
     monthly all 200. The CSV export route 503s and is not used. Window per
     call unknown: anchor four dates a month apart, log the observed span,
     merge across runs. Values arrive in kWh by default - unit autodetected.
+    JURISDICTION FLAG: DM/NDM carry no ROI prefix while LDM and Power Gen
+    do - whether unprefixed series include NI exits is unconfirmed; the
+    space-heat regression stays on the confirmed-ROI gni_ckan series until
+    resolved.
     """
     base = "https://www.gasnetworks.ie/api/v1/gasconsumption"
     raw = {}
@@ -578,8 +645,7 @@ def feed_gni_live():
             log(f"gni_live: anchor {anchor} failed - {e.__class__.__name__}: {e}")
             continue
         if not isinstance(body, list):
-            log("gni_live: unexpected shape for", anchor, "-",
-                str(body)[:300])
+            log("gni_live: unexpected shape for", anchor, "-", str(body)[:300])
             continue
         parsed = parse_gni_series(body)
         if back == 0:
@@ -630,8 +696,7 @@ def feed_semopx():
 
     def da_items(items):
         return [it for it in items
-                if re.search(r"_SEM-DA_",
-                             str(it.get("ResourceName") or ""))]
+                if re.search(r"_SEM-DA_", str(it.get("ResourceName") or ""))]
 
     chosen = None
     for page_size in (20, 100):
@@ -684,65 +749,79 @@ def feed_semopx():
 
 def feed_oil_bulletin():
     """
-    EU Weekly Oil Bulletin - Ireland heating gas oil, EUR/1000 L with taxes.
-    The resolved xlsx is a one-week snapshot; history accumulates in
-    data.json across runs. Kerosene caveat stands.
+    EU Weekly Oil Bulletin - Ireland heating gas oil, EUR/1000 L, with AND
+    without taxes. Snapshot files; history accumulates in data.json across
+    runs. Both sides of the border burn the same C2 kerosene; the series is
+    treated as the ROI heating-oil price level (see FEED_FLAGS).
     """
     page = http_get(
         "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en"
     ).text
-    url = resolve_oil_bulletin_url(page)
-    if not url:
-        seen = [urllib.parse.unquote(u)[:110] for u in
-                re.findall(r'href="([^"]+)"', page)
-                if ".xlsx" in urllib.parse.unquote(u).lower()]
-        log("oil_bulletin: no 'with taxes' xlsx resolved - decoded links:", seen)
-        raise ValueError("oil bulletin link resolution failed")
-    log("oil_bulletin: resolved", urllib.parse.unquote(url)[:120])
 
     import openpyxl
-    wb = openpyxl.load_workbook(
-        io.BytesIO(http_get(url, timeout=180).content),
-        read_only=True, data_only=True)
 
-    bulletin_date, value = None, None
-    for ws in wb.worksheets:
-        bulletin_date, value = parse_bulletin_rows(ws.iter_rows(values_only=True))
-        if value is not None:
-            log(f"oil_bulletin: sheet '{ws.title}' - Ireland heating "
-                f"{value} EUR/1000L at {bulletin_date}")
-            break
-    if value is None:
+    def fetch_ireland(with_tax):
+        url = resolve_oil_bulletin_url(page, with_tax=with_tax)
+        if not url:
+            seen = [urllib.parse.unquote(u)[:110] for u in
+                    re.findall(r'href="([^"]+)"', page)
+                    if ".xlsx" in urllib.parse.unquote(u).lower()]
+            log(f"oil_bulletin: no '{'with' if with_tax else 'without'} "
+                "taxes' xlsx resolved - decoded links:", seen)
+            return None, None
+        log("oil_bulletin: resolved", urllib.parse.unquote(url)[:120])
+        wb = openpyxl.load_workbook(
+            io.BytesIO(http_get(url, timeout=180).content),
+            read_only=True, data_only=True)
+        for ws in wb.worksheets:
+            d, v = parse_bulletin_rows(ws.iter_rows(values_only=True))
+            if v is not None:
+                return d, v
         for ws in wb.worksheets:
             head = [r for _, r in zip(range(6), ws.iter_rows(values_only=True))]
             log(f"oil_bulletin: sheet '{ws.title}' first rows:", head)
-        raise ValueError("oil bulletin parse failed - row dumps above")
-    if not 300 <= value <= 3000:
-        log(f"oil_bulletin: WARNING - {value} EUR/1000L outside plausible "
-            "heating-oil range, check column selection")
-    if bulletin_date is None:
+        return None, None
+
+    d_wt, v_wt = fetch_ireland(True)
+    d_nt, v_nt = fetch_ireland(False)
+    if v_wt is None:
+        raise ValueError("oil bulletin with-taxes parse failed - see log")
+    for label, v in (("with", v_wt), ("without", v_nt)):
+        if v is not None and not 300 <= v <= 3000:
+            log(f"oil_bulletin: WARNING - {label}-taxes {v} EUR/1000L "
+                "outside plausible range, check column selection")
+    if d_wt is None:
         log("oil_bulletin: no bulletin date found - using today, verify")
-        bulletin_date = today_utc().isoformat()
+        d_wt = today_utc().isoformat()
+    log(f"oil_bulletin: Ireland heating {v_wt} EUR/1000L with taxes, "
+        f"{v_nt} without, at {d_wt}")
 
     series = prev_series("oil_bulletin", "roi_heating_gasoil_eur_per_1000l")
-    series[bulletin_date] = value
+    series[d_wt] = v_wt
     series = trim_series(clip_days(series))
+    series_nt = prev_series("oil_bulletin",
+                            "roi_heating_gasoil_eur_per_1000l_ex_tax")
+    if v_nt is not None:
+        series_nt[d_nt or d_wt] = v_nt
+    series_nt = trim_series(clip_days(series_nt))
     out = {
         "roi_heating_gasoil_eur_per_1000l": series,
-        "latest_value": value, "latest_day": max(series),
-        "kerosene_caveat": ("Bulletin product is gas oil - Irish homes mostly "
-                            "burn kerosene; adjustment is a current Causeway "
-                            "Energies estimate pending CSO CPI cross-check"),
-        "source": "European Commission Weekly Oil Bulletin - prices with taxes",
+        "roi_heating_gasoil_eur_per_1000l_ex_tax": series_nt,
+        "latest_value": v_wt,
+        "latest_value_ex_tax": v_nt,
+        "latest_day": max(series),
+        "source": ("European Commission Weekly Oil Bulletin - prices with "
+                   "and without taxes"),
     }
     return out, recency_status(out["latest_day"], 10)
 
 
 def feed_ccni_oil():
     """
-    Consumer Council NI - daily checker page only (weekly page confirmed
+    Consumer Council NI - daily checker page (weekly page confirmed
     chart-free). Parsed series merges with previous runs so history extends
-    beyond the page's rolling window.
+    beyond the page's rolling window. See FEED_FLAGS for the average-vs-
+    council-area verification item.
     """
     url = "https://www.consumercouncil.org.uk/home-heating/price-checker/daily"
     page = http_get(url).text
@@ -772,6 +851,49 @@ def feed_ccni_oil():
     return out, recency_status(out["latest_day"], 7)
 
 
+def feed_ons_gb_oil():
+    """
+    ONS average heating oil price, GB context line - series kj5u
+    (RPI: ave price, heating oil per 1000 litres), keyless JSON. Monthly.
+    Same tax regime as NI: the NI-GB gap isolates market structure.
+    """
+    j = http_get("https://www.ons.gov.uk/economy/inflationandpriceindices/"
+                 "timeseries/kj5u/mm23/data").json()
+    months = j.get("months", [])
+    if not months:
+        log("ons_gb_oil: no months in response - keys:", list(j)[:15])
+        raise ValueError("ons_gb_oil: unexpected response shape")
+    mon = {"JANUARY": 1, "FEBRUARY": 2, "MARCH": 3, "APRIL": 4, "MAY": 5,
+           "JUNE": 6, "JULY": 7, "AUGUST": 8, "SEPTEMBER": 9, "OCTOBER": 10,
+           "NOVEMBER": 11, "DECEMBER": 12}
+    raw = {}
+    for m in months:
+        try:
+            y, name = m["date"].split()
+            d = f"{int(y):04d}-{mon[name.upper()]:02d}-01"
+            raw[d] = float(m["value"])
+        except (KeyError, ValueError):
+            continue
+    if not raw:
+        raise ValueError("ons_gb_oil: no parseable months")
+    med = statistics.median(raw.values())
+    # per-1000L in pence vs pounds vs already p/L: autodetect
+    if med > 2000:
+        scale, unit_note = 0.001, "p/1000L->p/L"
+    elif med > 200:
+        scale, unit_note = 0.1, "GBP/1000L->p/L"
+    else:
+        scale, unit_note = 1.0, "p/L"
+    series = trim_series(clip_days(
+        {d: round(v * scale, 2) for d, v in raw.items()}))
+    latest = max(series) if series else None
+    out = {"gb_ppl_monthly": series, "unit_detection": unit_note,
+           "latest_day": latest,
+           "source": ("ONS average heating oil price, GB (series kj5u) - "
+                      "monthly, same tax regime as NI")}
+    return out, recency_status(latest, 62)
+
+
 # ------------------------------------------------- analysis (pure functions)
 
 def space_heat_split(gas_daily: dict, hdd_daily: dict):
@@ -796,47 +918,6 @@ def space_heat_split(gas_daily: dict, hdd_daily: dict):
             "r2": round(1 - ss_res / ss_tot, 3), "n_days": n}
 
 
-
-
-# ------------------------------------------------- annual anchors (v0.2.0)
-# Sourced figures cite their publication; every judgement figure is marked
-# with a dagger and is a current Causeway Energies estimate - challenge and
-# input welcome at contact@causewaygt.com.
-
-ANCHORS = {
-    "year": 2024,
-    "roi": {
-        "residential_heat_twh": 22.3,      # SEAI Energy in Ireland 2025
-        "services_heat_twh": 8.5,          # dagger - from SEAI sector shares
-        "fuel_shares": {"oil": 0.565, "gas": 0.251, "peat": 0.067,
-                        "electricity": 0.08, "other": 0.037},
-        #             oil/gas/peat SEAI 2024; electricity/other dagger
-        "gas_indigenous": 0.18,            # SEAI H1-2025, Corrib, falling
-        "elec_indigenous": 0.413,          # SEAI RES-E 2024
-    },
-    "ni": {
-        "residential_heat_twh": 10.0,      # dagger - NISRA stock x intensity
-        "services_heat_twh": 3.0,          # dagger
-        "fuel_shares": {"oil": 0.62, "gas": 0.26, "peat": 0.0,
-                        "electricity": 0.08, "other": 0.04},
-        #             oil NISRA CHS 2024/25; gas/electricity/other dagger
-        "gas_indigenous": 0.0,             # all NI gas arrives via Moffat
-        "elec_indigenous": 0.46,           # dagger - DfE yr-to-Mar-2026 ~48%
-    },
-    "efficiency": {"oil": 0.82, "gas": 0.85, "peat": 0.60,
-                   "electricity": 1.0, "other": 0.70},          # dagger
-    "geothermal_spf": 4.0,                                       # dagger
-    "ef_g_per_kwh": {"oil": 257, "gas": 205, "peat": 340,
-                     "other": 100, "electricity": 280},          # dagger -
-    # electricity factor replaced by live grid intensity once eirgrid returns
-    "indigenous": {"oil": 0.0, "peat": 1.0, "other": 0.9},      # dagger
-    "space_heat_fraction": 0.72,                                 # dagger
-    "kerosene_kwh_per_litre": 10.35,                             # dagger
-    "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},  # dagger ROI
-    "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.27},  # dagger NI
-}
-
-
 def derive_hero(feeds, anchors=None):
     """
     Weekly hero four-stat + what-if, all-island, twin currencies.
@@ -859,7 +940,6 @@ def derive_hero(feeds, anchors=None):
     fx = (feeds.get("ecb_fx") or {}).get("eur_gbp")  # GBP per EUR
     fx = fx or 0.855
 
-    # live oil prices per input kWh, else None
     oil_eur_kwh = None
     ob = (feeds.get("oil_bulletin") or {}).get("latest_value")
     if ob:
@@ -910,12 +990,10 @@ def derive_hero(feeds, anchors=None):
     bill_eur_total = totals["bill_eur_m"] + totals["bill_gbp_m"] / fx
     bill_gbp_total = totals["bill_eur_m"] * fx + totals["bill_gbp_m"]
 
-    # what-if: 20% of useful heat served by geothermal heat pumps
     spf = a["geothermal_spf"]
     moved_useful = totals["useful_gwh"] * 0.20
     elec_in = moved_useful / spf
     ambient = moved_useful - elec_in
-    # displaced proportionally from the fossil-weighted current mix
     scale = 0.80
     wf_input = totals["input_gwh"] * scale + elec_in
     wf_indig = (totals["indig_gwh"] * scale + ambient
@@ -955,6 +1033,58 @@ def derive_hero(feeds, anchors=None):
     }
 
 
+def derive_heat_gap(feeds, anchors=None):
+    """
+    Cost of useful heat by route, per jurisdiction, standard tariffs -
+    plus the break-even SPF against the incumbent oil boiler. Pure,
+    unit tested. Native currency minor units (p or c) per useful kWh.
+    """
+    a = anchors or ANCHORS
+    fx = (feeds.get("ecb_fx") or {}).get("eur_gbp") or 0.855
+
+    ccni = ((feeds.get("ccni_oil") or {}).get("series_gbp") or {}).get(
+        "daily", {}).get("900l") or {}
+    oil_ni_ppl = ccni[max(ccni)] * 100 / 900 if ccni else None
+    ob = (feeds.get("oil_bulletin") or {}).get("latest_value")
+    oil_roi_cpl = ob * 100 / 1000 if ob else None
+    kwh_l = a["kerosene_kwh_per_litre"]
+    eff_oil, eff_gas = a["efficiency"]["oil"], a["efficiency"]["gas"]
+    spf_hp, spf_geo = 3.2, a["geothermal_spf"]
+
+    def jur(oil_pl, elec, gas):
+        if oil_pl is None:
+            return None
+        oil_useful = oil_pl / kwh_l / eff_oil
+        r2 = lambda x: round(x, 2)
+        return {
+            "oil_boiler": r2(oil_useful),
+            "gas_boiler": r2(gas * 100 / eff_gas),
+            "heat_pump_spf32": r2(elec * 100 / spf_hp),
+            "geothermal_spf40": r2(elec * 100 / spf_geo),
+            "breakeven_spf_vs_oil": r2(elec * 100 / oil_useful),
+            "breakeven_spf_vs_gas": r2(elec * 100 / (gas * 100 / eff_gas)),
+            "inputs": {"oil_per_litre": round(oil_pl, 2),
+                       "electricity_per_kwh": elec, "gas_per_kwh": gas},
+        }
+
+    ni = jur(oil_ni_ppl, a["retail_gbp_per_kwh"]["electricity"],
+             a["retail_gbp_per_kwh"]["gas"])
+    roi = jur(oil_roi_cpl, a["retail_eur_per_kwh"]["electricity"],
+              a["retail_eur_per_kwh"]["gas"])
+    if not (ni and roi):
+        return None
+    return {
+        "ni": ni, "roi": roi, "fx_eur_gbp": fx,
+        "hp_spf": spf_hp, "geo_spf": spf_geo,
+        "basis": ("Standard tariffs, July 2026 pass (Power NI/UR review, "
+                  "ROI standard 24h rates) - dagger; time-of-use and night "
+                  "tariffs materially lower for heat-pump households. Oil "
+                  "prices live. Kerosene 10.35 kWh/L; boiler efficiencies "
+                  "82%/85% dagger. Challenge and input welcome at "
+                  "contact@causewaygt.com"),
+    }
+
+
 # ---------------------------------------------------------------- assembly
 
 FEEDS = {
@@ -966,6 +1096,7 @@ FEEDS = {
     "oil_bulletin": feed_oil_bulletin,
     "gni_live": feed_gni_live,
     "ccni_oil": feed_ccni_oil,
+    "ons_gb_oil": feed_ons_gb_oil,
 }
 
 
@@ -983,6 +1114,8 @@ def main():
         try:
             payload, status = fn()
             payload["status"] = status
+            if name in FEED_FLAGS:
+                payload["flags"] = FEED_FLAGS[name]
             payload["fetched_utc"] = dt.datetime.now(
                 dt.timezone.utc).isoformat(timespec="seconds")
             feeds[name] = payload
@@ -997,6 +1130,8 @@ def main():
             prev["status"] = "stale"
             if name in EXPECTED_DOWN:
                 prev["pending_note"] = EXPECTED_DOWN[name]
+            if name in FEED_FLAGS:
+                prev["flags"] = FEED_FLAGS[name]
             prev.setdefault("source", "previous run retained")
             feeds[name] = prev
             if not expected:
@@ -1015,12 +1150,19 @@ def main():
                       ("week_ending", "heat_purchased_gwh",
                        "indigenous_share_pct", "bill_eur_m", "bill_gbp_m",
                        "emissions_kt_co2")})
+    hg = derive_heat_gap(feeds)
+    if hg:
+        derived["heat_gap"] = hg
+        log("heat_gap: breakeven SPF vs oil - NI",
+            hg["ni"]["breakeven_spf_vs_oil"], "ROI",
+            hg["roi"]["breakeven_spf_vs_oil"])
 
     doc = {
         "pipeline_version": PIPELINE_VERSION,
         "built_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "feeds": feeds,
         "derived": derived,
+        "events": EVENTS,
         "notes": ("Feed statuses - ok: fetched and current; lagging: fetched, "
                   "source publishes on a lag; stale: fetch failed, previous "
                   "values retained. Judgement figures are current Causeway "
