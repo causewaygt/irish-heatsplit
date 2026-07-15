@@ -39,7 +39,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.7.0"
+PIPELINE_VERSION = "0.9.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -174,6 +174,72 @@ FEED_FLAGS = {
                "Jan 2025"],
 }
 
+
+
+
+# ------------------------------------------------- geothermal register
+# NI >60 kW register: Causeway research pass, June 2026, updated July 2026
+# Martinstown (325 kW, 2015) is ROI - confirmed by S. Todd, counted in
+# the WGC ROI totals, not carried here.
+# (Ryan Daly pers. comm. - Randalstown 44 kW and Strabane 18 kW confirmed
+# sub-threshold, logged as exclusions). ROI anchors: WGC2026 Country Update
+# (Ireland, Blake, Pasquali, Dunphy & Hunter Williams) - sourced.
+# Corrections welcome at contact@causewaygt.com.
+GEO = {
+    "ni_register": [
+        {"id": "R1", "site": "McClay Library, QUB", "year": 2009,
+         "kw": None, "duty": "cooling", "type": "closed vertical",
+         "status": "candidate - unconfirmed", "confirmed": False},
+        {"id": "R2", "site": "Lyric Theatre, Belfast", "year": 2011,
+         "kw": 120, "duty": "cooling", "type": "open single-well",
+         "status": "operational - minor issues", "confirmed": True,
+         "note": "120 kW demand-inferred, not metered"},
+        {"id": "R3", "site": "Giant's Causeway Visitor Centre", "year": 2012,
+         "kw": 72, "duty": "heating", "type": "horizontal mat",
+         "status": "operational", "confirmed": True},
+        {"id": "R4", "site": "Girdwood Community Hub, Belfast", "year": 2016,
+         "kw": 108, "duty": "heating", "type": "hybrid vertical + slinky",
+         "status": "operational - impaired (~60% of 180 kW design)",
+         "confirmed": True},
+        {"id": "R5", "site": "QUB School of Biological Sciences", "year": 2018,
+         "kw": 0, "duty": "cooling", "type": "open doublet",
+         "status": "never commissioned (design flow set-point error)",
+         "confirmed": True},
+        {"id": "R7", "site": "QUB Business School Student Hub", "year": 2023,
+         "kw": 280, "duty": "heating + DHW",
+         "type": "closed vertical, 40 x 125 m, Sherwood Sandstone",
+         "status": "operational", "confirmed": True},
+        {"id": "R8", "site": "UU Jordanstown HPSC", "year": None,
+         "kw": None, "duty": "heating", "type": "GSHP",
+         "status": "unconfirmed", "confirmed": False},
+    ],
+    "ni_exclusions": [
+        {"site": "Randalstown", "kw": 44, "detail": "2 x 22 kW",
+         "source": "Ryan Daly, Jul 2026"},
+        {"site": "Strabane", "kw": 18, "detail": "3 x 6 kW Ecogeo Lite "
+         "(+3 x 9 kW ASHP out of scope)", "source": "Ryan Daly, Jul 2026"},
+    ],
+    "ni_domestic": {"low": 500, "high": 700,
+                    "note": ("MCS ~386-450 certified plus pre-certification "
+                             "era estimate - Causeway triangulation, "
+                             "dagger")},
+    "roi": {"capacity_mwth": 225, "heat_gwh": 293, "cooling_gwh": 11.9,
+            "units": 20128, "new_2024_mwth": 7.4, "proj_2028_mwth": 261,
+            "deep_plants": 0,
+            "source": ("WGC2026 Country Update: Ireland - Ireland, Blake, "
+                       "Pasquali, Dunphy & Hunter Williams, June 2026")},
+    "per_capita_w": {"roi": 42, "ni": 3,
+                     "note": "installed Wth per person - NI dagger"},
+    "island_today_twh": 0.30,
+    "pipeline": [
+        "GEMINI (EUR 20m, PEACEPLUS): 3 shallow demos Sligo + Belfast "
+        "(NIHE, NI Water); deep 2 km at Grangegorman, drilling late 2027",
+        "GeoEnergy NI: Stormont shallow boreholes drilled 2024; CAFRE "
+        "Greenmount deep doublet consented (LA03/2025/0443/F)",
+        "GSI deep scientific boreholes: BHT 22.6-38 C at 1 km, five "
+        "completed 2022-2026",
+    ],
+}
 
 # ---------------------------------------------------------------- utilities
 
@@ -1077,25 +1143,19 @@ def space_heat_split(gas_daily: dict, hdd_daily: dict):
 
 def derive_hero(feeds, anchors=None):
     """
-    Weekly hero four-stat + what-if, all-island, twin currencies.
-    Scaffold estimator: annual buildings-heat anchors shaped by the week's
-    island HDD (space-heat fraction HDD-proportional, remainder flat).
-    Pure function - unit tested. Returns None until HDD data is present.
+    Weekly hero four-stat + what-if, per jurisdiction and all-island.
+    Each jurisdiction is shaped by its own HDD series (island fallback);
+    the island block is the sum of the two, so the toggle views always
+    reconcile. Scaffold estimator - pure, unit tested. Top-level keys
+    carry the island values; per-jurisdiction blocks under "roi"/"ni".
     """
     a = anchors or ANCHORS
-    hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
-    if len(hdd) < 200:
+    hddf = feeds.get("hdd") or {}
+    island_hdd = hddf.get("hdd_island") or {}
+    if len(island_hdd) < 200:
         return None
-    days = sorted(hdd)
-    week_days = days[-7:]
-    hdd_week = sum(hdd[d] for d in week_days)
-    hdd_year = sum(hdd[d] for d in days[-365:])
-    if hdd_year <= 0:
-        return None
+    fx = (feeds.get("ecb_fx") or {}).get("eur_gbp") or 0.855
     shf = a["space_heat_fraction"]
-
-    fx = (feeds.get("ecb_fx") or {}).get("eur_gbp")  # GBP per EUR
-    fx = fx or 0.855
 
     oil_eur_kwh = None
     ob = (feeds.get("oil_bulletin") or {}).get("latest_value")
@@ -1107,15 +1167,25 @@ def derive_hero(feeds, anchors=None):
     if ccni:
         oil_gbp_kwh = ccni[max(ccni)] / 900.0 / a["kerosene_kwh_per_litre"]
 
-    def week_input_gwh(annual_twh):
-        annual_gwh = annual_twh * 1000.0
-        return annual_gwh * ((1 - shf) / 52.0 + shf * hdd_week / hdd_year)
+    def hdd_stats(series):
+        days = sorted(series)
+        wk = days[-7:]
+        return (sum(series[d] for d in wk),
+                sum(series[d] for d in days[-365:]), wk[-1])
 
-    totals = {"input_gwh": 0.0, "useful_gwh": 0.0, "indig_gwh": 0.0,
-              "kt_co2": 0.0, "bill_eur_m": 0.0, "bill_gbp_m": 0.0}
-    for jur, cur in (("roi", "eur"), ("ni", "gbp")):
+    def jur_block(jur, cur, hdd_series):
+        hdd_week, hdd_year, week_end = hdd_stats(hdd_series)
+        if hdd_year <= 0:
+            return None
         j = a[jur]
         heat_twh = j["residential_heat_twh"] + j["services_heat_twh"]
+
+        def week_input_gwh(annual_twh):
+            annual_gwh = annual_twh * 1000.0
+            return annual_gwh * ((1 - shf) / 52.0
+                                 + shf * hdd_week / hdd_year)
+
+        inp_t = useful_t = indig_t = kt_t = bill_t = 0.0
         for fuel, share in j["fuel_shares"].items():
             inp = week_input_gwh(heat_twh) * share
             eff = a["efficiency"][fuel]
@@ -1124,7 +1194,6 @@ def derive_hero(feeds, anchors=None):
                 j["gas_indigenous"] if fuel == "gas" else
                 j["elec_indigenous"] if fuel == "electricity" else
                 a["indigenous"].get(fuel, 0.0))
-            # GWh x g/kWh -> tonnes; /1000 -> kt
             kt = inp * a["ef_g_per_kwh"][fuel] / 1000.0
             if fuel == "oil":
                 price = oil_eur_kwh if cur == "eur" else oil_gbp_kwh
@@ -1134,60 +1203,103 @@ def derive_hero(feeds, anchors=None):
                 table = a["retail_eur_per_kwh"] if cur == "eur" \
                     else a["retail_gbp_per_kwh"]
                 price = table.get(fuel, table["gas"])
-            bill_m = inp * 1e6 * price / 1e6  # GWh->kWh, price/kWh, ->millions
-            totals["input_gwh"] += inp
-            totals["useful_gwh"] += useful
-            totals["indig_gwh"] += indig
-            totals["kt_co2"] += kt
-            if cur == "eur":
-                totals["bill_eur_m"] += bill_m
-            else:
-                totals["bill_gbp_m"] += bill_m
+            inp_t += inp
+            useful_t += useful
+            indig_t += indig
+            kt_t += kt
+            bill_t += inp * price   # GWh x cur/kWh = millions of cur
 
-    bill_eur_total = totals["bill_eur_m"] + totals["bill_gbp_m"] / fx
-    bill_gbp_total = totals["bill_eur_m"] * fx + totals["bill_gbp_m"]
+        bill_eur = bill_t if cur == "eur" else bill_t / fx
+        bill_gbp = bill_t * fx if cur == "eur" else bill_t
 
-    spf = a["geothermal_spf"]
-    moved_useful = totals["useful_gwh"] * 0.20
-    elec_in = moved_useful / spf
-    ambient = moved_useful - elec_in
-    scale = 0.80
-    wf_input = totals["input_gwh"] * scale + elec_in
-    wf_indig = (totals["indig_gwh"] * scale + ambient
-                + elec_in * (a["roi"]["elec_indigenous"] * 0.7
-                             + a["ni"]["elec_indigenous"] * 0.3))
-    wf_kt = totals["kt_co2"] * scale + elec_in * \
-        a["ef_g_per_kwh"]["electricity"] / 1000.0
-    blend_eur = a["retail_eur_per_kwh"]["electricity"]
-    blend_gbp = a["retail_gbp_per_kwh"]["electricity"]
-    wf_bill_eur = bill_eur_total * scale + elec_in * 1e3 * blend_eur / 1e3 * 0.7 \
-        + (elec_in * 1e3 * blend_gbp / 1e3 * 0.3) / fx
-    wf_bill_gbp = wf_bill_eur * fx
-
-    r1 = lambda x: round(x, 1)
-    return {
-        "week_ending": week_days[-1],
-        "hdd_week": r1(hdd_week), "hdd_year": r1(hdd_year),
-        "heat_purchased_gwh": r1(totals["input_gwh"]),
-        "heat_delivered_gwh": r1(totals["useful_gwh"]),
-        "indigenous_share_pct": r1(100 * totals["indig_gwh"]
-                                   / max(totals["useful_gwh"], 1e-9)),
-        "bill_eur_m": r1(bill_eur_total), "bill_gbp_m": r1(bill_gbp_total),
-        "emissions_kt_co2": r1(totals["kt_co2"]),
-        "what_if_20pct_geothermal": {
-            "heat_purchased_gwh": r1(wf_input),
-            "indigenous_share_pct": r1(100 * wf_indig
-                                       / max(totals["useful_gwh"], 1e-9)),
-            "bill_eur_m": r1(wf_bill_eur), "bill_gbp_m": r1(wf_bill_gbp),
-            "emissions_kt_co2": r1(wf_kt),
+        # what-if: 20% of useful heat moves to geothermal heat pumps
+        spf = a["geothermal_spf"]
+        moved = useful_t * 0.20
+        elec_in = moved / spf
+        ambient = moved - elec_in
+        scale = 0.80
+        blend = (a["retail_eur_per_kwh"]["electricity"] if cur == "eur"
+                 else a["retail_gbp_per_kwh"]["electricity"])
+        wf_bill_native = bill_t * scale + elec_in * blend
+        wf = {
+            "heat_purchased_gwh": round(inp_t * scale + elec_in, 1),
+            "indigenous_share_pct": round(100 * (
+                indig_t * scale + ambient
+                + elec_in * j["elec_indigenous"]) / max(useful_t, 1e-9), 1),
+            "bill_eur_m": round(wf_bill_native if cur == "eur"
+                                else wf_bill_native / fx, 1),
+            "bill_gbp_m": round(wf_bill_native * fx if cur == "eur"
+                                else wf_bill_native, 1),
+            "emissions_kt_co2": round(
+                kt_t * scale
+                + elec_in * a["ef_g_per_kwh"]["electricity"] / 1000.0, 1),
             "geothermal_spf": spf,
-        },
+        }
+        return {
+            "heat_purchased_gwh": round(inp_t, 1),
+            "heat_delivered_gwh": round(useful_t, 1),
+            "indigenous_share_pct": round(
+                100 * indig_t / max(useful_t, 1e-9), 1),
+            "bill_eur_m": round(bill_eur, 1),
+            "bill_gbp_m": round(bill_gbp, 1),
+            "emissions_kt_co2": round(kt_t, 1),
+            "hdd_week": round(hdd_week, 1),
+            "hdd_year": round(hdd_year, 1),
+            "week_ending": week_end,
+            "what_if_20pct_geothermal": wf,
+            "_raw": {"useful": useful_t, "indig": indig_t},
+        }
+
+    roi = jur_block("roi", "eur", hddf.get("hdd_roi") or island_hdd)
+    ni = jur_block("ni", "gbp", hddf.get("hdd_ni") or island_hdd)
+    if not (roi and ni):
+        return None
+
+    def sum_blocks(x, y):
+        useful = x["_raw"]["useful"] + y["_raw"]["useful"]
+        indig = x["_raw"]["indig"] + y["_raw"]["indig"]
+        out = {
+            "heat_purchased_gwh": round(
+                x["heat_purchased_gwh"] + y["heat_purchased_gwh"], 1),
+            "heat_delivered_gwh": round(
+                x["heat_delivered_gwh"] + y["heat_delivered_gwh"], 1),
+            "indigenous_share_pct": round(100 * indig / max(useful, 1e-9), 1),
+            "bill_eur_m": round(x["bill_eur_m"] + y["bill_eur_m"], 1),
+            "bill_gbp_m": round(x["bill_gbp_m"] + y["bill_gbp_m"], 1),
+            "emissions_kt_co2": round(
+                x["emissions_kt_co2"] + y["emissions_kt_co2"], 1),
+        }
+        wf = {}
+        for k in ("heat_purchased_gwh", "bill_eur_m", "bill_gbp_m",
+                  "emissions_kt_co2"):
+            wf[k] = round(x["what_if_20pct_geothermal"][k]
+                          + y["what_if_20pct_geothermal"][k], 1)
+        wf["geothermal_spf"] = a["geothermal_spf"]
+        wf["indigenous_share_pct"] = round(
+            (x["what_if_20pct_geothermal"]["indigenous_share_pct"]
+             * x["_raw"]["useful"]
+             + y["what_if_20pct_geothermal"]["indigenous_share_pct"]
+             * y["_raw"]["useful"]) / max(useful, 1e-9), 1)
+        out["what_if_20pct_geothermal"] = wf
+        return out
+
+    island = sum_blocks(roi, ni)
+    hdd_week, hdd_year, week_end = hdd_stats(island_hdd)
+    for b in (roi, ni):
+        b.pop("_raw", None)
+
+    out = dict(island)
+    out.update({
+        "week_ending": week_end,
+        "hdd_week": round(hdd_week, 1), "hdd_year": round(hdd_year, 1),
+        "roi": roi, "ni": ni,
         "basis": ("Scaffold estimator (dagger throughout) - annual anchors "
-                  "shaped by the week's island HDD; SEAI 2024, DfE/NISRA, "
-                  "Causeway estimates. Challenge and input welcome at "
-                  "contact@causewaygt.com"),
+                  "shaped by each jurisdiction's weekly HDD; SEAI 2024, "
+                  "DfE/NISRA, Causeway estimates. Challenge and input "
+                  "welcome at contact@causewaygt.com"),
         "anchors_used": a,
-    }
+    })
+    return out
 
 
 def derive_ashp_spf(hdd_daily: dict, anchors=None):
@@ -1414,6 +1526,7 @@ def main():
         "feeds": feeds,
         "derived": derived,
         "events": EVENTS,
+        "geo": GEO,
         "notes": ("Feed statuses - ok: fetched and current; lagging: fetched, "
                   "source publishes on a lag; stale: fetch failed, previous "
                   "values retained. Judgement figures are current Causeway "
