@@ -286,6 +286,15 @@ def test_hero_what_if_moves_the_right_way():
     assert wf["emissions_kt_co2"] < h["emissions_kt_co2"]
 
 
+def test_hero_jurisdiction_blocks_reconcile():
+    h = derive_hero(_hero_fixture_feeds())
+    assert "roi" in h and "ni" in h
+    for k in ("heat_purchased_gwh", "bill_eur_m", "emissions_kt_co2"):
+        assert abs(h["roi"][k] + h["ni"][k] - h[k]) < 0.2, k
+    # ROI is the larger heat system
+    assert h["roi"]["heat_purchased_gwh"] > h["ni"]["heat_purchased_gwh"]
+
+
 def test_hero_weekly_sums_to_annual():
     feeds = _hero_fixture_feeds()
     h = derive_hero(feeds)
