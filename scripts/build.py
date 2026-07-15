@@ -39,7 +39,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.9.1"
+PIPELINE_VERSION = "0.10.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -235,6 +235,14 @@ GEO = {
                        "Pasquali, Dunphy & Hunter Williams, June 2026")},
     "per_capita_w": {"roi": 42, "ni": 3,
                      "note": "installed Wth per person - NI dagger"},
+    "population_m": {"roi": 5.3, "ni": 1.92},   # dagger, mid-2026
+    "eflh_h": 2000,   # equivalent full-load heating hours - dagger
+    # European reference points, installed GSHP Wth per person - derived
+    # from EGC/WGC country-update capacities over mid-2020s populations,
+    # dagger: Sweden ~6.7 GWth/10.5m; NL ~2.0 GWth/17.9m (ATES-heavy);
+    # France ~2.6 GWth/68m.
+    "reference_w_pp": {"Sweden": 635, "Netherlands": 110, "France": 38},
+    "ni_capacity_mwth_est": 6.6,   # >60 kW register + domestic - dagger
     "island_today_twh": 0.30,
     "pipeline": [
         "GEMINI (EUR 20m, PEACEPLUS): 3 shallow demos Sligo + Belfast "
@@ -1341,6 +1349,48 @@ def derive_ashp_spf(hdd_daily: dict, anchors=None):
             "params": p}
 
 
+def derive_geo_percap(anchors=None, geo=None):
+    """
+    Ground-source Wth per person - installed today vs the capacity the
+    hero's 20% what-if implies. Requirement = 20% of annual delivered
+    (useful) buildings heat / equivalent full-load hours, per person.
+    Pure, unit tested; all sizing parameters dagger.
+    """
+    a = anchors or ANCHORS
+    g = geo or GEO
+    eflh = g["eflh_h"]
+    pop = g["population_m"]
+
+    def useful_twh(jur):
+        j = a[jur]
+        heat = j["residential_heat_twh"] + j["services_heat_twh"]
+        return heat * sum(sh * a["efficiency"][f]
+                          for f, sh in j["fuel_shares"].items())
+
+    def block(jur, current_mwth):
+        u = useful_twh(jur)
+        need_w = 0.20 * u * 1e12 / eflh          # W of capacity
+        p = pop[jur] * 1e6
+        return {"current_w_pp": round(current_mwth * 1e6 / p, 1),
+                "whatif_w_pp": round(need_w / p, 0),
+                "useful_twh": round(u, 1)}
+
+    roi = block("roi", g["roi"]["capacity_mwth"])
+    ni = block("ni", g["ni_capacity_mwth_est"])
+    pop_i = (pop["roi"] + pop["ni"]) * 1e6
+    cur_i = (g["roi"]["capacity_mwth"] + g["ni_capacity_mwth_est"]) * 1e6
+    need_i = 0.20 * (roi["useful_twh"] + ni["useful_twh"]) * 1e12 / eflh
+    island = {"current_w_pp": round(cur_i / pop_i, 1),
+              "whatif_w_pp": round(need_i / pop_i, 0),
+              "useful_twh": round(roi["useful_twh"] + ni["useful_twh"], 1)}
+    return {"roi": roi, "ni": ni, "island": island, "eflh_h": eflh,
+            "basis": ("20% of delivered buildings heat at "
+                      f"{eflh} equivalent full-load hours - all sizing "
+                      "parameters dagger; current NI capacity dagger. "
+                      "Challenge and input welcome at "
+                      "contact@causewaygt.com")}
+
+
 def derive_cool(feeds, anchors=None):
     """
     The cool side - data-centre waste heat vs the shape of heat demand.
@@ -1531,7 +1581,7 @@ def main():
         "feeds": feeds,
         "derived": derived,
         "events": EVENTS,
-        "geo": GEO,
+        "geo": {**GEO, "percap": derive_geo_percap()},
         "notes": ("Feed statuses - ok: fetched and current; lagging: fetched, "
                   "source publishes on a lag; stale: fetch failed, previous "
                   "values retained. Judgement figures are current Causeway "
