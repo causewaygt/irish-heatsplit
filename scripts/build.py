@@ -39,7 +39,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.5.3"
+PIPELINE_VERSION = "0.6.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -109,6 +109,14 @@ ANCHORS = {
     "efficiency": {"oil": 0.82, "gas": 0.85, "peat": 0.60,
                    "electricity": 1.0, "other": 0.70},          # dagger
     "geothermal_spf": 4.0,                                       # dagger
+    # Air-source heat pump model - all dagger. Carnot-fraction COP against
+    # the HDD-derived, demand-weighted outdoor temperature; defrost derate
+    # for humid Irish winters; DHW share at higher flow. Calibrated to the
+    # GB Electrification of Heat field-trial median (~2.8-2.9) rather than
+    # laboratory SCOP figures.
+    "ashp": {"flow_c": 45.0, "carnot_fraction": 0.38,
+             "defrost_derate": 0.90, "dhw_share": 0.20,
+             "dhw_flow_c": 55.0, "dhw_source_c": 10.0},
     "ef_g_per_kwh": {"oil": 257, "gas": 205, "peat": 340,
                      "other": 100, "electricity": 280},          # dagger -
     # electricity factor replaced by live grid intensity once eirgrid returns
@@ -912,40 +920,124 @@ def feed_ccni_oil():
 
 def feed_gb_oil():
     """
-    GB heating-oil context line - BoilerJuice daily site average (lowest
-    quote per postcode district, kerosene 1000 L, incl 5% VAT), parsed from
-    the server-rendered sentence on the prices page. History accumulates
-    across daily runs. ONS kj5u was the first choice but the series was
-    discontinued at Jan 2025 (confirmed 15 Jul 2026). The chart XHR behind
-    the page would give history in one go - on the browser probe list.
+    GB heating-oil context line, two strategies (SOFT feed):
+      A. BoilerJuice /kerosene-prices/ server-rendered sentence - present
+         on legacy edge renders, absent on the modern template; tried with
+         two user agents since the edge appears to vary by client.
+      B. DESNZ/gov.uk monthly petroleum products table - official, stable,
+         resolved from the statistics landing page at runtime. First
+         contact logs candidate links, sheet names and header rows so the
+         parser can be pinned in one iteration.
+    History accumulates across runs whichever strategy lands.
     """
-    # /heating-oil-prices/ lost the server-rendered sentence in a
-    # redesign; /kerosene-prices/ retains it (confirmed 15 Jul 2026)
-    page = http_get("https://www.boilerjuice.com/kerosene-prices/",
-                    headers={"User-Agent": "Mozilla/5.0 (compatible; "
-                             "ioi-heatsplit/0.5; contact@causewaygt.com)"}).text
-    d, ppl = parse_gb_oil_page(page)
-    if ppl is None:
-        i = page.lower().find("pence per litre")
-        log("gb_oil: sentence not parsed - context:",
-            re.sub(r"\s+", " ", page)[max(0, i - 400):i + 100]
-            if i >= 0 else page[:400])
-        raise ValueError("gb_oil: average-price sentence not found")
-    if d is None:
-        d = today_utc().isoformat()
-        log("gb_oil: date not parsed from sentence - using run date")
-    if d < (today_utc() - dt.timedelta(days=30)).isoformat():
-        log(f"gb_oil: WARNING - page reports {d}, looks like a stale cache; "
-            "storing under reported date, recency will show lagging")
-    log(f"gb_oil: {ppl} p/L at {d}")
+    # --- strategy A: BoilerJuice sentence, two UAs
+    for ua in (UA["User-Agent"],
+               "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+               "AppleWebKit/537.36 (KHTML, like Gecko) "
+               "Chrome/126.0.0.0 Safari/537.36"):
+        try:
+            page = http_get("https://www.boilerjuice.com/kerosene-prices/",
+                            headers={"User-Agent": ua}, retries=1).text
+        except Exception as e:
+            log(f"gb_oil: A fetch failed ({e.__class__.__name__})")
+            continue
+        d, ppl = parse_gb_oil_page(page)
+        if ppl is not None:
+            if d is None:
+                d = today_utc().isoformat()
+            if d < (today_utc() - dt.timedelta(days=30)).isoformat():
+                log(f"gb_oil: A page reports {d} - stale edge cache, "
+                    "storing under reported date")
+            log(f"gb_oil: A (BoilerJuice) {ppl} p/L at {d}")
+            return _gb_oil_out(d, ppl,
+                               "BoilerJuice UK daily average (lowest quote "
+                               "per postcode district, incl 5% VAT)")
+    log("gb_oil: A missed on both UAs - modern template lacks the "
+        "sentence; falling through to DESNZ")
+
+    # --- strategy B: DESNZ monthly petroleum products via gov.uk
+    landing = http_get(
+        "https://www.gov.uk/government/statistical-data-sets/"
+        "monthly-and-annual-prices-of-road-fuels-and-petroleum-products"
+    ).text
+    links = re.findall(r'href="([^"]+\.(?:xlsx|ods|csv))"', landing)
+    cands = [u for u in links
+             if re.search(r"petrol|fuel|oil", urllib.parse.unquote(u), re.I)]
+    log(f"gb_oil: B gov.uk links found: {len(links)}, candidates:",
+        [urllib.parse.unquote(u)[-80:] for u in cands[:8]])
+    hit_d, hit_v = None, None
+    import openpyxl
+    for u in cands[:4]:
+        full = u if u.startswith("http") else "https://www.gov.uk" + u
+        if not full.lower().endswith(".xlsx"):
+            continue
+        try:
+            wb = openpyxl.load_workbook(
+                io.BytesIO(http_get(full, timeout=180).content),
+                read_only=True, data_only=True)
+        except Exception as e:
+            log(f"gb_oil: B {full[-60:]} unreadable ({e.__class__.__name__})")
+            continue
+        log(f"gb_oil: B sheets in {urllib.parse.unquote(full)[-60:]}:",
+            wb.sheetnames[:10])
+        for ws in wb.worksheets:
+            idx_kero, header_seen = None, None
+            for row in ws.iter_rows(values_only=True):
+                cells = [str(c) if c is not None else "" for c in row]
+                joined = " ".join(cells).lower()
+                if idx_kero is None and (
+                        "burning oil" in joined or "kerosene" in joined
+                        or "heating oil" in joined):
+                    for i, c in enumerate(cells):
+                        cl = c.lower()
+                        if "burning" in cl or "kerosene" in cl \
+                                or "heating oil" in cl:
+                            idx_kero = i
+                            header_seen = cells
+                            break
+                    continue
+                if idx_kero is None:
+                    continue
+                rd = None
+                for c in row:
+                    if isinstance(c, dt.datetime):
+                        rd = c.date().isoformat()
+                        break
+                if rd is None:
+                    continue
+                try:
+                    v = float(row[idx_kero])
+                except (TypeError, ValueError, IndexError):
+                    continue
+                if hit_d is None or rd > hit_d:
+                    hit_d, hit_v = rd, v
+            if idx_kero is not None and header_seen:
+                log(f"gb_oil: B sheet '{ws.title}' kerosene col "
+                    f"{idx_kero} in header:", header_seen[:8])
+            if hit_v is not None:
+                break
+        if hit_v is not None:
+            break
+    if hit_v is None:
+        raise ValueError("gb_oil: both strategies missed - B dumps above "
+                         "pin the format for the next iteration")
+    # DESNZ quotes pence per litre for burning oil; sanity-scale if not
+    if hit_v > 500:
+        hit_v = hit_v / 10.0       # p/1000L-style value
+    log(f"gb_oil: B (DESNZ) {round(hit_v, 2)} p/L at {hit_d}")
+    return _gb_oil_out(hit_d, round(hit_v, 2),
+                       "DESNZ monthly average UK retail price, "
+                       "burning oil (kerosene)")
+
+
+def _gb_oil_out(d, ppl, source):
     series = prev_series("gb_oil", "gb_ppl_daily")
     series[d] = ppl
     series = trim_series(clip_days(series))
-    out = {"gb_ppl_daily": series, "latest_day": max(series) if series else None,
-           "source": ("BoilerJuice UK daily average heating oil price - "
-                      "lowest quote per postcode district, kerosene, "
-                      "incl 5% VAT")}
-    return out, recency_status(out["latest_day"], 5)
+    return ({"gb_ppl_daily": series,
+             "latest_day": max(series) if series else None,
+             "source": source},
+            recency_status(max(series) if series else None, 40))
 
 
 # ------------------------------------------------- analysis (pure functions)
@@ -1087,6 +1179,40 @@ def derive_hero(feeds, anchors=None):
     }
 
 
+def derive_ashp_spf(hdd_daily: dict, anchors=None):
+    """
+    Air-source heat pump seasonal performance from the HDD series itself.
+    For heating days T_out = base - HDD, so the demand-weighted source
+    temperature is base - sum(h^2)/sum(h) over the trailing year. COP is a
+    Carnot fraction at 45C flow with a defrost derate, blended (harmonic,
+    energy-weighted) with a DHW share at 55C. All parameters dagger - see
+    ANCHORS["ashp"]. Returns None without a season of data.
+    """
+    a = (anchors or ANCHORS)
+    p = a["ashp"]
+    days = sorted(hdd_daily)[-365:]
+    hs = [hdd_daily[d] for d in days if hdd_daily[d] > 0]
+    if len(hs) < 60 or sum(hs) < 200:
+        return None
+    w = sum(hs)
+    t_src = HDD_BASE_C - sum(h * h for h in hs) / w
+
+    def cop(source_c, flow_c, derate=1.0):
+        lift = flow_c - source_c
+        if lift <= 5:
+            lift = 5.0
+        return p["carnot_fraction"] * (flow_c + 273.15) / lift * derate
+
+    space = cop(t_src, p["flow_c"], p["defrost_derate"])
+    dhw = cop(p["dhw_source_c"], p["dhw_flow_c"])
+    sh = p["dhw_share"]
+    spf = 1.0 / ((1 - sh) / space + sh / dhw)
+    return {"spf": round(spf, 2),
+            "demand_weighted_source_c": round(t_src, 1),
+            "space_cop": round(space, 2), "dhw_cop": round(dhw, 2),
+            "params": p}
+
+
 def derive_heat_gap(feeds, anchors=None):
     """
     Cost of useful heat by route, per jurisdiction, standard tariffs -
@@ -1103,9 +1229,15 @@ def derive_heat_gap(feeds, anchors=None):
     oil_roi_cpl = ob * 100 / 1000 if ob else None
     kwh_l = a["kerosene_kwh_per_litre"]
     eff_oil, eff_gas = a["efficiency"]["oil"], a["efficiency"]["gas"]
-    spf_hp, spf_geo = 3.2, a["geothermal_spf"]
+    spf_geo = a["geothermal_spf"]
+    hddf = feeds.get("hdd") or {}
+    ashp_ni = derive_ashp_spf(hddf.get("hdd_ni") or {}, a)
+    ashp_roi = derive_ashp_spf(hddf.get("hdd_roi") or {}, a)
+    fallback = {"spf": 2.8}   # field-trial median, dagger
+    ashp_ni = ashp_ni or fallback
+    ashp_roi = ashp_roi or fallback
 
-    def jur(oil_pl, elec, gas):
+    def jur(oil_pl, elec, gas, ashp):
         if oil_pl is None:
             return None
         oil_useful = oil_pl / kwh_l / eff_oil
@@ -1113,7 +1245,9 @@ def derive_heat_gap(feeds, anchors=None):
         return {
             "oil_boiler": r2(oil_useful),
             "gas_boiler": r2(gas * 100 / eff_gas),
-            "heat_pump_spf32": r2(elec * 100 / spf_hp),
+            "ashp": r2(elec * 100 / ashp["spf"]),
+            "ashp_spf": ashp["spf"],
+            "ashp_model": {k: v for k, v in ashp.items() if k != "params"},
             "geothermal_spf40": r2(elec * 100 / spf_geo),
             "breakeven_spf_vs_oil": r2(elec * 100 / oil_useful),
             "breakeven_spf_vs_gas": r2(elec * 100 / (gas * 100 / eff_gas)),
@@ -1122,20 +1256,23 @@ def derive_heat_gap(feeds, anchors=None):
         }
 
     ni = jur(oil_ni_ppl, a["retail_gbp_per_kwh"]["electricity"],
-             a["retail_gbp_per_kwh"]["gas"])
+             a["retail_gbp_per_kwh"]["gas"], ashp_ni)
     roi = jur(oil_roi_cpl, a["retail_eur_per_kwh"]["electricity"],
-              a["retail_eur_per_kwh"]["gas"])
+              a["retail_eur_per_kwh"]["gas"], ashp_roi)
     if not (ni and roi):
         return None
     return {
         "ni": ni, "roi": roi, "fx_eur_gbp": fx,
-        "hp_spf": spf_hp, "geo_spf": spf_geo,
+        "geo_spf": spf_geo,
         "basis": ("Standard tariffs, July 2026 pass (Power NI/UR review, "
                   "ROI standard 24h rates) - dagger; time-of-use and night "
                   "tariffs materially lower for heat-pump households. Oil "
-                  "prices live. Kerosene 10.35 kWh/L; boiler efficiencies "
-                  "82%/85% dagger. Challenge and input welcome at "
-                  "contact@causewaygt.com"),
+                  "prices live. ASHP SPF is modelled from each "
+                  "jurisdiction's HDD-weighted climate (Carnot-fraction, "
+                  "defrost derate, DHW share - all dagger), calibrated to "
+                  "GB field-trial medians. Kerosene 10.35 kWh/L; boiler "
+                  "efficiencies 82%/85% dagger. Challenge and input "
+                  "welcome at contact@causewaygt.com"),
     }
 
 
