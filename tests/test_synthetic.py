@@ -18,7 +18,8 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    extract_chart_data_arrays, parse_ccni_series,
                    resolve_oil_bulletin_url, parse_bulletin_rows,
                    parse_semopx_csv, parse_gni_series,
-                   derive_hero, derive_heat_gap, ANCHORS)
+                   derive_hero, derive_heat_gap, ANCHORS,
+                   parse_gb_oil_page)
 
 
 # ------------------------------------------------------------- regression
@@ -317,6 +318,27 @@ def test_heat_gap_missing_oil_returns_none():
     feeds = _hero_fixture_feeds()
     feeds["ccni_oil"] = {}
     assert derive_heat_gap(feeds) is None
+
+
+# ------------------------------------- gb oil sentence - verbatim fixture
+
+GB_SENTENCE = ("Our average heating oil price for today, Saturday 25th "
+               "March 2017\nis 40.32 pence per litre (inc. VAT).")
+
+
+def test_gb_oil_sentence_parse():
+    d, p = parse_gb_oil_page("junk before " + GB_SENTENCE + " junk after")
+    assert d == "2017-03-25" and p == 40.32
+
+
+def test_gb_oil_sentence_no_date():
+    d, p = parse_gb_oil_page(
+        "average heating oil price for today is 82.99 pence per litre")
+    assert d is None and p == 82.99
+
+
+def test_gb_oil_sentence_absent():
+    assert parse_gb_oil_page("no prices here") == (None, None)
 
 
 if __name__ == "__main__":
