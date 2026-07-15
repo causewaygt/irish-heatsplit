@@ -325,6 +325,15 @@ def test_heat_gap_missing_oil_returns_none():
 GB_SENTENCE = ("Our average heating oil price for today, Saturday 25th "
                "March 2017\nis 40.32 pence per litre (inc. VAT).")
 
+# verbatim from the live /kerosene-prices/ template (fetched 15 Jul 2026)
+GB_KERO_SENTENCE = ("Our average Kerosene price for today, Saturday 20th "
+                    "June 2026  \nis 75.36 pence per litre (inc. VAT).")
+
+
+def test_gb_oil_kerosene_wording():
+    d, p = parse_gb_oil_page("junk " + GB_KERO_SENTENCE + " junk")
+    assert d == "2026-06-20" and p == 75.36
+
 
 def test_gb_oil_sentence_parse():
     d, p = parse_gb_oil_page("junk before " + GB_SENTENCE + " junk after")
