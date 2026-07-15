@@ -1,94 +1,125 @@
 # Irish Heat Split
 
-How the island of Ireland heats itself, weekly – a live, self-updating public
-dashboard covering Northern Ireland and the Republic of Ireland. Sibling of
-the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
+**How the island of Ireland heats itself, weekly – and how much of that heat
+no one can see.**
 
-Built and maintained by [Causeway Energies](https://causewaygt.com), Belfast.
-Pipeline version 0.1.0 – scaffold; front end to follow.
+Live site: https://causewaygt.github.io/irish-heatsplit/
+Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
+Built and maintained by [Causeway Energies](https://causewaygt.com)
+(Causeway Geothermal NI Ltd). Version 1.0.0.
 
-## Why a separate Irish site
+## The premise
 
-The island of Ireland is the most oil-heated region in Western Europe – just
-over 60% of NI homes and roughly 35–40% of ROI homes heat with oil delivered
-by tanker. Oil has no grid, no meter, and no daily data feed. Most of
-Ireland's heat is invisible, and that data gap is the story this site tells.
-The gas minority gets the live-regression treatment; oil gets an annual
-anchor shaped by degree days, plus a price ticker with genuine daily pulse.
+The island of Ireland is the most oil-heated corner of Western Europe.
+Oil has no meter, no grid and no daily statistics – the majority of the
+island's heat is invisible to the systems that watch everything else.
+This tracker makes the visible parts visible daily, carries the invisible
+majority as clearly-labelled annual anchors shaped by each week's weather,
+and prices the alternative. The data gap is the story.
+
+## What the site shows
+
+- **Hero** – the week's heat purchased and delivered, indigenous share,
+  bill in both currencies and emissions, toggled all-island / NI / ROI,
+  each jurisdiction shaped by its own heating degree days; plus a what-if
+  strip: the same week with 20% of heat from geothermal heat pumps.
+- **The invisible majority** – delivered building heat split into
+  unmetered (oil, peat, other), gas and electric.
+- **The oil ticker** – NI kerosene daily (Consumer Council survey), ROI
+  weekly (EU Oil Bulletin, with- and without-taxes), both per litre on
+  FX-locked twin axes; GB as a same-tax control line; dashed pre-tax
+  lines making the tax wedge visible; policy events as chart markers.
+  Same fuel, two price regimes, one island.
+- **The gas engine room** – daily ROI gas demand against degree days;
+  the temperature-sensitive slope is space heat.
+- **The heat gap** – cost of one useful kWh by route (oil boiler, gas
+  boiler, air-source heat pump, geothermal), toggled by jurisdiction,
+  with the break-even SPF against the incumbent oil boiler as the
+  headline stat. The ASHP SPF is modelled from each jurisdiction's own
+  climate, not the brochure.
+- **The cool side** – data-centre waste heat against the shape of heat
+  demand; the stranded-summer share is the seasonal-storage (ATES) wedge.
+- **Geothermal – the empty bar** – installed ground-source capacity per
+  person (ROI sourced from the WGC2026 country update; NI from the
+  Causeway register) stacked against what the 20% what-if requires, with
+  Sweden, the Netherlands and France as installed-reality reference
+  points.
+- **Method & sources** – every feed, its status and its flags.
 
 ## Architecture
 
-Zero-maintenance by design. A daily GitHub Actions cron (04:17 UTC) runs
-`scripts/build.py`, which pulls keyless public feeds, computes the week's
-numbers, and commits `docs/data.json`. A self-contained `docs/index.html`
-renders it via GitHub Pages. No servers, no keys, no databases.
+Static site, no backend. A GitHub Action runs `scripts/build.py` daily at
+04:17 UTC, fetching every feed with retries, merging history across runs,
+and writing a single `docs/data.json` (~0.5 MB) that `docs/index.html`
+renders client-side with Plotly. GitHub Pages serves `/docs`.
 
-Every feed runs inside try/except – a failed fetch retains the previous
-values and marks the source stale on-page. Fetch health and data recency are
-tracked as different facts: `ok` (fetched and current), `lagging` (fetched,
-source publishes on a lag), `stale` (fetch failed, previous run retained).
-Feed and report identifiers are resolved from catalogues at runtime, never
-hardcoded; on failure the pipeline dumps available names to the Actions log.
+### Feeds
 
-## Feeds
-
-| Feed | Source | Cadence | Status |
+| Feed | Source | Cadence | Notes |
 |---|---|---|---|
-| Electricity – demand, wind, solar, CO2 intensity (ROI / NI / all-island) | EirGrid Smart Grid Dashboard | 15-min, aggregated daily | live |
-| Degree days – island, ROI, NI (population-weighted, base 15.5 °C) | ERA5 via Open-Meteo | daily | live |
-| EUR/GBP reference rate | European Central Bank | daily | live |
-| Gas – daily demand by sector incl. NDM (history / calibration) | Gas Networks Ireland via data.gov.ie, CC BY 4.0 | daily data, quarterly refresh | live |
-| Gas – daily NDM, near-real-time | GNI Data Transparency portal | daily | pending endpoint probe |
-| Wholesale power price, dual currency | SEMOpx day-ahead market results | D+1 | verify on first run |
-| Heating oil price, ROI (heating gas oil, € per 1 000 L) | European Commission Weekly Oil Bulletin | weekly | verify on first run |
-| Heating oil price, NI (300/500/900 L) | Consumer Council for Northern Ireland | daily Mon–Fri + weekly | pending markup probe |
+| `hdd` | ERA5 via Open-Meteo | daily | population-weighted HDD, island/ROI/NI |
+| `ecb_fx` | ECB reference rates | daily | EUR/GBP twin-currency lock |
+| `ccni_oil` | Consumer Council NI price checker | daily (Mon–Fri) | 300/500/900 L; history merged across runs |
+| `oil_bulletin` | EU Weekly Oil Bulletin | weekly | Ireland heating gas oil, with & without taxes |
+| `gb_oil` | BoilerJuice sentence, DESNZ fallback | daily / monthly | SOFT feed – same-tax GB control line |
+| `gni_live` | Gas Networks Ireland gasconsumption API | daily | ~8-day windows, weekly anchors backfill |
+| `gni_ckan` | GNI via data.gov.ie (CC BY 4.0) | quarterly | calibration series for the regression |
+| `semopx` | SEMOpx day-ahead results | daily | dual-currency power price |
+| `eirgrid` | Smart Grid Dashboard | – | EXPECTED DOWN – endpoint probe pending |
 
-## Methodology spine
+Feed statuses: **ok** (fetched, current), **lagging** (fetched, source
+publishes on a lag), **stale** (fetch failed, previous values retained).
+`SOFT_FEEDS` fail quietly; `EXPECTED_DOWN` feeds are documented outages.
+`FEED_FLAGS` carry value-level caveats distinct from fetch status and
+render as ⚑ in the method table. `EVENTS` is a curated policy-event
+register rendered as chart markers.
 
-Daily non-daily-metered (NDM) gas demand – households and SMEs, power
-stations already excluded – is regressed on population-weighted heating
-degree days. The temperature-sensitive component is space heat
-(Watson/Sansom convention). Trailing figures are calibrated to national
-end-use statistics: SEAI energy balances and the BER database for ROI, DfE
-Energy in Northern Ireland and the NISRA Continuous Household Survey for NI.
-Non-gas fuels – above all oil – are annual anchors shaped by degree days.
-Regression logic is validated against synthetic data with injected seasonal
-confounds before any release (`tests/test_synthetic.py`).
+### Derivations (all pure functions, unit tested)
 
-The ROI Weekly Oil Bulletin product is heating gas oil; Irish homes mostly
-burn kerosene. The adjustment between the two is a Causeway judgement figure
-pending cross-check against the CSO CPI heating-oil sub-index.
+- `derive_hero` – annual anchors shaped by weekly HDD, per jurisdiction,
+  island as the reconciled sum; 20% geothermal what-if.
+- `derive_heat_gap` – useful-heat cost by route at live oil prices and
+  standard tariffs; break-even SPF vs the oil boiler.
+- `derive_ashp_spf` – air-source SPF from the HDD-weighted outdoor
+  temperature via a Carnot-fraction COP with defrost derate and DHW
+  share, calibrated to field-trial medians.
+- `derive_cool` – data-centre waste heat vs demand shape; stranded share.
+- `derive_geo_percap` – installed ground-source Wth per person vs the
+  20% what-if requirement.
+- `space_heat_split` – OLS of daily gas on HDD (naive; month-demeaned
+  estimator to follow before the figure is quoted).
 
-## Sourced vs judged
+## Provenance rules
 
-Figures taken directly from a published source are attributed to it.
-Figures requiring Causeway judgement carry a dagger (†) and the footnote:
-*Current Causeway Energies estimate – challenge and input welcome at
-[contact@causewaygt.com](mailto:contact@causewaygt.com).* That inbox is
-monitored and challenges are wanted.
-
-## Running locally
-
-```
-pip install requests openpyxl
-python3 tests/test_synthetic.py     # synthetic tests, confound-injected
-python3 scripts/build.py            # writes docs/data.json
-```
+Sourced figures cite their publisher. Judgement figures are marked with a
+dagger (†) and are current Causeway Energies estimates – challenge and
+input welcome at contact@causewaygt.com. The NI geothermal register names,
+dates and statuses every system in `data.json`.
 
 ## Versioning
 
-`PIPELINE_VERSION` (and later `SITE_VERSION`) follow x.y.z – x new source or
-panel, y source update, z wording or format.
+`x.y.z` – x: new source or panel; y: source update; z: wording/format.
+Pipeline and site are versioned independently; both are stamped in the
+footer alongside the build time.
 
-## Attribution and licences
+## Development
 
-Contains data from: Gas Networks Ireland (CC BY 4.0, via data.gov.ie);
-EirGrid Group Smart Grid Dashboard; SEMOpx; the European Commission Weekly
-Oil Bulletin; the Consumer Council for Northern Ireland; the European
-Central Bank; and ERA5 (Copernicus Climate Change Service) via Open-Meteo
-(CC BY 4.0). Source data remains the property of the respective publishers;
-exact attribution wording per feed is confirmed as each feed goes live.
+```
+pip install requests openpyxl
+python3 tests/test_synthetic.py   # 31 tests, no network
+python3 scripts/build.py          # full build, writes docs/data.json
+```
 
-Dashboard code and Causeway-derived figures © Causeway Energies
-(Causeway Geothermal NI Ltd). Contact:
-[contact@causewaygt.com](mailto:contact@causewaygt.com).
+Tests validate parsers against verbatim formats captured from live run
+logs, derivations against hand calculations, and the regression against
+synthetic data with injected confounds.
+
+## Attribution
+
+Contains data from Gas Networks Ireland (CC BY 4.0 via data.gov.ie),
+EirGrid Group, SEMOpx, the European Commission Weekly Oil Bulletin, the
+Consumer Council for Northern Ireland, BoilerJuice, the European Central
+Bank, ERA5/Copernicus via Open-Meteo, the WGC2026 Ireland country update
+(Ireland, Blake, Pasquali, Dunphy & Hunter Williams), and NISRA/SEAI/DfE
+publications as cited on the site. Sherwood Sandstone geothermal context:
+Todd et al., *Geoenergy* (2026), doi:10.1144/geoenergy2025-057.
