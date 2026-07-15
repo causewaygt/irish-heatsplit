@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-15T12:28:49+00:00",
+ "built_utc": "2026-07-15T12:59:13+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO 2023-24; totals and waste fraction dagger; stranded share computed from this site's own HDD series - flat supply vs demand shape, annual totals normalised. Challenge and input welcome at contact@causewaygt.com",
@@ -132,15 +132,53 @@
     "space_heat_fraction": 0.72,
     "year": 2024
    },
-   "basis": "Scaffold estimator (dagger throughout) - annual anchors shaped by the week's island HDD; SEAI 2024, DfE/NISRA, Causeway estimates. Challenge and input welcome at contact@causewaygt.com",
+   "basis": "Scaffold estimator (dagger throughout) - annual anchors shaped by each jurisdiction's weekly HDD; SEAI 2024, DfE/NISRA, Causeway estimates. Challenge and input welcome at contact@causewaygt.com",
    "bill_eur_m": 30.2,
    "bill_gbp_m": 25.7,
-   "emissions_kt_co2": 57.5,
+   "emissions_kt_co2": 57.4,
    "hdd_week": 0.0,
    "hdd_year": 1783.5,
-   "heat_delivered_gwh": 195.1,
+   "heat_delivered_gwh": 195.0,
    "heat_purchased_gwh": 235.8,
    "indigenous_share_pct": 13.7,
+   "ni": {
+    "bill_eur_m": 8.2,
+    "bill_gbp_m": 7.0,
+    "emissions_kt_co2": 16.7,
+    "hdd_week": 0.0,
+    "hdd_year": 2011.1,
+    "heat_delivered_gwh": 58.6,
+    "heat_purchased_gwh": 70.0,
+    "indigenous_share_pct": 7.4,
+    "week_ending": "2026-07-15",
+    "what_if_20pct_geothermal": {
+     "bill_eur_m": 7.7,
+     "bill_gbp_m": 6.5,
+     "emissions_kt_co2": 14.2,
+     "geothermal_spf": 4.0,
+     "heat_purchased_gwh": 58.9,
+     "indigenous_share_pct": 23.2
+    }
+   },
+   "roi": {
+    "bill_eur_m": 22.0,
+    "bill_gbp_m": 18.7,
+    "emissions_kt_co2": 40.7,
+    "hdd_week": 0.0,
+    "hdd_year": 1707.1,
+    "heat_delivered_gwh": 136.4,
+    "heat_purchased_gwh": 165.8,
+    "indigenous_share_pct": 16.4,
+    "week_ending": "2026-07-15",
+    "what_if_20pct_geothermal": {
+     "bill_eur_m": 20.0,
+     "bill_gbp_m": 17.1,
+     "emissions_kt_co2": 34.5,
+     "geothermal_spf": 4.0,
+     "heat_purchased_gwh": 139.5,
+     "indigenous_share_pct": 30.2
+    }
+   },
    "week_ending": "2026-07-15",
    "what_if_20pct_geothermal": {
     "bill_eur_m": 27.7,
@@ -192,7 +230,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-15T12:28:39+00:00",
+   "fetched_utc": "2026-07-15T12:59:04+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -492,7 +530,7 @@
   },
   "ecb_fx": {
    "eur_gbp": 0.85215,
-   "fetched_utc": "2026-07-15T12:28:26+00:00",
+   "fetched_utc": "2026-07-15T12:58:48+00:00",
    "gbp_eur": 1.1735,
    "latest_day": "2026-07-14",
    "rate_date": "2026-07-14",
@@ -3436,7 +3474,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-15T12:28:27+00:00",
+   "fetched_utc": "2026-07-15T12:58:50+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15238,7 +15276,7 @@
     "2026-07-12": 4.964,
     "2026-07-13": 6.892
    },
-   "fetched_utc": "2026-07-15T12:28:39+00:00",
+   "fetched_utc": "2026-07-15T12:59:04+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-13",
    "ndm_gwh": {
@@ -15643,7 +15681,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-15T12:28:25+00:00",
+   "fetched_utc": "2026-07-15T12:58:48+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -16863,7 +16901,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-15T12:28:29+00:00",
+   "fetched_utc": "2026-07-15T12:58:53+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -16883,7 +16921,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 146.15,
    "dam_avg_gbp_mwh": 124.72,
-   "fetched_utc": "2026-07-15T12:28:28+00:00",
+   "fetched_utc": "2026-07-15T12:58:51+00:00",
    "latest_day": "2026-07-13",
    "markets": {
     "NI-DA": {
@@ -16900,6 +16938,121 @@
    "trade_day": "2026-07-13"
   }
  },
+ "geo": {
+  "island_today_twh": 0.3,
+  "ni_domestic": {
+   "high": 700,
+   "low": 500,
+   "note": "MCS ~386-450 certified plus pre-certification era estimate - Causeway triangulation, dagger"
+  },
+  "ni_exclusions": [
+   {
+    "detail": "2 x 22 kW",
+    "kw": 44,
+    "site": "Randalstown",
+    "source": "Ryan Daly, Jul 2026"
+   },
+   {
+    "detail": "3 x 6 kW Ecogeo Lite (+3 x 9 kW ASHP out of scope)",
+    "kw": 18,
+    "site": "Strabane",
+    "source": "Ryan Daly, Jul 2026"
+   }
+  ],
+  "ni_register": [
+   {
+    "confirmed": false,
+    "duty": "cooling",
+    "id": "R1",
+    "kw": null,
+    "site": "McClay Library, QUB",
+    "status": "candidate - unconfirmed",
+    "type": "closed vertical",
+    "year": 2009
+   },
+   {
+    "confirmed": true,
+    "duty": "cooling",
+    "id": "R2",
+    "kw": 120,
+    "note": "120 kW demand-inferred, not metered",
+    "site": "Lyric Theatre, Belfast",
+    "status": "operational - minor issues",
+    "type": "open single-well",
+    "year": 2011
+   },
+   {
+    "confirmed": true,
+    "duty": "heating",
+    "id": "R3",
+    "kw": 72,
+    "site": "Giant's Causeway Visitor Centre",
+    "status": "operational",
+    "type": "horizontal mat",
+    "year": 2012
+   },
+   {
+    "confirmed": true,
+    "duty": "heating",
+    "id": "R4",
+    "kw": 108,
+    "site": "Girdwood Community Hub, Belfast",
+    "status": "operational - impaired (~60% of 180 kW design)",
+    "type": "hybrid vertical + slinky",
+    "year": 2016
+   },
+   {
+    "confirmed": true,
+    "duty": "cooling",
+    "id": "R5",
+    "kw": 0,
+    "site": "QUB School of Biological Sciences",
+    "status": "never commissioned (design flow set-point error)",
+    "type": "open doublet",
+    "year": 2018
+   },
+   {
+    "confirmed": true,
+    "duty": "heating + DHW",
+    "id": "R7",
+    "kw": 280,
+    "site": "QUB Business School Student Hub",
+    "status": "operational",
+    "type": "closed vertical, 40 x 125 m, Sherwood Sandstone",
+    "year": 2023
+   },
+   {
+    "confirmed": false,
+    "duty": "heating",
+    "id": "R8",
+    "kw": null,
+    "site": "UU Jordanstown HPSC",
+    "status": "unconfirmed",
+    "type": "GSHP",
+    "year": null
+   }
+  ],
+  "per_capita_w": {
+   "ni": 3,
+   "note": "installed Wth per person - NI dagger",
+   "roi": 42
+  },
+  "pipeline": [
+   "GEMINI (EUR 20m, PEACEPLUS): 3 shallow demos Sligo + Belfast (NIHE, NI Water); deep 2 km at Grangegorman, drilling late 2027",
+   "GeoEnergy NI: Stormont shallow boreholes drilled 2024; CAFRE Greenmount deep doublet consented (LA03/2025/0443/F)",
+   "GSI deep scientific boreholes: BHT 22.6-38 C at 1 km, five completed 2022-2026"
+  ],
+  "roi": {
+   "capacity_mwth": 225,
+   "cooling_gwh": 11.9,
+   "deep_plants": 0,
+   "heat_gwh": 293,
+   "new_2024_mwth": 7.4,
+   "proj_2028_mwth": 261,
+   "source": "WGC2026 Country Update: Ireland - Ireland, Blake, Pasquali, Dunphy & Hunter Williams, June 2026",
+   "units": 20128
+  }
+ },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "0.7.0"
+ "pipeline_version": "0.9.0"
 }
