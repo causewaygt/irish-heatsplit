@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 0.1.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 0.3.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -70,9 +70,16 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
 .err{background:var(--panel);border:1px solid var(--amber);border-radius:6px;
   padding:16px;margin:26px 0;font-size:.85rem}
 .dag{color:var(--amber)}
+.seg{display:flex;gap:8px;margin-bottom:14px}
+.segbtn{background:none;border:1px solid var(--line);border-radius:4px;
+  color:var(--muted);font-family:'Lato',sans-serif;font-weight:700;
+  font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;
+  padding:6px 14px;cursor:pointer}
+.segbtn.active{border-color:var(--green);color:var(--ink)}
 @media(prefers-reduced-motion:no-preference){
   .stat,.panelbox{transition:border-color .2s}
   .stat:hover,.panelbox:hover{border-color:var(--green2)}
+  .segbtn{transition:border-color .15s,color .15s}
 }
 :focus-visible{outline:2px solid var(--green);outline-offset:2px}
 </style>
@@ -121,7 +128,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
       <g id="invSegs"></g>
     </svg>
     <div class="legend">
-      <span><span class="k" style="background:url(#hatch);border:1px solid var(--amber);background:repeating-linear-gradient(45deg,#1c3a44,#1c3a44 4px,#D98E2B 4px,#D98E2B 6px)"></span>Unmetered – oil, peat, other</span>
+      <span><span class="k" style="border:1px solid var(--amber);background:repeating-linear-gradient(45deg,#1c3a44,#1c3a44 4px,#D98E2B 4px,#D98E2B 6px)"></span>Unmetered – oil, peat, other</span>
       <span><span class="k" style="background:var(--petrol)"></span>Gas – metered</span>
       <span><span class="k" style="background:var(--green)"></span>Electric – metered</span>
     </div>
@@ -136,23 +143,40 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
   <div class="split2">
     <div class="panelbox">
       <div class="stat" style="background:none;border:none;padding:0">
-        <div class="lab">Northern Ireland – 900 L, daily survey</div>
+        <div class="lab">Northern Ireland – kerosene, daily survey</div>
         <div class="big" id="oilNI">–</div>
         <div class="sub" id="oilNIdate"></div>
       </div>
       <div style="height:14px"></div>
       <div class="stat" style="background:none;border:none;padding:0">
-        <div class="lab">Republic of Ireland – heating gas oil, 1 000 L, weekly</div>
+        <div class="lab">Republic of Ireland – heating gas oil, weekly bulletin</div>
         <div class="big" id="oilROI">–</div>
         <div class="sub" id="oilROIdate"></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="stat" style="background:none;border:none;padding:0">
+        <div class="lab">Tax in the litre</div>
+        <div class="big" id="oilWedge">–</div>
+        <div class="sub" id="oilWedgeSub"></div>
       </div>
     </div>
     <div class="panelbox"><div id="oilPlot" class="plot" style="min-height:300px"></div></div>
   </div>
-  <p class="note">NI: Consumer Council for Northern Ireland daily price
-    checker. ROI: European Commission Weekly Oil Bulletin – bulletin product
-    is gas oil; most Irish homes burn kerosene, adjustment pending.<span class="dag">†</span>
-    Twin currencies are native here: two price regimes, one island.</p>
+  <p class="note">Per-litre basis so the border gap is price, not basket
+    size – NI from the 900 L survey, ROI from the 1 000 L bulletin, and the
+    two axes locked through the day's ECB rate so vertical position compares
+    directly. Homes on both sides of the border burn the same C2 kerosene;
+    the ROI series arrives under the EU bulletin's "heating gas oil" heading
+    and is treated as an indicator of the ROI heating-oil price
+    level<span class="dag">†</span> pending the official kerosene series.
+    Dashed lines strip the tax – ROI from the bulletin's without-taxes
+    series, NI by removing the 5% VAT, kerosene's only NI tax – so the
+    distance between solid and dashed is the tax wedge, live. The grey line
+    is Great Britain, monthly – the same tax regime as NI, so the NI–GB gap
+    is pure market structure: half a million oil-heated homes in a compact
+    geography make NI's the densest, most competitive kerosene market in
+    Europe. Vertical markers are policy events. Same fuel, two price
+    regimes, one island.</p>
 </section>
 
 <section id="gas" aria-labelledby="gas-h">
@@ -164,6 +188,28 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
     data.gov.ie (CC BY 4.0), quarterly refresh – the live GNI feed lands next.
     Naive OLS shown; month-demeaned estimator to follow before this figure
     is quoted anywhere.</p>
+</section>
+
+<section id="gap" aria-labelledby="gap-h">
+  <h2 id="gap-h">The heat gap <span class="dag">†</span></h2>
+  <div class="panelbox">
+    <div class="seg" role="tablist" aria-label="Jurisdiction">
+      <button class="segbtn active" id="segAll" role="tab">All island</button>
+      <button class="segbtn" id="segNI" role="tab">NI</button>
+      <button class="segbtn" id="segROI" role="tab">ROI</button>
+    </div>
+    <div class="stat" style="background:none;border:none;padding:0 0 10px 0">
+      <div class="lab">Break-even seasonal performance vs the oil boiler</div>
+      <div class="big" id="gapStat">–</div>
+      <div class="sub" id="gapStatSub"></div>
+    </div>
+    <div id="gapPlot" class="plot" style="min-height:300px"></div>
+  </div>
+  <p class="note" id="gapNote">Cost of one useful kWh of heat by route, at
+    live oil prices and standard tariffs<span class="dag">†</span>. The same
+    fuel, the same physics, and the investment signal flips at the border –
+    made almost entirely of tax. Time-of-use and night tariffs materially
+    improve the heat-pump case; this is the standard-tariff view.</p>
 </section>
 
 <section id="geo" aria-labelledby="geo-h">
@@ -195,7 +241,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
       challenge and input welcome at
       <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
     <table aria-label="Feed status detail"><thead>
-      <tr><th>Feed</th><th>Source</th><th>Status</th><th>Latest</th></tr>
+      <tr><th>Feed</th><th>Source</th><th>Status</th><th>Latest</th><th>Flags</th></tr>
     </thead><tbody id="feedTable"></tbody></table>
   </div>
 </section>
@@ -207,9 +253,10 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
     <p>Irish Heat Split – Causeway Energies (Causeway Geothermal NI Ltd).
     Contains data from Gas Networks Ireland (CC BY 4.0 via data.gov.ie),
     EirGrid Group, SEMOpx, the European Commission Weekly Oil Bulletin, the
-    Consumer Council for Northern Ireland, the European Central Bank, and
-    ERA5/Copernicus via Open-Meteo. Sourced figures cite their publisher;
-    daggered figures are ours to defend – <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
+    Consumer Council for Northern Ireland, the Office for National
+    Statistics, the European Central Bank, and ERA5/Copernicus via
+    Open-Meteo. Sourced figures cite their publisher; daggered figures are
+    ours to defend – <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
     <p style="margin-top:8px" id="buildStamp"></p>
   </div>
 </footer>
@@ -237,7 +284,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,
 function statusBadges(feeds){
   const label = {eirgrid:'Electricity', hdd:'Degree days', ecb_fx:'FX',
     gni_ckan:'Gas (calibration)', gni_live:'Gas (live)', semopx:'Power price',
-    oil_bulletin:'Oil € ', ccni_oil:'Oil £'};
+    oil_bulletin:'Oil €', ccni_oil:'Oil £', ons_gb_oil:'Oil GB'};
   const holder = el('badges'); holder.innerHTML='';
   Object.entries(feeds).forEach(([k,f])=>{
     const st = f.pending_note ? 'pending' : (f.status||'stale');
@@ -317,36 +364,94 @@ function invisibleBar(h){
   el('invSegs').innerHTML=out;
 }
 
-function oilTicker(feeds, fx){
+function eventDecoration(events, minDay, maxDay){
+  const shapes=[], notes=[];
+  (events||[]).forEach(e=>{
+    if(e.date < minDay || e.date > maxDay) return;
+    shapes.push({type:'line', x0:e.date, x1:e.date, y0:0, y1:1,
+      yref:'paper', line:{color:CLR.faint, width:1, dash:'dot'}});
+    notes.push({x:e.date, y:0.99, yref:'paper', text:esc(e.jur+': '+e.label),
+      showarrow:false, textangle:-90, xanchor:'right', yanchor:'top',
+      font:{size:9, color:CLR.faint}});
+  });
+  return {shapes, notes};
+}
+
+function oilTicker(feeds, fx, events){
+  fx = fx || 0.855;                       // GBP per EUR, ECB reference
   const ni=((feeds.ccni_oil||{}).series_gbp||{}).daily||{};
   const s900=ni['900l']||{};
   const days=Object.keys(s900).sort();
+  const niPpl = d => s900[d]*100/900;     // pence per litre, 900 L basket
   if(days.length){
     const last=days[days.length-1];
-    el('oilNI').textContent='\u00a3'+fmt(s900[last],2);
-    el('oilNIdate').textContent=last+' \u2013 also \u20ac'+
-      fmt(s900[last]/(fx||0.855),2)+' at ECB rate';
+    el('oilNI').textContent=fmt(niPpl(last),1)+' p/L';
+    el('oilNIdate').textContent=last+' \u2013 \u00a3'+fmt(s900[last],2)+
+      ' per 900 L \u00b7 '+fmt(niPpl(last)/fx,1)+' c/L at ECB rate';
   }
   const roi=(feeds.oil_bulletin||{}).roi_heating_gasoil_eur_per_1000l||{};
   const rdays=Object.keys(roi).sort();
+  const roiCpl = d => roi[d]*100/1000;    // cent per litre, 1 000 L basket
   if(rdays.length){
     const last=rdays[rdays.length-1];
-    el('oilROI').textContent='\u20ac'+fmt(roi[last],2);
-    el('oilROIdate').textContent=last+' \u2013 also \u00a3'+
-      fmt(roi[last]*(fx||0.855),2)+' at ECB rate';
+    el('oilROI').textContent=fmt(roiCpl(last),1)+' c/L';
+    el('oilROIdate').textContent=last+' \u2013 \u20ac'+fmt(roi[last],2)+
+      ' per 1 000 L \u00b7 '+fmt(roiCpl(last)*fx,1)+' p/L at ECB rate';
   }
   if(!days.length && !rdays.length) return;
+  // pre-tax: ROI from the bulletin's without-taxes series; NI by removing
+  // the 5% VAT - kerosene carries no other NI tax, so this is exact
+  const roiNT=(feeds.oil_bulletin||{}).roi_heating_gasoil_eur_per_1000l_ex_tax||{};
+  const ntDays=Object.keys(roiNT).sort();
+  const roiNTCpl = d => roiNT[d]*100/1000;
+  const niPplNT = d => niPpl(d)/1.05;
+  if(days.length && rdays.length && ntDays.length){
+    const dNI=days[days.length-1], dR=rdays[rdays.length-1],
+          dNT=ntDays[ntDays.length-1];
+    const niTax=niPpl(dNI)-niPplNT(dNI);
+    const roiTax=roiCpl(dR)-roiNTCpl(dNT);
+    const wedge=roiTax*fx-niTax;
+    el('oilWedge').textContent=fmt(roiTax,1)+' c/L vs '+fmt(niTax,1)+' p/L';
+    el('oilWedgeSub').textContent='ROI vs NI \u2013 a wedge of \u2248 '+
+      fmt(wedge,1)+' p/L ('+fmt(wedge/fx,1)+' c/L) at ECB rate';
+  }
+  // GB control line - same tax regime as NI, monthly ONS average
+  const gb=(feeds.ons_gb_oil||{}).gb_ppl_monthly||{};
+  const gbDays=Object.keys(gb).sort();
+
+  const pVals = days.map(niPpl).concat(rdays.map(d=>roiCpl(d)*fx))
+    .concat(days.map(niPplNT)).concat(ntDays.map(d=>roiNTCpl(d)*fx))
+    .concat(gbDays.map(d=>gb[d]));
+  const pMin = Math.min.apply(null,pVals)*0.95,
+        pMax = Math.max.apply(null,pVals)*1.05;
   const traces=[];
-  if(days.length) traces.push({x:days,y:days.map(d=>s900[d]),name:'NI 900 L (\u00a3)',
-    mode:'lines',line:{color:CLR.amber,width:2.2}});
-  if(rdays.length) traces.push({x:rdays,y:rdays.map(d=>roi[d]),
-    name:'ROI 1 000 L (\u20ac)',yaxis:'y2',mode:'lines+markers',
+  if(days.length) traces.push({x:days,y:days.map(niPpl),
+    name:'NI retail \u2013 p/L',mode:'lines',
+    line:{color:CLR.amber,width:2.2}});
+  if(days.length) traces.push({x:days,y:days.map(niPplNT),
+    name:'NI pre-tax',mode:'lines',
+    line:{color:CLR.amber,width:1.4,dash:'dash'}});
+  if(rdays.length) traces.push({x:rdays,y:rdays.map(roiCpl),
+    name:'ROI retail \u2013 c/L',yaxis:'y2',mode:'lines+markers',
     line:{color:CLR.green,width:2},marker:{size:5}});
+  if(ntDays.length) traces.push({x:ntDays,y:ntDays.map(roiNTCpl),
+    name:'ROI pre-tax',yaxis:'y2',mode:'lines+markers',
+    line:{color:CLR.green,width:1.2,dash:'dash'},marker:{size:4}});
+  if(gbDays.length) traces.push({x:gbDays,y:gbDays.map(d=>gb[d]),
+    name:'GB retail \u2013 p/L (ONS, monthly)',mode:'lines',
+    line:{color:CLR.faint,width:1.6,dash:'dot'}});
+
+  const allDays=days.concat(rdays,gbDays).sort();
+  const deco=eventDecoration(events, allDays[0]||'2025-01-01',
+    '2026-12-31');
   Plotly.newPlot('oilPlot',traces,Object.assign({},PL_BASE,{
-    yaxis:Object.assign({},PL_BASE.yaxis,{title:'\u00a3 / 900 L',titlefont:{color:CLR.amber}}),
-    yaxis2:{overlaying:'y',side:'right',title:'\u20ac / 1 000 L',
-      gridcolor:'rgba(0,0,0,0)',titlefont:{color:CLR.green}},
-    legend:{orientation:'h',y:1.12},
+    yaxis:Object.assign({},PL_BASE.yaxis,{title:'pence / litre',
+      range:[pMin,pMax],titlefont:{color:CLR.amber}}),
+    yaxis2:{overlaying:'y',side:'right',title:'cent / litre',
+      range:[pMin/fx,pMax/fx],gridcolor:'rgba(0,0,0,0)',
+      titlefont:{color:CLR.green}},
+    legend:{orientation:'h',y:1.16},
+    shapes:deco.shapes, annotations:deco.notes,
   }),CONF);
 }
 
@@ -375,7 +480,78 @@ function gasEngine(feeds, derived){
   }),CONF);
 }
 
-function geoBar(h){
+function heatGap(D){
+  const hg=(D.derived||{}).heat_gap;
+  if(!hg){
+    el('gapStat').textContent='\u2013';
+    el('gapPlot').textContent='Waiting for the first build with live oil prices.';
+    return;
+  }
+  const cats=['Oil boiler 82%\u2020','Gas boiler 85%\u2020',
+              'Heat pump SPF '+hg.hp_spf+'\u2020',
+              'Geothermal SPF '+hg.geo_spf+'\u2020'];
+  const vals=j=>[j.oil_boiler,j.gas_boiler,j.heat_pump_spf32,j.geothermal_spf40];
+  const fx=hg.fx_eur_gbp||0.855;
+  const perBarColors=[CLR.faint,CLR.petrol,CLR.teal,CLR.green];
+
+  function render(state){
+    ['segAll','segNI','segROI'].forEach(id=>el(id).classList.remove('active'));
+    let traces, ytitle;
+    if(state==='ni'){
+      el('segNI').classList.add('active');
+      traces=[{x:cats,y:vals(hg.ni),type:'bar',width:.55,
+        marker:{color:perBarColors},
+        text:vals(hg.ni).map(v=>fmt(v,1)+'p'),textposition:'outside',
+        textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
+      ytitle='pence per useful kWh';
+      el('gapStat').textContent='SPF '+fmt(hg.ni.breakeven_spf_vs_oil,2);
+      el('gapStatSub').textContent='NI \u2013 above this, electric heat beats '+
+        'untaxed kerosene; below it, nothing does. Oil at '+
+        fmt(hg.ni.inputs.oil_per_litre,1)+' p/L, tariff '+
+        fmt(hg.ni.inputs.electricity_per_kwh*100,1)+' p/kWh\u2020';
+    } else if(state==='roi'){
+      el('segROI').classList.add('active');
+      traces=[{x:cats,y:vals(hg.roi),type:'bar',width:.55,
+        marker:{color:perBarColors},
+        text:vals(hg.roi).map(v=>fmt(v,1)+'c'),textposition:'outside',
+        textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
+      ytitle='cent per useful kWh';
+      el('gapStat').textContent='SPF '+fmt(hg.roi.breakeven_spf_vs_oil,2);
+      el('gapStatSub').textContent='ROI \u2013 an ordinary heat pump already '+
+        'clears this. Oil at '+fmt(hg.roi.inputs.oil_per_litre,1)+
+        ' c/L, tariff '+fmt(hg.roi.inputs.electricity_per_kwh*100,1)+
+        ' c/kWh\u2020';
+    } else {
+      el('segAll').classList.add('active');
+      traces=[
+        {x:cats,y:vals(hg.ni).map(v=>v/fx),type:'bar',name:'NI',width:.32,
+         marker:{color:CLR.amber},
+         text:vals(hg.ni).map(v=>fmt(v/fx,1)+'c'),textposition:'outside',
+         textfont:{family:'IBM Plex Mono',size:10,color:CLR.muted}},
+        {x:cats,y:vals(hg.roi),type:'bar',name:'ROI',width:.32,
+         marker:{color:CLR.green},
+         text:vals(hg.roi).map(v=>fmt(v,1)+'c'),textposition:'outside',
+         textfont:{family:'IBM Plex Mono',size:10,color:CLR.muted}}];
+      ytitle='euro cent per useful kWh (ECB rate)';
+      el('gapStat').textContent='SPF '+fmt(hg.ni.breakeven_spf_vs_oil,2)+
+        ' (NI) \u00b7 '+fmt(hg.roi.breakeven_spf_vs_oil,2)+' (ROI)';
+      el('gapStatSub').textContent='Same fuel, same physics \u2013 the '+
+        'investment signal flips at the border, and the flip is made of tax';
+    }
+    Plotly.newPlot('gapPlot',traces,Object.assign({},PL_BASE,{
+      barmode:'group',
+      yaxis:Object.assign({},PL_BASE.yaxis,{title:ytitle,rangemode:'tozero'}),
+      legend:{orientation:'h',y:1.12},
+      margin:{l:56,r:20,t:30,b:60},
+    }),CONF);
+  }
+  el('segAll').onclick=()=>render('all');
+  el('segNI').onclick=()=>render('ni');
+  el('segROI').onclick=()=>render('roi');
+  render('all');
+}
+
+function geoBar(){
   const cats=['Today','2031','2050'];
   const vals=[0.05, 1.5, 6.0];   // TWh/yr, dagger placeholders pending pass
   Plotly.newPlot('geoPlot',[{x:cats,y:vals,type:'bar',
@@ -392,9 +568,10 @@ function geoBar(h){
 function feedTable(feeds){
   el('feedTable').innerHTML=Object.entries(feeds).map(([k,f])=>{
     const st=f.pending_note?'pending probe':(f.status||'stale');
+    const flags=(f.flags||[]).map(esc).join('; ');
     return '<tr><td class="mono">'+esc(k)+'</td><td>'+esc(f.source||'')+
       '</td><td>'+esc(st)+'</td><td class="mono">'+esc(f.latest_day||'\u2013')+
-      '</td></tr>';
+      '</td><td>'+(flags?'\u2691 '+flags:'')+'</td></tr>';
   }).join('');
 }
 
@@ -408,11 +585,12 @@ fetch('data.json').then(r=>{
   else el('heroCards').innerHTML='<div class="stat"><div class="lab">Hero</div>'+
     '<div class="sub">Waiting for the first build with degree-day history \u2013 '+
     'check back after the next daily run.</div></div>';
-  oilTicker(D.feeds||{}, ((D.feeds||{}).ecb_fx||{}).eur_gbp);
+  oilTicker(D.feeds||{}, ((D.feeds||{}).ecb_fx||{}).eur_gbp, D.events);
   gasEngine(D.feeds||{}, D.derived);
-  geoBar(hero);
+  heatGap(D);
+  geoBar();
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 0.1.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 0.3.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
