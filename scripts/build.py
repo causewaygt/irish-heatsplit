@@ -39,7 +39,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.6.0"
+PIPELINE_VERSION = "0.7.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -134,6 +134,15 @@ ANCHORS = {
     # heat-pump households; see heat_gap basis note.
     "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},
     "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.325},
+    # The cool side - data-centre waste heat anchors.
+    #  dc_share: CSO metered consumption ~21-22% of ROI electricity (2023-24,
+    #    sourced); 29% projected by 2028 (cited in sector reporting).
+    #  roi_elec_twh: total final electricity ~31 TWh - dagger.
+    #  waste_heat_fraction: essentially all DC electricity exits as
+    #    low-grade heat - dagger 0.97.
+    "cool": {"dc_share_of_roi_elec": 0.22, "dc_share_2028": 0.29,
+             "roi_elec_twh": 31.0, "waste_heat_fraction": 0.97,
+             "dh_share_of_national_heat": 0.01},
 }
 
 # Policy events rendered as chart annotations - date, jurisdiction, label.
@@ -146,6 +155,8 @@ EVENTS = [
      "label": "NORA levy paused (two months)"},
     {"date": "2026-05-01", "jur": "ROI",
      "label": "Heating-fuel carbon increase postponed"},
+    {"date": "2026-07-13", "jur": "ROI",
+     "label": "Heat Bill advanced \u2013 district heating framework"},
     {"date": "2026-10-14", "jur": "ROI",
      "label": "Carbon tax \u20ac63.50\u2192\u20ac71/t \u2013 heating fuels (due)"},
 ]
@@ -1213,6 +1224,49 @@ def derive_ashp_spf(hdd_daily: dict, anchors=None):
             "params": p}
 
 
+def derive_cool(feeds, anchors=None):
+    """
+    The cool side - data-centre waste heat vs the shape of heat demand.
+    Supply is flat across the year; demand follows HDD. With annual totals
+    normalised, the stranded share is the part of a flat supply produced
+    when demand runs below it - the seasonal-storage (ATES) wedge. Pure,
+    unit tested.
+    """
+    a = (anchors or ANCHORS)
+    c = a["cool"]
+    hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
+    days = sorted(hdd)[-365:]
+    if len(days) < 200:
+        return None
+    hs = [hdd[d] for d in days]
+    total = sum(hs)
+    if total <= 0:
+        return None
+    n = len(hs)
+    flat = 1.0 / n
+    stranded = sum(max(0.0, flat - h / total) for h in hs)
+    heating_days_pct = 100.0 * sum(1 for h in hs if h > 0.5) / n
+
+    dc_twh = c["roi_elec_twh"] * c["dc_share_of_roi_elec"]
+    waste_twh = dc_twh * c["waste_heat_fraction"]
+    res_twh = a["roi"]["residential_heat_twh"]
+    r1 = lambda x: round(x, 1)
+    return {
+        "dc_twh": r1(dc_twh), "waste_heat_twh": r1(waste_twh),
+        "dc_share_pct": r1(100 * c["dc_share_of_roi_elec"]),
+        "dc_share_2028_pct": r1(100 * c["dc_share_2028"]),
+        "waste_vs_roi_residential_pct": r1(100 * waste_twh / res_twh),
+        "stranded_summer_pct": r1(100 * stranded),
+        "heating_days_pct": r1(heating_days_pct),
+        "dh_share_pct": r1(100 * c["dh_share_of_national_heat"]),
+        "basis": ("DC electricity share CSO 2023-24; totals and waste "
+                  "fraction dagger; stranded share computed from this "
+                  "site's own HDD series - flat supply vs demand shape, "
+                  "annual totals normalised. Challenge and input welcome "
+                  "at contact@causewaygt.com"),
+    }
+
+
 def derive_heat_gap(feeds, anchors=None):
     """
     Cost of useful heat by route, per jurisdiction, standard tariffs -
@@ -1345,6 +1399,11 @@ def main():
     hg = derive_heat_gap(feeds)
     if hg:
         derived["heat_gap"] = hg
+    cool = derive_cool(feeds)
+    if cool:
+        derived["cool"] = cool
+        log("cool: stranded summer share",
+            cool["stranded_summer_pct"], "%")
         log("heat_gap: breakeven SPF vs oil - NI",
             hg["ni"]["breakeven_spf_vs_oil"], "ROI",
             hg["roi"]["breakeven_spf_vs_oil"])
