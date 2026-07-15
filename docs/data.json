@@ -1,6 +1,17 @@
 {
- "built_utc": "2026-07-15T12:20:54+00:00",
+ "built_utc": "2026-07-15T12:28:49+00:00",
  "derived": {
+  "cool": {
+   "basis": "DC electricity share CSO 2023-24; totals and waste fraction dagger; stranded share computed from this site's own HDD series - flat supply vs demand shape, annual totals normalised. Challenge and input welcome at contact@causewaygt.com",
+   "dc_share_2028_pct": 29.0,
+   "dc_share_pct": 22.0,
+   "dc_twh": 6.8,
+   "dh_share_pct": 1.0,
+   "heating_days_pct": 76.2,
+   "stranded_summer_pct": 34.2,
+   "waste_heat_twh": 6.6,
+   "waste_vs_roi_residential_pct": 29.7
+  },
   "heat_gap": {
    "basis": "Standard tariffs, July 2026 pass (Power NI/UR review, ROI standard 24h rates) - dagger; time-of-use and night tariffs materially lower for heat-pump households. Oil prices live. ASHP SPF is modelled from each jurisdiction's HDD-weighted climate (Carnot-fraction, defrost derate, DHW share - all dagger), calibrated to GB field-trial medians. Kerosene 10.35 kWh/L; boiler efficiencies 82%/85% dagger. Challenge and input welcome at contact@causewaygt.com",
    "fx_eur_gbp": 0.85215,
@@ -55,6 +66,13 @@
      "dhw_share": 0.2,
      "dhw_source_c": 10.0,
      "flow_c": 45.0
+    },
+    "cool": {
+     "dc_share_2028": 0.29,
+     "dc_share_of_roi_elec": 0.22,
+     "dh_share_of_national_heat": 0.01,
+     "roi_elec_twh": 31.0,
+     "waste_heat_fraction": 0.97
     },
     "ef_g_per_kwh": {
      "electricity": 280,
@@ -162,6 +180,11 @@
    "label": "Heating-fuel carbon increase postponed"
   },
   {
+   "date": "2026-07-13",
+   "jur": "ROI",
+   "label": "Heat Bill advanced \u2013 district heating framework"
+  },
+  {
    "date": "2026-10-14",
    "jur": "ROI",
    "label": "Carbon tax \u20ac63.50\u2192\u20ac71/t \u2013 heating fuels (due)"
@@ -169,7 +192,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-15T12:20:46+00:00",
+   "fetched_utc": "2026-07-15T12:28:39+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -469,7 +492,7 @@
   },
   "ecb_fx": {
    "eur_gbp": 0.85215,
-   "fetched_utc": "2026-07-15T12:20:31+00:00",
+   "fetched_utc": "2026-07-15T12:28:26+00:00",
    "gbp_eur": 1.1735,
    "latest_day": "2026-07-14",
    "rate_date": "2026-07-14",
@@ -3413,7 +3436,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-15T12:20:32+00:00",
+   "fetched_utc": "2026-07-15T12:28:27+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15215,7 +15238,7 @@
     "2026-07-12": 4.964,
     "2026-07-13": 6.892
    },
-   "fetched_utc": "2026-07-15T12:20:45+00:00",
+   "fetched_utc": "2026-07-15T12:28:39+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-13",
    "ndm_gwh": {
@@ -15620,7 +15643,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-15T12:20:31+00:00",
+   "fetched_utc": "2026-07-15T12:28:25+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -16840,7 +16863,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-15T12:20:34+00:00",
+   "fetched_utc": "2026-07-15T12:28:29+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -16860,7 +16883,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 146.15,
    "dam_avg_gbp_mwh": 124.72,
-   "fetched_utc": "2026-07-15T12:20:33+00:00",
+   "fetched_utc": "2026-07-15T12:28:28+00:00",
    "latest_day": "2026-07-13",
    "markets": {
     "NI-DA": {
@@ -16878,5 +16901,5 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "0.6.0"
+ "pipeline_version": "0.7.0"
 }
