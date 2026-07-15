@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 0.4.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 0.5.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -215,6 +215,52 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.78rem}
     brochure. Geothermal's stable source temperature is exactly why its SPF
     escapes this ceiling. Time-of-use and night tariffs materially improve
     the heat-pump case; this is the standard-tariff view.</p>
+</section>
+
+<section id="cool" aria-labelledby="cool-h">
+  <h2 id="cool-h">The cool side <span class="dag">†</span></h2>
+  <div class="split2">
+    <div class="panelbox">
+      <div class="grid4" style="grid-template-columns:1fr 1fr">
+        <div class="stat" style="background:none;border:none;padding:0">
+          <div class="lab">Data-centre share of ROI electricity</div>
+          <div class="big" id="coolShare">–</div>
+          <div class="sub" id="coolShareSub"></div>
+        </div>
+        <div class="stat" style="background:none;border:none;padding:0">
+          <div class="lab">Waste heat, every year</div>
+          <div class="big" id="coolWaste">–</div>
+          <div class="sub" id="coolWasteSub"></div>
+        </div>
+        <div class="stat" style="background:none;border:none;padding:0">
+          <div class="lab">Produced when demand is low</div>
+          <div class="big" id="coolStranded">–</div>
+          <div class="sub">of a flat supply, against this site's own
+            degree-day record – the seasonal-storage wedge</div>
+        </div>
+        <div class="stat" style="background:none;border:none;padding:0">
+          <div class="lab">Irish heat served by heat networks today</div>
+          <div class="big" id="coolDH">–</div>
+          <div class="sub">IrDEA – against a National Heat Study potential
+            above 50%</div>
+        </div>
+      </div>
+    </div>
+    <div class="panelbox"><div id="coolPlot" class="plot" style="min-height:300px"></div></div>
+  </div>
+  <p class="note">Ireland's cooling story is the data-centre story: server
+    heat is rejected at a near-constant rate all year, while the island's
+    heat demand follows the weather – the chart shows both shapes with
+    annual totals matched. The winter deficit and summer surplus are the
+    same energy in the wrong season, and moving heat across seasons is
+    what aquifer thermal energy storage exists to do – charge the aquifer
+    with summer rejection, discharge it into the winter peak. Tallaght has
+    proven the loop since 2023, boosting data-centre heat to 80&#8202;°C for
+    public buildings and homes; the Heat Bill advanced by Cabinet this week
+    builds the framework, and the EU Energy Efficiency Directive already
+    requires facilities above 1&#8202;MW to assess and implement waste-heat
+    recovery unless certified infeasible. The heat is there, the mandate is
+    arriving – the missing infrastructure is seasonal.</p>
 </section>
 
 <section id="geo" aria-labelledby="geo-h">
@@ -561,6 +607,41 @@ function heatGap(D){
   render('all');
 }
 
+function coolSide(D){
+  const c=(D.derived||{}).cool;
+  if(!c){el('coolPlot').textContent='Waiting for a season of degree-day data.';return}
+  el('coolShare').textContent=fmt(c.dc_share_pct,0)+' %';
+  el('coolShareSub').textContent='CSO metered consumption \u00b7 '+
+    fmt(c.dc_share_2028_pct,0)+' % expected by 2028';
+  el('coolWaste').textContent='\u2248 '+fmt(c.waste_heat_twh,1)+' TWh\u2020';
+  el('coolWasteSub').textContent=fmt(c.waste_vs_roi_residential_pct,0)+
+    ' % of ROI residential heat demand, as low-grade heat';
+  el('coolStranded').textContent=fmt(c.stranded_summer_pct,0)+' %';
+  el('coolDH').textContent='< '+fmt(c.dh_share_pct,0)+' %';
+
+  const hdd=((D.feeds||{}).hdd||{}).hdd_island||{};
+  const days=Object.keys(hdd).sort().slice(-365);
+  if(days.length<60) return;
+  // weekly demand shape vs flat supply, annual totals matched (=100)
+  const wk=[],wd=[];let acc=0,cnt=0,tot=0;
+  days.forEach(d=>{tot+=hdd[d]});
+  days.forEach((d,i)=>{acc+=hdd[d];cnt++;
+    if(cnt===7||i===days.length-1){wd.push(d);wk.push(acc);acc=0;cnt=0}});
+  const weeks=wk.length, flat=100/weeks;
+  const dem=wk.map(v=>tot>0?100*v/tot:0);
+  Plotly.newPlot('coolPlot',[
+    {x:wd,y:dem,name:'Heat demand shape (HDD, weekly)',mode:'lines',
+     fill:'tozeroy',line:{color:CLR.petrol,width:1.6},
+     fillcolor:'rgba(31,78,95,.35)'},
+    {x:wd,y:wd.map(()=>flat),name:'Data-centre heat (flat)',mode:'lines',
+     line:{color:CLR.amber,width:2,dash:'dash'}},
+  ],Object.assign({},PL_BASE,{
+    yaxis:Object.assign({},PL_BASE.yaxis,{title:'% of annual total / week',
+      rangemode:'tozero'}),
+    legend:{orientation:'h',y:1.14},
+  }),CONF);
+}
+
 function geoBar(){
   const cats=['Today','2031','2050'];
   const vals=[0.05, 1.5, 6.0];   // TWh/yr, dagger placeholders pending pass
@@ -598,9 +679,10 @@ fetch('data.json').then(r=>{
   oilTicker(D.feeds||{}, ((D.feeds||{}).ecb_fx||{}).eur_gbp, D.events);
   gasEngine(D.feeds||{}, D.derived);
   heatGap(D);
+  coolSide(D);
   geoBar();
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 0.4.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 0.5.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
