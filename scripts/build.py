@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """
-Irish Heat Split - daily build pipeline. PIPELINE_VERSION 0.5.0.
+Irish Heat Split - daily build pipeline. PIPELINE_VERSION 1.0.0.
 
 Changelog:
+  1.0.0 - launch. Geothermal register + WGC2026 ROI anchors + per-capita
+          what-if derivation with European reference points; per-
+          jurisdiction hero; climate-modelled ASHP SPF; cool-side panel;
+          events, flags and soft-feed registers.
+  0.x   - see below.
   0.5.0 - ONS GB heating-oil feed (kj5u - same-tax control for the NI-GB
           market-structure gap); EVENTS register rendered as chart
           annotations; FEED_FLAGS register for value-level caveats distinct
@@ -39,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "0.10.1"
+PIPELINE_VERSION = "1.0.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
