@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 1.2.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 1.2.2
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -455,15 +455,18 @@ function statusBadges(feeds){
 function sparkBox(D){
   const hg=(D.derived||{}).heat_gap, box=el('sparkBox');
   if(!box) return;
-  if(!hg){box.textContent='Border gap arrives with the next build.';return}
-  const fx=hg.fx_eur_gbp||0.855;
-  const ni=hg.ni.inputs.oil_per_litre;               // p/L
-  const roi_p=hg.roi.inputs.oil_per_litre*fx;        // c/L -> p/L
+  if(!hg){box.textContent='Heat spark gap arrives with the next build.';return}
   const d=(((D.feeds||{}).ccni_oil)||{}).latest_day||'';
-  box.innerHTML='Border gap'+(d?' ('+esc(d)+')':'')+
-    ': same kerosene \u2013 NI '+fmt(ni,1)+' p/L vs ROI \u2248'+
-    fmt(roi_p,1)+' p/L at ECB rate \u2014 <b>the border is worth '+
-    fmt(roi_p-ni,1)+' p/L</b>';
+  function leg(j,cur){
+    const oil=j.oil_boiler*10, geo=j.geothermal_spf40*10;
+    const diff=oil-geo;
+    const win=diff>=0?'ground wins by':'oil wins by';
+    return cur+fmt(oil,0)+' vs '+cur+fmt(geo,0)+'/MWh \u2014 <b>'+
+      win+' '+cur+fmt(Math.abs(diff),1)+'</b>';
+  }
+  box.innerHTML='Heat spark gap'+(d?' ('+esc(d)+')':'')+
+    ': oil-boiler heat vs geothermal\u2020 \u2014 NI '+
+    leg(hg.ni,'\u00a3')+' \u00b7 ROI '+leg(hg.roi,'\u20ac');
   const up=el('updatedLine');
   if(up) up.textContent='updated '+(D.built_utc||'').slice(0,10)+
     ' \u00b7 week ending '+((((D.derived||{}).hero)||{}).week_ending||'');
@@ -929,7 +932,7 @@ fetch('data.json').then(r=>{
   coolSide(D);
   geoPanel(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 1.2.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 1.2.2 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
