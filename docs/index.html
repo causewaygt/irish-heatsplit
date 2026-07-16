@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 1.0.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 1.1.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -8,6 +8,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Irish Heat Split – how the island of Ireland heats itself, weekly</title>
 <meta name="description" content="A live weekly picture of heat on the island of Ireland – oil, gas, electricity and the geothermal alternative. Most of Ireland's heat has no meter: this site makes it visible.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Irish Heat Split – how the island of Ireland heats itself, weekly">
+<meta property="og:description" content="Live tracker: the island's heat bill, the oil price at the border, the tax in the litre, and the geothermal alternative. Most of Ireland's heat has no meter – this site makes it visible.">
+<meta property="og:url" content="https://causewaygt.github.io/irish-heatsplit/">
+<meta property="og:image" content="https://causewaygt.github.io/irish-heatsplit/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Irish Heat Split – how the island of Ireland heats itself, weekly">
+<meta name="twitter:description" content="Same fuel, two price regimes, one island. A live, self-updating public tracker by Causeway Energies.">
+<meta name="twitter:image" content="https://causewaygt.github.io/irish-heatsplit/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
@@ -47,7 +56,7 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 .stat .sub{font-size:.76rem;color:var(--faint);margin-top:4px}
 .whatif{margin-top:16px;background:linear-gradient(0deg,rgba(47,143,140,.14),rgba(47,143,140,.14));
   border:1px solid var(--teal);border-radius:6px;padding:14px 16px}
-.whatif .wtitle{font-size:.76rem;text-transform:uppercase;letter-spacing:.1em;
+.whatif .wtitle{font-size:1.02rem;text-transform:uppercase;letter-spacing:.1em;
   color:var(--teal);font-weight:700;margin-bottom:10px}
 .whatif .wtitle .wbig{font-size:2em;line-height:1;vertical-align:-.08em}
 .wrow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -178,11 +187,11 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     level<span class="dag">†</span> pending the official kerosene series.
     Dashed lines strip the tax – ROI from the bulletin's without-taxes
     series, NI by removing the 5% VAT, kerosene's only NI tax – so the
-    distance between solid and dashed is the tax wedge, live. The grey line
+    distance between solid and dashed is the tax wedge, live. <span id="gbNote" hidden>The grey line
     is Great Britain, daily – the same tax regime as NI, so the NI–GB gap
     is pure market structure: half a million oil-heated homes in a compact
     geography make NI's the densest, most competitive kerosene market in
-    Europe. Vertical markers are policy events. Same fuel, two price
+    Europe.</span> Vertical markers are policy events. Same fuel, two price
     regimes, one island.</p>
 </section>
 
@@ -193,8 +202,8 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     power stations excluded) against population-weighted heating degree days.
     The temperature-sensitive slope is space heat. Calibration series via
     data.gov.ie (CC BY 4.0), quarterly refresh – the live GNI feed lands next.
-    Naive OLS shown; month-demeaned estimator to follow before this figure
-    is quoted anywhere.</p>
+    The slope is estimated within months (month-demeaned OLS), removing
+    seasonal confounds such as holidays and baseload drift.</p>
 </section>
 
 <section id="gap" aria-labelledby="gap-h">
@@ -302,25 +311,26 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <div id="geoPlot" class="plot" style="min-height:300px"></div>
     </div>
   </div>
-  <p class="note">The chart prices the what-if strip in hardware: the solid
-    base of each bar is ground-source capacity installed today, per person;
-    the pale stack above is the capacity the 20% scenario implies – a fifth
-    of delivered buildings heat at 2,000 equivalent full-load
-    hours<span class="dag">†</span>. Today's entire stock is the sliver at
-    the base – while the diamonds on the right are not scenarios but
-    installed reality elsewhere: Sweden already operates above the
-    island's what-if line, one home in five<span class="dag">†</span>, and
-    France sits level with ROI today. NI needs the most per person precisely because it is the most
+  <p class="note">The chart prices the what-if strip in hardware, in
+    installed thermal megawatts: the solid green base of each island bar is
+    ground-source capacity operating today; the pale stack is what serving
+    20% of delivered buildings heat requires at 2,000 equivalent full-load
+    hours<span class="dag">†</span>. Today's entire island stock is the
+    sliver at the base – NI's barely renders. The three bars on the right
+    are not scenarios but installed reality elsewhere: Sweden's
+    ground-source fleet alone is nearly twice the island's whole what-if
+    requirement, while the Netherlands and France add a second layer the
+    island has none of – deeper geothermal, the Dutch doublet fleet and the
+    Paris Basin networks<span class="dag">†</span>. NI needs the most new
+    capacity relative to its size precisely because it is the most
     oil-heated; its documented track record above 60 kW – every system
     named, dated and statused in data.json, including one never
     commissioned through a design error and one running at 60% through an
     installation error – totals ≈0.6 MWth<span class="dag">†</span>. ROI's
     market grew fast to 2009, stalled, and is now 85% residential with
-    ground-source at 4% of heat-pump sales – remaining growth is migrating
-    to exactly the infrastructure-scale systems the WGC2026 authors
-    describe. The Permo-Triassic Sherwood Sandstone beneath
-    Northern Ireland can supply heat at town scale (Todd et al.,
-    <em>Geoenergy</em>, 2026 –
+    ground-source at 4% of heat-pump sales. The Permo-Triassic Sherwood
+    Sandstone beneath Northern Ireland can supply heat at town scale
+    (Todd et al., <em>Geoenergy</em>, 2026 –
     <a href="https://doi.org/10.1144/geoenergy2025-057">10.1144/geoenergy2025-057</a>).
     ROI anchors: WGC2026 Country Update. Corrections welcome at
     <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
@@ -568,6 +578,7 @@ function oilTicker(feeds, fx, events){
     name:'GB retail \u2013 p/L (daily avg)',mode:'lines',
     line:{color:CLR.faint,width:1.6,dash:'dot'}});
 
+  if(gbDays.length){var _gn=el('gbNote'); if(_gn) _gn.hidden=false;}
   const allDays=days.concat(rdays,gbDays).sort();
   const deco=eventDecoration(events, allDays[0]||'2025-01-01',
     '2026-12-31');
@@ -597,7 +608,7 @@ function gasEngine(feeds, derived){
   if(reg){
     const xs=[0,Math.max.apply(null,x)];
     traces.push({x:xs,y:xs.map(v=>reg.baseload_gwh_per_day+reg.slope_gwh_per_hdd*v),
-      mode:'lines',name:reg.slope_gwh_per_hdd+' GWh/HDD (naive OLS)',
+      mode:'lines',name:reg.slope_gwh_per_hdd+' GWh/HDD (month-demeaned)',
       line:{color:CLR.amber,width:2,dash:'dot'}});
   }
   Plotly.newPlot('gasPlot',traces,Object.assign(plb(),{
@@ -733,47 +744,54 @@ function geoPanel(D){
 
   const p=g.percap;
   if(!p){el('geoPlot').textContent='Per-capita block arrives with the next build.';return}
-  const cats=['ROI','NI\u2020','All island'];
-  const cur=[p.roi.current_w_pp,p.ni.current_w_pp,p.island.current_w_pp];
-  const need=[p.roi.whatif_w_pp,p.ni.whatif_w_pp,p.island.whatif_w_pp];
+  const island=['ROI','NI\u2020','All island'];
+  const cur=[p.roi.current_mwth,p.ni.current_mwth,p.island.current_mwth];
+  const need=[p.roi.whatif_mwth,p.ni.whatif_mwth,p.island.whatif_mwth];
   const gap=need.map((n,i)=>Math.max(0,n-cur[i]));
-  const traces=[
-    {x:cats,y:cur,type:'bar',name:'installed today',
-     marker:{color:CLR.green},
-     text:cur.map(v=>fmt(v,0)+' W'),textposition:'outside',
-     textfont:{family:'IBM Plex Mono',color:CLR.green,size:11}},
-    {x:cats,y:gap,type:'bar',name:'the 20% what-if\u2020',
-     marker:{color:'rgba(47,143,140,.30)',
-       pattern:{shape:'/',fgcolor:'rgba(47,143,140,.55)',size:6}},
-     text:need.map(v=>'\u2192 '+fmt(v,0)+' W\u2020'),textposition:'inside',
-     insidetextanchor:'end',
-     textfont:{family:'IBM Plex Mono',color:CLR.ink,size:11}},
-  ];
-  // European reference dots - installed today elsewhere, per person
-  const ref=g.reference_w_pp||{};
+  const ref=g.reference_mwth||{};
   const refNames=Object.keys(ref);
-  if(refNames.length){
-    const order=refNames.sort((a,b)=>ref[b]-ref[a]);
-    traces.push({x:order.map(()=>'Installed elsewhere\u2020'),
-      y:order.map(k=>ref[k]),mode:'markers+text',type:'scatter',
-      name:'installed today, elsewhere\u2020',
-      marker:{color:CLR.ink,size:9,symbol:'diamond',
-        line:{color:CLR.green2,width:1}},
-      text:order.map(k=>k+' '+fmt(ref[k],0)+' W'),
-      textposition:'middle left',
-      textfont:{family:'IBM Plex Mono',size:9,color:CLR.muted}});
-  }
-  Plotly.newPlot('geoPlot',traces,Object.assign(plb(),{
+  const cats=island.concat(refNames.map(n=>n+'\u2020'));
+  const pad=a=>a.concat(refNames.map(()=>0));
+  const shallowRef=island.map(()=>0).concat(refNames.map(n=>ref[n].shallow||0));
+  const deepRef=island.map(()=>0).concat(refNames.map(n=>ref[n].deep||0));
+  const curAll=cur.concat(refNames.map(()=>0));
+  const ann=[];
+  island.forEach((c,i)=>{
+    ann.push({x:c,y:need[i],text:'\u2192 '+fmt(need[i],0)+' MWth\u2020',
+      showarrow:false,yanchor:'bottom',
+      font:{family:'IBM Plex Mono',size:10,color:CLR.muted}});
+    ann.push({x:c,y:cur[i],text:fmt(cur[i],cur[i]<10?1:0),
+      showarrow:false,yanchor:'top',yshift:-2,
+      font:{family:'IBM Plex Mono',size:10,color:CLR.green}});
+  });
+  refNames.forEach(n=>{
+    const tot=(ref[n].shallow||0)+(ref[n].deep||0);
+    ann.push({x:n+'\u2020',y:tot,text:fmt(tot,0)+' MWth\u2020',
+      showarrow:false,yanchor:'bottom',
+      font:{family:'IBM Plex Mono',size:10,color:CLR.muted}});
+  });
+  Plotly.newPlot('geoPlot',[
+    {x:cats,y:curAll,type:'bar',name:'ground source, installed',
+     marker:{color:CLR.green}},
+    {x:cats,y:shallowRef,type:'bar',name:'ground source, installed (comparators)\u2020',
+     marker:{color:CLR.green2},showlegend:false},
+    {x:cats,y:deepRef,type:'bar',name:'deeper geothermal, installed\u2020',
+     marker:{color:CLR.petrol}},
+    {x:cats,y:pad(gap),type:'bar',name:'the 20% what-if\u2020',
+     marker:{color:'rgba(47,143,140,.30)',
+       pattern:{shape:'/',fgcolor:'rgba(47,143,140,.55)',size:6}}},
+  ],Object.assign(plb(),{
     barmode:'stack',
     xaxis:Object.assign(plb().xaxis,{type:'category',
-      categoryorder:'array',
-      categoryarray:cats.concat(refNames.length?['Installed elsewhere\u2020']:[])}),
+      categoryorder:'array',categoryarray:cats}),
     yaxis:Object.assign(plb().yaxis,{
-      title:'ground-source Wth per person',rangemode:'tozero'}),
+      title:'installed capacity \u2013 MWth',rangemode:'tozero'}),
     legend:{orientation:'h',y:1.16},
-    margin:{l:56,r:24,t:34,b:44},
+    margin:{l:60,r:24,t:40,b:44},
+    annotations:ann,
   }),CONF);
 }
+
 
 function feedTable(feeds){
   el('feedTable').innerHTML=Object.entries(feeds).map(([k,f])=>{
@@ -801,7 +819,7 @@ fetch('data.json').then(r=>{
   coolSide(D);
   geoPanel(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 1.0.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 1.1.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
