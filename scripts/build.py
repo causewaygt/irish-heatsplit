@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "1.1.0"
+PIPELINE_VERSION = "1.2.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -247,6 +247,14 @@ GEO = {
     # dagger: Sweden ~6.7 GWth/10.5m; NL ~2.0 GWth/17.9m (ATES-heavy);
     # France ~2.6 GWth/68m.
     "reference_w_pp": {"Sweden": 635, "Netherlands": 110, "France": 38},
+    # Comparator installed capacity, MWth - EGEC/WGC country-update
+    # lineage, dagger. Deeper geothermal = direct-use/district heating:
+    # NL doublet fleet ~400 MWth; France (Paris Basin Dogger et al.)
+    # ~650 MWth; Sweden's fleet is overwhelmingly shallow.
+    "reference_mwth": {
+        "Sweden": {"shallow": 6700, "deep": 0},
+        "Netherlands": {"shallow": 2000, "deep": 400},
+        "France": {"shallow": 2600, "deep": 650}},
     "ni_capacity_mwth_est": 6.6,   # >60 kW register + domestic - dagger
     "island_today_twh": 0.30,
     "pipeline": [
@@ -470,14 +478,57 @@ def parse_bulletin_rows(rows) -> tuple:
     return bulletin_date, value
 
 
-def parse_bulletin_history_rows(rows) -> dict:
+def parse_bulletin_history_rows(rows, colpat=r"^IE_.*heating"):
     """
-    EC oil bulletin price-history workbook: long table, header row naming
-    products ('...Heating...'), country rows repeated over per-row dates.
-    Returns {iso_date: value} for every Ireland row. Same column-detection
-    logic as the snapshot parser; tolerant of preamble rows.
+    EC oil bulletin price-history workbook - WIDE format (verified from a
+    live run dump, 16 Jul 2026): one row per date in column 0, countries
+    spread across columns headed e.g. 'IE_price_with_tax_heating_oil'.
+    Falls back to long-table / country-block scanning if no wide header
+    is found. Returns {iso_date: value}.
     """
-    idx_heat, series = None, {}
+    pat = re.compile(colpat, re.I)
+    buffered = []
+    idx = None
+    for row in rows:
+        cells = list(row)
+        buffered.append(cells)
+        for i, c in enumerate(cells):
+            if c is not None and pat.match(str(c).strip()):
+                idx = i
+                break
+        if idx is not None:
+            break
+    series = {}
+    if idx is not None:
+        def take(cells):
+            if not cells:
+                return
+            d = cells[0]
+            if isinstance(d, dt.datetime):
+                d = d.date()
+            if not isinstance(d, dt.date):
+                return
+            try:
+                v = float(cells[idx])
+            except (TypeError, ValueError, IndexError):
+                return
+            if 300 <= v <= 3000:
+                series[d.isoformat()] = round(v, 2)
+        for cells in rows:          # continue the iterator
+            take(list(cells))
+        return series
+    # fallback: long-table / country-block layouts
+    return _parse_history_longtable(buffered)
+
+
+def _parse_history_longtable(rows) -> dict:
+    EU = {"belgium", "bulgaria", "czechia", "czech republic", "denmark",
+          "germany", "estonia", "greece", "spain", "france", "croatia",
+          "italy", "cyprus", "latvia", "lithuania", "luxembourg", "hungary",
+          "malta", "netherlands", "austria", "poland", "portugal",
+          "romania", "slovenia", "slovakia", "finland", "sweden",
+          "united kingdom", "uk"}
+    idx_heat, series, in_ireland = None, {}, False
     for row in rows:
         cells = list(row)
         strs = [str(c) if c is not None else "" for c in cells]
@@ -490,8 +541,13 @@ def parse_bulletin_history_rows(rows) -> dict:
             continue
         if idx_heat is None:
             continue
-        if not ("ireland" in joined
-                or (strs and strs[0].strip().upper() in ("IE", "EI"))):
+        is_ireland_row = ("ireland" in joined
+                          or (strs and strs[0].strip().upper() in ("IE", "EI")))
+        if is_ireland_row:
+            in_ireland = True
+        elif any(c in joined for c in EU):
+            in_ireland = False
+        if not (is_ireland_row or in_ireland):
             continue
         row_date = None
         for c in cells:
@@ -997,6 +1053,14 @@ def feed_oil_bulletin():
             hist_url = u if u.startswith("http") \
                 else "https://energy.ec.europa.eu" + u
             break
+    if not hist_url:
+        # stable UUID cited in every weekly newsletter since 2024 - the
+        # landing page does not carry this link, the newsletter does
+        hist_url = ("https://energy.ec.europa.eu/document/download/"
+                    "906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename="
+                    "Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx")
+        log("oil_bulletin: history link not on page - using stable "
+            "newsletter URL")
     if hist_url:
         log("oil_bulletin: history resolved",
             urllib.parse.unquote(hist_url)[:110])
@@ -1004,17 +1068,27 @@ def feed_oil_bulletin():
             hwb = openpyxl.load_workbook(
                 io.BytesIO(http_get(hist_url, timeout=240).content),
                 read_only=True, data_only=True)
-            hist = {}
+            hist, hist_nt = {}, {}
             for ws in hwb.worksheets:
+                title = ws.title.lower()
+                if "price" not in title:
+                    continue
                 got = parse_bulletin_history_rows(ws.iter_rows(values_only=True))
-                if len(got) > len(hist):
+                if not got:
+                    continue
+                if "wo" in title.split() or "without" in title:
+                    if len(got) > len(hist_nt):
+                        hist_nt = got
+                elif len(got) > len(hist):
                     hist = got
             if hist:
-                log(f"oil_bulletin: history {len(hist)} Ireland weeks, "
+                log(f"oil_bulletin: history {len(hist)} Ireland weeks "
+                    f"with tax, {len(hist_nt)} ex tax, "
                     f"{min(hist)}..{max(hist)}")
                 merged = dict(hist)
                 merged.update(series)   # snapshot/current values win
                 series = merged
+                globals()["_hist_nt_pending"] = hist_nt
             else:
                 for ws in hwb.worksheets[:3]:
                     head = [r for _, r in zip(range(5),
@@ -1025,11 +1099,14 @@ def feed_oil_bulletin():
         except Exception as e:
             log(f"oil_bulletin: history fetch/parse failed "
                 f"({e.__class__.__name__}: {e}) - snapshot-only this run")
-    else:
-        log("oil_bulletin: no history xlsx link found on page")
     series = trim_series(clip_days(series))
     series_nt = prev_series("oil_bulletin",
                             "roi_heating_gasoil_eur_per_1000l_ex_tax")
+    hist_nt = globals().pop("_hist_nt_pending", None)
+    if hist_nt:
+        merged_nt = dict(hist_nt)
+        merged_nt.update(series_nt)
+        series_nt = merged_nt
     if v_nt is not None:
         series_nt[d_nt or d_wt] = v_nt
     series_nt = trim_series(clip_days(series_nt))
@@ -1137,10 +1214,12 @@ def feed_gb_oil():
     log("gb_oil: A missed on both UAs - modern template lacks the "
         "sentence; falling through to DESNZ")
 
-    # --- strategy B: DESNZ monthly petroleum products via gov.uk
+    # --- strategy B: DESNZ monthly petroleum products via gov.uk.
+    # The direct slug 404'd on the 16 Jul 2026 run; resolve it from the
+    # DESNZ oil price statistics search page instead.
     landing = http_get(
-        "https://www.gov.uk/government/statistical-data-sets/"
-        "monthly-and-annual-prices-of-road-fuels-and-petroleum-products"
+        "https://www.gov.uk/search/research-and-statistics?"
+        "keywords=petroleum+products+monthly+prices&order=updated-newest"
     ).text
     links = re.findall(r'href="([^"]+\.(?:xlsx|ods|csv))"', landing)
     cands = [u for u in links
@@ -1225,7 +1304,13 @@ def _gb_oil_out(d, ppl, source):
 # ------------------------------------------------- analysis (pure functions)
 
 def space_heat_split(gas_daily: dict, hdd_daily: dict):
-    """OLS of daily NDM gas on HDD - see tests/test_synthetic.py."""
+    """
+    Space-heat sensitivity of daily gas demand. Primary estimator is
+    month-demeaned OLS - within-month deviations of demand on within-month
+    deviations of HDD - which removes seasonal confounds (holidays, school
+    terms, baseload drift) that bias the naive slope. The naive OLS is
+    retained for reference. See tests/test_synthetic.py.
+    """
     days = sorted(set(gas_daily) & set(hdd_daily))
     if len(days) < 30:
         return None
@@ -1233,17 +1318,43 @@ def space_heat_split(gas_daily: dict, hdd_daily: dict):
     y = [gas_daily[d] for d in days]
     n = len(days)
     mx, my = statistics.mean(x), statistics.mean(y)
-    sxx = sum((xi - mx) ** 2 for xi in x)
+
+    def ols(xs, ys):
+        mxx, myy = statistics.mean(xs), statistics.mean(ys)
+        sxx = sum((xi - mxx) ** 2 for xi in xs)
+        if sxx == 0:
+            return None, None
+        slope = sum((xi - mxx) * (yi - myy)
+                    for xi, yi in zip(xs, ys)) / sxx
+        return slope, myy - slope * mxx
+
+    naive_slope, _ = ols(x, y)
+
+    # month-demeaned: subtract each month's own means
+    from collections import defaultdict
+    bym = defaultdict(list)
+    for d, xi, yi in zip(days, x, y):
+        bym[d[:7]].append((xi, yi))
+    xd, yd = [], []
+    for pts in bym.values():
+        mxm = statistics.mean(p[0] for p in pts)
+        mym = statistics.mean(p[1] for p in pts)
+        for xi, yi in pts:
+            xd.append(xi - mxm)
+            yd.append(yi - mym)
+    sxx = sum(v * v for v in xd)
     if sxx == 0:
         return None
-    sxy = sum((xi - mx) * (yi - my) for xi, yi in zip(x, y))
-    slope = sxy / sxx
-    intercept = my - slope * mx
-    ss_res = sum((yi - (slope * xi + intercept)) ** 2 for xi, yi in zip(x, y))
-    ss_tot = sum((yi - my) ** 2 for yi in y) or 1e-9
+    slope = sum(a * b for a, b in zip(xd, yd)) / sxx
+    ss_res = sum((b - slope * a) ** 2 for a, b in zip(xd, yd))
+    ss_tot = sum(b * b for b in yd) or 1e-9
     return {"slope_gwh_per_hdd": round(slope, 3),
-            "baseload_gwh_per_day": round(intercept, 2),
-            "r2": round(1 - ss_res / ss_tot, 3), "n_days": n}
+            "baseload_gwh_per_day": round(my - slope * mx, 2),
+            "r2_within_month": round(1 - ss_res / ss_tot, 3),
+            "n_days": n,
+            "method": "month-demeaned OLS",
+            "naive_slope_gwh_per_hdd": round(naive_slope, 3)
+            if naive_slope is not None else None}
 
 
 def derive_hero(feeds, anchors=None):
@@ -1465,6 +1576,8 @@ def derive_geo_percap(anchors=None, geo=None):
         p = pop[jur] * 1e6
         return {"current_w_pp": round(current_mwth * 1e6 / p, 1),
                 "whatif_w_pp": round(need_w / p, 0),
+                "current_mwth": round(current_mwth, 1),
+                "whatif_mwth": round(need_w / 1e6, 0),
                 "useful_twh": round(u, 1)}
 
     roi = block("roi", g["roi"]["capacity_mwth"])
@@ -1474,6 +1587,8 @@ def derive_geo_percap(anchors=None, geo=None):
     need_i = 0.20 * (roi["useful_twh"] + ni["useful_twh"]) * 1e12 / eflh
     island = {"current_w_pp": round(cur_i / pop_i, 1),
               "whatif_w_pp": round(need_i / pop_i, 0),
+              "current_mwth": round(cur_i / 1e6, 1),
+              "whatif_mwth": round(need_i / 1e6, 0),
               "useful_twh": round(roi["useful_twh"] + ni["useful_twh"], 1)}
     return {"roi": roi, "ni": ni, "island": island, "eflh_h": eflh,
             "basis": ("20% of delivered buildings heat at "
