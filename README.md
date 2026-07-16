@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Version 1.0.0.
+(Causeway Geothermal NI Ltd). Pipeline 1.3.0 / site 1.2.1.
 
 ## The premise
 
@@ -19,10 +19,14 @@ and prices the alternative. The data gap is the story.
 
 ## What the site shows
 
+- **Masthead** – the live border gap: the same kerosene priced either
+  side of the border, and what the border is worth per litre.
 - **Hero** – the week's heat purchased and delivered, indigenous share,
   bill in both currencies and emissions, toggled all-island / NI / ROI,
-  each jurisdiction shaped by its own heating degree days; plus a what-if
-  strip: the same week with 20% of heat from geothermal heat pumps.
+  each jurisdiction shaped by its own heating degree days; a what-if
+  strip (the same week with 20% of heat from geothermal heat pumps); and
+  energy-in vs useful-heat-out bars by fuel, with combustion losses
+  hatched – all three responding to the jurisdiction toggle.
 - **The invisible majority** – delivered building heat split into
   unmetered (oil, peat, other), gas and electric.
 - **The oil ticker** – NI kerosene daily (Consumer Council survey), ROI
@@ -60,7 +64,7 @@ renders client-side with Plotly. GitHub Pages serves `/docs`.
 | `hdd` | ERA5 via Open-Meteo | daily | population-weighted HDD, island/ROI/NI |
 | `ecb_fx` | ECB reference rates | daily | EUR/GBP twin-currency lock |
 | `ccni_oil` | Consumer Council NI price checker | daily (Mon–Fri) | 300/500/900 L; history merged across runs |
-| `oil_bulletin` | EU Weekly Oil Bulletin | weekly | Ireland heating gas oil, with & without taxes |
+| `oil_bulletin` | EU Weekly Oil Bulletin + price-history workbook | weekly | Ireland heating gas oil, with & without taxes, backfilled from 2005-onwards history |
 | `gb_oil` | BoilerJuice sentence, DESNZ fallback | daily / monthly | SOFT feed – same-tax GB control line |
 | `gni_live` | Gas Networks Ireland gasconsumption API | daily | ~8-day windows, weekly anchors backfill |
 | `gni_ckan` | GNI via data.gov.ie (CC BY 4.0) | quarterly | calibration series for the regression |
@@ -77,7 +81,8 @@ register rendered as chart markers.
 ### Derivations (all pure functions, unit tested)
 
 - `derive_hero` – annual anchors shaped by weekly HDD, per jurisdiction,
-  island as the reconciled sum; 20% geothermal what-if.
+  island as the reconciled sum; per-fuel in/useful breakdown, peak winter
+  week, and the 20% geothermal what-if.
 - `derive_heat_gap` – useful-heat cost by route at live oil prices and
   standard tariffs; break-even SPF vs the oil boiler.
 - `derive_ashp_spf` – air-source SPF from the HDD-weighted outdoor
@@ -86,8 +91,9 @@ register rendered as chart markers.
 - `derive_cool` – data-centre waste heat vs demand shape; stranded share.
 - `derive_geo_percap` – installed ground-source Wth per person vs the
   20% what-if requirement.
-- `space_heat_split` – OLS of daily gas on HDD (naive; month-demeaned
-  estimator to follow before the figure is quoted).
+- `space_heat_split` – month-demeaned OLS of daily gas on HDD (within-
+  month deviations, seasonal confounds removed); naive slope retained
+  for reference.
 
 ## Provenance rules
 
@@ -106,7 +112,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 31 tests, no network
+python3 tests/test_synthetic.py   # 36 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
