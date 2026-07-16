@@ -289,6 +289,22 @@ def test_hero_what_if_moves_the_right_way():
     assert wf["emissions_kt_co2"] < h["emissions_kt_co2"]
 
 
+def test_hero_by_fuel_and_peak():
+    h = derive_hero(_hero_fixture_feeds())
+    for b in (h["roi"], h["ni"], h):
+        bf = b["by_fuel"]
+        assert abs(sum(v["in_gwh"] for v in bf.values())
+                   - b["heat_purchased_gwh"]) < 0.5
+        assert abs(sum(v["useful_gwh"] for v in bf.values())
+                   - b["heat_delivered_gwh"]) < 0.5
+    # fixture sinusoid peaks at the series edge, so peak == current week
+    # there; real data peaks mid-winter. Peak can never be below current.
+    assert h["peak_week"] and h["peak_week"]["heat_purchased_gwh"] \
+        >= h["heat_purchased_gwh"] - 0.1
+    assert h["roi"]["peak_week"]["hdd"] >= h["roi"]["hdd_week"]
+    assert h["roi"]["by_fuel"]["oil"]["in_gwh"] > 0
+
+
 def test_hero_jurisdiction_blocks_reconcile():
     h = derive_hero(_hero_fixture_feeds())
     assert "roi" in h and "ni" in h
