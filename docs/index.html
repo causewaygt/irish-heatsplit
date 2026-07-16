@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 1.0.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 1.0.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -371,6 +371,10 @@ const PL_BASE = {
   xaxis:{gridcolor:CLR.line, zeroline:false},
   yaxis:{gridcolor:CLR.line, zeroline:false},
 };
+// Plotly mutates the layout it is given - every chart must receive a
+// fresh deep clone, never the shared PL_BASE (the oil ticker's date axis
+// was leaking type:'date' into every later chart's x-axis)
+function plb(){return JSON.parse(JSON.stringify(PL_BASE));}
 const CONF = {displayModeBar:false, responsive:true};
 const fmt = (x,d=1)=> x==null ? '–' :
   Number(x).toLocaleString('en-IE',{maximumFractionDigits:d,minimumFractionDigits:0});
@@ -567,8 +571,8 @@ function oilTicker(feeds, fx, events){
   const allDays=days.concat(rdays,gbDays).sort();
   const deco=eventDecoration(events, allDays[0]||'2025-01-01',
     '2026-12-31');
-  Plotly.newPlot('oilPlot',traces,Object.assign({},PL_BASE,{
-    yaxis:Object.assign({},PL_BASE.yaxis,{title:'pence / litre',
+  Plotly.newPlot('oilPlot',traces,Object.assign(plb(),{
+    yaxis:Object.assign(plb().yaxis,{title:'pence / litre',
       range:[pMin,pMax],titlefont:{color:CLR.amber}}),
     yaxis2:{overlaying:'y',side:'right',title:'cent / litre',
       range:[pMin/fx,pMax/fx],gridcolor:'rgba(0,0,0,0)',
@@ -596,9 +600,9 @@ function gasEngine(feeds, derived){
       mode:'lines',name:reg.slope_gwh_per_hdd+' GWh/HDD (naive OLS)',
       line:{color:CLR.amber,width:2,dash:'dot'}});
   }
-  Plotly.newPlot('gasPlot',traces,Object.assign({},PL_BASE,{
-    xaxis:Object.assign({},PL_BASE.xaxis,{title:'ROI heating degree days (base 15.5\u00b0C)'}),
-    yaxis:Object.assign({},PL_BASE.yaxis,{title:'NDM gas \u2013 GWh/day'}),
+  Plotly.newPlot('gasPlot',traces,Object.assign(plb(),{
+    xaxis:Object.assign(plb().xaxis,{title:'ROI heating degree days (base 15.5\u00b0C)'}),
+    yaxis:Object.assign(plb().yaxis,{title:'NDM gas \u2013 GWh/day'}),
     legend:{orientation:'h',y:1.12},
   }),CONF);
 }
@@ -663,10 +667,10 @@ function heatGap(D){
         'flips at the border. ASHP climate SPF: NI '+fmt(hg.ni.ashp_spf,2)+
         ', ROI '+fmt(hg.roi.ashp_spf,2)+'\u2020';
     }
-    Plotly.newPlot('gapPlot',traces,Object.assign({},PL_BASE,{
+    Plotly.newPlot('gapPlot',traces,Object.assign(plb(),{
       barmode:'group',
-      xaxis:Object.assign({},PL_BASE.xaxis,{type:'category'}),
-      yaxis:Object.assign({},PL_BASE.yaxis,{title:ytitle,rangemode:'tozero'}),
+      xaxis:Object.assign(plb().xaxis,{type:'category'}),
+      yaxis:Object.assign(plb().yaxis,{title:ytitle,rangemode:'tozero'}),
       legend:{orientation:'h',y:1.12},
       margin:{l:56,r:20,t:30,b:60},
     }),CONF);
@@ -705,8 +709,8 @@ function coolSide(D){
      fillcolor:'rgba(31,78,95,.35)'},
     {x:wd,y:wd.map(()=>flat),name:'Data-centre heat (flat)',mode:'lines',
      line:{color:CLR.amber,width:2,dash:'dash'}},
-  ],Object.assign({},PL_BASE,{
-    yaxis:Object.assign({},PL_BASE.yaxis,{title:'% of annual total / week',
+  ],Object.assign(plb(),{
+    yaxis:Object.assign(plb().yaxis,{title:'% of annual total / week',
       rangemode:'tozero'}),
     legend:{orientation:'h',y:1.14},
   }),CONF);
@@ -759,12 +763,12 @@ function geoPanel(D){
       textposition:'middle left',
       textfont:{family:'IBM Plex Mono',size:9,color:CLR.muted}});
   }
-  Plotly.newPlot('geoPlot',traces,Object.assign({},PL_BASE,{
+  Plotly.newPlot('geoPlot',traces,Object.assign(plb(),{
     barmode:'stack',
-    xaxis:Object.assign({},PL_BASE.xaxis,{type:'category',
+    xaxis:Object.assign(plb().xaxis,{type:'category',
       categoryorder:'array',
       categoryarray:cats.concat(refNames.length?['Installed elsewhere\u2020']:[])}),
-    yaxis:Object.assign({},PL_BASE.yaxis,{
+    yaxis:Object.assign(plb().yaxis,{
       title:'ground-source Wth per person',rangemode:'tozero'}),
     legend:{orientation:'h',y:1.16},
     margin:{l:56,r:24,t:34,b:44},
@@ -797,7 +801,7 @@ fetch('data.json').then(r=>{
   coolSide(D);
   geoPanel(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 1.0.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 1.0.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
