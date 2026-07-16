@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "1.2.1"
+PIPELINE_VERSION = "1.3.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -1402,10 +1402,13 @@ def derive_hero(feeds, anchors=None):
                                  + shf * hdd_week / hdd_year)
 
         inp_t = useful_t = indig_t = kt_t = bill_t = 0.0
+        by_fuel = {}
         for fuel, share in j["fuel_shares"].items():
             inp = week_input_gwh(heat_twh) * share
             eff = a["efficiency"][fuel]
             useful = inp * eff
+            by_fuel[fuel] = {"in_gwh": round(inp, 1),
+                             "useful_gwh": round(useful, 1)}
             indig = useful * (
                 j["gas_indigenous"] if fuel == "gas" else
                 j["elec_indigenous"] if fuel == "electricity" else
@@ -1451,9 +1454,25 @@ def derive_hero(feeds, anchors=None):
                 + elec_in * a["ef_g_per_kwh"]["electricity"] / 1000.0, 1),
             "geothermal_spf": spf,
         }
+        # peak winter week for the for-scale line
+        days = sorted(hdd_series)[-365:]
+        pk, pk_end = 0.0, None
+        for i in range(6, len(days)):
+            w = sum(hdd_series[d] for d in days[i - 6:i + 1])
+            if w > pk:
+                pk, pk_end = w, days[i]
+        peak = None
+        if pk_end and hdd_year > 0:
+            annual_gwh = heat_twh * 1000.0
+            peak = {"week_ending": pk_end, "hdd": round(pk, 1),
+                    "heat_purchased_gwh": round(
+                        annual_gwh * ((1 - shf) / 52.0
+                                      + shf * pk / hdd_year), 1)}
         return {
             "heat_purchased_gwh": round(inp_t, 1),
             "heat_delivered_gwh": round(useful_t, 1),
+            "by_fuel": by_fuel,
+            "peak_week": peak,
             "indigenous_share_pct": round(
                 100 * indig_t / max(useful_t, 1e-9), 1),
             "bill_eur_m": round(bill_eur, 1),
@@ -1474,7 +1493,23 @@ def derive_hero(feeds, anchors=None):
     def sum_blocks(x, y):
         useful = x["_raw"]["useful"] + y["_raw"]["useful"]
         indig = x["_raw"]["indig"] + y["_raw"]["indig"]
+        bf = {}
+        for src_b in (x, y):
+            for f, v in (src_b.get("by_fuel") or {}).items():
+                slot = bf.setdefault(f, {"in_gwh": 0.0, "useful_gwh": 0.0})
+                slot["in_gwh"] = round(slot["in_gwh"] + v["in_gwh"], 1)
+                slot["useful_gwh"] = round(
+                    slot["useful_gwh"] + v["useful_gwh"], 1)
+        pk = None
+        if x.get("peak_week") and y.get("peak_week"):
+            pk = {"week_ending": max(x["peak_week"]["week_ending"],
+                                     y["peak_week"]["week_ending"]),
+                  "heat_purchased_gwh": round(
+                      x["peak_week"]["heat_purchased_gwh"]
+                      + y["peak_week"]["heat_purchased_gwh"], 1)}
         out = {
+            "by_fuel": bf,
+            "peak_week": pk,
             "heat_purchased_gwh": round(
                 x["heat_purchased_gwh"] + y["heat_purchased_gwh"], 1),
             "heat_delivered_gwh": round(
