@@ -17,6 +17,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    clip_days, recency_status, ddmmyyyy_to_iso,
                    extract_chart_data_arrays, parse_ccni_series,
                    resolve_oil_bulletin_url, parse_bulletin_rows,
+                   parse_bulletin_history_rows,
                    parse_semopx_csv, parse_gni_series,
                    derive_hero, derive_heat_gap, derive_ashp_spf,
                    derive_cool, derive_geo_percap,
@@ -413,6 +414,28 @@ def test_geo_percap():
     assert p["ni"]["whatif_w_pp"] > p["roi"]["whatif_w_pp"]
     # hand check ROI: useful ~25.3 TWh -> 0.2*25.3e12/2000/5.3e6 ~ 477
     assert abs(p["roi"]["whatif_w_pp"] - 477) < 15, p["roi"]
+
+
+# ------------------------------------- bulletin history parser
+
+def test_bulletin_history_collects_all_ireland_rows():
+    rows = [
+        ("preamble", None, None),
+        ("Country", "Euro-super 95", "Heating gas oil"),
+        ("Ireland", 1700.0, 1100.0, dt.datetime(2026, 6, 22)),
+        ("France", 1800.0, 1200.0, dt.datetime(2026, 6, 22)),
+        ("Ireland", 1710.0, 1120.5, dt.datetime(2026, 6, 29)),
+        ("IE", 1720.0, 1151.6, dt.datetime(2026, 7, 6)),
+        ("Ireland", 1720.0, "n/a", dt.datetime(2026, 7, 13)),
+    ]
+    s = parse_bulletin_history_rows(rows)
+    assert s == {"2026-06-22": 1100.0, "2026-06-29": 1120.5,
+                 "2026-07-06": 1151.6}, s
+
+
+def test_bulletin_history_rejects_out_of_range():
+    rows = [("x", "Heating"), ("Ireland", 99.0, dt.datetime(2026, 1, 5))]
+    assert parse_bulletin_history_rows(rows) == {}
 
 
 if __name__ == "__main__":
