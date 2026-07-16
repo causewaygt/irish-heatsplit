@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "1.0.0"
+PIPELINE_VERSION = "1.1.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -468,6 +468,52 @@ def parse_bulletin_rows(rows) -> tuple:
             if row_date:
                 bulletin_date = row_date
     return bulletin_date, value
+
+
+def parse_bulletin_history_rows(rows) -> dict:
+    """
+    EC oil bulletin price-history workbook: long table, header row naming
+    products ('...Heating...'), country rows repeated over per-row dates.
+    Returns {iso_date: value} for every Ireland row. Same column-detection
+    logic as the snapshot parser; tolerant of preamble rows.
+    """
+    idx_heat, series = None, {}
+    for row in rows:
+        cells = list(row)
+        strs = [str(c) if c is not None else "" for c in cells]
+        joined = " ".join(strs).lower()
+        if idx_heat is None and ("heating" in joined or "chauffage" in joined):
+            for i, c in enumerate(strs):
+                if "heating" in c.lower() or "chauffage" in c.lower():
+                    idx_heat = i
+                    break
+            continue
+        if idx_heat is None:
+            continue
+        if not ("ireland" in joined
+                or (strs and strs[0].strip().upper() in ("IE", "EI"))):
+            continue
+        row_date = None
+        for c in cells:
+            if isinstance(c, dt.datetime):
+                row_date = c.date().isoformat()
+                break
+            if isinstance(c, dt.date):
+                row_date = c.isoformat()
+                break
+            iso = find_date_in_text(str(c)) if c is not None else None
+            if iso:
+                row_date = iso
+                break
+        if row_date is None:
+            continue
+        try:
+            v = float(cells[idx_heat])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if 300 <= v <= 3000:
+            series[row_date] = round(v, 2)
+    return series
 
 
 def parse_semopx_csv(text: str) -> dict:
@@ -940,6 +986,47 @@ def feed_oil_bulletin():
 
     series = prev_series("oil_bulletin", "roi_heating_gasoil_eur_per_1000l")
     series[d_wt] = v_wt
+
+    # weekly-history workbook backfills the chart to full depth; the
+    # snapshot value above stays authoritative for its own date
+    hist_url = None
+    for m in re.finditer(r'href="([^"]+)"', page):
+        u = m.group(1)
+        d = urllib.parse.unquote(u).lower()
+        if ".xlsx" in d and ("histor" in d or "time series" in d):
+            hist_url = u if u.startswith("http") \
+                else "https://energy.ec.europa.eu" + u
+            break
+    if hist_url:
+        log("oil_bulletin: history resolved",
+            urllib.parse.unquote(hist_url)[:110])
+        try:
+            hwb = openpyxl.load_workbook(
+                io.BytesIO(http_get(hist_url, timeout=240).content),
+                read_only=True, data_only=True)
+            hist = {}
+            for ws in hwb.worksheets:
+                got = parse_bulletin_history_rows(ws.iter_rows(values_only=True))
+                if len(got) > len(hist):
+                    hist = got
+            if hist:
+                log(f"oil_bulletin: history {len(hist)} Ireland weeks, "
+                    f"{min(hist)}..{max(hist)}")
+                merged = dict(hist)
+                merged.update(series)   # snapshot/current values win
+                series = merged
+            else:
+                for ws in hwb.worksheets[:3]:
+                    head = [r for _, r in zip(range(5),
+                                              ws.iter_rows(values_only=True))]
+                    log(f"oil_bulletin: history sheet '{ws.title}' rows:", head)
+                log("oil_bulletin: history parse empty - dumps above, "
+                    "snapshot-only this run")
+        except Exception as e:
+            log(f"oil_bulletin: history fetch/parse failed "
+                f"({e.__class__.__name__}: {e}) - snapshot-only this run")
+    else:
+        log("oil_bulletin: no history xlsx link found on page")
     series = trim_series(clip_days(series))
     series_nt = prev_series("oil_bulletin",
                             "roi_heating_gasoil_eur_per_1000l_ex_tax")
