@@ -44,13 +44,15 @@ def test_regression_recovers_truth():
     gas, hdd = synth_year(slope=3.0, baseload=8.0)
     r = space_heat_split(gas, hdd)
     assert r is not None
+    assert r["method"] == "month-demeaned OLS"
     assert abs(r["slope_gwh_per_hdd"] - 3.0) < 0.1, r
     assert abs(r["baseload_gwh_per_day"] - 8.0) < 1.0, r
-    assert r["r2"] > 0.95, r
+    assert r["r2_within_month"] > 0.9, r
 
 
 def test_regression_with_holiday_confound():
-    """Late-December demand drop at high HDD - slope bias must stay bounded."""
+    """Late-December demand drop at high HDD: the demeaned slope must hold
+    tight where the naive slope may drift."""
     gas, hdd = synth_year(slope=3.0, baseload=8.0, noise=0.2)
     for i in range(20, 32):
         d = dt.date(2025, 12, i % 31 + 1).isoformat()
@@ -58,8 +60,8 @@ def test_regression_with_holiday_confound():
             gas[d] = round(gas[d] * 0.7, 2)
     r = space_heat_split(gas, hdd)
     assert r is not None
-    assert abs(r["slope_gwh_per_hdd"] - 3.0) < 0.3, (
-        "confound bias exceeds tolerance - month-demean before regression", r)
+    assert abs(r["slope_gwh_per_hdd"] - 3.0) < 0.12, r
+    assert r["naive_slope_gwh_per_hdd"] is not None
 
 
 # ------------------------------------------------------------- utilities
@@ -414,6 +416,10 @@ def test_geo_percap():
     assert p["ni"]["whatif_w_pp"] > p["roi"]["whatif_w_pp"]
     # hand check ROI: useful ~25.3 TWh -> 0.2*25.3e12/2000/5.3e6 ~ 477
     assert abs(p["roi"]["whatif_w_pp"] - 477) < 15, p["roi"]
+    # MWth basis: requirement = useful_twh * 100 at 2000 h
+    assert abs(p["roi"]["whatif_mwth"] - p["roi"]["useful_twh"] * 100) < 60
+    assert p["roi"]["current_mwth"] == 225
+    assert abs(p["island"]["current_mwth"] - 231.6) < 0.5
 
 
 # ------------------------------------- bulletin history parser
@@ -427,6 +433,47 @@ def test_bulletin_history_collects_all_ireland_rows():
         ("Ireland", 1710.0, 1120.5, dt.datetime(2026, 6, 29)),
         ("IE", 1720.0, 1151.6, dt.datetime(2026, 7, 6)),
         ("Ireland", 1720.0, "n/a", dt.datetime(2026, 7, 13)),
+    ]
+    s = parse_bulletin_history_rows(rows)
+    assert s == {"2026-06-22": 1100.0, "2026-06-29": 1120.5,
+                 "2026-07-06": 1151.6}, s
+
+
+def test_bulletin_history_wide_layout_from_live_dump():
+    header = ('Consumer prices of petroleum products inclusive of duties '
+              'and taxes', 'CTR', 'EU_price_with_tax_euro95',
+              'EU_price_with_tax_diesel', 'EU_price_with_tax_heating_oil',
+              'CTR', 'IE_price_with_tax_euro95', 'IE_price_with_tax_diesel',
+              'IE_price_with_tax_heating_oil', 'CTR',
+              'FR_price_with_tax_heating_oil')
+    units = ('Date', None, '1000 l', '1000 l', '1000 l', None, '1000 l',
+             '1000 l', '1000 l', None, '1000 l')
+    r1 = (dt.datetime(2026, 7, 13), 'EU_', 1851.02, 1823.02, 1309.08,
+          'IE_', 1712.5, 1689.3, 1113.25, 'FR_', 1505.66)
+    r2 = (dt.datetime(2026, 7, 6), 'EU_', 1814.32, 1766.15, 1229.85,
+          'IE_', 1729.8, 1712.7, 1151.6, 'FR_', 1420.57)
+    r3 = (None, None, None, None, None, None, None, None, 'n/a', None, None)
+    s = parse_bulletin_history_rows(iter([header, units, r1, r2, r3]))
+    assert s == {"2026-07-13": 1113.25, "2026-07-06": 1151.6}, s
+    # ex-tax column selection
+    h2 = ('x', 'IE_price_wo_tax_heating_oil')
+    d2 = (dt.datetime(2026, 7, 13), 767.78)
+    s2 = parse_bulletin_history_rows(iter([h2, d2]))
+    assert s2 == {"2026-07-13": 767.78}, s2
+
+
+def test_bulletin_history_block_layout():
+    rows = [
+        ("Country", "Euro-super 95", "Heating gas oil"),
+        ("France", None, None),
+        (dt.datetime(2026, 6, 22), 1800.0, 1200.0),
+        ("Ireland", None, None),
+        (dt.datetime(2026, 6, 22), 1700.0, 1100.0),
+        (dt.datetime(2026, 6, 29), 1710.0, 1120.5),
+        ("Italia... wait", None, None),   # unknown row - stays in block
+        (dt.datetime(2026, 7, 6), 1720.0, 1151.6),
+        ("Netherlands", None, None),
+        (dt.datetime(2026, 7, 6), 1900.0, 1400.0),
     ]
     s = parse_bulletin_history_rows(rows)
     assert s == {"2026-06-22": 1100.0, "2026-06-29": 1120.5,
