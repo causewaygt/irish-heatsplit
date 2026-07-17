@@ -48,6 +48,10 @@ and prices the alternative. The data gap is the story.
   Causeway register) stacked against what the 20% what-if requires, with
   Sweden, the Netherlands and France as installed-reality reference
   points.
+- **Why heat?** – the whole-economy zoom-out: four donut charts of
+  annual energy services, spend, imported energy and emissions across
+  power, transport and heat – heat rivals transport as the largest
+  service, carries the smallest bill, and is therefore still fossil.
 - **Method & sources** – every feed, its status and its flags.
 
 ## Architecture
