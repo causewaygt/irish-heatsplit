@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "1.4.0"
+PIPELINE_VERSION = "2.0.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -281,6 +281,33 @@ GEO = {
         "GSI deep scientific boreholes: BHT 22.6-38 C at 1 km, five "
         "completed 2022-2026",
     ],
+}
+
+
+# ------------------------------------------------- why heat? (whole economy)
+# The zoom-out panel: annual, all-island, whole-economy anchors for the
+# three energy services. Sourced where a publication exists; allocations
+# are Causeway derivations, kept deliberately round and dagger-marked.
+#  services: ROI TFC ~143 TWh (SEAI Energy in Ireland 2025) + NI ~48
+#    dagger. Heat includes industrial process heat (dagger allocation);
+#    power = non-heat electricity.
+#  spend: retail-basis, EUR bn - dagger throughout.
+#  imports: allocation of ~179 TWh imported primary energy (81.2% of
+#    220.7 TWh PES - Causeway island Sankey, 2024).
+#  emissions: ROI ~32 Mt energy CO2 (SEAI) + NI ~11 dagger.
+WHY_HEAT = {
+    "tfc_twh": 191,
+    "services_twh": {"heat": 64, "transport": 83, "power": 35},
+    "spend_eur_bn": {"heat": 6.0, "transport": 15.0, "power": 10.5},
+    "imports_twh": {"heat": 52, "transport": 79, "power": 28},
+    "emissions_mt": {"heat": 16, "transport": 17, "power": 9},
+    "basis": ("Annual, all-island, whole-economy - dagger throughout. "
+              "Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) "
+              "+ NI dagger; heat includes industrial heat. Imports: "
+              "allocation of 81.2%-imported primary energy, 220.7 TWh "
+              "PES (Causeway island Sankey 2024). Emissions: SEAI + NI "
+              "dagger. Challenge and input welcome at "
+              "contact@causewaygt.com"),
 }
 
 # ---------------------------------------------------------------- utilities
@@ -1840,6 +1867,7 @@ def main():
         "derived": derived,
         "events": EVENTS,
         "geo": {**GEO, "percap": derive_geo_percap()},
+        "why_heat": WHY_HEAT,
         "notes": ("Feed statuses - ok: fetched and current; lagging: fetched, "
                   "source publishes on a lag; stale: fetch failed, previous "
                   "values retained. Judgement figures are current Causeway "
