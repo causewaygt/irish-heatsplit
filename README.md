@@ -126,6 +126,7 @@ Contains data from Gas Networks Ireland (CC BY 4.0 via data.gov.ie),
 EirGrid Group, SEMOpx, the European Commission Weekly Oil Bulletin, the
 Consumer Council for Northern Ireland, BoilerJuice, the European Central
 Bank, ERA5/Copernicus via Open-Meteo, the WGC2026 Ireland country update
-(Ireland, Blake, Pasquali, Dunphy & Hunter Williams), and NISRA/SEAI/DfE
+(Ireland, Blake, Pasquali, Dunphy & Hunter Williams), the EGEC Geothermal
+Market Report 2025 (Key Findings), and NISRA/SEAI/DfE
 publications as cited on the site. Sherwood Sandstone geothermal context:
 Todd et al., *Geoenergy* (2026), doi:10.1144/geoenergy2025-057.
