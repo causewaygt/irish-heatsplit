@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-17T10:27:24+00:00",
+ "built_utc": "2026-07-17T14:19:52+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO 2023-24; totals and waste fraction dagger; stranded share computed from this site's own HDD series - flat supply vs demand shape, annual totals normalised. Challenge and input welcome at contact@causewaygt.com",
@@ -14,7 +14,7 @@
   },
   "heat_gap": {
    "basis": "Standard tariffs, July 2026 pass (Power NI/UR review, ROI standard 24h rates) - dagger; time-of-use and night tariffs materially lower for heat-pump households. Oil prices live. ASHP SPF is modelled from each jurisdiction's HDD-weighted climate (Carnot-fraction, defrost derate, DHW share - all dagger), calibrated to GB field-trial medians. Kerosene 10.35 kWh/L; boiler efficiencies 82%/85% dagger. Challenge and input welcome at contact@causewaygt.com",
-   "fx_eur_gbp": 0.84873,
+   "fx_eur_gbp": 0.85098,
    "geo_spf": 4.0,
    "ni": {
     "ashp": 11.44,
@@ -312,7 +312,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-17T10:27:21+00:00",
+   "fetched_utc": "2026-07-17T14:19:49+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -617,11 +617,11 @@
    "status": "ok"
   },
   "ecb_fx": {
-   "eur_gbp": 0.84873,
-   "fetched_utc": "2026-07-17T10:27:00+00:00",
-   "gbp_eur": 1.17823,
-   "latest_day": "2026-07-16",
-   "rate_date": "2026-07-16",
+   "eur_gbp": 0.85098,
+   "fetched_utc": "2026-07-17T14:19:29+00:00",
+   "gbp_eur": 1.17512,
+   "latest_day": "2026-07-17",
+   "rate_date": "2026-07-17",
    "source": "ECB euro foreign exchange reference rates (daily)",
    "status": "ok"
   },
@@ -3562,7 +3562,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-17T10:27:02+00:00",
+   "fetched_utc": "2026-07-17T14:19:31+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15366,7 +15366,7 @@
     "2026-07-14": 6.925,
     "2026-07-15": 6.804
    },
-   "fetched_utc": "2026-07-17T10:27:21+00:00",
+   "fetched_utc": "2026-07-17T14:19:48+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-15",
    "ndm_gwh": {
@@ -15779,7 +15779,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-17T10:26:59+00:00",
+   "fetched_utc": "2026-07-17T14:19:29+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -16999,7 +16999,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-17T10:27:10+00:00",
+   "fetched_utc": "2026-07-17T14:19:37+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -17131,7 +17131,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 214.94,
    "dam_avg_gbp_mwh": 183.3,
-   "fetched_utc": "2026-07-17T10:27:05+00:00",
+   "fetched_utc": "2026-07-17T14:19:32+00:00",
    "latest_day": "2026-07-15",
    "markets": {
     "NI-DA": {
@@ -17339,5 +17339,29 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "1.4.0"
+ "pipeline_version": "2.0.0",
+ "why_heat": {
+  "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
+  "emissions_mt": {
+   "heat": 16,
+   "power": 9,
+   "transport": 17
+  },
+  "imports_twh": {
+   "heat": 52,
+   "power": 28,
+   "transport": 79
+  },
+  "services_twh": {
+   "heat": 64,
+   "power": 35,
+   "transport": 83
+  },
+  "spend_eur_bn": {
+   "heat": 6.0,
+   "power": 10.5,
+   "transport": 15.0
+  },
+  "tfc_twh": 191
+ }
 }
