@@ -20,7 +20,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    parse_bulletin_history_rows,
                    parse_semopx_csv, parse_gni_series,
                    derive_hero, derive_heat_gap, derive_ashp_spf,
-                   derive_cool, derive_geo_percap,
+                   derive_cool, derive_geo_percap, WHY_HEAT,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -499,6 +499,25 @@ def test_bulletin_history_block_layout():
 def test_bulletin_history_rejects_out_of_range():
     rows = [("x", "Heating"), ("Ireland", 99.0, dt.datetime(2026, 1, 5))]
     assert parse_bulletin_history_rows(rows) == {}
+
+
+# ------------------------------------- why heat panel anchors
+
+def test_why_heat_anchors_reconcile():
+    s = WHY_HEAT["services_twh"]
+    total = sum(s.values())
+    # services within 8% of stated TFC (non-energy uses absorb the rest)
+    assert abs(total - WHY_HEAT["tfc_twh"]) / WHY_HEAT["tfc_twh"] < 0.08
+    # the panel thesis: heat is NOT the biggest bill despite its scale
+    sp = WHY_HEAT["spend_eur_bn"]
+    assert sp["heat"] < sp["power"] < sp["transport"]
+    # heat cheapest per unit delivered among the three
+    unit = {k: sp[k] / s[k] for k in s}
+    assert unit["heat"] < unit["power"] and unit["heat"] < unit["transport"]
+    # imports never exceed the service itself
+    for k, v in WHY_HEAT["imports_twh"].items():
+        assert 0 < v <= s[k]
+    assert all(v > 0 for v in WHY_HEAT["emissions_mt"].values())
 
 
 if __name__ == "__main__":
