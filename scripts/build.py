@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "1.3.0"
+PIPELINE_VERSION = "1.4.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -248,13 +248,29 @@ GEO = {
     # France ~2.6 GWth/68m.
     "reference_w_pp": {"Sweden": 635, "Netherlands": 110, "France": 38},
     # Comparator installed capacity, MWth - EGEC/WGC country-update
-    # lineage, dagger. Deeper geothermal = direct-use/district heating:
-    # NL doublet fleet ~400 MWth; France (Paris Basin Dogger et al.)
-    # ~650 MWth; Sweden's fleet is overwhelmingly shallow.
+    # lineage, dagger; consistent with the EGEC GMR2025 EU envelope
+    # (39.2 GWth GHP, 6 GWth geothermal DHC). Deeper geothermal =
+    # direct-use/district heating: NL doublet fleet ~400 MWth; France
+    # (Paris Basin Dogger et al.) ~650 MWth; Sweden overwhelmingly
+    # shallow.
     "reference_mwth": {
         "Sweden": {"shallow": 6700, "deep": 0},
         "Netherlands": {"shallow": 2000, "deep": 400},
         "France": {"shallow": 2600, "deep": 650}},
+    # EGEC Geothermal Market Report 2025, Key Findings - sourced.
+    # Note: EGEC counts units SOLD in 2025; the WGC2026 paper reports
+    # capacity COMMISSIONED in 2024 (+7.4 MWth). Different measures and
+    # years - both carried, not reconciled.
+    "egec_2025": {
+        "eu_ghp_units_m": 2.55, "eu_ghp_gwth": 39.2,
+        "eu_ghp_heat_twh": 88, "eu_people_served_m": 10.6,
+        "eu_sales_2025": 123000, "eu_sales_growth_pct": 10,
+        "ghp_sales_2025": {"Ireland": 1409, "Sweden": 26785,
+                           "Netherlands": 22148, "Germany": 19125,
+                           "United Kingdom": 4070},
+        "dhc_systems": 434, "dhc_gwth": 6.0,
+        "dhc_rank": "second-largest renewable source for district heat",
+        "source": "EGEC Geothermal Market Report 2025, Key Findings"},
     "ni_capacity_mwth_est": 6.6,   # >60 kW register + domestic - dagger
     "island_today_twh": 0.30,
     "pipeline": [
