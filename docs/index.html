@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 1.4.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 2.0.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -549,6 +549,18 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
 </section>
 
+<section id="why" aria-labelledby="why-h">
+  <h2 id="why-h">Why heat?</h2>
+  <div class="panelbox">
+    <p style="max-width:720px;margin-bottom:6px">Of everything the island
+      pays for as energy – power, transport, heat – heat rivals transport
+      as the largest service, carries the smallest bill per unit
+      delivered – and is therefore still fossil.</p>
+    <div class="grid4" id="whyPies" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"></div>
+  </div>
+  <p class="note" id="whyNote"></p>
+</section>
+
 <section id="method" aria-labelledby="method-h">
   <h2 id="method-h">Method &amp; sources</h2>
   <div class="panelbox">
@@ -1081,6 +1093,43 @@ function geoPanel(D){
 }
 
 
+function whyHeat(D){
+  const w=(D||{}).why_heat;
+  if(!w){el('whyPies').textContent='Whole-economy anchors arrive with the next build.';return}
+  const C={heat:CLR.amber, transport:'#5c6f76', power:'#5BA4CF'};
+  const NAMES={heat:'Heat', transport:'Transport', power:'Power'};
+  const pies=[
+    ['Energy services \u2013 TWh/yr\u2020', w.services_twh, 0],
+    ['Spend \u2013 \u20acbn/yr\u2020', w.spend_eur_bn, 1],
+    ['Imported energy \u2013 TWh/yr\u2020', w.imports_twh, 0],
+    ['Emissions \u2013 Mt CO\u2082/yr\u2020', w.emissions_mt, 0],
+  ];
+  el('whyPies').innerHTML=pies.map((p,i)=>
+    '<div><div class="iotitle" style="margin:6px 0 0;text-align:center">'+p[0]+
+    '</div><div id="whyPie'+i+'" class="plot" style="min-height:210px"></div></div>').join('');
+  pies.forEach((p,i)=>{
+    const keys=['heat','transport','power'];
+    Plotly.newPlot('whyPie'+i,[{
+      type:'pie', hole:.52, sort:false, direction:'clockwise',
+      labels:keys.map(k=>NAMES[k]),
+      values:keys.map(k=>p[1][k]),
+      marker:{colors:keys.map(k=>C[k]),
+        line:{color:'#0b0d0d',width:2}},
+      texttemplate:'%{label}<br>%{value:'+(p[2]?'.1f':'.0f')+'}',
+      textfont:{family:'IBM Plex Mono',size:11,color:CLR.ink},
+      textposition:'inside',
+      hovertemplate:'%{label}: %{value} (%{percent})<extra></extra>',
+      showlegend:false,
+    }],Object.assign(plb(),{
+      margin:{l:8,r:8,t:6,b:6}, height:210,
+    }),CONF);
+  });
+  el('whyNote').textContent=w.basis+
+    ' Power has already collapsed toward single-digit megatonnes; heat '+
+    'and transport are the remaining game, and heat is the one with a '+
+    'subsurface answer \u2013 the transition\u2019s biggest prize.';
+}
+
 function feedTable(feeds){
   el('feedTable').innerHTML=Object.entries(feeds).map(([k,f])=>{
     const st=f.pending_note?'pending probe':(f.status||'stale');
@@ -1107,8 +1156,9 @@ fetch('data.json').then(r=>{
   heatGap(D);
   coolSide(D);
   geoPanel(D);
+  whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 1.4.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 2.0.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
