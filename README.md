@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 2.0.0 / site 2.0.0.
+(Causeway Geothermal NI Ltd). Pipeline 2.1.0 / site 2.1.0.
 
 ## The premise
 
@@ -38,7 +38,9 @@ and prices the alternative. The data gap is the story.
   markers; a same-tax GB comparison line that draws whenever its feed
   reports. Same fuel, two price regimes, one island.
 - **The gas engine room** – daily ROI gas demand against degree days;
-  the within-month temperature-sensitive slope is space heat.
+  the within-month temperature-sensitive slope is space heat,
+  displayed with its residual standard error and an annual
+  calibration disclosure against the SEAI anchor.
 - **The heat gap** – cost of one useful kWh by route (oil boiler, gas
   boiler, air-source heat pump, geothermal), toggled by jurisdiction,
   with the break-even SPF against the incumbent oil boiler as the
@@ -72,7 +74,7 @@ client-side with Plotly. GitHub Pages serves `/docs`.
 
 | Feed | Source | Cadence | Notes |
 |---|---|---|---|
-| `hdd` | ERA5 via Open-Meteo | daily | population-weighted heating degree days, island/ROI/NI |
+| `hdd` | ERA5 via Open-Meteo | daily | population-weighted heating degree days, island/ROI/NI; hourly overheating-degree-hours (base 26 °C) collected for the future comfort metric |
 | `ecb_fx` | ECB reference rates | daily | EUR/GBP twin-currency lock |
 | `ccni_oil` | Consumer Council NI price checker | daily (Mon–Fri) | 300/500/900 L; history merged across runs |
 | `oil_bulletin` | EU Weekly Oil Bulletin + price-history workbook | weekly | Ireland heating gas oil, with & without taxes, backfilled from the 2005-onwards history |
@@ -114,10 +116,13 @@ medians, moving with the weather year. Geothermal's stable source
 temperature is exactly why its SPF escapes this ceiling.
 
 **The gas regression.** Space-heat sensitivity is estimated by
-month-demeaned OLS – daily demand deviations on daily HDD deviations
-within each month – which removes seasonal confounds (holidays, school
-terms, baseload drift) that bias the naive slope. Both slopes ship in the
-payload; the demeaned one is displayed.
+within-class (monthly) centring – daily demand deviations on daily HDD
+deviations within each month – which removes seasonal confounds
+(holidays, school terms, baseload drift) that bias the pooled slope.
+Both slopes ship in the payload with the residual standard error; the
+centred one is displayed, and a calibration disclosure publishes the
+regression-implied annual space heat against the SEAI-derived anchor
+with a 0.90–1.10 gate, whether or not it passes.
 
 **The what-if.** 20% of delivered heat moves to heat pumps at seasonal
 performance 4: the electricity input is bought at each jurisdiction's
@@ -150,6 +155,10 @@ diagnostics-first: on first contact with an unknown format the pipeline
 logs the raw structure and continues, so parsers are written against
 evidence from live run logs, never guessed.
 
+The full estimation methodology is published as
+[methodology.pdf](https://causewaygt.github.io/irish-heatsplit/methodology.pdf)
+and linked from the site footer.
+
 ## Versioning
 
 `x.y.z` – x: new source or panel; y: source update; z: wording/format.
@@ -160,7 +169,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 37 tests, no network
+python3 tests/test_synthetic.py   # 39 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
