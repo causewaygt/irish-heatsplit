@@ -21,6 +21,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    parse_semopx_csv, parse_gni_series,
                    derive_hero, derive_heat_gap, derive_ashp_spf,
                    derive_cool, derive_geo_percap, WHY_HEAT,
+                   derive_gas_calibration, odh26_from_hourly,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -44,10 +45,12 @@ def test_regression_recovers_truth():
     gas, hdd = synth_year(slope=3.0, baseload=8.0)
     r = space_heat_split(gas, hdd)
     assert r is not None
-    assert r["method"] == "month-demeaned OLS"
+    assert r["method"].startswith("within-month centred")
     assert abs(r["slope_gwh_per_hdd"] - 3.0) < 0.1, r
     assert abs(r["baseload_gwh_per_day"] - 8.0) < 1.0, r
     assert r["r2_within_month"] > 0.9, r
+    # residual SE close to the injected noise sigma
+    assert 0.2 < r["residual_se_gwh_per_day"] < 1.2, r
 
 
 def test_regression_with_holiday_confound():
@@ -518,6 +521,44 @@ def test_why_heat_anchors_reconcile():
     for k, v in WHY_HEAT["imports_twh"].items():
         assert 0 < v <= s[k]
     assert all(v > 0 for v in WHY_HEAT["emissions_mt"].values())
+
+
+# ------------------------------------- calibration + odh groundwork
+
+def test_gas_calibration_consistent_slope_hits_gate():
+    hdd = {}
+    d0 = dt.date.today() - dt.timedelta(days=365)
+    import math as _m
+    for i in range(366):
+        d = (d0 + dt.timedelta(days=i)).isoformat()
+        hdd[d] = round(max(0.0, 8 + 7 * _m.cos(2 * _m.pi * i / 365)), 2)
+    annual = sum(hdd[d] for d in sorted(hdd)[-365:])
+    from build import ANCHORS
+    j = ANCHORS["roi"]
+    anchor = ((j["residential_heat_twh"] + j["services_heat_twh"])
+              * j["fuel_shares"]["gas"] * ANCHORS["space_heat_fraction"]
+              * 1000.0)
+    reg = {"slope_gwh_per_hdd": anchor / annual}
+    cal = derive_gas_calibration(reg, hdd)
+    assert cal and cal["within_gate"] and abs(cal["ratio"] - 1.0) < 0.02
+    # a slope 30% low must be disclosed as outside the gate
+    cal2 = derive_gas_calibration(
+        {"slope_gwh_per_hdd": 0.7 * anchor / annual}, hdd)
+    assert cal2 and not cal2["within_gate"]
+
+
+def test_odh26_aggregation():
+    payload = [
+        {"hourly": {"time": ["2026-07-01T12:00", "2026-07-01T13:00",
+                             "2026-07-02T12:00"],
+                    "temperature_2m": [28.0, 25.0, 30.0]}},
+        {"hourly": {"time": ["2026-07-01T12:00", "2026-07-01T13:00",
+                             "2026-07-02T12:00"],
+                    "temperature_2m": [27.0, 29.0, None]}},
+    ]
+    out = odh26_from_hourly(payload, ["A", "B"], {"A": 0.6, "B": 0.4})
+    # day1: A 0.6*2 + B 0.4*(1+3)=1.2+1.6=2.8 ; day2: A 0.6*4=2.4
+    assert out == {"2026-07-01": 2.8, "2026-07-02": 2.4}, out
 
 
 if __name__ == "__main__":
