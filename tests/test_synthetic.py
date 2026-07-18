@@ -316,6 +316,11 @@ def test_hero_v3_cooling_and_combined():
         assert abs(b["combined"]["purchased_gwh"]
                    - b["heat_purchased_gwh"]
                    - b["cooling"]["elec_gwh"]) < 0.2
+        # service exceeds electricity for vapour-compression fleets
+        assert b["cooling"]["served_gwh"] > b["cooling"]["elec_gwh"]
+        assert abs(b["combined"]["served_gwh"]
+                   - b["heat_delivered_gwh"]
+                   - b["cooling"]["served_gwh"]) < 0.2
         wf = b["what_if_combined"]
         assert wf["purchased_gwh"] < b["combined"]["purchased_gwh"]
         assert wf["emissions_kt_co2"] < b["combined"]["emissions_kt_co2"]
