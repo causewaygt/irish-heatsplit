@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 3.0.0 / site 3.0.0.
+(Causeway Geothermal NI Ltd). Pipeline 3.2.0 / site 3.1.0.
 
 ## The premise
 
@@ -30,7 +30,11 @@ and prices the alternative. The data gap is the story.
   record); a what-if strip – 20% of heat & cooling moved to geothermal,
   the cooling side at a 70%† ground-coupled electricity saving; a
   for-scale line against last winter's peak; and energy-in versus
-  useful-heat-&-cooling-out bars with losses hatched. In July the
+  useful-heat-&-cooling-out bars with losses hatched – delivered cooling
+  applies per-load service factors† (vapour-compression plant delivers a
+  multiple of its electricity), so served can legitimately exceed
+  purchased, and the indigenous share is computed on the delivered
+  basis with the ambient balance counted indigenous. In July the
   island's cooling bill outweighs its heat bill roughly 3:1 – the
   summer inversion the tracker displays rather than omits.
 - **The invisible majority** – delivered building heat split into
@@ -183,7 +187,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 43 tests, no network
+python3 tests/test_synthetic.py   # 45 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
