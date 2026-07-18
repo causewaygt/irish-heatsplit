@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "2.0.0"
+PIPELINE_VERSION = "2.1.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -736,6 +736,25 @@ def feed_eirgrid():
     raise NotImplementedError("endpoint probed? implement the parser here")
 
 
+def odh26_from_hourly(payload, names, weights, base_c=26.0):
+    """
+    Population-weighted overheating degree-hours per day from Open-Meteo
+    hourly payloads: sum over hours of max(0, T - 26), weighted across
+    stations, keyed by UTC date. Pure, unit tested.
+    """
+    locs = payload if isinstance(payload, list) else [payload]
+    per_day = {}
+    for name, loc in zip(names, locs):
+        w = weights.get(name, 0.0)
+        hh = loc.get("hourly", {})
+        for ts, t in zip(hh.get("time", []), hh.get("temperature_2m", [])):
+            if t is None:
+                continue
+            d = ts[:10]
+            per_day[d] = per_day.get(d, 0.0) + w * max(0.0, t - base_c)
+    return {d: round(v, 2) for d, v in per_day.items()}
+
+
 def feed_hdd():
     """Open-Meteo, batched; forecast tail optional (degrades to lagging)."""
     names = list(STATIONS)
@@ -803,6 +822,30 @@ def feed_hdd():
                          "contact@causewaygt.com"),
         "source": "ERA5 via Open-Meteo, population-weighted HDD",
     }
+
+    # ODH26 groundwork: hourly overheating-degree-hours (base 26 C),
+    # population-weighted, trailing 60 days per run, merged across runs.
+    # Collected for the future comfort/cooling metric; not yet displayed.
+    # Soft: any failure leaves the hdd feed intact.
+    try:
+        hp = http_get(
+            "https://archive-api.open-meteo.com/v1/archive", params={
+                "latitude": lats, "longitude": lons,
+                "start_date": (today_utc()
+                               - dt.timedelta(days=60)).isoformat(),
+                "end_date": today_utc().isoformat(),
+                "hourly": "temperature_2m", "timezone": "UTC",
+            }, timeout=180).json()
+        odh_new = odh26_from_hourly(
+            hp, names, {n: STATIONS[n][2] for n in names})
+        odh = prev_series("hdd", "odh26_island")
+        odh.update(odh_new)
+        out["odh26_island"] = trim_series(odh)
+        log(f"hdd: odh26 {len(odh_new)} days this run, "
+            f"{len(out['odh26_island'])} retained, "
+            f"nonzero {sum(1 for v in out['odh26_island'].values() if v>0)}")
+    except Exception as e:
+        log(f"hdd: odh26 groundwork skipped ({e.__class__.__name__}: {e})")
     latest = max(out["hdd_island"] or {"": None})
     out["latest_day"] = latest or None
     return out, recency_status(out["latest_day"], 3 if tail_ok else 7)
@@ -1349,7 +1392,7 @@ def _gb_oil_out(d, ppl, source):
 def space_heat_split(gas_daily: dict, hdd_daily: dict):
     """
     Space-heat sensitivity of daily gas demand. Primary estimator is
-    month-demeaned OLS - within-month deviations of demand on within-month
+    within-class (monthly) centring - within-month deviations of demand on
     deviations of HDD - which removes seasonal confounds (holidays, school
     terms, baseload drift) that bias the naive slope. The naive OLS is
     retained for reference. See tests/test_synthetic.py.
@@ -1373,7 +1416,7 @@ def space_heat_split(gas_daily: dict, hdd_daily: dict):
 
     naive_slope, _ = ols(x, y)
 
-    # month-demeaned: subtract each month's own means
+    # within-class centring: subtract each month's own means
     from collections import defaultdict
     bym = defaultdict(list)
     for d, xi, yi in zip(days, x, y):
@@ -1391,13 +1434,46 @@ def space_heat_split(gas_daily: dict, hdd_daily: dict):
     slope = sum(a * b for a, b in zip(xd, yd)) / sxx
     ss_res = sum((b - slope * a) ** 2 for a, b in zip(xd, yd))
     ss_tot = sum(b * b for b in yd) or 1e-9
+    dof = max(1, len(xd) - len(bym) - 1)
     return {"slope_gwh_per_hdd": round(slope, 3),
             "baseload_gwh_per_day": round(my - slope * mx, 2),
             "r2_within_month": round(1 - ss_res / ss_tot, 3),
+            "residual_se_gwh_per_day": round((ss_res / dof) ** 0.5, 2),
             "n_days": n,
-            "method": "month-demeaned OLS",
+            "method": "within-month centred OLS (within-class centring)",
             "naive_slope_gwh_per_hdd": round(naive_slope, 3)
             if naive_slope is not None else None}
+
+
+def derive_gas_calibration(reg, hdd_roi, anchors=None):
+    """
+    Calibration disclosure: the regression-implied annual gas space heat
+    (slope x trailing-year ROI degree days) against the anchor-implied
+    figure (ROI buildings heat x gas share x space-heat fraction, input
+    basis). Ratio published with a +/-10% gate; a miss is disclosed, not
+    hidden - the two measures differ in scope (distribution-metered gas
+    vs whole-anchor) and the ratio quantifies exactly that.
+    """
+    a = anchors or ANCHORS
+    if not reg or not hdd_roi:
+        return None
+    days = sorted(hdd_roi)[-365:]
+    if len(days) < 300:
+        return None
+    annual_hdd = sum(hdd_roi[d] for d in days)
+    implied = reg["slope_gwh_per_hdd"] * annual_hdd
+    j = a["roi"]
+    anchor = ((j["residential_heat_twh"] + j["services_heat_twh"])
+              * j["fuel_shares"]["gas"] * a["space_heat_fraction"] * 1000.0)
+    ratio = implied / anchor if anchor else None
+    return {"implied_annual_space_heat_gwh": round(implied, 0),
+            "anchor_annual_space_heat_gwh": round(anchor, 0),
+            "ratio": round(ratio, 2), "gate": "0.90-1.10",
+            "within_gate": bool(0.90 <= ratio <= 1.10),
+            "note": ("Scopes differ: the regression sees "
+                     "distribution-metered gas; the anchor is the whole "
+                     "buildings-gas estimate. The ratio measures the "
+                     "difference and is published either way.")}
 
 
 def derive_hero(feeds, anchors=None):
@@ -1589,7 +1665,10 @@ def derive_hero(feeds, anchors=None):
         "roi": roi, "ni": ni,
         "basis": ("Scaffold estimator (dagger throughout) - annual anchors "
                   "shaped by each jurisdiction's weekly HDD; SEAI 2024, "
-                  "DfE/NISRA, Causeway estimates. Challenge and input "
+                  "DfE/NISRA, Causeway estimates. Oil, the island's "
+                  "majority heating fuel, is modelled from annual "
+                  "anchors, not metered - its weekly estimates carry a "
+                  "materially wider band than gas. Challenge and input "
                   "welcome at contact@causewaygt.com"),
         "anchors_used": a,
     })
@@ -1851,6 +1930,16 @@ def main():
     hg = derive_heat_gap(feeds)
     if hg:
         derived["heat_gap"] = hg
+    reg = derived.get("roi_space_heat_regression")
+    cal = derive_gas_calibration(
+        reg, (feeds.get("hdd") or {}).get("hdd_roi") or {})
+    if cal:
+        derived["gas_calibration"] = cal
+        log("gas calibration: implied", cal["implied_annual_space_heat_gwh"],
+            "vs anchor", cal["anchor_annual_space_heat_gwh"],
+            "ratio", cal["ratio"],
+            "(gate 0.90-1.10)" if cal["within_gate"] else
+            "OUTSIDE gate 0.90-1.10 - disclosed")
     cool = derive_cool(feeds)
     if cool:
         derived["cool"] = cool
