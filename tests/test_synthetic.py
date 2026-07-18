@@ -22,6 +22,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    derive_hero, derive_heat_gap, derive_ashp_spf,
                    derive_cool, derive_geo_percap, WHY_HEAT,
                    derive_gas_calibration, odh26_from_hourly,
+                   parse_eirgrid_rows,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -559,6 +560,34 @@ def test_odh26_aggregation():
     out = odh26_from_hourly(payload, ["A", "B"], {"A": 0.6, "B": 0.4})
     # day1: A 0.6*2 + B 0.4*(1+3)=1.2+1.6=2.8 ; day2: A 0.6*4=2.4
     assert out == {"2026-07-01": 2.8, "2026-07-02": 2.4}, out
+
+
+# ------------------------------------- eirgrid /api/chart parser
+
+def test_eirgrid_rows_daily_gwh():
+    rows = []
+    # full day of quarter-hours at 600 MW -> 14.4 GWh
+    for q in range(96):
+        hh, mm = divmod(q * 15, 60)
+        rows.append({"EffectiveTime": f"17-Jul-2026 {hh:02d}:{mm:02d}:00",
+                     "FieldName": "SYSTEM_DEMAND", "Region": "NI",
+                     "Value": 600})
+    # partial day (nulls for the future) - must be dropped
+    for q in range(30):
+        hh, mm = divmod(q * 15, 60)
+        rows.append({"EffectiveTime": f"18-Jul-2026 {hh:02d}:{mm:02d}:00",
+                     "FieldName": "SYSTEM_DEMAND", "Region": "NI",
+                     "Value": 550})
+    rows.append({"EffectiveTime": "18-Jul-2026 08:15:00",
+                 "FieldName": "SYSTEM_DEMAND", "Region": "NI",
+                 "Value": None})
+    # forecast rows ignored
+    rows.append({"EffectiveTime": "18-Jul-2026 12:00:00",
+                 "FieldName": "DEMAND_FORECAST_VALUE", "Region": "NI",
+                 "Value": 747})
+    out = parse_eirgrid_rows({"Rows": rows})
+    assert out == {"2026-07-17": 14.4}, out
+    assert parse_eirgrid_rows({}) == {}
 
 
 if __name__ == "__main__":
