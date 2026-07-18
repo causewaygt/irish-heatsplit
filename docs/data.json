@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-18T08:43:00+00:00",
+ "built_utc": "2026-07-18T09:13:19+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO; other loads and rejection factors dagger (refrigeration and comfort reject compressor work plus pumped heat). Stranded share computed from this site's own degree-day record, comfort load shaped by live overheating degree-hours. Challenge and input welcome at contact@causewaygt.com",
@@ -711,11 +711,11 @@
     }
    },
    "source": "Consumer Council for Northern Ireland home heating oil price checker - daily (Mon-Fri), NI average, 300/500/900 L",
-   "status": "ok"
+   "status": "stale"
   },
   "ecb_fx": {
    "eur_gbp": 0.85098,
-   "fetched_utc": "2026-07-18T08:42:33+00:00",
+   "fetched_utc": "2026-07-18T09:12:32+00:00",
    "gbp_eur": 1.17512,
    "latest_day": "2026-07-17",
    "rate_date": "2026-07-17",
@@ -796,7 +796,7 @@
      "2026-07-17": 90.18
     }
    },
-   "fetched_utc": "2026-07-18T08:42:25+00:00",
+   "fetched_utc": "2026-07-18T09:12:29+00:00",
    "latest_day": "2026-07-17",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
@@ -3733,7 +3733,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-18T08:42:35+00:00",
+   "fetched_utc": "2026-07-18T09:12:34+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15538,7 +15538,7 @@
     "2026-07-15": 6.804,
     "2026-07-16": 7.205
    },
-   "fetched_utc": "2026-07-18T08:42:54+00:00",
+   "fetched_utc": "2026-07-18T09:12:52+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-16",
    "ndm_gwh": {
@@ -15955,7 +15955,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-18T08:42:32+00:00",
+   "fetched_utc": "2026-07-18T09:12:31+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -17238,7 +17238,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-18T08:42:42+00:00",
+   "fetched_utc": "2026-07-18T09:12:40+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -17370,7 +17370,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 153.85,
    "dam_avg_gbp_mwh": 130.41,
-   "fetched_utc": "2026-07-18T08:42:37+00:00",
+   "fetched_utc": "2026-07-18T09:12:35+00:00",
    "latest_day": "2026-07-16",
    "markets": {
     "NI-DA": {
