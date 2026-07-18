@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "2.2.0"
+PIPELINE_VERSION = "2.2.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -1359,30 +1359,52 @@ def feed_gb_oil():
          parser can be pinned in one iteration.
     History accumulates across runs whichever strategy lands.
     """
-    # --- strategy A: BoilerJuice sentence, two UAs
-    for ua in (UA["User-Agent"],
-               "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-               "AppleWebKit/537.36 (KHTML, like Gecko) "
-               "Chrome/126.0.0.0 Safari/537.36"):
-        try:
-            page = http_get("https://www.boilerjuice.com/kerosene-prices/",
-                            headers={"User-Agent": ua}, retries=1).text
-        except Exception as e:
-            log(f"gb_oil: A fetch failed ({e.__class__.__name__})")
-            continue
-        d, ppl = parse_gb_oil_page(page)
-        if ppl is not None:
+    # --- strategy A: BoilerJuice sentence. Diagnosis 18 Jul 2026: the CDN
+    # serves non-browser clients an archived template (observed: Oct 2021,
+    # (c) 2004-2021) while browsers and search crawlers receive the live
+    # page with today's sentence. Countermeasures: browser headers, a
+    # cache-busting query so no cached variant matches, and a freshness
+    # gate - a parsed date older than 7 days is a fossil, rejected and
+    # logged, never stored.
+    A_HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/126.0.0.0 Safari/537.36",
+        "Referer": "https://www.google.com/",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Cache-Control": "no-cache", "Pragma": "no-cache",
+    }
+    fresh_floor = (today_utc() - dt.timedelta(days=7)).isoformat()
+    for url in ("https://www.boilerjuice.com/kerosene-prices/",
+                "https://www.boilerjuice.com/heating-oil-prices/"):
+        for attempt in range(2):
+            try:
+                page = http_get(url, headers=A_HEADERS, retries=1,
+                                params={"cb": int(time.time()) + attempt}
+                                ).text
+            except Exception as e:
+                log(f"gb_oil: A fetch failed on {url.rsplit('/', 2)[-2]} "
+                    f"({e.__class__.__name__})")
+                break
+            d, ppl = parse_gb_oil_page(page)
+            if ppl is None:
+                log(f"gb_oil: A no sentence on {url.rsplit('/', 2)[-2]} "
+                    f"attempt {attempt + 1}")
+                continue
             if d is None:
                 d = today_utc().isoformat()
-            if d < (today_utc() - dt.timedelta(days=30)).isoformat():
-                log(f"gb_oil: A page reports {d} - stale edge cache, "
-                    "storing under reported date")
+            if d < fresh_floor:
+                log(f"gb_oil: A fossil template on "
+                    f"{url.rsplit('/', 2)[-2]} - sentence dated {d}, "
+                    f"{ppl} p/L - rejected, cache-busting again")
+                continue
             log(f"gb_oil: A (BoilerJuice) {ppl} p/L at {d}")
             return _gb_oil_out(d, ppl,
                                "BoilerJuice UK daily average (lowest quote "
                                "per postcode district, incl 5% VAT)")
-    log("gb_oil: A missed on both UAs - modern template lacks the "
-        "sentence; falling through to DESNZ")
+    log("gb_oil: A exhausted (fossil or sentence-less variants only) - "
+        "falling through to DESNZ")
 
     # --- strategy B: DESNZ monthly petroleum products via gov.uk.
     # The direct slug 404'd on the 16 Jul 2026 run; resolve it from the
