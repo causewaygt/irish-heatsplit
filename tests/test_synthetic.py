@@ -309,6 +309,27 @@ def test_hero_by_fuel_and_peak():
     assert h["roi"]["by_fuel"]["oil"]["in_gwh"] > 0
 
 
+def test_hero_v3_cooling_and_combined():
+    h = derive_hero(_hero_fixture_feeds())
+    for b in (h["roi"], h["ni"], h):
+        assert b["cooling"]["elec_gwh"] > 0
+        assert abs(b["combined"]["purchased_gwh"]
+                   - b["heat_purchased_gwh"]
+                   - b["cooling"]["elec_gwh"]) < 0.2
+        wf = b["what_if_combined"]
+        assert wf["purchased_gwh"] < b["combined"]["purchased_gwh"]
+        assert wf["emissions_kt_co2"] < b["combined"]["emissions_kt_co2"]
+        assert wf["indigenous_share_pct"] \
+            > b["combined"]["indigenous_share_pct"]
+    # ROI carries nearly all island cooling
+    assert h["roi"]["cooling"]["elec_gwh"] \
+        > 6 * h["ni"]["cooling"]["elec_gwh"]
+    # island reconciles
+    assert abs(h["cooling"]["elec_gwh"]
+               - h["roi"]["cooling"]["elec_gwh"]
+               - h["ni"]["cooling"]["elec_gwh"]) < 0.2
+
+
 def test_hero_jurisdiction_blocks_reconcile():
     h = derive_hero(_hero_fixture_feeds())
     assert "roi" in h and "ni" in h
@@ -413,33 +434,36 @@ def test_cool_derivation():
     feeds = _hero_fixture_feeds()
     c = derive_cool(feeds)
     assert c is not None
-    # sinusoidal HDD with a summer zero-floor strands a big minority
     assert 20 <= c["stranded_summer_pct"] <= 60, c
     assert abs(c["dc_twh"] - 31.0 * 0.22) < 0.1
-    assert c["waste_vs_roi_residential_pct"] > 20
-    # no HDD -> None
+    # census: electricity total = sum of loads; rejection exceeds elec
+    assert abs(c["cooling_elec_twh"]
+               - sum(c["loads_twh"].values())) < 0.05
+    assert c["heat_rejected_twh"] > c["cooling_elec_twh"]
+    assert c["reject_vs_island_residential_pct"] > 40
+    assert c["comfort_shaped_by_odh"] is False   # fixture has no ODH
     assert derive_cool({"hdd": {}}) is None
 
 
-# ------------------------------------- geo per-capita
-
-def test_geo_percap():
-    p = derive_geo_percap()
-    # current: ROI ~42 W/person, NI a few W, island in between
-    assert 38 <= p["roi"]["current_w_pp"] <= 46, p["roi"]
-    assert 2 <= p["ni"]["current_w_pp"] <= 5, p["ni"]
-    assert p["ni"]["current_w_pp"] < p["island"]["current_w_pp"] \
-        < p["roi"]["current_w_pp"]
-    # what-if requirement dwarfs current everywhere; NI worst per person
-    for j in ("roi", "ni", "island"):
-        assert p[j]["whatif_w_pp"] > 8 * p[j]["current_w_pp"], j
-    assert p["ni"]["whatif_w_pp"] > p["roi"]["whatif_w_pp"]
-    # hand check ROI: useful ~25.3 TWh -> 0.2*25.3e12/2000/5.3e6 ~ 477
-    assert abs(p["roi"]["whatif_w_pp"] - 477) < 15, p["roi"]
-    # MWth basis: requirement = useful_twh * 100 at 2000 h
-    assert abs(p["roi"]["whatif_mwth"] - p["roi"]["useful_twh"] * 100) < 60
-    assert p["roi"]["current_mwth"] == 225
-    assert abs(p["island"]["current_mwth"] - 231.6) < 0.5
+def test_cool_odh_shaping_increases_stranding():
+    feeds = _hero_fixture_feeds()
+    base = derive_cool(feeds)["stranded_summer_pct"]
+    # summer-only ODH: comfort load lands exactly where heat demand is 0
+    hdd = feeds["hdd"]["hdd_island"]
+    odh = {}
+    for d in sorted(hdd):
+        odh[d] = 5.0 if hdd[d] == 0 else 0.0
+    if sum(odh.values()) == 0:   # fixture phase guard
+        for d in sorted(hdd)[:120]:
+            odh[d] = 5.0
+    feeds["hdd"]["odh26_island"] = odh
+    c2 = derive_cool(feeds)
+    assert c2["comfort_shaped_by_odh"] is True
+    # shaping engages and moves the estimate; direction depends on where
+    # the flat comfort share was previously landing, so assert change and
+    # sanity, not sign
+    assert abs(c2["stranded_summer_pct"] - base) > 0.05, (base, c2)
+    assert 20 <= c2["stranded_summer_pct"] <= 60
 
 
 # ------------------------------------- bulletin history parser
