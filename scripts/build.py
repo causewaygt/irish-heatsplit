@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "2.1.0"
+PIPELINE_VERSION = "2.2.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -58,11 +58,9 @@ SOFT_FEEDS = {"gb_oil"}
 
 # Feeds known broken for reasons outside this pipeline - marked stale,
 # logged, but neither paged nor allowed to fail the run.
-EXPECTED_DOWN = {
-    "eirgrid": ("Smart Grid Dashboard redesigned ~09 Jul 2026 - "
-                "DashboardService.svc returns 503 from all networks; "
-                "awaiting browser XHR probe for the replacement endpoint"),
-}
+EXPECTED_DOWN = {}
+# eirgrid was expected-down 09-18 Jul 2026 (dashboard redesign); restored
+# via the /api/chart/ endpoint captured by browser probe.
 
 # Population weights for degree days - Causeway judgement figures (dagger).
 # Challenge and input welcome at contact@causewaygt.com.
@@ -79,7 +77,12 @@ STATIONS = {
 HDD_BASE_C = 15.5
 
 # Fill after browser XHR probe (the one remaining probe)
-EIRGRID_ENDPOINT = None    # replacement for DashboardService.svc/data
+EIRGRID_ENDPOINT = "https://www.smartgriddashboard.com/api/chart/"
+# Captured by browser XHR probe, 18 Jul 2026. Response schema is the
+# pre-redesign DashboardService shape unchanged: {"Rows":[{"EffectiveTime":
+# "18-Jul-2026 00:15:00","FieldName":"SYSTEM_DEMAND","Region":"NI",
+# "Value":573}, ...]} - 15-min actuals with nulls for future intervals,
+# half-hourly DEMAND_FORECAST_VALUE rows appended.
 
 NTFY_TOPIC = None
 
@@ -724,16 +727,97 @@ def parse_gb_oil_page(text: str) -> tuple:
 
 # ---------------------------------------------------------------- feeds
 
+def parse_eirgrid_rows(payload, field="SYSTEM_DEMAND"):
+    """
+    /api/chart/ response -> {iso_date: daily_gwh}. Quarter-hour MW rows
+    for the requested field are averaged per day and converted
+    (mean MW x 24 h / 1000). Null values (future intervals) and other
+    fields (forecasts) are ignored; days with fewer than 48 quarter-hours
+    of actuals are dropped as incomplete. Pure, unit tested.
+    """
+    acc = {}
+    for row in (payload or {}).get("Rows", []):
+        if row.get("FieldName") != field or row.get("Value") is None:
+            continue
+        et = str(row.get("EffectiveTime", ""))
+        try:
+            iso = dt.datetime.strptime(et.split()[0], "%d-%b-%Y")\
+                    .date().isoformat()
+        except (ValueError, IndexError):
+            iso = find_date_in_text(et)
+        if not iso:
+            continue
+        s, n = acc.get(iso, (0.0, 0))
+        acc[iso] = (s + float(row["Value"]), n + 1)
+    return {d: round(s / n * 24.0 / 1000.0, 2)
+            for d, (s, n) in acc.items() if n >= 48}
+
+
 def feed_eirgrid():
     """
-    Smart Grid Dashboard - PROBE PENDING. The pre-redesign endpoint
-    (DashboardService.svc/data) returns 503 from all networks since
-    ~09 Jul 2026. Set EIRGRID_ENDPOINT after the browser XHR probe and
-    implement the parser against the captured response shape.
+    Smart Grid Dashboard via the /api/chart/ endpoint (probed 18 Jul
+    2026). Daily electricity demand in GWh for ALL / NI / ROI, merged
+    across runs. Today is always incomplete and excluded by the parser's
+    48-interval rule; each run therefore backfills the last full days.
     """
-    if EIRGRID_ENDPOINT is None:
-        raise NotImplementedError(EXPECTED_DOWN["eirgrid"])
-    raise NotImplementedError("endpoint probed? implement the parser here")
+    def dmy(d):
+        return d.strftime("%d-%b-%Y")
+
+    out = {"source": "EirGrid Smart Grid Dashboard (/api/chart/)",
+           "demand_gwh_daily": {}}
+    end = today_utc()
+    start = end - dt.timedelta(days=8)
+    for region, key in (("ALL", "island"), ("NI", "ni"), ("ROI", "roi")):
+        try:
+            payload = http_get(EIRGRID_ENDPOINT, params={
+                "region": region, "chartType": "demand",
+                "dateRange": "month", "dateFrom": dmy(start),
+                "dateTo": dmy(end), "areas": "demandactual",
+            }, timeout=90).json()
+        except Exception as e:
+            log(f"eirgrid: {region} span fetch failed "
+                f"({e.__class__.__name__}: {e})")
+            payload = {}
+        got = parse_eirgrid_rows(payload)
+        if not got:
+            rows = (payload or {}).get("Rows", [])
+            log(f"eirgrid: {region} span returned {len(rows)} rows, "
+                f"0 complete days - falling back to per-day calls")
+            got = {}
+            for i in range(1, 8):
+                d = end - dt.timedelta(days=i)
+                try:
+                    pl = http_get(EIRGRID_ENDPOINT, params={
+                        "region": region, "chartType": "demand",
+                        "dateRange": "day", "dateFrom": dmy(d),
+                        "dateTo": dmy(d), "areas": "demandactual",
+                    }, timeout=60).json()
+                    got.update(parse_eirgrid_rows(pl))
+                except Exception as e:
+                    log(f"eirgrid: {region} {d} failed ({e})")
+        series = prev_series("eirgrid", "demand_gwh_daily", key)
+        series.update(got)
+        out["demand_gwh_daily"][key] = trim_series(series)
+        log(f"eirgrid: {region} {len(got)} days this run, "
+            f"{len(out['demand_gwh_daily'][key])} retained")
+
+    # CO2 probe - diagnostics only, never fatal, parsed once the shape
+    # is confirmed in a run log
+    try:
+        pl = http_get(EIRGRID_ENDPOINT, params={
+            "region": "ALL", "chartType": "co2",
+            "dateRange": "day", "dateFrom": dmy(end - dt.timedelta(days=1)),
+            "dateTo": dmy(end - dt.timedelta(days=1)),
+            "areas": "co2intensity,co2emission"}, timeout=60).json()
+        rows = (pl or {}).get("Rows", [])
+        log(f"eirgrid: co2 probe returned {len(rows)} rows; first:",
+            rows[:2])
+    except Exception as e:
+        log(f"eirgrid: co2 probe failed ({e.__class__.__name__}: {e})")
+
+    isl = out["demand_gwh_daily"].get("island") or {}
+    out["latest_day"] = max(isl) if isl else None
+    return out, recency_status(out["latest_day"], 4)
 
 
 def odh26_from_hourly(payload, names, weights, base_c=26.0):
