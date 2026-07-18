@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 2.1.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 3.0.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -319,7 +319,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   </div>
   <div class="hstats" id="heroCards"></div>
   <div class="whatif" id="whatif" hidden>
-    <div class="wtitle">What if <span class="wbig">20%</span> of this heat came from <span class="wbig">geothermal</span></div>
+    <div class="wtitle">What if <span class="wbig">20%</span> of heat &amp; cooling moved to <span class="wbig">geothermal</span></div>
     <div class="wrow" id="whatifRow"></div>
   </div>
   <div id="ioScale" class="ioscale"></div>
@@ -439,17 +439,17 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </section>
 
 <section id="cool" aria-labelledby="cool-h">
-  <h2 id="cool-h">The cool side <span class="dag">†</span></h2>
+  <h2 id="cool-h">The cold economy <span class="dag">†</span></h2>
   <div class="split2">
     <div class="panelbox">
       <div class="grid4" style="grid-template-columns:1fr 1fr">
         <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Data-centre share of ROI electricity</div>
+          <div class="lab">Island electricity spent on cooling</div>
           <div class="big" id="coolShare">–</div>
           <div class="sub" id="coolShareSub"></div>
         </div>
         <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Waste heat, every year</div>
+          <div class="lab">Heat rejected, every year</div>
           <div class="big" id="coolWaste">–</div>
           <div class="sub" id="coolWasteSub"></div>
         </div>
@@ -466,27 +466,35 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
             above 50%</div>
         </div>
       </div>
+      <div class="iotitle" style="margin-top:14px">The loads – TWh of electricity<span class="dag">†</span></div>
+      <div class="iorow"><div class="iolab" id="coolLoadLab">–</div>
+        <div class="iotrack" id="coolLoadBar"></div></div>
     </div>
     <div class="panelbox"><div id="coolPlot" class="plot" style="min-height:300px"></div></div>
   </div>
-  <p class="note">Ireland's cooling story is the data-centre story: server
-    heat is rejected at a near-constant rate all year, while the island's
-    heat demand follows the weather – the chart shows both shapes with
+  <p class="note">Ireland's cooling story is bigger than its data
+    centres – it is the cold economy of a food-export island. Server halls
+    are the largest single load, but beside them run the cold chain that
+    the dairy, meat and pharma economy is built on – nine billion litres
+    of milk cooled from 37 °C every year before breakfast trade is even
+    counted – plus process cooling and a summer sliver of comfort
+    cooling, now shaped by this site's own live overheating record when a
+    season of it exists<span class="dag">†</span>. Every one of these
+    loads rejects heat – refrigeration rejects more heat than the
+    electricity it draws – and almost all of it rejects year-round while
+    heat demand follows the weather: the chart shows both shapes with
     annual totals matched. The winter deficit and summer surplus are the
     same energy in the wrong season, and moving heat across seasons is
-    what aquifer thermal energy storage exists to do – charge the aquifer
-    with summer rejection, discharge it into the winter peak. Tallaght has
-    proven the loop since 2023, boosting data-centre heat to 80&#8202;°C for
-    public buildings and homes; the Heat Bill advanced by Cabinet this week
-    builds the framework, and the EU Energy Efficiency Directive already
-    requires facilities above 1&#8202;MW to assess and implement waste-heat
-    recovery unless certified infeasible. The heat is there, the mandate is
-    arriving – the missing infrastructure is seasonal. EGEC's 2025 market
-    report expects thermal storage among the fastest-growing flexibility
-    technologies of the late decade, names data-centre cold storage as a
-    UTES application, and counts large-scale projects across Denmark,
-    Germany, Austria, the Netherlands and Finland – the island has yet to
-    build its first.</p>
+    what aquifer thermal energy storage exists to do. Tallaght has proven
+    the loop since 2023, boosting data-centre heat to 80&#8202;°C for public
+    buildings and homes; the Heat Bill advanced by Cabinet builds the
+    framework, and the EU Energy Efficiency Directive already requires
+    facilities above 1&#8202;MW to assess and implement waste-heat recovery
+    unless certified infeasible. EGEC's 2025 market report expects thermal
+    storage among the fastest-growing flexibility technologies of the
+    late decade, names data-centre cold storage as a UTES application,
+    and counts large-scale projects across Denmark, Germany, Austria, the
+    Netherlands and Finland – the island has yet to build its first.</p>
 </section>
 
 <section id="geo" aria-labelledby="geo-h">
@@ -665,6 +673,7 @@ function heroCards(h){
     ['peat','Peat','#8a5a3b'],
     ['other','Other','#5c6f76'],
   ];
+  const COOLC='#5BA4CF';
   function bill(b, state){
     if(state==='ni') return '\u00a3'+fmt(b.bill_gbp_m,0)+'m (\u2248 \u20ac'+
       fmt(b.bill_eur_m,0)+'m)';
@@ -673,23 +682,32 @@ function heroCards(h){
     return '\u20ac'+fmt(b.bill_eur_m,0)+'m \u2002|\u2002 \u00a3'+
       fmt(b.bill_gbp_m,0)+'m';
   }
+  function nb(b,state){return state==='ni'
+    ?'\u00a3'+fmt(b.bill_gbp_m,0)+'m':'\u20ac'+fmt(b.bill_eur_m,0)+'m';}
   function ioBars(b){
     const bf=b.by_fuel||{};
-    const tot=b.heat_purchased_gwh||1;
+    const cool=(b.cooling||{}).elec_gwh||0;
+    const tot=(b.combined||{}).purchased_gwh||b.heat_purchased_gwh||1;
+    const served=(b.combined||{}).served_gwh||b.heat_delivered_gwh;
     function bar(kind){
-      let segs='',acc=0;
+      let segs='';
       FUELS.forEach(f=>{
         const v=(bf[f[0]]||{})[kind==='in'?'in_gwh':'useful_gwh']||0;
         if(v<=0) return;
-        acc+=v;
         const w=100*v/tot;
-        const label=w>9?f[1]+' '+Math.round(100*v/(kind==='in'?tot:b.heat_delivered_gwh))+'%':'';
+        const label=w>9?f[1]+' '+Math.round(100*v/tot)+'%':'';
         segs+='<div class="ioseg" style="width:'+w.toFixed(2)+
           '%;background:'+f[2]+'" title="'+f[1]+' '+fmt(v,0)+' GWh">'+
           label+'</div>';
       });
+      if(cool>0){
+        const w=100*cool/tot;
+        segs+='<div class="ioseg" style="width:'+w.toFixed(2)+
+          '%;background:'+COOLC+'" title="Cooling '+fmt(cool,0)+' GWh">'+
+          (w>9?'Cooling '+Math.round(w)+'%':'')+'</div>';
+      }
       if(kind==='out'){
-        const loss=tot-b.heat_delivered_gwh;
+        const loss=b.heat_purchased_gwh-b.heat_delivered_gwh;
         if(loss>0){
           const w=100*loss/tot;
           segs+='<div class="ioseg hatch" style="width:'+w.toFixed(2)+
@@ -702,43 +720,51 @@ function heroCards(h){
     return '<div class="iotitle">Energy in \u2013 fuel &amp; electricity purchased</div>'+
       '<div class="iorow"><div class="iolab">'+fmt(tot,0)+' GWh in</div>'+
       '<div class="iotrack">'+bar('in')+'</div></div>'+
-      '<div class="iotitle">Useful heat out \u2013 after boiler and system losses\u2020</div>'+
-      '<div class="iorow"><div class="iolab">'+fmt(b.heat_delivered_gwh,0)+
-      ' GWh useful</div><div class="iotrack">'+bar('out')+'</div></div>'+
-      '<div class="iofoot">Delivered per unit purchased this week: <b>'+
-      Math.round(100*b.heat_delivered_gwh/tot)+'%\u2020</b> \u00b7 oil share of energy in: <b>'+
-      Math.round(100*((bf.oil||{}).in_gwh||0)/tot)+'%\u2020</b></div>';
+      '<div class="iotitle">Useful heat &amp; cooling out \u2013 after boiler and system losses\u2020</div>'+
+      '<div class="iorow"><div class="iolab">'+fmt(served,0)+
+      ' GWh served</div><div class="iotrack">'+bar('out')+'</div></div>'+
+      '<div class="iofoot">Served per unit purchased this week: <b>'+
+      Math.round(100*served/tot)+'%\u2020</b> \u00b7 oil share of energy in: <b>'+
+      Math.round(100*((bf.oil||{}).in_gwh||0)/tot)+'%\u2020</b>'+
+      ((b.cooling||{}).comfort_shaped_by_odh?
+        ' \u00b7 comfort cooling shaped by live overheating record\u2020':'')+
+      '</div>';
   }
   function render(state){
     ['heroAll','heroNIbtn','heroROIbtn'].forEach(id=>el(id).classList.remove('active'));
     el(state==='ni'?'heroNIbtn':state==='roi'?'heroROIbtn':'heroAll')
       .classList.add('active');
     const b = state==='ni'?h.ni:state==='roi'?h.roi:h;
+    const cb=b.combined||{}, cl=b.cooling||{};
     el('heroScope').textContent = state==='ni'?'Northern Ireland':
       state==='roi'?'Republic of Ireland':'all island';
-    const billLab = state==='all'?'the island\u2019s heat bill this week':'the heat bill this week';
+    const billLab = state==='all'?'the island\u2019s heat &amp; cooling bill this week':
+      'the heat &amp; cooling bill this week';
     const cards = [
-      [fmt(b.heat_purchased_gwh,0)+' GWh',
-       'of heating energy purchased this week \u2013 '+
-       fmt(b.heat_delivered_gwh,0)+' GWh delivered as heat'],
-      [fmt(b.indigenous_share_pct,0)+'%',
-       'estimated indigenous share of heat delivered'],
-      [bill(b, state), billLab+' (ECB reference rate)'],
-      [fmt(b.emissions_kt_co2,0)+' kt',
-       'heating emissions this week (CO\u2082e, combustion + grid electricity)'],
+      [fmt(cb.purchased_gwh,0)+' GWh',
+       'of heating &amp; cooling energy purchased this week \u2013 heat '+
+       fmt(b.heat_purchased_gwh,0)+' \u00b7 cooling '+fmt(cl.elec_gwh,0)],
+      [fmt(cb.indigenous_share_pct,0)+'%',
+       'estimated indigenous share of heat &amp; cooling delivered'],
+      [bill(cb, state), billLab+' (heat '+nb(b,state)+' \u00b7 cooling '+
+       nb(cl,state)+', ECB rate)'],
+      [fmt(cb.emissions_kt_co2,0)+' kt',
+       'heating &amp; cooling emissions this week (CO\u2082e \u2013 heat '+
+       fmt(b.emissions_kt_co2,0)+' \u00b7 cooling '+
+       fmt(cl.emissions_kt_co2,0)+')'],
     ];
     el('heroCards').innerHTML = cards.map(c=>
       '<div class="hstat"><div class="hval">'+c[0]+'</div>'+
       '<div class="hlab">'+c[1]+'</div></div>').join('');
-    const w = b.what_if_20pct_geothermal;
+    const w = b.what_if_combined;
     if(w){
       el('whatif').hidden = false;
       const rows = [
-        [fmt(w.heat_purchased_gwh,0)+' GWh','heat purchased \u2013 the ground supplies the rest free'],
+        [fmt(w.purchased_gwh,0)+' GWh','purchased \u2013 the ground heats free and cools for a fraction\u2020'],
         [fmt(w.indigenous_share_pct,0)+' %','indigenous share'],
         [bill(w, state),'the bill'],
         [fmt(w.emissions_kt_co2,0)+' kt','CO\u2082e (saves '+
-          fmt(b.emissions_kt_co2-w.emissions_kt_co2,0)+' kt)'],
+          fmt(cb.emissions_kt_co2-w.emissions_kt_co2,0)+' kt)'],
       ];
       el('whatifRow').innerHTML = rows.map(r=>
         '<div class="wcell"><div class="val">'+r[0]+'</div>'+
@@ -747,8 +773,9 @@ function heroCards(h){
     const pk=b.peak_week;
     el('ioScale').textContent = pk?
       'For scale: last winter\u2019s peak week (w/e '+pk.week_ending+
-      ') needed \u2248'+fmt(pk.heat_purchased_gwh,0)+' GWh \u2013 '+
-      (b.heat_purchased_gwh>0?fmt(pk.heat_purchased_gwh/b.heat_purchased_gwh,1)+'\u00d7 this week.':''):'';
+      ') needed \u2248'+fmt(pk.heat_purchased_gwh+(cl.elec_gwh||0),0)+
+      ' GWh of heat & cooling \u2013 '+
+      (cb.purchased_gwh>0?fmt((pk.heat_purchased_gwh+(cl.elec_gwh||0))/cb.purchased_gwh,1)+'\u00d7 this week.':''):'';
     el('ioBars').innerHTML = ioBars(b);
     const hddw = state==='all'?h.hdd_week:(b.hdd_week!=null?b.hdd_week:h.hdd_week);
     el('heroNote').textContent = 'Week ending '+h.week_ending+' \u2013 '+
@@ -913,6 +940,154 @@ function gasEngine(feeds, derived){
     xaxis:Object.assign(plb().xaxis,{title:'ROI heating degree days (base 15.5\u00b0C)'}),
     yaxis:Object.assign(plb().yaxis,{title:'NDM gas \u2013 GWh/day'}),
     legend:{orientation:'h',y:1.12},
+  }),CONF);
+}
+
+function gasCalLine(D){
+  const c=((D.derived||{}).gas_calibration), s=el('gasCal');
+  if(!s) return;
+  if(!c){s.textContent='';return}
+  s.textContent=' Calibration: regression-implied annual space heat '+
+    fmt(c.implied_annual_space_heat_gwh/1000,1)+' TWh vs anchor '+
+    fmt(c.anchor_annual_space_heat_gwh/1000,1)+' TWh \u2013 ratio '+
+    fmt(c.ratio,2)+(c.within_gate?' (within the 0.90\u20131.10 gate).':
+    ' \u2013 outside the 0.90\u20131.10 gate, disclosed: '+c.note);
+}
+
+function heatGap(D){
+  const hg=(D.derived||{}).heat_gap;
+  if(!hg){
+    el('gapStat').textContent='\u2013';
+    el('gapPlot').textContent='Waiting for the first build with live oil prices.';
+    return;
+  }
+  const cats=['Oil boiler 82%\u2020','Gas boiler 85%\u2020',
+              'Air-source heat pump\u2020',
+              'Geothermal SPF '+hg.geo_spf+'\u2020'];
+  const vals=j=>[j.oil_boiler,j.gas_boiler,j.ashp,j.geothermal_spf40];
+  const fx=hg.fx_eur_gbp||0.855;
+  const perBarColors=[CLR.faint,CLR.petrol,CLR.teal,CLR.green];
+
+  function render(state){
+    ['segAll','segNI','segROI'].forEach(id=>el(id).classList.remove('active'));
+    let traces, ytitle;
+    if(state==='ni'){
+      el('segNI').classList.add('active');
+      traces=[{x:cats,y:vals(hg.ni),type:'bar',
+        marker:{color:perBarColors},
+        text:vals(hg.ni).map(v=>fmt(v,1)+'p'),textposition:'outside',
+        textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
+      ytitle='pence per useful kWh';
+      el('gapStat').textContent='SPF '+fmt(hg.ni.breakeven_spf_vs_oil,2);
+      el('gapStatSub').textContent='NI \u2013 above this, electric heat beats '+
+        'untaxed kerosene. ASHP models at SPF '+fmt(hg.ni.ashp_spf,2)+
+        ' in the NI climate\u2020. Oil at '+
+        fmt(hg.ni.inputs.oil_per_litre,1)+' p/L, tariff '+
+        fmt(hg.ni.inputs.electricity_per_kwh*100,1)+' p/kWh\u2020';
+    } else if(state==='roi'){
+      el('segROI').classList.add('active');
+      traces=[{x:cats,y:vals(hg.roi),type:'bar',
+        marker:{color:perBarColors},
+        text:vals(hg.roi).map(v=>fmt(v,1)+'c'),textposition:'outside',
+        textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
+      ytitle='cent per useful kWh';
+      el('gapStat').textContent='SPF '+fmt(hg.roi.breakeven_spf_vs_oil,2);
+      el('gapStatSub').textContent='ROI \u2013 the climate-modelled ASHP (SPF '+
+        fmt(hg.roi.ashp_spf,2)+'\u2020) sits at the margin of this. Oil at '+
+        fmt(hg.roi.inputs.oil_per_litre,1)+' c/L, tariff '+
+        fmt(hg.roi.inputs.electricity_per_kwh*100,1)+' c/kWh\u2020';
+    } else {
+      el('segAll').classList.add('active');
+      traces=[
+        {x:cats,y:vals(hg.ni).map(v=>v/fx),type:'bar',name:'NI',
+         marker:{color:CLR.amber},
+         text:vals(hg.ni).map(v=>fmt(v/fx,1)+'c'),textposition:'outside',
+         textfont:{family:'IBM Plex Mono',size:10,color:CLR.muted}},
+        {x:cats,y:vals(hg.roi),type:'bar',name:'ROI',
+         marker:{color:CLR.green},
+         text:vals(hg.roi).map(v=>fmt(v,1)+'c'),textposition:'outside',
+         textfont:{family:'IBM Plex Mono',size:10,color:CLR.muted}}];
+      ytitle='euro cent per useful kWh (ECB rate)';
+      el('gapStat').textContent='SPF '+fmt(hg.ni.breakeven_spf_vs_oil,2)+
+        ' (NI) \u00b7 '+fmt(hg.roi.breakeven_spf_vs_oil,2)+' (ROI)';
+      el('gapStatSub').textContent='Same fuel, same physics \u2013 the signal '+
+        'flips at the border. ASHP climate SPF: NI '+fmt(hg.ni.ashp_spf,2)+
+        ', ROI '+fmt(hg.roi.ashp_spf,2)+'\u2020';
+    }
+    Plotly.newPlot('gapPlot',traces,Object.assign(plb(),{
+      barmode:'group',
+      xaxis:Object.assign(plb().xaxis,{type:'category'}),
+      yaxis:Object.assign(plb().yaxis,{title:ytitle,rangemode:'tozero'}),
+      legend:{orientation:'h',y:1.12},
+      margin:{l:56,r:20,t:30,b:60},
+    }),CONF);
+  }
+  el('segAll').onclick=()=>render('all');
+  el('segNI').onclick=()=>render('ni');
+  el('segROI').onclick=()=>render('roi');
+  render('all');
+}
+
+function coolSide(D){
+  const c=(D.derived||{}).cool;
+  if(!c){el('coolPlot').textContent='Waiting for a season of degree-day data.';return}
+  el('coolShare').textContent='\u2248 '+fmt(c.cooling_elec_twh,0)+' TWh\u2020';
+  el('coolShareSub').textContent='data centres the largest single load: '+
+    fmt(c.dc_share_pct,0)+'% of ROI electricity (CSO), '+
+    fmt(c.dc_share_2028_pct,0)+'% by 2028';
+  el('coolWaste').textContent='\u2248 '+fmt(c.heat_rejected_twh,0)+' TWh\u2020';
+  el('coolWasteSub').textContent=fmt(c.reject_vs_island_residential_pct,0)+
+    '% of island residential heat demand \u2013 refrigeration rejects '+
+    'more heat than its electricity';
+  el('coolStranded').textContent=fmt(c.stranded_summer_pct,0)+' %';
+  el('coolDH').textContent='< '+fmt(c.dh_share_pct,0)+' %';
+
+  // load split mini-bar
+  const L=c.loads_twh||{};
+  const order=[['dc','Data centres',CLR.teal],
+    ['refrigeration','Cold chain','#5BA4CF'],
+    ['process','Process','#8a5a3b'],
+    ['comfort','Comfort',CLR.amber],
+    ['ni_all','NI\u2020','#5c6f76']];
+  const tot=c.cooling_elec_twh||1;
+  el('coolLoadLab').textContent=fmt(tot,1)+' TWh';
+  el('coolLoadBar').innerHTML=order.map(o=>{
+    const v=L[o[0]]||0; if(v<=0) return '';
+    const w=100*v/tot;
+    return '<div class="ioseg" style="width:'+w.toFixed(1)+
+      '%;background:'+o[2]+'" title="'+o[1]+' '+fmt(v,1)+' TWh">'+
+      (w>12?o[1]+' '+fmt(v,1):'')+'</div>';
+  }).join('');
+
+  const hdd=((D.feeds||{}).hdd||{}).hdd_island||{};
+  const odh=((D.feeds||{}).hdd||{}).odh26_island||{};
+  const days=Object.keys(hdd).sort().slice(-365);
+  if(days.length<60) return;
+  const wk=[],wd=[],wo=[];let acc=0,oacc=0,cnt=0,tot2=0,otot=0;
+  days.forEach(d=>{tot2+=hdd[d];otot+=(odh[d]||0)});
+  days.forEach((d,i)=>{acc+=hdd[d];oacc+=(odh[d]||0);cnt++;
+    if(cnt===7||i===days.length-1){wd.push(d);wk.push(acc);wo.push(oacc);acc=0;oacc=0;cnt=0}});
+  const weeks=wk.length;
+  const dem=wk.map(v=>tot2>0?100*v/tot2:0);
+  const comfortShare=(L.comfort||0)/tot, flatShare=1-comfortShare;
+  const sup=wd.map((d,i)=>{
+    let s=100*flatShare/weeks;
+    if(c.comfort_shaped_by_odh&&otot>0)
+      s+=100*comfortShare*(0.3/weeks+0.7*wo[i]/otot);
+    else s+=100*comfortShare/weeks;
+    return s;
+  });
+  Plotly.newPlot('coolPlot',[
+    {x:wd,y:dem,name:'Heat demand shape (HDD, weekly)',mode:'lines',
+     fill:'tozeroy',line:{color:CLR.petrol,width:1.6},
+     fillcolor:'rgba(31,78,95,.35)'},
+    {x:wd,y:sup,name:'Cooling heat rejection'+
+     (c.comfort_shaped_by_odh?' (comfort by live ODH\u2020)':' (\u2248flat)'),
+     mode:'lines',line:{color:CLR.amber,width:2,dash:'dash'}},
+  ],Object.assign(plb(),{
+    yaxis:Object.assign(plb().yaxis,{title:'% of annual total / week',
+      rangemode:'tozero'}),
+    legend:{orientation:'h',y:1.14},
   }),CONF);
 }
 
@@ -1182,7 +1357,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 2.1.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 3.0.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
