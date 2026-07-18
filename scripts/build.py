@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "3.0.0"
+PIPELINE_VERSION = "3.1.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -743,13 +743,15 @@ def parse_gb_oil_page(text: str) -> tuple:
 
 # ---------------------------------------------------------------- feeds
 
-def parse_eirgrid_rows(payload, field="SYSTEM_DEMAND"):
+def parse_eirgrid_rows(payload, field="SYSTEM_DEMAND", daily="gwh",
+                       min_intervals=48):
     """
-    /api/chart/ response -> {iso_date: daily_gwh}. Quarter-hour MW rows
-    for the requested field are averaged per day and converted
-    (mean MW x 24 h / 1000). Null values (future intervals) and other
-    fields (forecasts) are ignored; days with fewer than 48 quarter-hours
-    of actuals are dropped as incomplete. Pure, unit tested.
+    /api/chart/ response -> {iso_date: value}. Rows for the requested
+    field are aggregated per day: daily="gwh" averages MW and converts
+    (mean x 24 / 1000); daily="mean" returns the plain daily mean (used
+    for CO2 intensity, gCO2/kWh). Nulls and other fields are ignored;
+    days with fewer than min_intervals observations are dropped as
+    incomplete. Pure, unit tested.
     """
     acc = {}
     for row in (payload or {}).get("Rows", []):
@@ -765,8 +767,11 @@ def parse_eirgrid_rows(payload, field="SYSTEM_DEMAND"):
             continue
         s, n = acc.get(iso, (0.0, 0))
         acc[iso] = (s + float(row["Value"]), n + 1)
+    if daily == "mean":
+        return {d: round(s / n, 1)
+                for d, (s, n) in acc.items() if n >= min_intervals}
     return {d: round(s / n * 24.0 / 1000.0, 2)
-            for d, (s, n) in acc.items() if n >= 48}
+            for d, (s, n) in acc.items() if n >= min_intervals}
 
 
 def feed_eirgrid():
@@ -817,19 +822,35 @@ def feed_eirgrid():
         log(f"eirgrid: {region} {len(got)} days this run, "
             f"{len(out['demand_gwh_daily'][key])} retained")
 
-    # CO2 probe - diagnostics only, never fatal, parsed once the shape
-    # is confirmed in a run log
+    # CO2 intensity - schema confirmed in the 18 Jul 2026 run log
+    # (CO2_INTENSITY rows, same shape). Daily mean gCO2/kWh, island,
+    # merged across runs; soft.
     try:
         pl = http_get(EIRGRID_ENDPOINT, params={
             "region": "ALL", "chartType": "co2",
-            "dateRange": "day", "dateFrom": dmy(end - dt.timedelta(days=1)),
-            "dateTo": dmy(end - dt.timedelta(days=1)),
-            "areas": "co2intensity,co2emission"}, timeout=60).json()
-        rows = (pl or {}).get("Rows", [])
-        log(f"eirgrid: co2 probe returned {len(rows)} rows; first:",
-            rows[:2])
+            "dateRange": "month", "dateFrom": dmy(start),
+            "dateTo": dmy(end), "areas": "co2intensity"},
+            timeout=90).json()
+        got = parse_eirgrid_rows(pl, field="CO2_INTENSITY",
+                                 daily="mean", min_intervals=40)
+        if not got:
+            for i in range(1, 8):
+                d = end - dt.timedelta(days=i)
+                pl = http_get(EIRGRID_ENDPOINT, params={
+                    "region": "ALL", "chartType": "co2",
+                    "dateRange": "day", "dateFrom": dmy(d),
+                    "dateTo": dmy(d), "areas": "co2intensity"},
+                    timeout=60).json()
+                got.update(parse_eirgrid_rows(
+                    pl, field="CO2_INTENSITY", daily="mean",
+                    min_intervals=40))
+        ser = prev_series("eirgrid", "co2_intensity_g_per_kwh")
+        ser.update(got)
+        out["co2_intensity_g_per_kwh"] = trim_series(ser)
+        log(f"eirgrid: co2 intensity {len(got)} days this run, "
+            f"{len(out['co2_intensity_g_per_kwh'])} retained")
     except Exception as e:
-        log(f"eirgrid: co2 probe failed ({e.__class__.__name__}: {e})")
+        log(f"eirgrid: co2 parse failed ({e.__class__.__name__}: {e})")
 
     isl = out["demand_gwh_daily"].get("island") or {}
     out["latest_day"] = max(isl) if isl else None
@@ -1406,7 +1427,19 @@ def feed_gb_oil():
             d, ppl = parse_gb_oil_page(page)
             if ppl is None:
                 log(f"gb_oil: A no sentence on {url.rsplit('/', 2)[-2]} "
-                    f"attempt {attempt + 1}")
+                    f"attempt {attempt + 1} - page {len(page)} chars")
+                if attempt == 0:
+                    i = page.lower().find("verage")
+                    if i >= 0:
+                        log("gb_oil: A context around 'average':",
+                            re.sub(r"\s+", " ",
+                                   page[max(0, i - 80):i + 320]))
+                    for pat in ("pence", "chart", "props",
+                                "application/json"):
+                        j = page.lower().find(pat)
+                        if j >= 0:
+                            log(f"gb_oil: A first '{pat}' at {j}:",
+                                re.sub(r"\s+", " ", page[j:j + 240]))
                 continue
             if d is None:
                 d = today_utc().isoformat()
@@ -1422,81 +1455,121 @@ def feed_gb_oil():
     log("gb_oil: A exhausted (fossil or sentence-less variants only) - "
         "falling through to DESNZ")
 
-    # --- strategy B: DESNZ monthly petroleum products via gov.uk.
-    # The direct slug 404'd on the 16 Jul 2026 run; resolve it from the
-    # DESNZ oil price statistics search page instead.
-    landing = http_get(
-        "https://www.gov.uk/search/research-and-statistics?"
-        "keywords=petroleum+products+monthly+prices&order=updated-newest"
-    ).text
-    links = re.findall(r'href="([^"]+\.(?:xlsx|ods|csv))"', landing)
-    cands = [u for u in links
-             if re.search(r"petrol|fuel|oil", urllib.parse.unquote(u), re.I)]
-    log(f"gb_oil: B gov.uk links found: {len(links)}, candidates:",
-        [urllib.parse.unquote(u)[-80:] for u in cands[:8]])
-    hit_d, hit_v = None, None
-    import openpyxl
-    for u in cands[:4]:
-        full = u if u.startswith("http") else "https://www.gov.uk" + u
-        if not full.lower().endswith(".xlsx"):
+    # --- strategy B: DESNZ "Oil and petroleum products monthly
+    # statistics" (QEP 4.1.1: monthly typical retail prices incl.
+    # standard grade burning oil - GB home heating oil). Canonical page
+    # pinned 18 Jul 2026; xlsx links resolved from it at runtime.
+    # Diagnostics-first: sheet names and header rows are logged before
+    # the parser commits, so a format change costs one log read.
+    try:
+        page = http_get(
+            "https://www.gov.uk/government/statistical-data-sets/"
+            "oil-and-petroleum-products-monthly-statistics").text
+    except Exception as e:
+        log(f"gb_oil: B page fetch failed ({e.__class__.__name__}: {e})")
+        return _gb_oil_stale()
+    links = re.findall(
+        r'href="(https://assets\.publishing\.service\.gov\.uk/'
+        r'[^"]+\.xlsx)"', page)
+    pref = [u for u in links if "4.1.1" in u or "411" in u
+            or "petroleum" in u.lower()] or links
+    log(f"gb_oil: B found {len(links)} xlsx links; trying "
+        f"{pref[0].rsplit('/', 1)[-1] if pref else 'none'}")
+    if not pref:
+        return _gb_oil_stale()
+    try:
+        blob = http_get(pref[0], timeout=120).content
+        wb = openpyxl.load_workbook(io.BytesIO(blob), data_only=True,
+                                    read_only=True)
+    except Exception as e:
+        log(f"gb_oil: B download/open failed "
+            f"({e.__class__.__name__}: {e})")
+        return _gb_oil_stale()
+    series = {}
+    for ws in wb.worksheets:
+        got = parse_desnz_burning_oil_rows(
+            ws.iter_rows(values_only=True))
+        if got:
+            log(f"gb_oil: B parsed {len(got)} months from sheet "
+                f"'{ws.title}', latest {max(got)} = "
+                f"{got[max(got)]} p/L")
+            series = got
+            break
+        else:
+            hdr = [list(r)[:8] for _i, r in
+                   zip(range(3), ws.iter_rows(values_only=True))]
+            log(f"gb_oil: B sheet '{ws.title}' no burning-oil parse; "
+                f"first rows: {hdr}")
+    if not series:
+        return _gb_oil_stale()
+    prev = prev_series("gb_oil", "gb_ppl_daily")
+    prev.update(series)
+    latest = max(series)
+    return ({"gb_ppl_daily": trim_series(clip_days(prev)),
+             "latest_day": latest,
+             "latest_ppl": series[latest],
+             "source": ("DESNZ QEP 4.1.1 - typical retail price, "
+                        "standard grade burning oil, monthly, incl. "
+                        "taxes"),
+             },
+            recency_status(latest, 100))
+
+
+def parse_desnz_burning_oil_rows(rows) -> dict:
+    """
+    QEP 4.1.1-style sheet -> {iso_date (mid-month): pence_per_litre}.
+    Finds a header row containing a burning-oil/kerosene column, then
+    reads month rows (datetime cells or 'January 2026' text) with a
+    plausible price (25-250 p/L). Pure, unit tested against a fixture;
+    real-format confirmation comes from the first run's diagnostics.
+    """
+    MONTHS = {m.lower(): i + 1 for i, m in enumerate(
+        ["January", "February", "March", "April", "May", "June", "July",
+         "August", "September", "October", "November", "December"])}
+    idx = None
+    series = {}
+    for row in rows:
+        cells = list(row)
+        strs = [str(c) if c is not None else "" for c in cells]
+        if idx is None:
+            for i, s in enumerate(strs):
+                sl = s.lower()
+                if "burning oil" in sl or "kerosene" in sl:
+                    idx = i
+                    break
+            continue
+        row_date = None
+        for c in cells:
+            if isinstance(c, dt.datetime):
+                row_date = c.date().replace(day=15).isoformat()
+                break
+            if isinstance(c, dt.date):
+                row_date = c.replace(day=15).isoformat()
+                break
+            if isinstance(c, str):
+                parts = c.strip().split()
+                if len(parts) == 2 and parts[0].lower() in MONTHS \
+                        and parts[1].isdigit():
+                    row_date = (f"{int(parts[1]):04d}-"
+                                f"{MONTHS[parts[0].lower()]:02d}-15")
+                    break
+        if row_date is None:
             continue
         try:
-            wb = openpyxl.load_workbook(
-                io.BytesIO(http_get(full, timeout=180).content),
-                read_only=True, data_only=True)
-        except Exception as e:
-            log(f"gb_oil: B {full[-60:]} unreadable ({e.__class__.__name__})")
+            v = float(cells[idx])
+        except (TypeError, ValueError, IndexError):
             continue
-        log(f"gb_oil: B sheets in {urllib.parse.unquote(full)[-60:]}:",
-            wb.sheetnames[:10])
-        for ws in wb.worksheets:
-            idx_kero, header_seen = None, None
-            for row in ws.iter_rows(values_only=True):
-                cells = [str(c) if c is not None else "" for c in row]
-                joined = " ".join(cells).lower()
-                if idx_kero is None and (
-                        "burning oil" in joined or "kerosene" in joined
-                        or "heating oil" in joined):
-                    for i, c in enumerate(cells):
-                        cl = c.lower()
-                        if "burning" in cl or "kerosene" in cl \
-                                or "heating oil" in cl:
-                            idx_kero = i
-                            header_seen = cells
-                            break
-                    continue
-                if idx_kero is None:
-                    continue
-                rd = None
-                for c in row:
-                    if isinstance(c, dt.datetime):
-                        rd = c.date().isoformat()
-                        break
-                if rd is None:
-                    continue
-                try:
-                    v = float(row[idx_kero])
-                except (TypeError, ValueError, IndexError):
-                    continue
-                if hit_d is None or rd > hit_d:
-                    hit_d, hit_v = rd, v
-            if idx_kero is not None and header_seen:
-                log(f"gb_oil: B sheet '{ws.title}' kerosene col "
-                    f"{idx_kero} in header:", header_seen[:8])
-            if hit_v is not None:
-                break
-        if hit_v is not None:
-            break
-    if hit_v is None:
-        raise ValueError("gb_oil: both strategies missed - B dumps above "
-                         "pin the format for the next iteration")
-    # DESNZ quotes pence per litre for burning oil; sanity-scale if not
-    if hit_v > 500:
-        hit_v = hit_v / 10.0       # p/1000L-style value
-    log(f"gb_oil: B (DESNZ) {round(hit_v, 2)} p/L at {hit_d}")
-    return _gb_oil_out(hit_d, round(hit_v, 2),
-                       "DESNZ monthly average UK retail price, "
-                       "burning oil (kerosene)")
+        if 25 <= v <= 250:
+            series[row_date] = round(v, 2)
+    return series
+
+
+def _gb_oil_stale():
+    series = prev_series("gb_oil", "gb_ppl_daily")
+    return ({"gb_ppl_daily": series,
+             "latest_day": max(series) if series else None,
+             "source": "GB heating oil - awaiting source",
+             }, "stale")
 
 
 def _gb_oil_out(d, ppl, source):
@@ -1595,7 +1668,10 @@ def derive_gas_calibration(reg, hdd_roi, anchors=None):
             "note": ("Scopes differ: the regression sees "
                      "distribution-metered gas; the anchor is the whole "
                      "buildings-gas estimate. The ratio measures the "
-                     "difference and is published either way.")}
+                     "difference and is published either way. A ratio "
+                     "below one is expected - much of services-sector "
+                     "gas is daily-metered and outside the NDM series "
+                     "the regression sees.")}
 
 
 def derive_hero(feeds, anchors=None):
