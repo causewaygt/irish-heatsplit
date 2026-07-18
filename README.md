@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 2.1.0 / site 2.1.0.
+(Causeway Geothermal NI Ltd). Pipeline 3.0.0 / site 3.0.0.
 
 ## The premise
 
@@ -22,13 +22,17 @@ and prices the alternative. The data gap is the story.
 - **Masthead** – the heat spark gap, live: oil-boiler heat versus
   geothermal on a useful-heat basis, priced in each jurisdiction's own
   currency, with the winning margin computed fresh from the day's feeds.
-- **Hero** – the week's heat purchased and delivered, indigenous share,
-  bill in both currencies and emissions, toggled all-island / NI / ROI,
-  each jurisdiction shaped by its own heating degree days; a what-if
-  strip (the same week with 20% of heat from geothermal heat pumps); a
-  for-scale line against last winter's peak week; and energy-in versus
-  useful-heat-out bars by fuel with conversion losses hatched – all
-  responding to the jurisdiction toggle.
+- **Hero** – the week's heating *and cooling*: combined energy
+  purchased (with the heat/cooling split), indigenous share, the bill
+  and emissions in both currencies, toggled all-island / NI / ROI, each
+  jurisdiction shaped by its own degree days with weekly cooling from
+  the cold-economy census (comfort following the live overheating
+  record); a what-if strip – 20% of heat & cooling moved to geothermal,
+  the cooling side at a 70%† ground-coupled electricity saving; a
+  for-scale line against last winter's peak; and energy-in versus
+  useful-heat-&-cooling-out bars with losses hatched. In July the
+  island's cooling bill outweighs its heat bill roughly 3:1 – the
+  summer inversion the tracker displays rather than omits.
 - **The invisible majority** – delivered building heat split into
   unmetered (oil, peat, other), gas and electric.
 - **The oil ticker** – NI kerosene daily (Consumer Council survey), ROI
@@ -46,9 +50,13 @@ and prices the alternative. The data gap is the story.
   with the break-even SPF against the incumbent oil boiler as the
   headline stat. The air-source SPF is modelled from each jurisdiction's
   own climate, not the brochure.
-- **The cool side** – data-centre waste heat against the shape of heat
-  demand; the stranded-summer share, computed from the site's own
-  degree-day record, is the seasonal-storage (ATES) wedge.
+- **The cold economy** – a census of the island's cooling loads: data
+  centres, the food-export cold chain, process cooling, comfort cooling
+  and NI, ≈12 TWh† of electricity rejecting ≈19 TWh† of heat a year –
+  refrigeration rejects more heat than the electricity it draws. Flat
+  loads against the degree-day demand shape, comfort shaped by the live
+  overheating-degree record once a season exists; the stranded share is
+  the seasonal-storage (ATES) wedge.
 - **Geothermal – the empty bar** – installed capacity in thermal
   megawatts: today's island stock stacked beneath what serving 20% of
   delivered heat would require, beside the installed reality of Sweden,
@@ -78,11 +86,11 @@ client-side with Plotly. GitHub Pages serves `/docs`.
 | `ecb_fx` | ECB reference rates | daily | EUR/GBP twin-currency lock |
 | `ccni_oil` | Consumer Council NI price checker | daily (Mon–Fri) | 300/500/900 L; history merged across runs |
 | `oil_bulletin` | EU Weekly Oil Bulletin + price-history workbook | weekly | Ireland heating gas oil, with & without taxes, backfilled from the 2005-onwards history |
-| `gb_oil` | BoilerJuice / DESNZ | – | SOFT feed – same-tax GB comparison, currently awaiting a new endpoint |
+| `gb_oil` | BoilerJuice / DESNZ | daily | SOFT feed – cache-busting + browser headers against a CDN observed serving archived 2021 pages to non-browser clients; a freshness gate rejects fossils |
 | `gni_live` | Gas Networks Ireland gasconsumption API | daily | ~8-day windows, weekly anchors backfill |
 | `gni_ckan` | GNI via data.gov.ie (CC BY 4.0) | quarterly | calibration series for the regression |
 | `semopx` | SEMOpx day-ahead results | daily | dual-currency power price |
-| `eirgrid` | Smart Grid Dashboard | – | EXPECTED DOWN – endpoint probe pending |
+| `eirgrid` | Smart Grid Dashboard (/api/chart/) | daily | quarter-hour demand → daily GWh, island/NI/ROI; incomplete days excluded; CO₂ probe in progress |
 
 Feed statuses: **ok** (fetched, current), **lagging** (fetched, source
 publishes on a lag), **stale** (fetch failed, previous values retained).
@@ -125,17 +133,23 @@ regression-implied annual space heat against the SEAI-derived anchor
 with a 0.90–1.10 gate, whether or not it passes.
 
 **The what-if.** 20% of delivered heat moves to heat pumps at seasonal
-performance 4: the electricity input is bought at each jurisdiction's
-tariff and carries its grid-indigenous share, the ambient remainder is
-free and indigenous by definition, and the displaced fuels scale down
-pro-rata – purchased energy, bills, indigenous share and emissions all
-recompute from the same accounting.
+performance 4, and 20% of the cooling load moves to ground-coupled
+systems at a 70%† electricity saving: heat-pump electricity is bought at
+each jurisdiction's tariff and carries its grid-indigenous share, the
+ambient remainder is free and indigenous by definition, avoided cooling
+electricity is displaced by ambient rejection, and the displaced fuels
+scale down pro-rata – purchased energy, bills, indigenous share and
+emissions all recompute from one accounting.
 
-**The cool side.** Data-centre heat rejection is treated as flat across
-the year; demand follows the HDD shape. With annual totals normalised,
-the stranded share is the part of a flat supply produced while demand
-runs below it – the seasonal-storage wedge, recomputed from live degree
-days on every build.
+**The cold economy.** Cooling loads are a census: data centres
+(CSO-anchored) plus †-anchored cold-chain, process, comfort and NI
+loads. Per-load rejection factors convert electricity to rejected heat
+(vapour-compression loads reject compressor work plus the heat they
+pump). Flat loads spread evenly; the comfort load follows the live
+ODH₂₆ overheating record once a season of it exists. With annual totals
+normalised, the stranded share is the part of supply produced while
+heat demand runs below it – the seasonal-storage wedge, recomputed from
+live records on every build.
 
 **Geothermal capacity requirement.** 20% of annual delivered buildings
 heat at 2,000 equivalent full-load hours, per jurisdiction and per
@@ -169,7 +183,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 39 tests, no network
+python3 tests/test_synthetic.py   # 43 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
@@ -182,7 +196,7 @@ bill is the smallest; imports never exceed the service).
 ## Attribution
 
 Contains data from Gas Networks Ireland (CC BY 4.0 via data.gov.ie),
-EirGrid Group, SEMOpx, the European Commission Weekly Oil Bulletin, the
+EirGrid Group (Smart Grid Dashboard), SEMOpx, the European Commission Weekly Oil Bulletin, the
 Consumer Council for Northern Ireland, BoilerJuice, the European Central
 Bank, ERA5/Copernicus via Open-Meteo, the WGC2026 Ireland country update
 (Ireland, Blake, Pasquali, Dunphy & Hunter Williams), the EGEC Geothermal
