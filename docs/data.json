@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-18T09:13:19+00:00",
+ "built_utc": "2026-07-18T09:18:46+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO; other loads and rejection factors dagger (refrigeration and comfort reject compressor work plus pumped heat). Stranded share computed from this site's own degree-day record, comfort load shaped by live overheating degree-hours. Challenge and input welcome at contact@causewaygt.com",
@@ -24,7 +24,7 @@
    "anchor_annual_space_heat_gwh": 5566.0,
    "gate": "0.90-1.10",
    "implied_annual_space_heat_gwh": 3837.0,
-   "note": "Scopes differ: the regression sees distribution-metered gas; the anchor is the whole buildings-gas estimate. The ratio measures the difference and is published either way.",
+   "note": "Scopes differ: the regression sees distribution-metered gas; the anchor is the whole buildings-gas estimate. The ratio measures the difference and is published either way. A ratio below one is expected - much of services-sector gas is daily-metered and outside the NDM series the regression sees.",
    "ratio": 0.69,
    "within_gate": false
   },
@@ -409,7 +409,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-18T08:42:55+00:00",
+   "fetched_utc": "2026-07-18T09:18:38+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -711,11 +711,11 @@
     }
    },
    "source": "Consumer Council for Northern Ireland home heating oil price checker - daily (Mon-Fri), NI average, 300/500/900 L",
-   "status": "stale"
+   "status": "ok"
   },
   "ecb_fx": {
    "eur_gbp": 0.85098,
-   "fetched_utc": "2026-07-18T09:12:32+00:00",
+   "fetched_utc": "2026-07-18T09:18:17+00:00",
    "gbp_eur": 1.17512,
    "latest_day": "2026-07-17",
    "rate_date": "2026-07-17",
@@ -723,6 +723,37 @@
    "status": "ok"
   },
   "eirgrid": {
+   "co2_intensity_g_per_kwh": {
+    "2026-06-19": 224.4,
+    "2026-06-20": 226.5,
+    "2026-06-21": 229.3,
+    "2026-06-22": 264.1,
+    "2026-06-23": 273.6,
+    "2026-06-24": 280.0,
+    "2026-06-25": 222.1,
+    "2026-06-26": 228.0,
+    "2026-06-27": 172.3,
+    "2026-06-28": 184.6,
+    "2026-06-29": 206.8,
+    "2026-06-30": 215.7,
+    "2026-07-01": 197.3,
+    "2026-07-02": 173.9,
+    "2026-07-03": 189.6,
+    "2026-07-04": 146.2,
+    "2026-07-05": 171.8,
+    "2026-07-06": 164.2,
+    "2026-07-07": 200.9,
+    "2026-07-08": 246.8,
+    "2026-07-09": 243.1,
+    "2026-07-10": 234.6,
+    "2026-07-11": 177.0,
+    "2026-07-12": 165.8,
+    "2026-07-13": 159.9,
+    "2026-07-14": 164.4,
+    "2026-07-15": 194.3,
+    "2026-07-16": 209.3,
+    "2026-07-17": 189.6
+   },
    "demand_gwh_daily": {
     "island": {
      "2026-06-19": 113.02,
@@ -787,6 +818,28 @@
      "2026-07-17": 16.54
     },
     "roi": {
+     "2026-06-19": 93.91,
+     "2026-06-20": 83.37,
+     "2026-06-21": 79.59,
+     "2026-06-22": 91.25,
+     "2026-06-23": 92.6,
+     "2026-06-24": 93.82,
+     "2026-06-25": 93.33,
+     "2026-06-26": 94.24,
+     "2026-06-27": 87.29,
+     "2026-06-28": 79.25,
+     "2026-06-29": 91.06,
+     "2026-06-30": 91.6,
+     "2026-07-01": 93.66,
+     "2026-07-02": 90.77,
+     "2026-07-03": 90.62,
+     "2026-07-04": 84.89,
+     "2026-07-05": 82.73,
+     "2026-07-06": 89.48,
+     "2026-07-07": 90.49,
+     "2026-07-08": 92.26,
+     "2026-07-09": 93.08,
+     "2026-07-10": 91.78,
      "2026-07-11": 84.24,
      "2026-07-12": 80.36,
      "2026-07-13": 87.68,
@@ -796,16 +849,19 @@
      "2026-07-17": 90.18
     }
    },
-   "fetched_utc": "2026-07-18T09:12:29+00:00",
+   "fetched_utc": "2026-07-18T09:18:13+00:00",
    "latest_day": "2026-07-17",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "gb_oil": {
+   "fetched_utc": "2026-07-18T09:18:46+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
-   "source": "previous run retained",
+   "gb_ppl_daily": {},
+   "latest_day": null,
+   "source": "GB heating oil - awaiting source",
    "status": "stale"
   },
   "gni_ckan": {
@@ -3733,7 +3789,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-18T09:12:34+00:00",
+   "fetched_utc": "2026-07-18T09:18:19+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15538,7 +15594,7 @@
     "2026-07-15": 6.804,
     "2026-07-16": 7.205
    },
-   "fetched_utc": "2026-07-18T09:12:52+00:00",
+   "fetched_utc": "2026-07-18T09:18:37+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-16",
    "ndm_gwh": {
@@ -15955,7 +16011,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-18T09:12:31+00:00",
+   "fetched_utc": "2026-07-18T09:18:16+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -17238,7 +17294,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-18T09:12:40+00:00",
+   "fetched_utc": "2026-07-18T09:18:26+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -17370,7 +17426,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 153.85,
    "dam_avg_gbp_mwh": 130.41,
-   "fetched_utc": "2026-07-18T09:12:35+00:00",
+   "fetched_utc": "2026-07-18T09:18:21+00:00",
    "latest_day": "2026-07-16",
    "markets": {
     "NI-DA": {
@@ -17578,7 +17634,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "3.0.0",
+ "pipeline_version": "3.1.0",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
