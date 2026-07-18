@@ -590,6 +590,25 @@ def test_eirgrid_rows_daily_gwh():
     assert parse_eirgrid_rows({}) == {}
 
 
+# ------------------------------------- gb_oil fossil-template regression
+
+def test_gb_oil_parses_the_2021_fossil():
+    """Verbatim from the archived template the CDN serves to bots
+    (fetched 18 Jul 2026): the parser must read it correctly so the
+    feed's freshness gate - not a parse failure - is what rejects it."""
+    text = ("Our average Kerosene price for today, Friday 22nd October "
+            "2021\nis 62.19 pence per litre (inc. VAT).")
+    d, ppl = parse_gb_oil_page(text)
+    assert d == "2021-10-22" and ppl == 62.19, (d, ppl)
+
+
+def test_gb_oil_parses_the_live_sentence():
+    text = ("Our average Kerosene price for today, Friday 17th July 2026 "
+            "is 94.24 pence per litre (inc. VAT).")
+    d, ppl = parse_gb_oil_page(text)
+    assert d == "2026-07-17" and ppl == 94.24, (d, ppl)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
