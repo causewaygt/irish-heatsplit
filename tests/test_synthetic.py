@@ -633,6 +633,18 @@ def test_gb_oil_parses_the_live_sentence():
     assert d == "2026-07-17" and ppl == 94.24, (d, ppl)
 
 
+def test_eirgrid_co2_intensity_daily_mean():
+    rows = []
+    for q in range(96):
+        hh, mm = divmod(q * 15, 60)
+        rows.append({"EffectiveTime": f"17-Jul-2026 {hh:02d}:{mm:02d}:00",
+                     "FieldName": "CO2_INTENSITY", "Region": "ALL",
+                     "Value": 200 + (q % 2) * 24})   # mean 212
+    out = parse_eirgrid_rows({"Rows": rows}, field="CO2_INTENSITY",
+                             daily="mean")
+    assert out == {"2026-07-17": 212.0}, out
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
