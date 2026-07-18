@@ -645,6 +645,19 @@ def test_eirgrid_co2_intensity_daily_mean():
     assert out == {"2026-07-17": 212.0}, out
 
 
+def test_gb_oil_modern_template_chart_price():
+    """Markup shape from the 18 Jul 2026 run dump: price beside the
+    chart, no dated sentence. Returns undated; caller stamps today."""
+    text = ('<h5 class="mb-0"><span id="current_price_display">94.24'
+            '</span> <span class="fs-14">pence per litre</span> </h5>'
+            '<select name="price_chart_dropdown">')
+    d, ppl = parse_gb_oil_page(text)
+    assert d is None and ppl == 94.24, (d, ppl)
+    # out-of-range digits near the phrase must not match
+    d2, p2 = parse_gb_oil_page('<span>7.5</span> pence per litre')
+    assert p2 is None, (d2, p2)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
