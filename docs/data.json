@@ -1,16 +1,24 @@
 {
- "built_utc": "2026-07-18T08:23:30+00:00",
+ "built_utc": "2026-07-18T08:43:00+00:00",
  "derived": {
   "cool": {
-   "basis": "DC electricity share CSO 2023-24; totals and waste fraction dagger; stranded share computed from this site's own HDD series - flat supply vs demand shape, annual totals normalised. Challenge and input welcome at contact@causewaygt.com",
+   "basis": "DC electricity share CSO; other loads and rejection factors dagger (refrigeration and comfort reject compressor work plus pumped heat). Stranded share computed from this site's own degree-day record, comfort load shaped by live overheating degree-hours. Challenge and input welcome at contact@causewaygt.com",
+   "comfort_shaped_by_odh": true,
+   "cooling_elec_twh": 12.1,
    "dc_share_2028_pct": 29.0,
    "dc_share_pct": 22.0,
    "dc_twh": 6.8,
    "dh_share_pct": 1.0,
-   "heating_days_pct": 76.2,
-   "stranded_summer_pct": 34.2,
-   "waste_heat_twh": 6.6,
-   "waste_vs_roi_residential_pct": 29.7
+   "heat_rejected_twh": 19.1,
+   "loads_twh": {
+    "comfort": 1.0,
+    "dc": 6.8,
+    "ni_all": 1.2,
+    "process": 0.8,
+    "refrigeration": 2.3
+   },
+   "reject_vs_island_residential_pct": 59.1,
+   "stranded_summer_pct": 37.1
   },
   "gas_calibration": {
    "anchor_annual_space_heat_gwh": 5566.0,
@@ -79,8 +87,22 @@
      "dc_share_2028": 0.29,
      "dc_share_of_roi_elec": 0.22,
      "dh_share_of_national_heat": 0.01,
-     "roi_elec_twh": 31.0,
-     "waste_heat_fraction": 0.97
+     "ground_cooling_saving": 0.7,
+     "loads_twh": {
+      "comfort": 1.0,
+      "dc": null,
+      "ni_all": 1.2,
+      "process": 0.8,
+      "refrigeration": 2.3
+     },
+     "rejection_factor": {
+      "comfort": 3.0,
+      "dc": 0.97,
+      "ni_all": 1.8,
+      "process": 2.0,
+      "refrigeration": 2.5
+     },
+     "roi_elec_twh": 31.0
     },
     "ef_g_per_kwh": {
      "electricity": 280,
@@ -140,7 +162,7 @@
     "space_heat_fraction": 0.72,
     "year": 2024
    },
-   "basis": "Scaffold estimator (dagger throughout) - annual anchors shaped by each jurisdiction's weekly HDD; SEAI 2024, DfE/NISRA, Causeway estimates. Oil, the island's majority heating fuel, is modelled from annual anchors, not metered - its weekly estimates carry a materially wider band than gas. Challenge and input welcome at contact@causewaygt.com",
+   "basis": "Scaffold estimator (dagger throughout) - annual anchors shaped by each jurisdiction's weekly HDD; SEAI 2024, DfE/NISRA, Causeway estimates. Oil, the island's majority heating fuel, is modelled from annual anchors, not metered - its weekly estimates carry a materially wider band than gas. Cooling is the cold-economy census (dagger loads beside the CSO data-centre anchor), flat across the year with the comfort share following live overheating degree-hours once a season exists. Challenge and input welcome at contact@causewaygt.com",
    "bill_eur_m": 29.9,
    "bill_gbp_m": 25.5,
    "by_fuel": {
@@ -164,6 +186,21 @@
      "in_gwh": 11.1,
      "useful_gwh": 6.7
     }
+   },
+   "combined": {
+    "bill_eur_m": 145.5,
+    "bill_gbp_m": 123.9,
+    "emissions_kt_co2": 147.0,
+    "indigenous_share_pct": 31.1,
+    "purchased_gwh": 555.7,
+    "served_gwh": 514.9
+   },
+   "cooling": {
+    "bill_eur_m": 115.6,
+    "bill_gbp_m": 98.4,
+    "comfort_shaped_by_odh": true,
+    "elec_gwh": 319.9,
+    "emissions_kt_co2": 89.6
    },
    "emissions_kt_co2": 57.4,
    "hdd_week": 0.0,
@@ -196,6 +233,21 @@
       "useful_gwh": 0.0
      }
     },
+    "combined": {
+     "bill_eur_m": 17.1,
+     "bill_gbp_m": 14.6,
+     "emissions_kt_co2": 23.2,
+     "indigenous_share_pct": 18.3,
+     "purchased_gwh": 93.1,
+     "served_gwh": 81.7
+    },
+    "cooling": {
+     "bill_eur_m": 8.8,
+     "bill_gbp_m": 7.5,
+     "comfort_shaped_by_odh": false,
+     "elec_gwh": 23.1,
+     "emissions_kt_co2": 6.5
+    },
     "emissions_kt_co2": 16.7,
     "hdd_week": 0.0,
     "hdd_year": 2011.1,
@@ -215,6 +267,13 @@
      "geothermal_spf": 4.0,
      "heat_purchased_gwh": 58.9,
      "indigenous_share_pct": 23.2
+    },
+    "what_if_combined": {
+     "bill_eur_m": 15.4,
+     "bill_gbp_m": 13.1,
+     "emissions_kt_co2": 19.8,
+     "indigenous_share_pct": 31.8,
+     "purchased_gwh": 78.7
     }
    },
    "peak_week": {
@@ -246,6 +305,21 @@
       "useful_gwh": 6.7
      }
     },
+    "combined": {
+     "bill_eur_m": 128.4,
+     "bill_gbp_m": 109.3,
+     "emissions_kt_co2": 123.8,
+     "indigenous_share_pct": 33.5,
+     "purchased_gwh": 462.6,
+     "served_gwh": 433.2
+    },
+    "cooling": {
+     "bill_eur_m": 106.8,
+     "bill_gbp_m": 90.9,
+     "comfort_shaped_by_odh": true,
+     "elec_gwh": 296.8,
+     "emissions_kt_co2": 83.1
+    },
     "emissions_kt_co2": 40.7,
     "hdd_week": 0.0,
     "hdd_year": 1706.7,
@@ -265,6 +339,13 @@
      "geothermal_spf": 4.0,
      "heat_purchased_gwh": 139.5,
      "indigenous_share_pct": 30.2
+    },
+    "what_if_combined": {
+     "bill_eur_m": 111.7,
+     "bill_gbp_m": 95.0,
+     "emissions_kt_co2": 106.0,
+     "indigenous_share_pct": 43.4,
+     "purchased_gwh": 394.7
     }
    },
    "week_ending": "2026-07-18",
@@ -275,6 +356,13 @@
     "geothermal_spf": 4.0,
     "heat_purchased_gwh": 198.4,
     "indigenous_share_pct": 28.1
+   },
+   "what_if_combined": {
+    "bill_eur_m": 127.1,
+    "bill_gbp_m": 108.1,
+    "emissions_kt_co2": 125.8,
+    "indigenous_share_pct": 41.6,
+    "purchased_gwh": 473.4
    }
   },
   "roi_space_heat_regression": {
@@ -321,7 +409,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-18T08:23:27+00:00",
+   "fetched_utc": "2026-07-18T08:42:55+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -627,7 +715,7 @@
   },
   "ecb_fx": {
    "eur_gbp": 0.85098,
-   "fetched_utc": "2026-07-18T08:23:07+00:00",
+   "fetched_utc": "2026-07-18T08:42:33+00:00",
    "gbp_eur": 1.17512,
    "latest_day": "2026-07-17",
    "rate_date": "2026-07-17",
@@ -708,7 +796,7 @@
      "2026-07-17": 90.18
     }
    },
-   "fetched_utc": "2026-07-18T08:23:00+00:00",
+   "fetched_utc": "2026-07-18T08:42:25+00:00",
    "latest_day": "2026-07-17",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
@@ -3645,7 +3733,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-18T08:23:08+00:00",
+   "fetched_utc": "2026-07-18T08:42:35+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15450,7 +15538,7 @@
     "2026-07-15": 6.804,
     "2026-07-16": 7.205
    },
-   "fetched_utc": "2026-07-18T08:23:26+00:00",
+   "fetched_utc": "2026-07-18T08:42:54+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-16",
    "ndm_gwh": {
@@ -15867,7 +15955,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-18T08:23:06+00:00",
+   "fetched_utc": "2026-07-18T08:42:32+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -17150,7 +17238,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-18T08:23:16+00:00",
+   "fetched_utc": "2026-07-18T08:42:42+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -17282,7 +17370,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 153.85,
    "dam_avg_gbp_mwh": 130.41,
-   "fetched_utc": "2026-07-18T08:23:09+00:00",
+   "fetched_utc": "2026-07-18T08:42:37+00:00",
    "latest_day": "2026-07-16",
    "markets": {
     "NI-DA": {
@@ -17490,7 +17578,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "2.2.1",
+ "pipeline_version": "3.0.0",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
