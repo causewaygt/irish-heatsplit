@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "2.2.1"
+PIPELINE_VERSION = "3.0.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -142,15 +142,31 @@ ANCHORS = {
     # heat-pump households; see heat_gap basis note.
     "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},
     "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.325},
-    # The cool side - data-centre waste heat anchors.
-    #  dc_share: CSO metered consumption ~21-22% of ROI electricity (2023-24,
-    #    sourced); 29% projected by 2028 (cited in sector reporting).
-    #  roi_elec_twh: total final electricity ~31 TWh - dagger.
-    #  waste_heat_fraction: essentially all DC electricity exits as
-    #    low-grade heat - dagger 0.97.
+    # The cold economy - island cooling loads, electricity basis.
+    #  dc: CSO metered consumption ~22% of ROI electricity (sourced);
+    #    29% projected by 2028. Other loads are Causeway anchors, dagger:
+    #  refrigeration: dairy (farm milk cooling + processing), meat, cold
+    #    stores, retail - the food-export cold chain;
+    #  process: pharma/semiconductor chilled-water and process cooling;
+    #  comfort: commercial space cooling and ventilation (summer-peaked,
+    #    shaped by live overheating degree-hours when available);
+    #  ni_cooling: food processing, retail refrigeration, small DC.
+    #  rejection: refrigeration/comfort reject compressor work PLUS the
+    #    heat they pump - factors dagger; DC rejects ~all electricity.
     "cool": {"dc_share_of_roi_elec": 0.22, "dc_share_2028": 0.29,
-             "roi_elec_twh": 31.0, "waste_heat_fraction": 0.97,
-             "dh_share_of_national_heat": 0.01},
+             "roi_elec_twh": 31.0,
+             "loads_twh": {"dc": None,          # computed: share x elec
+                           "refrigeration": 2.3,
+                           "process": 0.8,
+                           "comfort": 1.0,
+                           "ni_all": 1.2},
+             "rejection_factor": {"dc": 0.97, "refrigeration": 2.5,
+                                  "process": 2.0, "comfort": 3.0,
+                                  "ni_all": 1.8},
+             "dh_share_of_national_heat": 0.01,
+             # dagger: electricity saving on cooling load moved to
+             # ground-coupled systems (free cooling / high-EER ATES)
+             "ground_cooling_saving": 0.70},
 }
 
 # Policy events rendered as chart annotations - date, jurisdiction, label.
@@ -1679,6 +1695,52 @@ def derive_hero(feeds, anchors=None):
                 + elec_in * a["ef_g_per_kwh"]["electricity"] / 1000.0, 1),
             "geothermal_spf": spf,
         }
+        # cooling: cold-economy census, weekly. Flat loads spread
+        # evenly; the ROI comfort load follows the live ODH26 record
+        # (30% dagger ventilation floor) once a season of it exists.
+        cc = a["cool"]
+        if jur == "roi":
+            dc = cc["roi_elec_twh"] * cc["dc_share_of_roi_elec"]
+            l = cc["loads_twh"]
+            comfort_a = l["comfort"]
+            flat_a = dc + l["refrigeration"] + l["process"]
+        else:
+            comfort_a, flat_a = 0.0, cc["loads_twh"]["ni_all"]
+        cool_week = flat_a * 1000.0 / 52.0
+        if comfort_a > 0:
+            frac = odh_frac if odh_frac is not None else 1.0 / 52.0
+            cool_week += comfort_a * 1000.0 * (0.3 / 52.0 + 0.7 * frac)
+        elec_price = (a["retail_eur_per_kwh"]["electricity"]
+                      if cur == "eur"
+                      else a["retail_gbp_per_kwh"]["electricity"])
+        cool_bill_native = cool_week * elec_price
+        cool_kt = cool_week * a["ef_g_per_kwh"]["electricity"] / 1000.0
+        cool_indig = cool_week * j["elec_indigenous"]
+        cooling = {
+            "elec_gwh": round(cool_week, 1),
+            "bill_eur_m": round(cool_bill_native if cur == "eur"
+                                else cool_bill_native / fx, 1),
+            "bill_gbp_m": round(cool_bill_native * fx if cur == "eur"
+                                else cool_bill_native, 1),
+            "emissions_kt_co2": round(cool_kt, 1),
+            "comfort_shaped_by_odh": bool(comfort_a > 0
+                                          and odh_frac is not None),
+        }
+        combined = {
+            "purchased_gwh": round(inp_t + cool_week, 1),
+            "served_gwh": round(useful_t + cool_week, 1),
+            "bill_eur_m": round((bill_t if cur == "eur"
+                                 else bill_t / fx)
+                                + cooling["bill_eur_m"], 1),
+            "bill_gbp_m": round((bill_t * fx if cur == "eur"
+                                 else bill_t)
+                                + cooling["bill_gbp_m"], 1),
+            "emissions_kt_co2": round(kt_t + cool_kt, 1),
+            "indigenous_share_pct": round(100 * (indig_t + cool_indig)
+                                          / max(useful_t + cool_week,
+                                                1e-9), 1),
+        }
+
         # peak winter week for the for-scale line
         days = sorted(hdd_series)[-365:]
         pk, pk_end = 0.0, None
@@ -1693,9 +1755,39 @@ def derive_hero(feeds, anchors=None):
                     "heat_purchased_gwh": round(
                         annual_gwh * ((1 - shf) / 52.0
                                       + shf * pk / hdd_year), 1)}
+        # combined what-if: heat side as computed in wf; cooling side
+        # moves 20% of load to ground-coupled systems at the dagger
+        # saving factor - service unchanged, electricity cut, the
+        # avoided share ambient and indigenous
+        save = cc["ground_cooling_saving"]
+        cool_wf_elec = cool_week * (1 - 0.20 * save)
+        wf_cool_bill = cool_wf_elec * elec_price
+        wf_heat_indig_abs = wf["indigenous_share_pct"] / 100.0 * useful_t
+        wf_combined = {
+            "purchased_gwh": round(wf["heat_purchased_gwh"]
+                                   + cool_wf_elec, 1),
+            "bill_eur_m": round(wf["bill_eur_m"]
+                                + (wf_cool_bill if cur == "eur"
+                                   else wf_cool_bill / fx), 1),
+            "bill_gbp_m": round(wf["bill_gbp_m"]
+                                + (wf_cool_bill * fx if cur == "eur"
+                                   else wf_cool_bill), 1),
+            "emissions_kt_co2": round(
+                wf["emissions_kt_co2"]
+                + cool_wf_elec * a["ef_g_per_kwh"]["electricity"]
+                / 1000.0, 1),
+            "indigenous_share_pct": round(100 * (
+                wf_heat_indig_abs
+                + cool_wf_elec * j["elec_indigenous"]
+                + (cool_week - cool_wf_elec))
+                / max(useful_t + cool_week, 1e-9), 1),
+        }
         return {
             "heat_purchased_gwh": round(inp_t, 1),
             "heat_delivered_gwh": round(useful_t, 1),
+            "cooling": cooling,
+            "combined": combined,
+            "what_if_combined": wf_combined,
             "by_fuel": by_fuel,
             "peak_week": peak,
             "indigenous_share_pct": round(
@@ -1709,6 +1801,14 @@ def derive_hero(feeds, anchors=None):
             "what_if_20pct_geothermal": wf,
             "_raw": {"useful": useful_t, "indig": indig_t},
         }
+
+    odh = hddf.get("odh26_island") or {}
+    odh_frac = None
+    odays = sorted(odh)[-365:]
+    if len(odays) >= 60:
+        oy = sum(odh[d] for d in odays)
+        if oy > 0:
+            odh_frac = sum(odh[d] for d in odays[-7:]) / oy
 
     roi = jur_block("roi", "eur", hddf.get("hdd_roi") or island_hdd)
     ni = jur_block("ni", "gbp", hddf.get("hdd_ni") or island_hdd)
@@ -1732,7 +1832,33 @@ def derive_hero(feeds, anchors=None):
                   "heat_purchased_gwh": round(
                       x["peak_week"]["heat_purchased_gwh"]
                       + y["peak_week"]["heat_purchased_gwh"], 1)}
+        def addd(key, fields):
+            return {f: round(x[key][f] + y[key][f], 1) for f in fields}
+        cooling = addd("cooling", ("elec_gwh", "bill_eur_m", "bill_gbp_m",
+                                   "emissions_kt_co2"))
+        cooling["comfort_shaped_by_odh"] = (
+            x["cooling"]["comfort_shaped_by_odh"]
+            or y["cooling"]["comfort_shaped_by_odh"])
+        combined = addd("combined", ("purchased_gwh", "served_gwh",
+                                     "bill_eur_m", "bill_gbp_m",
+                                     "emissions_kt_co2"))
+        served = x["combined"]["served_gwh"] + y["combined"]["served_gwh"]
+        combined["indigenous_share_pct"] = round(
+            (x["combined"]["indigenous_share_pct"]
+             * x["combined"]["served_gwh"]
+             + y["combined"]["indigenous_share_pct"]
+             * y["combined"]["served_gwh"]) / max(served, 1e-9), 1)
+        wfc = addd("what_if_combined", ("purchased_gwh", "bill_eur_m",
+                                        "bill_gbp_m", "emissions_kt_co2"))
+        wfc["indigenous_share_pct"] = round(
+            (x["what_if_combined"]["indigenous_share_pct"]
+             * x["combined"]["served_gwh"]
+             + y["what_if_combined"]["indigenous_share_pct"]
+             * y["combined"]["served_gwh"]) / max(served, 1e-9), 1)
         out = {
+            "cooling": cooling,
+            "combined": combined,
+            "what_if_combined": wfc,
             "by_fuel": bf,
             "peak_week": pk,
             "heat_purchased_gwh": round(
@@ -1774,7 +1900,11 @@ def derive_hero(feeds, anchors=None):
                   "DfE/NISRA, Causeway estimates. Oil, the island's "
                   "majority heating fuel, is modelled from annual "
                   "anchors, not metered - its weekly estimates carry a "
-                  "materially wider band than gas. Challenge and input "
+                  "materially wider band than gas. Cooling is the cold-economy "
+                  "census (dagger loads beside the CSO data-centre "
+                  "anchor), flat across the year with the comfort share "
+                  "following live overheating degree-hours once a season "
+                  "exists. Challenge and input "
                   "welcome at contact@causewaygt.com"),
         "anchors_used": a,
     })
@@ -1863,44 +1993,79 @@ def derive_geo_percap(anchors=None, geo=None):
 
 def derive_cool(feeds, anchors=None):
     """
-    The cool side - data-centre waste heat vs the shape of heat demand.
-    Supply is flat across the year; demand follows HDD. With annual totals
-    normalised, the stranded share is the part of a flat supply produced
-    when demand runs below it - the seasonal-storage (ATES) wedge. Pure,
-    unit tested.
+    The cold economy - island cooling loads against the shape of heat
+    demand. Flat loads (data centres, refrigeration, process, NI) run
+    all year; comfort cooling is shaped by live overheating degree-hours
+    (ODH26) when at least a season of the series exists, else treated
+    flat with a note. Heat rejection applies per-load factors: vapour-
+    compression loads reject compressor work plus the heat they pump.
+    With annual totals normalised, the stranded share is the part of
+    supply produced while heat demand runs below it. Pure, unit tested.
     """
     a = (anchors or ANCHORS)
     c = a["cool"]
-    hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
+    hddf = feeds.get("hdd") or {}
+    hdd = hddf.get("hdd_island") or {}
     days = sorted(hdd)[-365:]
     if len(days) < 200:
         return None
     hs = [hdd[d] for d in days]
-    total = sum(hs)
-    if total <= 0:
+    H = sum(hs)
+    if H <= 0:
         return None
     n = len(hs)
-    flat = 1.0 / n
-    stranded = sum(max(0.0, flat - h / total) for h in hs)
-    heating_days_pct = 100.0 * sum(1 for h in hs if h > 0.5) / n
 
-    dc_twh = c["roi_elec_twh"] * c["dc_share_of_roi_elec"]
-    waste_twh = dc_twh * c["waste_heat_fraction"]
-    res_twh = a["roi"]["residential_heat_twh"]
+    loads = dict(c["loads_twh"])
+    loads["dc"] = round(c["roi_elec_twh"] * c["dc_share_of_roi_elec"], 1)
+    rf = c["rejection_factor"]
+    elec_total = round(sum(loads.values()), 1)
+    reject_total = round(sum(loads[k] * rf[k] for k in loads), 1)
+
+    # supply shape: flat loads spread 1/n; comfort follows ODH26
+    comfort = loads["comfort"]
+    flat = elec_total - comfort
+    odh = hddf.get("odh26_island") or {}
+    odh_days = [d for d in days if d in odh]
+    odh_used = False
+    supply = [flat / elec_total / n] * n
+    if len(odh_days) >= 60 and sum(odh.get(d, 0.0) for d in days) > 0:
+        O = sum(odh.get(d, 0.0) for d in days)
+        base = 0.3   # dagger: ventilation floor of the comfort load
+        for i, d in enumerate(days):
+            shaped = (base / n + (1 - base) * odh.get(d, 0.0) / O)
+            supply[i] += comfort / elec_total * shaped
+        odh_used = True
+    else:
+        supply = [s + comfort / elec_total / n for s in supply]
+
+    demand = [h / H for h in hs]
+    stranded = sum(max(0.0, s - d) for s, d in zip(supply, demand))
+
+    res_twh = (a["roi"]["residential_heat_twh"]
+               + a["ni"]["residential_heat_twh"])
     r1 = lambda x: round(x, 1)
     return {
-        "dc_twh": r1(dc_twh), "waste_heat_twh": r1(waste_twh),
+        "loads_twh": loads,
+        "cooling_elec_twh": elec_total,
+        "heat_rejected_twh": reject_total,
+        "dc_twh": loads["dc"],
         "dc_share_pct": r1(100 * c["dc_share_of_roi_elec"]),
         "dc_share_2028_pct": r1(100 * c["dc_share_2028"]),
-        "waste_vs_roi_residential_pct": r1(100 * waste_twh / res_twh),
+        "reject_vs_island_residential_pct": r1(
+            100 * reject_total / res_twh),
         "stranded_summer_pct": r1(100 * stranded),
-        "heating_days_pct": r1(heating_days_pct),
+        "comfort_shaped_by_odh": odh_used,
         "dh_share_pct": r1(100 * c["dh_share_of_national_heat"]),
-        "basis": ("DC electricity share CSO 2023-24; totals and waste "
-                  "fraction dagger; stranded share computed from this "
-                  "site's own HDD series - flat supply vs demand shape, "
-                  "annual totals normalised. Challenge and input welcome "
-                  "at contact@causewaygt.com"),
+        "basis": ("DC electricity share CSO; other loads and rejection "
+                  "factors dagger (refrigeration and comfort reject "
+                  "compressor work plus pumped heat). Stranded share "
+                  "computed from this site's own degree-day record"
+                  + (", comfort load shaped by live overheating "
+                     "degree-hours" if odh_used else
+                     "; comfort treated flat pending a season of "
+                     "overheating degree-hours") +
+                  ". Challenge and input welcome at "
+                  "contact@causewaygt.com"),
     }
 
 
