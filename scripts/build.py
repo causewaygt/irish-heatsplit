@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "3.1.1"
+PIPELINE_VERSION = "3.2.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -166,7 +166,14 @@ ANCHORS = {
              "dh_share_of_national_heat": 0.01,
              # dagger: electricity saving on cooling load moved to
              # ground-coupled systems (free cooling / high-EER ATES)
-             "ground_cooling_saving": 0.70},
+             "ground_cooling_saving": 0.70,
+             # dagger: cooling service delivered per unit electricity
+             # (seasonal system EER). DC ~1.0: its service is heat
+             # removal, roughly its electricity; vapour-compression
+             # loads deliver a multiple of theirs.
+             "cooling_service_factor": {"dc": 1.0, "refrigeration": 2.5,
+                                        "process": 2.5, "comfort": 3.0,
+                                        "ni_all": 2.0}},
 }
 
 # Policy events rendered as chart annotations - date, jurisdiction, label.
@@ -1796,6 +1803,16 @@ def derive_hero(feeds, anchors=None):
             flat_a = dc + l["refrigeration"] + l["process"]
         else:
             comfort_a, flat_a = 0.0, cc["loads_twh"]["ni_all"]
+        sf = cc["cooling_service_factor"]
+        if jur == "roi":
+            l2 = dict(l); l2["dc"] = dc
+            num = (l2["dc"] * sf["dc"] + l2["refrigeration"]
+                   * sf["refrigeration"] + l2["process"] * sf["process"]
+                   + l2["comfort"] * sf["comfort"])
+            blend = num / (l2["dc"] + l2["refrigeration"]
+                           + l2["process"] + l2["comfort"])
+        else:
+            blend = sf["ni_all"]
         cool_week = flat_a * 1000.0 / 52.0
         if comfort_a > 0:
             frac = odh_frac if odh_frac is not None else 1.0 / 52.0
@@ -1806,8 +1823,11 @@ def derive_hero(feeds, anchors=None):
         cool_bill_native = cool_week * elec_price
         cool_kt = cool_week * a["ef_g_per_kwh"]["electricity"] / 1000.0
         cool_indig = cool_week * j["elec_indigenous"]
+        cool_served = cool_week * blend
         cooling = {
             "elec_gwh": round(cool_week, 1),
+            "served_gwh": round(cool_served, 1),
+            "service_factor": round(blend, 2),
             "bill_eur_m": round(cool_bill_native if cur == "eur"
                                 else cool_bill_native / fx, 1),
             "bill_gbp_m": round(cool_bill_native * fx if cur == "eur"
@@ -1818,7 +1838,7 @@ def derive_hero(feeds, anchors=None):
         }
         combined = {
             "purchased_gwh": round(inp_t + cool_week, 1),
-            "served_gwh": round(useful_t + cool_week, 1),
+            "served_gwh": round(useful_t + cool_served, 1),
             "bill_eur_m": round((bill_t if cur == "eur"
                                  else bill_t / fx)
                                 + cooling["bill_eur_m"], 1),
@@ -1826,9 +1846,12 @@ def derive_hero(feeds, anchors=None):
                                  else bill_t)
                                 + cooling["bill_gbp_m"], 1),
             "emissions_kt_co2": round(kt_t + cool_kt, 1),
-            "indigenous_share_pct": round(100 * (indig_t + cool_indig)
-                                          / max(useful_t + cool_week,
-                                                1e-9), 1),
+            # delivered basis: purchased electricity carries the grid
+            # share; the balance of the cooling service is ambient
+            # rejection, indigenous by convention
+            "indigenous_share_pct": round(100 * (
+                indig_t + cool_indig + (cool_served - cool_week))
+                / max(useful_t + cool_served, 1e-9), 1),
         }
 
         # peak winter week for the for-scale line
@@ -1869,8 +1892,8 @@ def derive_hero(feeds, anchors=None):
             "indigenous_share_pct": round(100 * (
                 wf_heat_indig_abs
                 + cool_wf_elec * j["elec_indigenous"]
-                + (cool_week - cool_wf_elec))
-                / max(useful_t + cool_week, 1e-9), 1),
+                + (cool_served - cool_wf_elec))
+                / max(useful_t + cool_served, 1e-9), 1),
         }
         return {
             "heat_purchased_gwh": round(inp_t, 1),
@@ -1924,7 +1947,8 @@ def derive_hero(feeds, anchors=None):
                       + y["peak_week"]["heat_purchased_gwh"], 1)}
         def addd(key, fields):
             return {f: round(x[key][f] + y[key][f], 1) for f in fields}
-        cooling = addd("cooling", ("elec_gwh", "bill_eur_m", "bill_gbp_m",
+        cooling = addd("cooling", ("elec_gwh", "served_gwh",
+                                   "bill_eur_m", "bill_gbp_m",
                                    "emissions_kt_co2"))
         cooling["comfort_shaped_by_odh"] = (
             x["cooling"]["comfort_shaped_by_odh"]
