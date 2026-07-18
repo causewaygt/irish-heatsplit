@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-18T09:18:46+00:00",
+ "built_utc": "2026-07-18T09:29:04+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO; other loads and rejection factors dagger (refrigeration and comfort reject compressor work plus pumped heat). Stranded share computed from this site's own degree-day record, comfort load shaped by live overheating degree-hours. Challenge and input welcome at contact@causewaygt.com",
@@ -409,7 +409,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-18T09:18:38+00:00",
+   "fetched_utc": "2026-07-18T09:29:03+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -715,7 +715,7 @@
   },
   "ecb_fx": {
    "eur_gbp": 0.85098,
-   "fetched_utc": "2026-07-18T09:18:17+00:00",
+   "fetched_utc": "2026-07-18T09:28:41+00:00",
    "gbp_eur": 1.17512,
    "latest_day": "2026-07-17",
    "rate_date": "2026-07-17",
@@ -849,20 +849,22 @@
      "2026-07-17": 90.18
     }
    },
-   "fetched_utc": "2026-07-18T09:18:13+00:00",
+   "fetched_utc": "2026-07-18T09:28:31+00:00",
    "latest_day": "2026-07-17",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "gb_oil": {
-   "fetched_utc": "2026-07-18T09:18:46+00:00",
+   "fetched_utc": "2026-07-18T09:29:04+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
-   "gb_ppl_daily": {},
-   "latest_day": null,
-   "source": "GB heating oil - awaiting source",
-   "status": "stale"
+   "gb_ppl_daily": {
+    "2026-07-18": 94.12
+   },
+   "latest_day": "2026-07-18",
+   "source": "BoilerJuice UK daily average (lowest quote per postcode district, incl 5% VAT)",
+   "status": "ok"
   },
   "gni_ckan": {
    "dm_gwh": {
@@ -3789,7 +3791,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-18T09:18:19+00:00",
+   "fetched_utc": "2026-07-18T09:28:43+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15594,7 +15596,7 @@
     "2026-07-15": 6.804,
     "2026-07-16": 7.205
    },
-   "fetched_utc": "2026-07-18T09:18:37+00:00",
+   "fetched_utc": "2026-07-18T09:29:02+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-16",
    "ndm_gwh": {
@@ -16011,7 +16013,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-18T09:18:16+00:00",
+   "fetched_utc": "2026-07-18T09:28:40+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -17294,7 +17296,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-18T09:18:26+00:00",
+   "fetched_utc": "2026-07-18T09:28:50+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -17426,7 +17428,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 153.85,
    "dam_avg_gbp_mwh": 130.41,
-   "fetched_utc": "2026-07-18T09:18:21+00:00",
+   "fetched_utc": "2026-07-18T09:28:44+00:00",
    "latest_day": "2026-07-16",
    "markets": {
     "NI-DA": {
@@ -17634,7 +17636,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "3.1.0",
+ "pipeline_version": "3.1.1",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
