@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 3.0.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 3.1.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -686,34 +686,37 @@ function heroCards(h){
     ?'\u00a3'+fmt(b.bill_gbp_m,0)+'m':'\u20ac'+fmt(b.bill_eur_m,0)+'m';}
   function ioBars(b){
     const bf=b.by_fuel||{};
-    const cool=(b.cooling||{}).elec_gwh||0;
+    const coolIn=(b.cooling||{}).elec_gwh||0;
+    const coolOut=(b.cooling||{}).served_gwh||coolIn;
     const tot=(b.combined||{}).purchased_gwh||b.heat_purchased_gwh||1;
     const served=(b.combined||{}).served_gwh||b.heat_delivered_gwh;
+    const loss=Math.max(0,b.heat_purchased_gwh-b.heat_delivered_gwh);
+    const scale=Math.max(tot, served+loss)||1;
     function bar(kind){
       let segs='';
       FUELS.forEach(f=>{
         const v=(bf[f[0]]||{})[kind==='in'?'in_gwh':'useful_gwh']||0;
         if(v<=0) return;
-        const w=100*v/tot;
-        const label=w>9?f[1]+' '+Math.round(100*v/tot)+'%':'';
+        const w=100*v/scale;
+        const label=w>9?f[1]+' '+Math.round(100*v/(kind==='in'?tot:served))+'%':'';
         segs+='<div class="ioseg" style="width:'+w.toFixed(2)+
           '%;background:'+f[2]+'" title="'+f[1]+' '+fmt(v,0)+' GWh">'+
           label+'</div>';
       });
+      const cool=kind==='in'?coolIn:coolOut;
       if(cool>0){
-        const w=100*cool/tot;
+        const w=100*cool/scale;
         segs+='<div class="ioseg" style="width:'+w.toFixed(2)+
-          '%;background:'+COOLC+'" title="Cooling '+fmt(cool,0)+' GWh">'+
-          (w>9?'Cooling '+Math.round(w)+'%':'')+'</div>';
+          '%;background:'+COOLC+'" title="Cooling '+
+          (kind==='in'?'electricity ':'delivered ')+fmt(cool,0)+' GWh">'+
+          (w>9?(kind==='in'?'Cooling ':'Cooling delivered ')+
+            Math.round(100*cool/(kind==='in'?tot:served))+'%':'')+'</div>';
       }
-      if(kind==='out'){
-        const loss=b.heat_purchased_gwh-b.heat_delivered_gwh;
-        if(loss>0){
-          const w=100*loss/tot;
-          segs+='<div class="ioseg hatch" style="width:'+w.toFixed(2)+
-            '%" title="Lost in conversion '+fmt(loss,0)+' GWh">'+
-            (w>12?'lost '+fmt(loss,0)+' GWh':'')+'</div>';
-        }
+      if(kind==='out'&&loss>0){
+        const w=100*loss/scale;
+        segs+='<div class="ioseg hatch" style="width:'+w.toFixed(2)+
+          '%" title="Lost in conversion '+fmt(loss,0)+' GWh">'+
+          (w>10?'lost '+fmt(loss,0)+' GWh':'')+'</div>';
       }
       return segs;
     }
@@ -1237,7 +1240,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 3.0.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 3.1.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
