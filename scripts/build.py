@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "3.1.0"
+PIPELINE_VERSION = "3.1.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -727,6 +727,19 @@ def parse_gb_oil_page(text: str) -> tuple:
         r"[^0-9]*?is\s*(\d{1,3}\.\d{1,2})\s*pence per litre",
         text, re.I | re.S)
     if not m:
+        # modern template (observed 18 Jul 2026): dated sentence gone,
+        # but the current price is server-rendered beside the chart -
+        # digits, optional markup, then 'pence per litre'. Undated;
+        # the caller stamps the run date. Fossils cannot reach here:
+        # they carry the dated 2021 sentence, matched above and then
+        # rejected by the caller's freshness gate.
+        m2 = re.search(
+            r"(\d{2,3}\.\d{1,2})\s*(?:</?[a-z][^>]*>\s*|&nbsp;)*"
+            r"pence per litre", text, re.I)
+        if m2:
+            v = float(m2.group(1))
+            if 40.0 <= v <= 150.0:
+                return None, v
         return None, None
     day, month_name, year, ppl = m.group(1), m.group(2), m.group(3), m.group(4)
     iso = None
@@ -1478,6 +1491,7 @@ def feed_gb_oil():
     if not pref:
         return _gb_oil_stale()
     try:
+        import openpyxl
         blob = http_get(pref[0], timeout=120).content
         wb = openpyxl.load_workbook(io.BytesIO(blob), data_only=True,
                                     read_only=True)
