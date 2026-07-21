@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-20T12:27:45+00:00",
+ "built_utc": "2026-07-21T11:26:15+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO; other loads and rejection factors dagger (refrigeration and comfort reject compressor work plus pumped heat). Stranded share computed from this site's own degree-day record, comfort load shaped by live overheating degree-hours. Challenge and input welcome at contact@causewaygt.com",
@@ -30,7 +30,7 @@
   },
   "heat_gap": {
    "basis": "Standard tariffs, July 2026 pass (Power NI/UR review, ROI standard 24h rates) - dagger; time-of-use and night tariffs materially lower for heat-pump households. Oil prices live. ASHP SPF is modelled from each jurisdiction's HDD-weighted climate (Carnot-fraction, defrost derate, DHW share - all dagger), calibrated to GB field-trial medians. Kerosene 10.35 kWh/L; boiler efficiencies 82%/85% dagger. Challenge and input welcome at contact@causewaygt.com",
-   "fx_eur_gbp": 0.85098,
+   "fx_eur_gbp": 0.84888,
    "geo_spf": 4.0,
    "ni": {
     "ashp": 11.44,
@@ -42,15 +42,15 @@
     },
     "ashp_spf": 2.84,
     "breakeven_spf_vs_gas": 3.68,
-    "breakeven_spf_vs_oil": 3.16,
+    "breakeven_spf_vs_oil": 3.17,
     "gas_boiler": 8.82,
     "geothermal_spf40": 8.12,
     "inputs": {
      "electricity_per_kwh": 0.325,
      "gas_per_kwh": 0.075,
-     "oil_per_litre": 87.19
+     "oil_per_litre": 87.03
     },
-    "oil_boiler": 10.27
+    "oil_boiler": 10.25
    },
    "roi": {
     "ashp": 12.46,
@@ -171,7 +171,7 @@
    },
    "basis": "Scaffold estimator (dagger throughout) - annual anchors shaped by each jurisdiction's weekly HDD; SEAI 2024, DfE/NISRA, Causeway estimates. Oil, the island's majority heating fuel, is modelled from annual anchors, not metered - its weekly estimates carry a materially wider band than gas. Cooling is the cold-economy census (dagger loads beside the CSO data-centre anchor), flat across the year with the comfort share following live overheating degree-hours once a season exists. Challenge and input welcome at contact@causewaygt.com",
    "bill_eur_m": 29.9,
-   "bill_gbp_m": 25.5,
+   "bill_gbp_m": 25.4,
    "by_fuel": {
     "electricity": {
      "in_gwh": 18.9,
@@ -196,7 +196,7 @@
    },
    "combined": {
     "bill_eur_m": 134.8,
-    "bill_gbp_m": 114.8,
+    "bill_gbp_m": 114.5,
     "emissions_kt_co2": 138.7,
     "indigenous_share_pct": 49.7,
     "purchased_gwh": 526.0,
@@ -204,7 +204,7 @@
    },
    "cooling": {
     "bill_eur_m": 104.9,
-    "bill_gbp_m": 89.3,
+    "bill_gbp_m": 89.1,
     "comfort_shaped_by_odh": true,
     "elec_gwh": 290.1,
     "emissions_kt_co2": 81.3,
@@ -218,7 +218,7 @@
    "indigenous_share_pct": 13.7,
    "ni": {
     "bill_eur_m": 8.3,
-    "bill_gbp_m": 7.1,
+    "bill_gbp_m": 7.0,
     "by_fuel": {
      "electricity": {
       "in_gwh": 5.6,
@@ -243,7 +243,7 @@
     },
     "combined": {
      "bill_eur_m": 17.1,
-     "bill_gbp_m": 14.6,
+     "bill_gbp_m": 14.5,
      "emissions_kt_co2": 23.2,
      "indigenous_share_pct": 36.3,
      "purchased_gwh": 93.1,
@@ -269,9 +269,9 @@
      "heat_purchased_gwh": 530.7,
      "week_ending": "2026-01-09"
     },
-    "week_ending": "2026-07-20",
+    "week_ending": "2026-07-21",
     "what_if_20pct_geothermal": {
-     "bill_eur_m": 7.7,
+     "bill_eur_m": 7.8,
      "bill_gbp_m": 6.6,
      "emissions_kt_co2": 14.2,
      "geothermal_spf": 4.0,
@@ -279,7 +279,7 @@
      "indigenous_share_pct": 23.2
     },
     "what_if_combined": {
-     "bill_eur_m": 15.3,
+     "bill_eur_m": 15.4,
      "bill_gbp_m": 13.1,
      "emissions_kt_co2": 19.8,
      "indigenous_share_pct": 46.8,
@@ -317,7 +317,7 @@
     },
     "combined": {
      "bill_eur_m": 117.7,
-     "bill_gbp_m": 100.2,
+     "bill_gbp_m": 100.0,
      "emissions_kt_co2": 115.5,
      "indigenous_share_pct": 52.2,
      "purchased_gwh": 432.9,
@@ -325,7 +325,7 @@
     },
     "cooling": {
      "bill_eur_m": 96.1,
-     "bill_gbp_m": 81.8,
+     "bill_gbp_m": 81.6,
      "comfort_shaped_by_odh": true,
      "elec_gwh": 267.0,
      "emissions_kt_co2": 74.8,
@@ -343,7 +343,7 @@
      "heat_purchased_gwh": 1381.2,
      "week_ending": "2026-01-06"
     },
-    "week_ending": "2026-07-20",
+    "week_ending": "2026-07-21",
     "what_if_20pct_geothermal": {
      "bill_eur_m": 19.8,
      "bill_gbp_m": 16.8,
@@ -354,15 +354,15 @@
     },
     "what_if_combined": {
      "bill_eur_m": 102.5,
-     "bill_gbp_m": 87.2,
+     "bill_gbp_m": 87.0,
      "emissions_kt_co2": 98.8,
      "indigenous_share_pct": 59.4,
      "purchased_gwh": 369.2
     }
    },
-   "week_ending": "2026-07-20",
+   "week_ending": "2026-07-21",
    "what_if_20pct_geothermal": {
-    "bill_eur_m": 27.5,
+    "bill_eur_m": 27.6,
     "bill_gbp_m": 23.4,
     "emissions_kt_co2": 48.7,
     "geothermal_spf": 4.0,
@@ -370,20 +370,20 @@
     "indigenous_share_pct": 28.1
    },
    "what_if_combined": {
-    "bill_eur_m": 117.8,
-    "bill_gbp_m": 100.3,
+    "bill_eur_m": 117.9,
+    "bill_gbp_m": 100.1,
     "emissions_kt_co2": 118.6,
     "indigenous_share_pct": 57.4,
     "purchased_gwh": 447.9
    }
   },
   "roi_space_heat_regression": {
-   "baseload_gwh_per_day": 15.24,
+   "baseload_gwh_per_day": 15.27,
    "method": "within-month centred OLS (within-class centring)",
-   "n_days": 200,
-   "naive_slope_gwh_per_hdd": 4.026,
+   "n_days": 199,
+   "naive_slope_gwh_per_hdd": 4.025,
    "r2_within_month": 0.661,
-   "residual_se_gwh_per_day": 3.05,
+   "residual_se_gwh_per_day": 3.06,
    "slope_gwh_per_hdd": 2.249
   }
  },
@@ -421,11 +421,11 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-20T12:27:44+00:00",
+   "fetched_utc": "2026-07-21T11:26:14+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
-   "latest_day": "2026-07-20",
+   "latest_day": "2026-07-21",
    "series_conflicts_this_run": 0,
    "series_gbp": {
     "daily": {
@@ -525,7 +525,8 @@
       "2026-07-15": 271.57,
       "2026-07-16": 276.53,
       "2026-07-17": 275.78,
-      "2026-07-20": 274.9
+      "2026-07-20": 274.9,
+      "2026-07-21": 274.31
      },
      "500l": {
       "2026-02-26": 307.38,
@@ -623,7 +624,8 @@
       "2026-07-15": 436.21,
       "2026-07-16": 445.69,
       "2026-07-17": 449.48,
-      "2026-07-20": 443.6
+      "2026-07-20": 443.6,
+      "2026-07-21": 442.44
      },
      "900l": {
       "2026-02-26": 536.72,
@@ -721,7 +723,8 @@
       "2026-07-15": 771.37,
       "2026-07-16": 789.85,
       "2026-07-17": 785.18,
-      "2026-07-20": 784.73
+      "2026-07-20": 784.73,
+      "2026-07-21": 783.29
      }
     }
    },
@@ -729,11 +732,11 @@
    "status": "ok"
   },
   "ecb_fx": {
-   "eur_gbp": 0.85098,
-   "fetched_utc": "2026-07-20T12:27:21+00:00",
-   "gbp_eur": 1.17512,
-   "latest_day": "2026-07-17",
-   "rate_date": "2026-07-17",
+   "eur_gbp": 0.84888,
+   "fetched_utc": "2026-07-21T11:25:54+00:00",
+   "gbp_eur": 1.17802,
+   "latest_day": "2026-07-20",
+   "rate_date": "2026-07-20",
    "source": "ECB euro foreign exchange reference rates (daily)",
    "status": "ok"
   },
@@ -770,7 +773,8 @@
     "2026-07-17": 189.6,
     "2026-07-18": 160.0,
     "2026-07-19": 155.4,
-    "2026-07-20": 207.8
+    "2026-07-20": 180.5,
+    "2026-07-21": 206.4
    },
    "demand_gwh_daily": {
     "island": {
@@ -804,7 +808,9 @@
      "2026-07-16": 110.26,
      "2026-07-17": 106.72,
      "2026-07-18": 95.91,
-     "2026-07-19": 93.22
+     "2026-07-19": 93.22,
+     "2026-07-20": 106.63,
+     "2026-07-21": 105.27
     },
     "ni": {
      "2026-06-19": 19.11,
@@ -838,7 +844,8 @@
      "2026-07-17": 16.54,
      "2026-07-18": 14.07,
      "2026-07-19": 14.04,
-     "2026-07-20": 16.2
+     "2026-07-20": 17.57,
+     "2026-07-21": 16.77
     },
     "roi": {
      "2026-06-19": 93.91,
@@ -872,25 +879,26 @@
      "2026-07-17": 90.18,
      "2026-07-18": 81.84,
      "2026-07-19": 79.18,
-     "2026-07-20": 85.4
+     "2026-07-20": 89.06
     }
    },
-   "fetched_utc": "2026-07-20T12:27:16+00:00",
-   "latest_day": "2026-07-19",
+   "fetched_utc": "2026-07-21T11:25:48+00:00",
+   "latest_day": "2026-07-21",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "gb_oil": {
-   "fetched_utc": "2026-07-20T12:27:45+00:00",
+   "fetched_utc": "2026-07-21T11:26:15+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
    "gb_ppl_daily": {
     "2026-07-18": 94.12,
     "2026-07-19": 94.06,
-    "2026-07-20": 94.03
+    "2026-07-20": 94.03,
+    "2026-07-21": 93.9
    },
-   "latest_day": "2026-07-20",
+   "latest_day": "2026-07-21",
    "source": "BoilerJuice UK daily average (lowest quote per postcode district, incl 5% VAT)",
    "status": "ok"
   },
@@ -3819,7 +3827,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-20T12:27:24+00:00",
+   "fetched_utc": "2026-07-21T11:25:55+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15624,11 +15632,12 @@
     "2026-07-15": 6.804,
     "2026-07-16": 7.205,
     "2026-07-17": 6.697,
-    "2026-07-18": 5.649
+    "2026-07-18": 5.649,
+    "2026-07-19": 5.214
    },
-   "fetched_utc": "2026-07-20T12:27:43+00:00",
+   "fetched_utc": "2026-07-21T11:26:13+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
-   "latest_day": "2026-07-18",
+   "latest_day": "2026-07-19",
    "ndm_gwh": {
     "2026-04-08": 24.134,
     "2026-04-09": 30.228,
@@ -15731,7 +15740,8 @@
     "2026-07-15": 7.725,
     "2026-07-16": 7.536,
     "2026-07-17": 7.702,
-    "2026-07-18": 6.935
+    "2026-07-18": 6.935,
+    "2026-07-19": 6.766
    },
    "roi_ldm_gwh": {
     "2026-04-08": 125.903,
@@ -15835,7 +15845,8 @@
     "2026-07-15": 124.402,
     "2026-07-16": 134.955,
     "2026-07-17": 113.197,
-    "2026-07-18": 84.479
+    "2026-07-18": 84.479,
+    "2026-07-19": 89.783
    },
    "roi_power_gen_gwh": {
     "2026-04-08": 108.766,
@@ -15939,7 +15950,8 @@
     "2026-07-15": 110.371,
     "2026-07-16": 120.674,
     "2026-07-17": 98.17,
-    "2026-07-18": 69.941
+    "2026-07-18": 69.941,
+    "2026-07-19": 75.934
    },
    "source": "Gas Networks Ireland Data Transparency - gasconsumption API, daily by market sector",
    "status": "ok",
@@ -16045,19 +16057,19 @@
     "2026-07-15": 160.068,
     "2026-07-16": 170.318,
     "2026-07-17": 146.982,
-    "2026-07-18": 116.713
+    "2026-07-18": 116.713,
+    "2026-07-19": 123.047
    },
    "unit_detection": "kWh->GWh"
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-20T12:27:20+00:00",
+   "fetched_utc": "2026-07-21T11:25:53+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
    "forecast_tail": true,
    "hdd_island": {
-    "2025-06-15": 0.86,
     "2025-06-16": 0.0,
     "2025-06-17": 0.0,
     "2025-06-18": 0.65,
@@ -16457,10 +16469,10 @@
     "2026-07-17": 0.0,
     "2026-07-18": 0.0,
     "2026-07-19": 0.0,
-    "2026-07-20": 0.0
+    "2026-07-20": 0.0,
+    "2026-07-21": 0.0
    },
    "hdd_ni": {
-    "2025-06-15": 1.82,
     "2025-06-16": 0.0,
     "2025-06-17": 0.0,
     "2025-06-18": 1.3,
@@ -16860,10 +16872,10 @@
     "2026-07-17": 0.0,
     "2026-07-18": 0.0,
     "2026-07-19": 0.0,
-    "2026-07-20": 0.0
+    "2026-07-20": 0.0,
+    "2026-07-21": 0.0
    },
    "hdd_roi": {
-    "2025-06-15": 0.53,
     "2025-06-16": 0.0,
     "2025-06-17": 0.0,
     "2025-06-18": 0.42,
@@ -17263,9 +17275,10 @@
     "2026-07-17": 0.0,
     "2026-07-18": 0.0,
     "2026-07-19": 0.0,
-    "2026-07-20": 0.0
+    "2026-07-20": 0.0,
+    "2026-07-21": 0.0
    },
-   "latest_day": "2026-07-20",
+   "latest_day": "2026-07-21",
    "odh26_island": {
     "2026-05-19": 0.0,
     "2026-05-20": 0.0,
@@ -17329,14 +17342,15 @@
     "2026-07-17": 0.73,
     "2026-07-18": 0.0,
     "2026-07-19": 0.0,
-    "2026-07-20": 0.0
+    "2026-07-20": 0.0,
+    "2026-07-21": 0.0
    },
    "source": "ERA5 via Open-Meteo, population-weighted HDD",
    "status": "ok",
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-20T12:27:30+00:00",
+   "fetched_utc": "2026-07-21T11:26:02+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -17466,23 +17480,23 @@
   },
   "semopx": {
    "auction": "SEM-DA",
-   "dam_avg_eur_mwh": 175.69,
-   "dam_avg_gbp_mwh": 149.52,
-   "fetched_utc": "2026-07-20T12:27:25+00:00",
-   "latest_day": "2026-07-18",
+   "dam_avg_eur_mwh": 178.67,
+   "dam_avg_gbp_mwh": 152.04,
+   "fetched_utc": "2026-07-21T11:25:57+00:00",
+   "latest_day": "2026-07-19",
    "markets": {
     "NI-DA": {
-     "EUR": 175.69,
-     "GBP": 149.52
+     "EUR": 178.67,
+     "GBP": 152.04
     },
     "ROI-DA": {
-     "EUR": 175.69
+     "EUR": 178.67
     }
    },
    "sem_fx_eur_gbp": 0.8509914,
    "source": "SEMOpx day-ahead market results - dual currency (EUR/GBP), incl. SEM trading-day FX rate",
    "status": "ok",
-   "trade_day": "2026-07-18"
+   "trade_day": "2026-07-19"
   }
  },
  "geo": {
