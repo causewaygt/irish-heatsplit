@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "3.3.1"
+PIPELINE_VERSION = "3.4.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -129,15 +129,16 @@ ANCHORS = {
                      "other": 100, "electricity": 280},          # dagger -
     # electricity factor replaced by live grid intensity once eirgrid returns
     "indigenous": {"oil": 0.0, "peat": 1.0, "other": 0.9},      # dagger
-    # dagger. AUDIT RESOLVED 18 Jul 2026 (UK cross-check): annual
-    # island heat input is 43.8 TWh = 6.2 MWh/person vs the UK line's
-    # 9.3 - a per-capita ratio of 0.67, BELOW parity, so the anchor is
-    # not high. July's elevated island/UK weekly ratio is convention:
-    # this base share is 28% (DHW folded in), while the UK hero's July
-    # week back-solves to a ~10.5% base (hot water shaped separately).
-    # Cross-calibration of the convention, not the anchor, is the
-    # autumn item.
-    "space_heat_fraction": 0.72,
+    # CROSS-CALIBRATED 18 Jul 2026 against the UK sibling (input basis,
+    # buildings only): UK 430.6 TWh / 68m = 6.3 MWh/person; island
+    # 43.8 / 7.1 = 6.2 - per-capita parity, ratio 0.98. Anchors sound.
+    # CONVENTION ALIGNED same date: the flat weekly term is hot water,
+    # 18.3% of annual heat input (the UK's ECUK-derived DHW share,
+    # adopted dagger pending an SEAI-specific Irish split); space heat,
+    # 81.7%, is HDD-shaped. The previous 28% flat base was absorbing
+    # space heat into the weather-independent term, overstating summer
+    # weeks ~1.5x. Weekly = A x [0.183/52 + 0.817 x Hw/Hy].
+    "space_heat_fraction": 0.817,   # = 1 - DHW share; see above
     "kerosene_kwh_per_litre": 10.35,   # industry standard figure
     # Tariff anchors, July 2026 pass. Sourced bands, dagger on the point:
     #  ROI electricity: standard 24h ~35c (Electric Ireland, May 2026);
@@ -2052,7 +2053,10 @@ def derive_hero(feeds, anchors=None):
                   "DfE/NISRA, Causeway estimates. Oil, the island's "
                   "majority heating fuel, is modelled from annual "
                   "anchors, not metered - its weekly estimates carry a "
-                  "materially wider band than gas. Cooling is the cold-economy "
+                  "materially wider band than gas. Hot water is carried as a flat "
+                  "18.3% of annual (UK-aligned convention, Jul 2026 "
+                  "cross-calibration); space heat follows the week's "
+                  "degree days. Cooling is the cold-economy "
                   "census (dagger loads beside the CSO data-centre "
                   "anchor), flat across the year with the comfort share "
                   "following live overheating degree-hours once a season "
