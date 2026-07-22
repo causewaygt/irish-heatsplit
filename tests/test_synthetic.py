@@ -663,6 +663,78 @@ def test_gb_oil_modern_template_chart_price():
     assert p2 is None, (d2, p2)
 
 
+def test_hero_comfort_flat_until_full_odh_year():
+    """A partial ODH series must not shape the hero's weekly cooling:
+    with 61 days the denominator omits the rest of the season and July
+    inflates (the 18 Jul 2026 audit finding)."""
+    feeds = _hero_fixture_feeds()
+    hdd = feeds["hdd"]["hdd_island"]
+    days = sorted(hdd)
+    # 61-day partial series, warm recent week
+    feeds["hdd"]["odh26_island"] = {d: 4.0 for d in days[-61:]}
+    h = derive_hero(feeds)
+    assert h["roi"]["cooling"]["comfort_shaped_by_odh"] is False
+    flat = h["roi"]["cooling"]["elec_gwh"]
+    # full-year series engages shaping
+    feeds["hdd"]["odh26_island"] = {d: (4.0 if i % 5 == 0 else 0.0)
+                                    for i, d in enumerate(days)}
+    h2 = derive_hero(feeds)
+    assert h2["roi"]["cooling"]["comfort_shaped_by_odh"] is True
+    assert h2["roi"]["cooling"]["elec_gwh"] != flat
+
+
+def test_hero_live_grid_ef_engages_and_lowers_emissions():
+    feeds = _hero_fixture_feeds()
+    base = derive_hero(feeds)
+    assert base["ef_electricity_source"] == "anchor"
+    days = sorted(feeds["hdd"]["hdd_island"])[-14:]
+    feeds["eirgrid"] = {"co2_intensity_g_per_kwh":
+                        {d: 212.0 for d in days}}
+    live = derive_hero(feeds)
+    assert live["ef_electricity_g_per_kwh"] == 212.0
+    assert "live grid intensity" in live["ef_electricity_source"]
+    assert live["cooling"]["emissions_kt_co2"] \
+        < base["cooling"]["emissions_kt_co2"]
+    # fewer than 7 days: anchor retained
+    feeds["eirgrid"] = {"co2_intensity_g_per_kwh":
+                        {days[-1]: 212.0}}
+    assert derive_hero(feeds)["ef_electricity_source"] == "anchor"
+
+
+# --------------------------- UK sibling ratio regression (standing)
+
+def test_uk_sibling_ratio_regression():
+    """The two Heat Splits are read side by side. Extensive quantities
+    should sit near the population ratio unless a real, nameable
+    difference explains the gap - and where scope differs (cooling),
+    the declaration must be present. UK reference constants dagger,
+    from the UK tracker's own anchors, Jul 2026."""
+    UK_POP, ISL_POP = 68.0, 7.1
+    UK_HEAT_TWH = 630.0           # UK line, services incl industry
+    UK_COOL_TWH = 63.0            # ~1,212 GWh/wk annualised
+    from build import ANCHORS
+    a = ANCHORS
+    isl_heat = (a["roi"]["residential_heat_twh"]
+                + a["roi"]["services_heat_twh"]
+                + a["ni"]["residential_heat_twh"]
+                + a["ni"]["services_heat_twh"])
+    pc_ratio_heat = (isl_heat / ISL_POP) / (UK_HEAT_TWH / UK_POP)
+    # oil-heavy stock lifts island heat modestly; industry-light lowers
+    # it - the anchor must sit below-to-near parity, never far above
+    assert 0.5 <= pc_ratio_heat <= 1.2, pc_ratio_heat
+    c = a["cool"]
+    isl_cool = (c["roi_elec_twh"] * c["dc_share_of_roi_elec"]
+                + c["loads_twh"]["refrigeration"]
+                + c["loads_twh"]["process"] + c["loads_twh"]["comfort"]
+                + c["loads_twh"]["ni_all"])
+    pc_ratio_cool = (isl_cool / ISL_POP) / (UK_COOL_TWH / UK_POP)
+    # cold-economy scope EXCEEDS a comfort-scoped line by design -
+    # legal only while the hero declares it
+    assert pc_ratio_cool > 1.0
+    h = derive_hero(_hero_fixture_feeds())
+    assert "cold-economy" in h["basis"], "scope declaration missing"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
