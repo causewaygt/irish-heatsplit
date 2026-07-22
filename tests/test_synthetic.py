@@ -710,7 +710,9 @@ def test_uk_sibling_ratio_regression():
     the declaration must be present. UK reference constants dagger,
     from the UK tracker's own anchors, Jul 2026."""
     UK_POP, ISL_POP = 68.0, 7.1
-    UK_HEAT_TWH = 630.0           # UK line, services incl industry
+    UK_HEAT_TWH = 430.6           # UK heat INPUT anchor (space+DHW,
+                                  # buildings only) - per their
+                                  # cross-calibration reply, Jul 2026
     UK_COOL_TWH = 63.0            # ~1,212 GWh/wk annualised
     from build import ANCHORS
     a = ANCHORS
@@ -719,9 +721,9 @@ def test_uk_sibling_ratio_regression():
                 + a["ni"]["residential_heat_twh"]
                 + a["ni"]["services_heat_twh"])
     pc_ratio_heat = (isl_heat / ISL_POP) / (UK_HEAT_TWH / UK_POP)
-    # oil-heavy stock lifts island heat modestly; industry-light lowers
-    # it - the anchor must sit below-to-near parity, never far above
-    assert 0.5 <= pc_ratio_heat <= 1.2, pc_ratio_heat
+    # input-to-input the two islands sit at parity (0.98 at the Jul
+    # 2026 anchors) - symmetric band agreed with the UK side
+    assert 0.8 <= pc_ratio_heat <= 1.2, pc_ratio_heat
     c = a["cool"]
     isl_cool = (c["roi_elec_twh"] * c["dc_share_of_roi_elec"]
                 + c["loads_twh"]["refrigeration"]
