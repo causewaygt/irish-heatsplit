@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-22T08:39:23+00:00",
+ "built_utc": "2026-07-22T11:27:21+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO; other loads and rejection factors dagger (refrigeration and comfort reject compressor work plus pumped heat). Stranded share computed from this site's own degree-day record, comfort load shaped by live overheating degree-hours. Challenge and input welcome at contact@causewaygt.com",
@@ -423,7 +423,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-22T08:39:22+00:00",
+   "fetched_utc": "2026-07-22T11:27:20+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -738,7 +738,7 @@
   },
   "ecb_fx": {
    "eur_gbp": 0.85205,
-   "fetched_utc": "2026-07-22T08:38:58+00:00",
+   "fetched_utc": "2026-07-22T11:26:59+00:00",
    "gbp_eur": 1.17364,
    "latest_day": "2026-07-21",
    "rate_date": "2026-07-21",
@@ -815,7 +815,8 @@
      "2026-07-18": 95.91,
      "2026-07-19": 93.22,
      "2026-07-20": 106.63,
-     "2026-07-21": 109.72
+     "2026-07-21": 109.72,
+     "2026-07-22": 101.84
     },
     "ni": {
      "2026-06-19": 19.11,
@@ -888,13 +889,13 @@
      "2026-07-21": 91.8
     }
    },
-   "fetched_utc": "2026-07-22T08:38:54+00:00",
-   "latest_day": "2026-07-21",
+   "fetched_utc": "2026-07-22T11:26:52+00:00",
+   "latest_day": "2026-07-22",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "gb_oil": {
-   "fetched_utc": "2026-07-22T08:39:23+00:00",
+   "fetched_utc": "2026-07-22T11:27:21+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -3834,7 +3835,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-22T08:39:01+00:00",
+   "fetched_utc": "2026-07-22T11:27:01+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -15643,7 +15644,7 @@
     "2026-07-19": 5.214,
     "2026-07-20": 6.891
    },
-   "fetched_utc": "2026-07-22T08:39:20+00:00",
+   "fetched_utc": "2026-07-22T11:27:20+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-20",
    "ndm_gwh": {
@@ -16076,7 +16077,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-22T08:38:57+00:00",
+   "fetched_utc": "2026-07-22T11:26:58+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -17363,7 +17364,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-22T08:39:08+00:00",
+   "fetched_utc": "2026-07-22T11:27:09+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -17493,7 +17494,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 169.64,
    "dam_avg_gbp_mwh": 144.05,
-   "fetched_utc": "2026-07-22T08:39:04+00:00",
+   "fetched_utc": "2026-07-22T11:27:04+00:00",
    "latest_day": "2026-07-20",
    "markets": {
     "NI-DA": {
