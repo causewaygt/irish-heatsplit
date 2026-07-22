@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 3.2.0 / site 3.1.0.
+(Causeway Geothermal NI Ltd). Pipeline 3.3.1 / site 3.2.0.
 
 ## The premise
 
@@ -177,6 +177,17 @@ The full estimation methodology is published as
 [methodology.pdf](https://causewaygt.github.io/irish-heatsplit/methodology.pdf)
 and linked from the site footer.
 
+## Sibling comparability
+
+This tracker is read beside the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
+Any topline scoped differently between the two carries an explicit note –
+cooling is the live example: this site's cold-economy census (data
+centres, cold chain, process, comfort) is wider than the UK's
+comfort-scoped line and the hero declares it. A standing test compares
+extensive quantities per capita against the UK anchors; electricity
+emissions use live all-island grid intensity once a week of the EirGrid
+series exists.
+
 ## Versioning
 
 `x.y.z` – x: new source or panel; y: source update; z: wording/format.
@@ -187,7 +198,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 45 tests, no network
+python3 tests/test_synthetic.py   # 48 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
