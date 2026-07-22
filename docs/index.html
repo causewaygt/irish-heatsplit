@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 3.1.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 3.2.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -746,7 +746,8 @@ function heroCards(h){
     const cards = [
       [fmt(cb.purchased_gwh,0)+' GWh',
        'of heating &amp; cooling energy purchased this week \u2013 heat '+
-       fmt(b.heat_purchased_gwh,0)+' \u00b7 cooling '+fmt(cl.elec_gwh,0)],
+       fmt(b.heat_purchased_gwh,0)+' \u00b7 cooling '+fmt(cl.elec_gwh,0)+
+       ' (cold-economy scope\u2020)'],
       [fmt(cb.indigenous_share_pct,0)+'%',
        'estimated indigenous share of heat &amp; cooling delivered'],
       [bill(cb, state), billLab+' (heat '+nb(b,state)+' \u00b7 cooling '+
@@ -1240,7 +1241,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 3.1.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 3.2.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
