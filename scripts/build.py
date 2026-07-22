@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "3.2.0"
+PIPELINE_VERSION = "3.3.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -129,7 +129,15 @@ ANCHORS = {
                      "other": 100, "electricity": 280},          # dagger -
     # electricity factor replaced by live grid intensity once eirgrid returns
     "indigenous": {"oil": 0.0, "peat": 1.0, "other": 0.9},      # dagger
-    "space_heat_fraction": 0.72,                                 # dagger
+    # dagger. AUDIT RESOLVED 18 Jul 2026 (UK cross-check): annual
+    # island heat input is 43.8 TWh = 6.2 MWh/person vs the UK line's
+    # 9.3 - a per-capita ratio of 0.67, BELOW parity, so the anchor is
+    # not high. July's elevated island/UK weekly ratio is convention:
+    # this base share is 28% (DHW folded in), while the UK hero's July
+    # week back-solves to a ~10.5% base (hot water shaped separately).
+    # Cross-calibration of the convention, not the anchor, is the
+    # autumn item.
+    "space_heat_fraction": 0.72,
     "kerosene_kwh_per_litre": 10.35,   # industry standard figure
     # Tariff anchors, July 2026 pass. Sourced bands, dagger on the point:
     #  ROI electricity: standard 24h ~35c (Electric Ireland, May 2026);
@@ -160,6 +168,12 @@ ANCHORS = {
                            "process": 0.8,
                            "comfort": 1.0,
                            "ni_all": 1.2},
+             # AUDIT 18 Jul 2026: census scope is the full cold economy
+             # (DC + cold chain + process + comfort) - deliberately
+             # wider than comfort-only national cooling lines (e.g. the
+             # UK tracker's ECUK-anchored figure); the two are not
+             # ratio-comparable and the hero basis says so. Component
+             # source hardening scheduled for the autumn cycle.
              "rejection_factor": {"dc": 0.97, "refrigeration": 2.5,
                                   "process": 2.0, "comfort": 3.0,
                                   "ni_all": 1.8},
@@ -1751,7 +1765,7 @@ def derive_hero(feeds, anchors=None):
                 j["gas_indigenous"] if fuel == "gas" else
                 j["elec_indigenous"] if fuel == "electricity" else
                 a["indigenous"].get(fuel, 0.0))
-            kt = inp * a["ef_g_per_kwh"][fuel] / 1000.0
+            kt = inp * EF[fuel] / 1000.0
             if fuel == "oil":
                 price = oil_eur_kwh if cur == "eur" else oil_gbp_kwh
                 if price is None:
@@ -1789,7 +1803,7 @@ def derive_hero(feeds, anchors=None):
                                 else wf_bill_native, 1),
             "emissions_kt_co2": round(
                 kt_t * scale
-                + elec_in * a["ef_g_per_kwh"]["electricity"] / 1000.0, 1),
+                + elec_in * EF["electricity"] / 1000.0, 1),
             "geothermal_spf": spf,
         }
         # cooling: cold-economy census, weekly. Flat loads spread
@@ -1821,7 +1835,7 @@ def derive_hero(feeds, anchors=None):
                       if cur == "eur"
                       else a["retail_gbp_per_kwh"]["electricity"])
         cool_bill_native = cool_week * elec_price
-        cool_kt = cool_week * a["ef_g_per_kwh"]["electricity"] / 1000.0
+        cool_kt = cool_week * EF["electricity"] / 1000.0
         cool_indig = cool_week * j["elec_indigenous"]
         cool_served = cool_week * blend
         cooling = {
@@ -1887,8 +1901,7 @@ def derive_hero(feeds, anchors=None):
                                    else wf_cool_bill), 1),
             "emissions_kt_co2": round(
                 wf["emissions_kt_co2"]
-                + cool_wf_elec * a["ef_g_per_kwh"]["electricity"]
-                / 1000.0, 1),
+                + cool_wf_elec * EF["electricity"] / 1000.0, 1),
             "indigenous_share_pct": round(100 * (
                 wf_heat_indig_abs
                 + cool_wf_elec * j["elec_indigenous"]
@@ -1915,10 +1928,33 @@ def derive_hero(feeds, anchors=None):
             "_raw": {"useful": useful_t, "indig": indig_t},
         }
 
+    # Weekly comfort-cooling share of the year. The fraction is only
+    # meaningful against a FULL year of overheating: with a partial
+    # series the denominator omits the rest of the season and the
+    # summer weeks inflate (observed 18 Jul 2026: a 61-day series made
+    # one July week ~14% of "annual"). Hero shaping therefore requires
+    # >=300 days; until then comfort is flat here. The cold-economy
+    # panel keeps its 60-day rule - its supply and demand shapes share
+    # one window, so partial coverage stays internally consistent.
+    # electricity emission factor: live all-island grid intensity
+    # (trailing 14-day mean) once at least 7 days exist; anchor
+    # otherwise. The 280 g anchor predates the EirGrid restoration;
+    # live summer intensity runs ~210-220 g.
+    EF = dict(a["ef_g_per_kwh"])
+    co2 = ((feeds.get("eirgrid") or {})
+           .get("co2_intensity_g_per_kwh") or {})
+    cdays = sorted(co2)[-14:]
+    ef_src = "anchor"
+    if len(cdays) >= 7:
+        EF["electricity"] = round(
+            sum(co2[d] for d in cdays) / len(cdays), 1)
+        ef_src = f"live grid intensity, {len(cdays)}-day mean"
+    log(f"hero: electricity EF {EF['electricity']} g/kWh ({ef_src})")
+
     odh = hddf.get("odh26_island") or {}
     odh_frac = None
     odays = sorted(odh)[-365:]
-    if len(odays) >= 60:
+    if len(odays) >= 300:
         oy = sum(odh[d] for d in odays)
         if oy > 0:
             odh_frac = sum(odh[d] for d in odays[-7:]) / oy
@@ -2009,6 +2045,8 @@ def derive_hero(feeds, anchors=None):
         "week_ending": week_end,
         "hdd_week": round(hdd_week, 1), "hdd_year": round(hdd_year, 1),
         "roi": roi, "ni": ni,
+        "ef_electricity_g_per_kwh": EF["electricity"],
+        "ef_electricity_source": ef_src,
         "basis": ("Scaffold estimator (dagger throughout) - annual anchors "
                   "shaped by each jurisdiction's weekly HDD; SEAI 2024, "
                   "DfE/NISRA, Causeway estimates. Oil, the island's "
@@ -2018,7 +2056,10 @@ def derive_hero(feeds, anchors=None):
                   "census (dagger loads beside the CSO data-centre "
                   "anchor), flat across the year with the comfort share "
                   "following live overheating degree-hours once a season "
-                  "exists. Challenge and input "
+                  "exists - a cold-economy scope, wider than comfort-only national "
+                  "cooling lines and not one-to-one comparable with them. "
+                  "Electricity emissions use the live all-island grid "
+                  "intensity when available. Challenge and input "
                   "welcome at contact@causewaygt.com"),
         "anchors_used": a,
     })
@@ -2138,6 +2179,21 @@ def derive_cool(feeds, anchors=None):
     # supply shape: flat loads spread 1/n; comfort follows ODH26
     comfort = loads["comfort"]
     flat = elec_total - comfort
+    # electricity emission factor: live all-island grid intensity
+    # (trailing 14-day mean) once at least 7 days exist; anchor
+    # otherwise. The 280 g anchor predates the EirGrid restoration;
+    # live summer intensity runs ~210-220 g.
+    EF = dict(a["ef_g_per_kwh"])
+    co2 = ((feeds.get("eirgrid") or {})
+           .get("co2_intensity_g_per_kwh") or {})
+    cdays = sorted(co2)[-14:]
+    ef_src = "anchor"
+    if len(cdays) >= 7:
+        EF["electricity"] = round(
+            sum(co2[d] for d in cdays) / len(cdays), 1)
+        ef_src = f"live grid intensity, {len(cdays)}-day mean"
+    log(f"hero: electricity EF {EF['electricity']} g/kWh ({ef_src})")
+
     odh = hddf.get("odh26_island") or {}
     odh_days = [d for d in days if d in odh]
     odh_used = False
