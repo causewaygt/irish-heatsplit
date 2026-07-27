@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.3.0"
+PIPELINE_VERSION = "4.4.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -305,21 +305,24 @@ GEO = {
                      "note": "installed Wth per person - NI dagger"},
     "population_m": {"roi": 5.3, "ni": 1.92},   # dagger, mid-2026
     "eflh_h": 2000,   # equivalent full-load heating hours - dagger
-    # European reference points, installed GSHP Wth per person - derived
-    # from EGC/WGC country-update capacities over mid-2020s populations,
-    # dagger: Sweden ~6.7 GWth/10.5m; NL ~2.0 GWth/17.9m (ATES-heavy);
-    # France ~2.6 GWth/68m.
-    "reference_w_pp": {"Sweden": 635, "Netherlands": 110, "France": 38},
-    # Comparator installed capacity, MWth - EGEC/WGC country-update
-    # lineage, dagger; consistent with the EGEC GMR2025 EU envelope
-    # (39.2 GWth GHP, 6 GWth geothermal DHC). Deeper geothermal =
-    # direct-use/district heating: NL doublet fleet ~400 MWth; France
-    # (Paris Basin Dogger et al.) ~650 MWth; Sweden overwhelmingly
-    # shallow.
+    # European reference points, installed GSHP Wth per person -
+    # shallow basis, EGC 2025 capacities over mid-2020s populations,
+    # dagger: Sweden 8.12 GWth/10.5m; NL 2.49 GWth/17.8m (ATES-heavy);
+    # France 2.29 GWth/68m.
+    "reference_w_pp": {"Sweden": 773, "Netherlands": 140, "France": 34},
+    # Comparator installed capacity, MWth - EGC 2025 country updates
+    # (data year 2024), replacing the older WGC2023-lineage values on
+    # 27 Jul 2026 audit: Sweden had understated ~18% (8,120 shallow,
+    # 690k units, plus Lund's 47 MW heat-pump-coupled deep), the
+    # Netherlands ~16% (doublet fleet 367 MWth deep, ~28 doublets,
+    # mostly horticulture), France was ~8% high (older inflated
+    # shallow estimate; true split is less shallow, more Paris Basin
+    # Dogger district heating). ROI's own 225 stays on its WGC2026
+    # citation - EGC 2025 carries 224, same lineage, rounding-level.
     "reference_mwth": {
-        "Sweden": {"shallow": 6700, "deep": 0},
-        "Netherlands": {"shallow": 2000, "deep": 400},
-        "France": {"shallow": 2600, "deep": 650}},
+        "Sweden": {"shallow": 8120, "deep": 47},
+        "Netherlands": {"shallow": 2486, "deep": 367},
+        "France": {"shallow": 2293, "deep": 724}},
     # EGEC Geothermal Market Report 2025, Key Findings - sourced.
     # Note: EGEC counts units SOLD in 2025; the WGC2026 paper reports
     # capacity COMMISSIONED in 2024 (+7.4 MWth). Different measures and
@@ -2477,7 +2480,8 @@ def derive_geo_percap(anchors=None, geo=None):
             "basis": ("20% of delivered buildings heat at "
                       f"{eflh} equivalent full-load hours - all sizing "
                       "parameters dagger; current NI capacity dagger. "
-                      "Challenge and input welcome at "
+                      "Comparator bars: EGC 2025 country updates, data "
+                      "year 2024. Challenge and input welcome at "
                       "contact@causewaygt.com")}
 
 
