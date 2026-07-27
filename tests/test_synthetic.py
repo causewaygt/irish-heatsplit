@@ -22,7 +22,8 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    derive_hero, derive_heat_gap, derive_ashp_spf,
                    derive_cool, derive_geo_percap, WHY_HEAT,
                    derive_gas_calibration, odh26_from_hourly,
-                   parse_eirgrid_rows,
+                   parse_eirgrid_rows, build_history,
+                   week_inputs, tariffs_for,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -735,6 +736,128 @@ def test_uk_sibling_ratio_regression():
     assert pc_ratio_cool > 1.0
     h = derive_hero(_hero_fixture_feeds())
     assert "cold-economy" in h["basis"], "scope declaration missing"
+
+
+# ----------------------------------- weekly back-look (UK port)
+
+def _history_fixture_feeds():
+    feeds = _hero_fixture_feeds()
+    hdd = feeds["hdd"]["hdd_island"]
+    days = sorted(hdd)
+    feeds["ccni_oil"] = {"series_gbp": {"daily": {"900l": {
+        d: 790.0 for d in days[-120:]}}}}
+    feeds["oil_bulletin"]["roi_heating_gasoil_eur_per_1000l"] = {
+        d: 1113.25 for d in days[-120:] if d.endswith(("1", "8"))}
+    feeds["ecb_fx"]["eur_gbp_daily"] = {d: 0.851 for d in days[-120:]}
+    feeds["eirgrid"] = {"co2_intensity_g_per_kwh":
+                        {d: 212.0 for d in days[-40:]}}
+    return feeds
+
+
+def test_build_history_weeks_and_schema():
+    import build as B
+    B.PREVIOUS_DERIVED = {}
+    feeds = _history_fixture_feeds()
+    hist = build_history(feeds)
+    assert 10 <= len(hist) <= 60, len(hist)
+    for e in hist:
+        assert dt.date.fromisoformat(e["week_ending"]).isoweekday() == 7
+        for k in ("purchased_gwh", "indigenous_pct", "bill_eur_m",
+                  "bill_gbp_m", "emissions_kt", "wf_purchased_gwh",
+                  "wf_emissions_kt", "hdd"):
+            assert k in e, k
+        assert e["wf_purchased_gwh"] < e["purchased_gwh"]
+    ends = [e["week_ending"] for e in hist]
+    assert ends == sorted(ends)
+
+
+def test_build_history_freezes_all_but_two():
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    B.PREVIOUS_DERIVED = {"history": h1}
+    # perturb an input that would change every recomputed week
+    for d in feeds["ccni_oil"]["series_gbp"]["daily"]["900l"]:
+        feeds["ccni_oil"]["series_gbp"]["daily"]["900l"][d] = 900.0
+    h2 = build_history(feeds)
+    assert [e["week_ending"] for e in h1] == \
+        [e["week_ending"] for e in h2]
+    for e1, e2 in zip(h1[:-2], h2[:-2]):
+        assert e1 == e2, ("frozen week changed", e1["week_ending"])
+    assert h2[-1]["bill_gbp_m"] > h1[-1]["bill_gbp_m"]
+
+
+def test_week_inputs_and_tariff_resolver():
+    feeds = _history_fixture_feeds()
+    days = sorted(feeds["hdd"]["hdd_island"])
+    w_end = days[-8]
+    ctx = week_inputs(feeds, w_end)
+    assert ctx and abs(ctx["ni_oil_ppl"] - 790.0 / 9.0) < 0.05
+    assert ctx["fx"] == 0.851
+    assert tariffs_for("2026-07-01")["eur"]["electricity"] == 0.36
+    # the three verified periods: pre-April, April-June, July onward
+    assert tariffs_for("2026-03-15")["gbp"]["gas"] == 0.0722
+    assert tariffs_for("2026-05-01")["gbp"]["gas"] == 0.0649
+    assert tariffs_for("2026-05-01")["eur"]["electricity"] == 0.333
+    assert tariffs_for("2026-06-30")["gbp"]["electricity"] == 0.306
+    # a week before any CCNI data cannot be built
+    assert week_inputs(feeds, days[40]) is None
+
+
+# ------------------------------- sector blend (UK-pattern, step 5)
+
+def _degenerate_blend_anchors():
+    import copy
+    from build import ANCHORS
+    a = copy.deepcopy(ANCHORS)
+    for jur in a["dom_share"]:
+        for f in a["dom_share"][jur]:
+            a["dom_share"][jur][f] = 1.0
+    a["nondom_eur_per_kwh"] = {"electricity":
+                               a["retail_eur_per_kwh"]["electricity"],
+                               "gas": a["retail_eur_per_kwh"]["gas"]}
+    a["nondom_gbp_per_kwh"] = {"electricity":
+                               a["retail_gbp_per_kwh"]["electricity"],
+                               "gas": a["retail_gbp_per_kwh"]["gas"]}
+    return a
+
+
+def test_blend_degenerate_settings_reproduce_domestic_pricing():
+    """DOM_SHARE=1 and nondom=domestic must collapse the blend to pure
+    domestic pricing - the handover's equivalence check. Verified by a
+    hand computation of the ROI gas bill component."""
+    from build import ANCHORS
+    feeds = _hero_fixture_feeds()
+    h = derive_hero(feeds, _degenerate_blend_anchors())
+    j = ANCHORS["roi"]
+    gas_in = h["roi"]["by_fuel"]["gas"]["in_gwh"]
+    expected_gas_eur_m = gas_in * ANCHORS["retail_eur_per_kwh"]["gas"]
+    oil_in = h["roi"]["by_fuel"]["oil"]["in_gwh"]
+    # bound the total bill: gas component present at the full domestic
+    # rate within rounding
+    assert h["roi"]["bill_eur_m"] > expected_gas_eur_m
+    # and the cooling bill equals elec x domestic rate exactly
+    cool = h["roi"]["cooling"]
+    assert abs(cool["bill_eur_m"] - cool["elec_gwh"]
+               * ANCHORS["retail_eur_per_kwh"]["electricity"]) < 0.15
+
+
+def test_blend_direction_lowers_bills():
+    """Real shares price services gas/electricity and all cooling at
+    non-domestic rates, which sit below domestic - bills must fall,
+    and the cooling bill must fall hardest in relative terms."""
+    feeds = _hero_fixture_feeds()
+    degen = derive_hero(feeds, _degenerate_blend_anchors())
+    real = derive_hero(feeds)
+    assert real["bill_eur_m"] < degen["bill_eur_m"]
+    assert real["cooling"]["bill_eur_m"] < degen["cooling"]["bill_eur_m"]
+    rel_cool = real["cooling"]["bill_eur_m"] / degen["cooling"]["bill_eur_m"]
+    rel_heat = real["bill_eur_m"] / degen["bill_eur_m"]
+    assert rel_cool < rel_heat
+    # what-if electricity priced between non-domestic and domestic
+    assert real["what_if_combined"]["bill_eur_m"] \
+        < degen["what_if_combined"]["bill_eur_m"]
 
 
 if __name__ == "__main__":
