@@ -23,7 +23,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    derive_cool, derive_geo_percap, WHY_HEAT,
                    derive_gas_calibration, odh26_from_hourly,
                    parse_eirgrid_rows, build_history,
-                   week_inputs, tariffs_for,
+                   week_inputs, tariffs_for, ni_bridge_margin,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -767,6 +767,11 @@ def test_build_history_weeks_and_schema():
                   "wf_emissions_kt", "hdd"):
             assert k in e, k
         assert e["wf_purchased_gwh"] < e["purchased_gwh"]
+        # jurisdiction blocks reconcile to the island entry
+        for scope in ("ni", "roi"):
+            assert scope in e and "purchased_gwh" in e[scope]
+        assert abs(e["ni"]["purchased_gwh"] + e["roi"]["purchased_gwh"]
+                   - e["purchased_gwh"]) < 0.3, e["week_ending"]
     ends = [e["week_ending"] for e in hist]
     assert ends == sorted(ends)
 
@@ -858,6 +863,75 @@ def test_blend_direction_lowers_bills():
     # what-if electricity priced between non-domestic and domestic
     assert real["what_if_combined"]["bill_eur_m"] \
         < degen["what_if_combined"]["bill_eur_m"]
+
+
+def test_gni_jurisdiction_diff_logic():
+    """The Total-minus-ROI LDM signal: near-zero reads ROI-scoped,
+    material reads NI-inclusive. Pure arithmetic mirrored from the
+    feed's check."""
+    tot = {f"2026-07-{d:02d}": 10.0 for d in range(1, 15)}
+    roi_same = {k: 10.0 - 0.02 for k in tot}      # 0.2% - noise
+    roi_less = {k: 8.5 for k in tot}              # 15% - material
+    for roi, expect_zero in ((roi_same, True), (roi_less, False)):
+        common = sorted(set(tot) & set(roi))
+        mean_d = sum(tot[d] - roi[d] for d in common) / len(common)
+        pct = 100 * mean_d / 10.0
+        assert (abs(pct) < 1.0) is expect_zero
+
+
+def test_history_migration_attaches_jurisdictions_frozen_intact():
+    import build as B, copy
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    legacy = [{k: v for k, v in e.items() if k not in ("ni", "roi")}
+              for e in h1]
+    B.PREVIOUS_DERIVED = {"history": legacy}
+    h2 = build_history(feeds)
+    for e_old, e_new in zip(legacy[:-2], h2[:-2]):
+        assert "ni" in e_new and "roi" in e_new
+        for k in ("purchased_gwh", "bill_eur_m", "emissions_kt"):
+            assert e_new[k] == e_old[k], ("frozen island value moved", k)
+
+
+# --------------------------------- NI oil bridge (back-look depth)
+
+def test_ni_bridge_margin_recovers_offset():
+    feeds = _history_fixture_feeds()
+    days = sorted(feeds["hdd"]["hdd_island"])
+    ext = {d: 900.0 for d in days[-120:] if d.endswith(("1", "8"))}
+    feeds["oil_bulletin"]["roi_heating_gasoil_eur_per_1000l_ex_tax"] = ext
+    # construct CCNI = bridge + 3.0 p/L exactly
+    fx = 0.851
+    est = 900.0 / 1000.0 * fx * 100.0 * 1.05
+    feeds["ccni_oil"]["series_gbp"]["daily"]["900l"] = {
+        d: (est + 3.0) * 9.0 for d in days[-120:]}
+    m = ni_bridge_margin(feeds)
+    assert m is not None and abs(m - 3.0) < 0.05, m
+
+
+def test_week_inputs_bridges_pre_ccni_weeks():
+    import build as B
+    feeds = _history_fixture_feeds()
+    days = sorted(feeds["hdd"]["hdd_island"])
+    ext = {d: 900.0 for d in days[-300:] if d.endswith(("1", "8"))}
+    feeds["oil_bulletin"]["roi_heating_gasoil_eur_per_1000l_ex_tax"] = ext
+    feeds["oil_bulletin"]["roi_heating_gasoil_eur_per_1000l"] = {
+        d: 1113.25 for d in days[-300:] if d.endswith(("1", "8"))}
+    feeds["ecb_fx"]["eur_gbp_daily"] = {d: 0.851 for d in days[-300:]}
+    # a week inside the record but before any CCNI data
+    w_end = days[-200]
+    if w_end < B.HISTORY_START:
+        return   # fixture horizon shorter than the floor - vacuous
+    ctx = week_inputs(feeds, w_end)
+    assert ctx is not None
+    assert ctx["ni_oil_source"].startswith("bridged")
+    est = 900.0 / 1000.0 * 0.851 * 100.0 * 1.05
+    m = ni_bridge_margin(feeds)
+    assert abs(ctx["ni_oil_ppl"] - (est + m)) < 0.1
+    # and a week with CCNI data reports the survey source
+    ctx2 = week_inputs(feeds, days[-8])
+    assert ctx2["ni_oil_source"] == "ccni"
 
 
 if __name__ == "__main__":
