@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.1.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.2.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -689,15 +689,17 @@ function sparkBox(D){
     ' \u00b7 week ending '+((((D.derived||{}).hero)||{}).week_ending||'');
 }
 
-function drawTrends(HIST, win){
+function drawTrends(HIST, win, scope){
   var els = [].slice.call(document.querySelectorAll('.trend'));
   if(!els.length) return;
+  var G = function(e){return scope==='all'?e:(e[scope]||null);};
   var dfmt = function(s){return new Date(s+'T00:00:00Z')
     .toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
   els.forEach(function(elm){
     var key = elm.getAttribute('data-trend'),
         goodDir = elm.getAttribute('data-good');
-    var rows = HIST.slice(-win).filter(function(e){return e[key]!=null;});
+    var rows = HIST.slice(-win).filter(function(e){
+      var g=G(e); return g && g[key]!=null;});
     if(rows.length < 2){ elm.hidden = true; return; }
     elm.hidden = false;
     var W = Math.max(elm.clientWidth||0,120), H = 34, pad = 3;
@@ -705,8 +707,8 @@ function drawTrends(HIST, win){
         t1 = Date.parse(rows[rows.length-1].week_ending);
     var X = function(e){return t1===t0?W/2:
       pad+(W-2*pad)*(Date.parse(e.week_ending)-t0)/(t1-t0);};
-    var vs = rows.map(function(e){return e[key];});
-    var wfAll = rows.map(function(e){return e['wf_'+key];});
+    var vs = rows.map(function(e){return G(e)[key];});
+    var wfAll = rows.map(function(e){return G(e)['wf_'+key];});
     var wf = wfAll.every(function(v){return v!=null;})?wfAll:null;
     var span = vs.concat(wf||[]);
     var lo = Math.min.apply(null,span), hi = Math.max.apply(null,span);
@@ -810,18 +812,19 @@ function heroCards(h, HIST){
   let WIN=2;
   const SUMN={2:0,5:4,13:12,53:52};
   const WLBL={5:'4 weeks',13:'12 weeks',53:'12 months'};
-  function windowed(n){
-    const es=HIST.slice(-n);
+  function windowed(n, scope){
+    const G=e=>scope==='all'?e:(e[scope]||null);
+    const es=HIST.slice(-n).filter(e=>G(e));
     if(!es.length) return null;
-    const sum=k=>es.reduce((a,e)=>a+(e[k]||0),0);
+    const sum=k=>es.reduce((a,e)=>a+(G(e)[k]||0),0);
     const wsum=sum('purchased_gwh')||1;
     return {n:es.length, entries:es,
       purchased:sum('purchased_gwh'), bill_e:sum('bill_eur_m'),
       bill_g:sum('bill_gbp_m'), kt:sum('emissions_kt'),
-      indig:es.reduce((a,e)=>a+e.indigenous_pct*e.purchased_gwh,0)/wsum,
+      indig:es.reduce((a,e)=>a+G(e).indigenous_pct*G(e).purchased_gwh,0)/wsum,
       wf_purchased:sum('wf_purchased_gwh'), wf_bill_e:sum('wf_bill_eur_m'),
       wf_bill_g:sum('wf_bill_gbp_m'), wf_kt:sum('wf_emissions_kt'),
-      wf_indig:es.reduce((a,e)=>a+e.wf_indigenous_pct*e.purchased_gwh,0)/wsum};
+      wf_indig:es.reduce((a,e)=>a+G(e).wf_indigenous_pct*G(e).purchased_gwh,0)/wsum};
   }
   function eScale(g){return g>=1000?fmt(g/1000,1)+' TWh':fmt(g,0)+' GWh';}
   function mScale(m,s){return m>=1000?s+fmt(m/1000,1)+'bn':s+fmt(m,0)+'m';}
@@ -851,7 +854,7 @@ function heroCards(h, HIST){
        fmt(cl.emissions_kt_co2,0)+')'],
     ];
     const sumN=SUMN[WIN];
-    const wv = (state==='all' && sumN>0) ? windowed(sumN) : null;
+    const wv = sumN>0 ? windowed(sumN, state) : null;
     if(wv){
       const es=wv.entries;
       const cap=(wv.n<sumN?' ('+wv.n+' live wks)':'');
@@ -873,7 +876,7 @@ function heroCards(h, HIST){
         '<div class="hlab">'+c[1]+'</div>'+
         '<div class="trend" data-trend="'+TK2[i][0]+
         '" data-good="'+TK2[i][1]+'" hidden></div></div>').join('');
-      drawTrends(HIST, WIN);
+      drawTrends(HIST, WIN, state);
       if(el('whatif') && !el('whatif').hidden){
         el('whatifRow').innerHTML=[
           [eScale(wv.wf_purchased),'purchased \u2013 the ground heats free and cools for a fraction\u2020'],
@@ -890,10 +893,10 @@ function heroCards(h, HIST){
     el('heroCards').innerHTML = cards.map((c,i)=>
       '<div class="hstat"><div class="hval">'+c[0]+'</div>'+
       '<div class="hlab">'+c[1]+'</div>'+
-      (state==='all'?'<div class="trend" data-trend="'+TKEYS[i][0]+
-        '" data-good="'+TKEYS[i][1]+'" hidden></div>':'')+
+      '<div class="trend" data-trend="'+TKEYS[i][0]+
+        '" data-good="'+TKEYS[i][1]+'" hidden></div>'+
       '</div>').join('');
-    if(state==='all') drawTrends(HIST, WIN);
+    drawTrends(HIST, WIN, state);
     const w = b.what_if_combined;
     if(w){
       el('whatif').hidden = false;
@@ -1394,7 +1397,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.1.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.2.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
