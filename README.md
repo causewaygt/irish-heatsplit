@@ -31,9 +31,11 @@ and prices the alternative. The data gap is the story.
   what-if green, the gap between them shaded – and a delta versus the
   window start. Bills are sector-blended†: services gas and
   electricity, and all cooling, price at non-domestic rates; oil prices
-  identically across sectors. The record starts with the NI daily oil survey
-  (2026-02-26) and reaches twelve live months in February 2027; the
-  caption counts the live weeks until then.
+  identically across sectors. The record reaches back to 1 October 2025 – the date all four tariff
+  anchors are verified from; NI oil before the daily survey began
+  (2026-02-26) is bridged from the EU bulletin's ex-tax series plus an
+  overlap-calibrated margin†, each bridged week tagged with its source.
+  Twelve live months complete in October 2026.
 - **Hero** – the week's heating *and cooling*: combined energy
   purchased (with the heat/cooling split), indigenous share, the bill
   and emissions in both currencies, toggled all-island / NI / ROI, each
@@ -212,7 +214,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 53 tests, no network
+python3 tests/test_synthetic.py   # 57 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
