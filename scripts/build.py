@@ -44,10 +44,18 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.1.0"
+PIPELINE_VERSION = "4.3.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
-SERIES_KEEP_DAYS = 400
+# Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
+# tariff-confidence floor with a full trailing HDD year beneath its
+# earliest week.
+SERIES_KEEP_DAYS = 1150
+# Earliest week the back-look will price: all four tariff anchors are
+# verified from this date (Power NI +4% and Firmus -7.86% both
+# effective 1 Oct 2025; Electric Ireland electricity frozen through
+# the winter, gas -4% from Sep 2025).
+HISTORY_START = "2025-10-01"
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
@@ -383,7 +391,7 @@ WHY_HEAT = {
 # bill-basis where unit-rate basis was unavailable) - dagger.
 TARIFF_HISTORY = [
     # (from_date, {eur: {electricity, gas}, gbp: {electricity, gas}})
-    ("2026-01-01", {"eur": {"electricity": 0.333, "gas": 0.107},
+    ("2025-10-01", {"eur": {"electricity": 0.333, "gas": 0.107},
                     "gbp": {"electricity": 0.306, "gas": 0.0722}}),
     ("2026-04-01", {"eur": {"electricity": 0.333, "gas": 0.107},
                     "gbp": {"electricity": 0.306, "gas": 0.0649}}),
@@ -1083,6 +1091,28 @@ def feed_ecb_fx():
             for c in cube.findall("e:Cube", ns):
                 if c.get("currency") == "GBP":
                     ser[cube.get("time")] = float(c.get("rate"))
+        if not ser or min(ser) > HISTORY_START:
+            # one-time deep backfill to the back-look floor
+            import zipfile
+            zr = http_get("https://www.ecb.europa.eu/stats/eurofxref/"
+                          "eurofxref-hist.zip", timeout=120)
+            with zipfile.ZipFile(io.BytesIO(zr.content)) as z:
+                txt = z.read(z.namelist()[0]).decode("utf8")
+            lines = [l for l in txt.splitlines() if l.strip()]
+            cols = lines[0].split(",")
+            gi = cols.index("GBP")
+            added = 0
+            for line in lines[1:]:
+                parts = line.split(",")
+                d = parts[0].strip()
+                if d < HISTORY_START or d in ser:
+                    continue
+                try:
+                    ser[d] = float(parts[gi])
+                    added += 1
+                except (ValueError, IndexError):
+                    continue
+            log(f"ecb_fx: deep history backfill +{added} days")
         out["eur_gbp_daily"] = trim_series(ser)
         log(f"ecb_fx: history {len(out['eur_gbp_daily'])} days retained")
     except Exception as e:
@@ -1208,6 +1238,26 @@ def feed_gni_live():
 
     spans = {loc: (min(p), max(p), len(p)) for loc, p in raw.items()}
     log("gni_live: spans:", spans)
+
+    # Jurisdiction signal (standing reminder, 24 Jul 2026): if Total LDM
+    # minus ROI LDM is ~zero, "Total" is ROI-total naming and the
+    # unprefixed DM/NDM series are very likely ROI-scoped; a material,
+    # stable difference means the feed carries NI exits. Logged every
+    # run so a convention change announces itself.
+    tot, roi = raw.get("Total LDM", {}), raw.get("ROI LDM", {})
+    common = sorted(set(tot) & set(roi))[-28:]
+    if len(common) >= 7:
+        diffs = [tot[d] - roi[d] for d in common]
+        mean_d = sum(diffs) / len(diffs)
+        mean_t = sum(tot[d] for d in common) / len(common)
+        pct = 100 * mean_d / mean_t if mean_t else 0.0
+        log(f"gni_live: jurisdiction check - Total LDM minus ROI LDM "
+            f"mean {mean_d:.3f} ({pct:.2f}% of Total) over "
+            f"{len(common)}d "
+            + ("-> ~zero: unprefixed series read as ROI-scoped"
+               if abs(pct) < 1.0 else
+               "-> MATERIAL: feed appears to include NI exits - "
+               "review the jurisdiction note"))
 
     ndm_vals = list(raw.get("NDM", {}).values())
     scale, unit_note = autodetect_scale_to_gwh(
@@ -1777,6 +1827,35 @@ def derive_gas_calibration(reg, hdd_roi, anchors=None):
 
 
 # ------------------------------------------------------ weekly back-look
+def ni_bridge_margin(feeds):
+    """
+    Calibrated NI-vs-bulletin margin, p/L: mean over the CCNI overlap
+    of (observed NI 900L p/L) minus (bulletin ex-tax x week FX x 1.05
+    VAT). Requires >=20 overlapping days. Bridged weeks reconstruct
+    pre-CCNI NI prices as bridge + margin, dagger.
+    """
+    ccni = (((feeds.get("ccni_oil") or {}).get("series_gbp") or {})
+            .get("daily") or {}).get("900l") or {}
+    ext = ((feeds.get("oil_bulletin") or {})
+           .get("roi_heating_gasoil_eur_per_1000l_ex_tax") or {})
+    fxs = ((feeds.get("ecb_fx") or {}).get("eur_gbp_daily") or {})
+    if not (ccni and ext and fxs):
+        return None
+    ext_days = sorted(ext)
+    diffs = []
+    for d in sorted(ccni):
+        if d not in fxs:
+            continue
+        prior = [x for x in ext_days if x <= d]
+        if not prior:
+            continue
+        est = ext[prior[-1]] / 1000.0 * fxs[d] * 100.0 * 1.05
+        diffs.append(ccni[d] / 9.0 - est)
+    if len(diffs) < 20:
+        return None
+    return round(sum(diffs) / len(diffs), 2)
+
+
 def week_inputs(feeds, w_end):
     """Per-week pricing context for a calendar week ending w_end (Sun):
     NI oil (CCNI 900L weekly mean, p/L), ROI oil (bulletin week), fx
@@ -1787,11 +1866,26 @@ def week_inputs(feeds, w_end):
                - dt.timedelta(days=6)).isoformat()
     days = [(dt.date.fromisoformat(w_start) + dt.timedelta(days=i))
             .isoformat() for i in range(7)]
+    if w_end < HISTORY_START:
+        return None
     ccni = (((feeds.get("ccni_oil") or {}).get("series_gbp") or {})
             .get("daily") or {}).get("900l") or {}
     ni_vals = [ccni[d] / 9.0 for d in days if d in ccni]
+    ni_src = "ccni"
     if not ni_vals:
-        return None
+        # pre-CCNI weeks: bridge from the bulletin ex-tax series
+        # (same cargoes, 5% VAT) plus the overlap-calibrated margin
+        m = ni_bridge_margin(feeds)
+        ext = ((feeds.get("oil_bulletin") or {})
+               .get("roi_heating_gasoil_eur_per_1000l_ex_tax") or {})
+        fxs = ((feeds.get("ecb_fx") or {}).get("eur_gbp_daily") or {})
+        e_days = [d for d in sorted(ext) if d <= w_end]
+        f_vals = [fxs[d] for d in days if d in fxs]
+        if m is None or not e_days or not f_vals:
+            return None
+        fx_w = sum(f_vals) / len(f_vals)
+        ni_vals = [ext[e_days[-1]] / 1000.0 * fx_w * 100.0 * 1.05 + m]
+        ni_src = "bridged (bulletin ex-tax + calibrated margin, dagger)"
     bull = ((feeds.get("oil_bulletin") or {})
             .get("roi_heating_gasoil_eur_per_1000l") or {})
     b_days = [d for d in sorted(bull) if d <= w_end]
@@ -1810,6 +1904,7 @@ def week_inputs(feeds, w_end):
             "roi_oil_eur_1000l": bull[b_days[-1]],
             "fx": round(fx, 5), "ef_electricity": ef,
             "ef_source": ("weekly grid CI" if ef else "anchor"),
+            "ni_oil_source": ni_src,
             "tariffs": tariffs_for(w_end)}
 
 
@@ -1820,6 +1915,23 @@ def build_history(feeds, anchors=None):
     Irish hero is anchor x HDD, so depth is bounded by the PRICE feeds
     (CCNI from 2026-02-26), not gas. Records the GNI feed's empirical
     window each run (gas_window) per the porting handover."""
+    def jur_sub(b):
+        return {
+            "purchased_gwh": b["combined"]["purchased_gwh"],
+            "served_gwh": b["combined"]["served_gwh"],
+            "indigenous_pct": b["combined"]["indigenous_share_pct"],
+            "bill_eur_m": b["combined"]["bill_eur_m"],
+            "bill_gbp_m": b["combined"]["bill_gbp_m"],
+            "emissions_kt": b["combined"]["emissions_kt_co2"],
+            "wf_purchased_gwh": b["what_if_combined"]["purchased_gwh"],
+            "wf_indigenous_pct":
+                b["what_if_combined"]["indigenous_share_pct"],
+            "wf_bill_eur_m": b["what_if_combined"]["bill_eur_m"],
+            "wf_bill_gbp_m": b["what_if_combined"]["bill_gbp_m"],
+            "wf_emissions_kt":
+                b["what_if_combined"]["emissions_kt_co2"],
+        }
+
     prev = list((PREVIOUS_DERIVED or {}).get("history") or [])
     frozen = {e["week_ending"]: e for e in prev[:-2]} if len(prev) > 2 \
         else {}
@@ -1832,7 +1944,28 @@ def build_history(feeds, anchors=None):
     for k in range(59, -1, -1):
         w_end = (last_sun - dt.timedelta(weeks=k)).isoformat()
         if w_end in frozen:
-            out.append(frozen[w_end])
+            e = frozen[w_end]
+            if "ni" not in e or "roi" not in e:
+                # schema migration (4.2.0): attach jurisdiction blocks
+                # by recomputation; stored island values stay frozen.
+                # Self-verifying: recompute drift beyond rounding is
+                # logged, never silently absorbed.
+                ctx = week_inputs(feeds, w_end)
+                if ctx is not None:
+                    h2 = derive_hero(feeds, anchors,
+                                     week_ctx={"week_ending": w_end,
+                                               **ctx})
+                    if h2 is not None:
+                        drift = abs(h2["combined"]["purchased_gwh"]
+                                    - e["purchased_gwh"])
+                        if drift > 0.5:
+                            log(f"history: migration drift {w_end} "
+                                f"{drift:.1f} GWh - island values "
+                                f"kept frozen, review")
+                        e = dict(e)
+                        e["ni"] = jur_sub(h2["ni"])
+                        e["roi"] = jur_sub(h2["roi"])
+            out.append(e)
             continue
         ctx = week_inputs(feeds, w_end)
         if ctx is None:
@@ -1859,6 +1992,9 @@ def build_history(feeds, anchors=None):
             "hdd": h["hdd_week"],
             "ef_electricity": ctx["ef_electricity"] or None,
             "ef_source": ctx["ef_source"],
+            "ni_oil_source": ctx["ni_oil_source"],
+            "ni": jur_sub(h["ni"]),
+            "roi": jur_sub(h["roi"]),
         })
     return out[-60:]
 
@@ -2558,7 +2694,7 @@ def main():
     if hg:
         derived["heat_gap"] = hg
     derived["history"] = build_history(feeds)
-    gw = sorted(((feeds.get("gni_live") or {}).get("ndm_gwh_daily")
+    gw = sorted(((feeds.get("gni_live") or {}).get("ndm_gwh")
                  or {}))
     derived["gas_window"] = {"from": gw[0], "to": gw[-1],
                              "days": len(gw)} if gw else None
