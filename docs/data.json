@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-27T08:50:36+00:00",
+ "built_utc": "2026-07-27T08:57:40+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO; other loads and rejection factors dagger (refrigeration and comfort reject compressor work plus pumped heat). Stranded share computed from this site's own degree-day record, comfort load shaped by live overheating degree-hours. Challenge and input welcome at contact@causewaygt.com",
@@ -47,15 +47,15 @@
     },
     "ashp_spf": 2.84,
     "breakeven_spf_vs_gas": 3.68,
-    "breakeven_spf_vs_oil": 3.05,
+    "breakeven_spf_vs_oil": 2.98,
     "gas_boiler": 8.82,
     "geothermal_spf40": 8.12,
     "inputs": {
      "electricity_per_kwh": 0.325,
      "gas_per_kwh": 0.075,
-     "oil_per_litre": 90.54
+     "oil_per_litre": 92.67
     },
-    "oil_boiler": 10.67
+    "oil_boiler": 10.92
    },
    "roi": {
     "ashp": 12.46,
@@ -193,7 +193,7 @@
     "year": 2024
    },
    "basis": "Scaffold estimator (dagger throughout) - annual anchors shaped by each jurisdiction's weekly HDD; SEAI 2024, DfE/NISRA, Causeway estimates. Oil, the island's majority heating fuel, is modelled from annual anchors, not metered - its weekly estimates carry a materially wider band than gas. Hot water is carried as a flat 18.3% of annual (UK-aligned convention, Jul 2026 cross-calibration); space heat follows the week's degree days. Bills are sector-blended: services gas and electricity, and all cooling, price at non-domestic rates (dagger, pending Eurostat band prices); oil prices identically across sectors. Cooling is the cold-economy census (dagger loads beside the CSO data-centre anchor), flat across the year with the comfort share following live overheating degree-hours once a season exists - a cold-economy scope, wider than comfort-only national cooling lines and not one-to-one comparable with them. Electricity emissions use the live all-island grid intensity when available. Challenge and input welcome at contact@causewaygt.com",
-   "bill_eur_m": 19.2,
+   "bill_eur_m": 19.3,
    "bill_gbp_m": 16.5,
    "by_fuel": {
     "electricity": {
@@ -218,7 +218,7 @@
     }
    },
    "combined": {
-    "bill_eur_m": 69.8,
+    "bill_eur_m": 69.9,
     "bill_gbp_m": 59.7,
     "emissions_kt_co2": 76.9,
     "indigenous_share_pct": 52.0,
@@ -242,7 +242,7 @@
    "heat_purchased_gwh": 154.2,
    "indigenous_share_pct": 13.7,
    "ni": {
-    "bill_eur_m": 5.2,
+    "bill_eur_m": 5.3,
     "bill_gbp_m": 4.5,
     "by_fuel": {
      "electricity": {
@@ -267,7 +267,7 @@
      }
     },
     "combined": {
-     "bill_eur_m": 11.7,
+     "bill_eur_m": 11.8,
      "bill_gbp_m": 10.0,
      "emissions_kt_co2": 14.6,
      "indigenous_share_pct": 43.2,
@@ -297,7 +297,7 @@
     "week_ending": "2026-07-27",
     "what_if_20pct_geothermal": {
      "bill_eur_m": 4.9,
-     "bill_gbp_m": 4.1,
+     "bill_gbp_m": 4.2,
      "emissions_kt_co2": 8.8,
      "geothermal_spf": 4.0,
      "heat_purchased_gwh": 38.5,
@@ -305,7 +305,7 @@
     },
     "what_if_combined": {
      "bill_eur_m": 10.5,
-     "bill_gbp_m": 8.9,
+     "bill_gbp_m": 9.0,
      "emissions_kt_co2": 12.3,
      "indigenous_share_pct": 52.5,
      "purchased_gwh": 58.3
@@ -388,7 +388,7 @@
    "week_ending": "2026-07-27",
    "what_if_20pct_geothermal": {
     "bill_eur_m": 17.5,
-    "bill_gbp_m": 14.9,
+    "bill_gbp_m": 15.0,
     "emissions_kt_co2": 30.1,
     "geothermal_spf": 4.0,
     "heat_purchased_gwh": 129.7,
@@ -396,7 +396,7 @@
    },
    "what_if_combined": {
     "bill_eur_m": 61.0,
-    "bill_gbp_m": 52.1,
+    "bill_gbp_m": 52.2,
     "emissions_kt_co2": 65.1,
     "indigenous_share_pct": 59.3,
     "purchased_gwh": 330.1
@@ -2320,11 +2320,11 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-07-27T07:40:55+00:00",
+   "fetched_utc": "2026-07-27T08:57:39+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
-   "latest_day": "2026-07-24",
+   "latest_day": "2026-07-27",
    "series_conflicts_this_run": 0,
    "series_gbp": {
     "daily": {
@@ -2428,7 +2428,8 @@
       "2026-07-21": 274.31,
       "2026-07-22": 274.57,
       "2026-07-23": 276.23,
-      "2026-07-24": 285.81
+      "2026-07-24": 285.81,
+      "2026-07-27": 291.87
      },
      "500l": {
       "2026-02-26": 307.38,
@@ -2530,7 +2531,8 @@
       "2026-07-21": 442.44,
       "2026-07-22": 442.13,
       "2026-07-23": 445.37,
-      "2026-07-24": 460.35
+      "2026-07-24": 460.35,
+      "2026-07-27": 470.99
      },
      "900l": {
       "2026-02-26": 536.72,
@@ -2632,12 +2634,13 @@
       "2026-07-21": 783.29,
       "2026-07-22": 784.58,
       "2026-07-23": 789.07,
-      "2026-07-24": 814.85
+      "2026-07-24": 814.85,
+      "2026-07-27": 834.04
      }
     }
    },
    "source": "Consumer Council for Northern Ireland home heating oil price checker - daily (Mon-Fri), NI average, 300/500/900 L",
-   "status": "stale"
+   "status": "ok"
   },
   "ecb_fx": {
    "eur_gbp": 0.85388,
@@ -2850,7 +2853,7 @@
     "2026-07-23": 0.85318,
     "2026-07-24": 0.85388
    },
-   "fetched_utc": "2026-07-27T08:49:52+00:00",
+   "fetched_utc": "2026-07-27T08:57:21+00:00",
    "gbp_eur": 1.17112,
    "latest_day": "2026-07-24",
    "rate_date": "2026-07-24",
@@ -3020,13 +3023,13 @@
      "2026-07-26": 81.7
     }
    },
-   "fetched_utc": "2026-07-27T08:49:47+00:00",
+   "fetched_utc": "2026-07-27T08:57:15+00:00",
    "latest_day": "2026-07-26",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "gb_oil": {
-   "fetched_utc": "2026-07-27T08:50:36+00:00",
+   "fetched_utc": "2026-07-27T08:57:40+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -5971,7 +5974,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-27T08:49:54+00:00",
+   "fetched_utc": "2026-07-27T08:57:22+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -17781,7 +17784,7 @@
     "2026-07-20": 6.891,
     "2026-07-21": 7.285
    },
-   "fetched_utc": "2026-07-27T08:50:12+00:00",
+   "fetched_utc": "2026-07-27T08:57:39+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-21",
    "ndm_gwh": {
@@ -18218,7 +18221,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-27T08:49:50+00:00",
+   "fetched_utc": "2026-07-27T08:57:20+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -21760,7 +21763,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-27T08:49:58+00:00",
+   "fetched_utc": "2026-07-27T08:57:27+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -22106,7 +22109,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 100.23,
    "dam_avg_gbp_mwh": 85.65,
-   "fetched_utc": "2026-07-27T08:49:56+00:00",
+   "fetched_utc": "2026-07-27T08:57:23+00:00",
    "latest_day": "2026-07-25",
    "markets": {
     "NI-DA": {
@@ -22314,7 +22317,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "4.4.0",
+ "pipeline_version": "4.4.1",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
