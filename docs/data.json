@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-07-27T07:40:55+00:00",
+ "built_utc": "2026-07-27T08:50:36+00:00",
  "derived": {
   "cool": {
    "basis": "DC electricity share CSO; other loads and rejection factors dagger (refrigeration and comfort reject compressor work plus pumped heat). Stranded share computed from this site's own degree-day record, comfort load shaped by live overheating degree-hours. Challenge and input welcome at contact@causewaygt.com",
@@ -2637,7 +2637,7 @@
     }
    },
    "source": "Consumer Council for Northern Ireland home heating oil price checker - daily (Mon-Fri), NI average, 300/500/900 L",
-   "status": "ok"
+   "status": "stale"
   },
   "ecb_fx": {
    "eur_gbp": 0.85388,
@@ -2850,7 +2850,7 @@
     "2026-07-23": 0.85318,
     "2026-07-24": 0.85388
    },
-   "fetched_utc": "2026-07-27T07:40:33+00:00",
+   "fetched_utc": "2026-07-27T08:49:52+00:00",
    "gbp_eur": 1.17112,
    "latest_day": "2026-07-24",
    "rate_date": "2026-07-24",
@@ -3020,13 +3020,13 @@
      "2026-07-26": 81.7
     }
    },
-   "fetched_utc": "2026-07-27T07:40:24+00:00",
+   "fetched_utc": "2026-07-27T08:49:47+00:00",
    "latest_day": "2026-07-26",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "gb_oil": {
-   "fetched_utc": "2026-07-27T07:40:55+00:00",
+   "fetched_utc": "2026-07-27T08:50:36+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -5971,7 +5971,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-07-27T07:40:35+00:00",
+   "fetched_utc": "2026-07-27T08:49:54+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -17781,7 +17781,7 @@
     "2026-07-20": 6.891,
     "2026-07-21": 7.285
    },
-   "fetched_utc": "2026-07-27T07:40:54+00:00",
+   "fetched_utc": "2026-07-27T08:50:12+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-07-21",
    "ndm_gwh": {
@@ -18218,7 +18218,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-07-27T07:40:30+00:00",
+   "fetched_utc": "2026-07-27T08:49:50+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -21760,7 +21760,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-07-27T07:40:42+00:00",
+   "fetched_utc": "2026-07-27T08:49:58+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -22106,7 +22106,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 100.23,
    "dam_avg_gbp_mwh": 85.65,
-   "fetched_utc": "2026-07-27T07:40:37+00:00",
+   "fetched_utc": "2026-07-27T08:49:56+00:00",
    "latest_day": "2026-07-25",
    "markets": {
     "NI-DA": {
@@ -22244,7 +22244,7 @@
    "roi": 42
   },
   "percap": {
-   "basis": "20% of delivered buildings heat at 2000 equivalent full-load hours - all sizing parameters dagger; current NI capacity dagger. Challenge and input welcome at contact@causewaygt.com",
+   "basis": "20% of delivered buildings heat at 2000 equivalent full-load hours - all sizing parameters dagger; current NI capacity dagger. Comparator bars: EGC 2025 country updates, data year 2024. Challenge and input welcome at contact@causewaygt.com",
    "eflh_h": 2000,
    "island": {
     "current_mwth": 231.6,
@@ -22279,22 +22279,22 @@
   },
   "reference_mwth": {
    "France": {
-    "deep": 650,
-    "shallow": 2600
+    "deep": 724,
+    "shallow": 2293
    },
    "Netherlands": {
-    "deep": 400,
-    "shallow": 2000
+    "deep": 367,
+    "shallow": 2486
    },
    "Sweden": {
-    "deep": 0,
-    "shallow": 6700
+    "deep": 47,
+    "shallow": 8120
    }
   },
   "reference_w_pp": {
-   "France": 38,
-   "Netherlands": 110,
-   "Sweden": 635
+   "France": 34,
+   "Netherlands": 140,
+   "Sweden": 773
   },
   "roi": {
    "capacity_mwth": 225,
@@ -22314,7 +22314,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "4.3.0",
+ "pipeline_version": "4.4.0",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
