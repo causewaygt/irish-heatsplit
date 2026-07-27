@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.4.0"
+PIPELINE_VERSION = "4.4.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -2671,6 +2671,7 @@ def main():
             if not expected:
                 traceback.print_exc()
             prev = PREVIOUS_FEEDS.get(name, {})
+            has_prev = bool(prev)
             prev["status"] = "stale"
             if name in EXPECTED_DOWN:
                 prev["pending_note"] = EXPECTED_DOWN[name]
@@ -2679,7 +2680,15 @@ def main():
             prev.setdefault("source", "previous run retained")
             feeds[name] = prev
             if not expected:
-                failures.append(name)
+                # A failed feed with previous data in hand degrades to
+                # stale-and-continue (transient 5xx like the CCNI 520 of
+                # 27 Jul 2026 must not block the deploy); only a failure
+                # with nothing to carry forward stays build-fatal.
+                if has_prev:
+                    log(f"{name}: previous data carried - degraded to "
+                        f"stale, not build-fatal")
+                else:
+                    failures.append(name)
 
     gas = feeds.get("gni_ckan", {}).get("ndm_gwh") or {}
     hdd = feeds.get("hdd", {}).get("hdd_roi") or {}
