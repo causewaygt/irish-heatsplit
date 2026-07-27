@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 3.4.0 / site 3.2.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.0.0 / site 4.0.0.
 
 ## The premise
 
@@ -22,6 +22,18 @@ and prices the alternative. The data gap is the story.
 - **Masthead** – the heat spark gap, live: oil-boiler heat versus
   geothermal on a useful-heat basis, priced in each jurisdiction's own
   currency, with the winning margin computed fresh from the day's feeds.
+- **The back look** – a weekly history of the hero's combined figures
+  and their what-if twins: complete calendar weeks priced at their own
+  week's oil prices, ECB rate, tariff period and grid carbon intensity,
+  frozen after the two most recent, capped at 60. A 1w/4w/12w/12m
+  selector re-totals the headline four (auto-scaled to TWh/€bn/Mt, the
+  indigenous share purchased-weighted) with sparklines – actual solid,
+  what-if green, the gap between them shaded – and a delta versus the
+  window start. Bills are sector-blended†: services gas and
+  electricity, and all cooling, price at non-domestic rates; oil prices
+  identically across sectors. The record starts with the NI daily oil survey
+  (2026-02-26) and reaches twelve live months in February 2027; the
+  caption counts the live weeks until then.
 - **Hero** – the week's heating *and cooling*: combined energy
   purchased (with the heat/cooling split), indigenous share, the bill
   and emissions in both currencies, toggled all-island / NI / ROI, each
@@ -200,7 +212,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 48 tests, no network
+python3 tests/test_synthetic.py   # 53 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
