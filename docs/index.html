@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 3.2.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.0.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -73,6 +73,13 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 .headline{text-transform:none;letter-spacing:0;font-weight:800;font-size:clamp(1.6rem,4.4vw,2.5rem);line-height:1.15;color:#fff;margin:2px 0 10px}
 .headline .hot{color:#e2694a}
 .headline .cold{color:#5BA4CF}
+.winsep{display:inline-block;width:18px}
+.winbtn{min-width:44px}
+.wincap{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--faint);margin-left:10px}
+svg.spark{display:block;margin-top:8px}
+svg.spark polyline{fill:none;stroke-width:1.6}
+.sparkband{fill:rgba(58,170,53,.18);stroke:none}
+.hdelta{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--faint);margin-top:3px}
 .hstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;margin:18px 0 6px}
 .hstat .hval{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:clamp(1.7rem,4vw,2.3rem);line-height:1.1}
 .hstat .hlab{font-size:.8rem;color:var(--muted);margin-top:4px;max-width:220px}
@@ -316,6 +323,12 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <button class="segbtn active" id="heroAll" role="tab">All island</button>
     <button class="segbtn" id="heroNIbtn" role="tab">NI</button>
     <button class="segbtn" id="heroROIbtn" role="tab">ROI</button>
+    <span class="winsep"></span>
+    <button class="segbtn winbtn active" id="win1">1w</button>
+    <button class="segbtn winbtn" id="win4">4w</button>
+    <button class="segbtn winbtn" id="win12">12w</button>
+    <button class="segbtn winbtn" id="win52">12m</button>
+    <span id="winCap" class="wincap"></span>
   </div>
   <div class="hstats" id="heroCards"></div>
   <div class="whatif" id="whatif" hidden>
@@ -665,7 +678,29 @@ function sparkBox(D){
     ' \u00b7 week ending '+((((D.derived||{}).hero)||{}).week_ending||'');
 }
 
-function heroCards(h){
+function sparkline(entries, key, wfKey){
+  if(entries.length<2) return '';
+  const W=150, H=34, P=2;
+  const vals=entries.map(e=>e[key]), wfs=wfKey?entries.map(e=>e[wfKey]):null;
+  const all=wfs?vals.concat(wfs):vals;
+  const lo=Math.min.apply(null,all), hi=Math.max.apply(null,all);
+  const y=v=>hi===lo?H/2:P+(H-2*P)*(1-(v-lo)/(hi-lo));
+  const x=i=>P+(W-2*P)*i/(entries.length-1);
+  const pts=a=>a.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ');
+  let band='';
+  if(wfs){
+    const fwd=vals.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1));
+    const back=wfs.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).reverse();
+    band='<polygon class="sparkband" points="'+fwd.concat(back).join(' ')+'"/>';
+  }
+  return '<svg class="spark" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">'+
+    band+
+    (wfs?'<polyline points="'+pts(wfs)+'" stroke="'+CLR.green+'"/>':'')+
+    '<polyline points="'+pts(vals)+'" stroke="'+CLR.ink+'"/></svg>';
+}
+
+function heroCards(h, HIST){
+  HIST=HIST||[];
   const FUELS=[
     ['oil','Oil',CLR.amber],
     ['gas','Gas','#2F8F8C'],
@@ -733,6 +768,32 @@ function heroCards(h){
         ' \u00b7 comfort cooling shaped by live overheating record\u2020':'')+
       '</div>';
   }
+  let WIN='1w';
+  const WINN={'1w':1,'4w':4,'12w':12,'12m':52};
+  function windowed(n){
+    const es=HIST.slice(-n);
+    if(!es.length) return null;
+    const sum=k=>es.reduce((a,e)=>a+(e[k]||0),0);
+    const wsum=sum('purchased_gwh')||1;
+    return {n:es.length, entries:es,
+      purchased:sum('purchased_gwh'), bill_e:sum('bill_eur_m'),
+      bill_g:sum('bill_gbp_m'), kt:sum('emissions_kt'),
+      indig:es.reduce((a,e)=>a+e.indigenous_pct*e.purchased_gwh,0)/wsum,
+      wf_purchased:sum('wf_purchased_gwh'), wf_bill_e:sum('wf_bill_eur_m'),
+      wf_bill_g:sum('wf_bill_gbp_m'), wf_kt:sum('wf_emissions_kt'),
+      wf_indig:es.reduce((a,e)=>a+e.wf_indigenous_pct*e.purchased_gwh,0)/wsum};
+  }
+  function eScale(g){return g>=1000?fmt(g/1000,1)+' TWh':fmt(g,0)+' GWh';}
+  function mScale(m,s){return m>=1000?s+fmt(m/1000,1)+'bn':s+fmt(m,0)+'m';}
+  function ktScale(k){return k>=1000?fmt(k/1000,1)+' Mt':fmt(k,0)+' kt';}
+  function delta(es,k,pp){
+    if(es.length<2) return '';
+    const a=es[0][k], b=es[es.length-1][k];
+    if(pp){const d=b-a;return (d>=0?'\u25b2 +':'\u25bc ')+fmt(Math.abs(d),1)+' pp over window';}
+    if(!a) return '';
+    const d=100*(b-a)/a;
+    return (d>=0?'\u25b2 +':'\u25bc ')+fmt(Math.abs(d),1)+'% vs window start';
+  }
   function render(state){
     ['heroAll','heroNIbtn','heroROIbtn'].forEach(id=>el(id).classList.remove('active'));
     el(state==='ni'?'heroNIbtn':state==='roi'?'heroROIbtn':'heroAll')
@@ -757,6 +818,47 @@ function heroCards(h){
        fmt(b.emissions_kt_co2,0)+' \u00b7 cooling '+
        fmt(cl.emissions_kt_co2,0)+')'],
     ];
+    const win=WINN[WIN];
+    const wv = (state==='all' && win>1) ? windowed(win) : null;
+    if(wv){
+      const es=wv.entries;
+      const cap=wv.n<win?' ('+wv.n+' live wks)':'';
+      const cards2=[
+        [eScale(wv.purchased),
+         'heating &amp; cooling energy purchased over '+WIN+cap,
+         sparkline(es,'purchased_gwh','wf_purchased_gwh'),
+         delta(es,'purchased_gwh')],
+        [fmt(wv.indig,0)+'%',
+         'purchased-weighted indigenous share of heat &amp; cooling',
+         sparkline(es,'indigenous_pct','wf_indigenous_pct'),
+         delta(es,'indigenous_pct',true)],
+        [mScale(wv.bill_e,'\u20ac')+' \u2002|\u2002 '+mScale(wv.bill_g,'\u00a3'),
+         'the island\u2019s heat &amp; cooling bill over '+WIN+cap,
+         sparkline(es,'bill_eur_m','wf_bill_eur_m'),
+         delta(es,'bill_eur_m')],
+        [ktScale(wv.kt),
+         'heating &amp; cooling emissions over '+WIN+' (CO\u2082e)',
+         sparkline(es,'emissions_kt','wf_emissions_kt'),
+         delta(es,'emissions_kt')],
+      ];
+      el('heroCards').innerHTML = cards2.map(c=>
+        '<div class="hstat"><div class="hval">'+c[0]+'</div>'+
+        '<div class="hlab">'+c[1]+'</div>'+c[2]+
+        '<div class="hdelta">'+c[3]+'</div></div>').join('');
+      if(el('whatif') && !el('whatif').hidden){
+        el('whatifRow').innerHTML=[
+          [eScale(wv.wf_purchased),'purchased \u2013 the ground heats free and cools for a fraction\u2020'],
+          [fmt(wv.wf_indig,0)+' %','indigenous share'],
+          [mScale(wv.wf_bill_e,'\u20ac')+' \u2002|\u2002 '+mScale(wv.wf_bill_g,'\u00a3'),'the bill'],
+          [ktScale(wv.wf_kt),'CO\u2082e (saves '+ktScale(wv.kt-wv.wf_kt)+')'],
+        ].map(r=>'<div class="wcell"><div class="val">'+r[0]+'</div>'+
+          '<div class="lab">'+r[1]+'</div></div>').join('');
+      }
+      el('winCap').textContent = wv.n<win?'record: '+wv.n+' complete weeks so far':'';
+      return;
+    }
+    el('winCap').textContent = WIN!=='1w'&&state!=='all'?
+      'windows apply to the all-island view':'';
     el('heroCards').innerHTML = cards.map(c=>
       '<div class="hstat"><div class="hval">'+c[0]+'</div>'+
       '<div class="hlab">'+c[1]+'</div></div>').join('');
@@ -785,8 +887,18 @@ function heroCards(h){
     el('heroNote').textContent = 'Week ending '+h.week_ending+' \u2013 '+
       fmt(hddw)+' heating degree days. '+h.basis;
   }
-  const wire=(id,s)=>{ if(el(id)) el(id).onclick=()=>render(s); };
+  let SCOPE='all';
+  const wire=(id,s)=>{ if(el(id)) el(id).onclick=()=>{SCOPE=s;render(s);}; };
   wire('heroAll','all'); wire('heroNIbtn','ni'); wire('heroROIbtn','roi');
+  ['win1','win4','win12','win52'].forEach((id,i)=>{
+    if(!el(id)) return;
+    el(id).onclick=()=>{
+      WIN=['1w','4w','12w','12m'][i];
+      ['win1','win4','win12','win52'].forEach(x=>{if(el(x))el(x).classList.remove('active')});
+      el(id).classList.add('active');
+      render(SCOPE);
+    };
+  });
   render('all');
 }
 function invisibleBar(h){
@@ -1229,7 +1341,7 @@ fetch('data.json').then(r=>{
   statusBadges(D.feeds||{});
   sparkBox(D);
   const hero=(D.derived||{}).hero;
-  if(hero){heroCards(hero); invisibleBar(hero);}
+  if(hero){heroCards(hero,(D.derived||{}).history||[]); invisibleBar(hero);}
   else el('heroCards').innerHTML='<div class="stat"><div class="lab">Hero</div>'+
     '<div class="sub">Waiting for the first build with degree-day history \u2013 '+
     'check back after the next daily run.</div></div>';
@@ -1241,7 +1353,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 3.2.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.0.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
