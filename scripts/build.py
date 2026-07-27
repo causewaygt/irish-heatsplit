@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "3.4.0"
+PIPELINE_VERSION = "4.1.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 SERIES_KEEP_DAYS = 400
@@ -88,6 +88,7 @@ NTFY_TOPIC = None
 
 # Set by main() before the feed loop - lets feeds merge history across runs
 PREVIOUS_FEEDS: dict = {}
+PREVIOUS_DERIVED: dict = {}
 
 # ------------------------------------------------- annual anchors
 # Sourced figures cite their publication; every judgement figure is marked
@@ -149,6 +150,19 @@ ANCHORS = {
     #  NI gas: Ten Towns GBP972/yr at 12,000 kWh (1 Jul 2026) -> ~7.5p unit.
     # Standard-tariff basis - time-of-use/night rates materially lower for
     # heat-pump households; see heat_gap basis note.
+    # Sector blend (UK-pattern, Irish placeholders - dagger until read
+    # from the SEAI national energy balance / BER end-use work and
+    # Eurostat band prices nrg_pc_203 (gas) / nrg_pc_205 (electricity);
+    # Eurostat publishes on ~half-year lag, stated in methodology).
+    # dom_share: domestic fraction of each fuel's buildings-heat input.
+    # Oil is priced identically across sectors (tanker market), so only
+    # gas and electricity blend. Cooling is wholly non-domestic.
+    "dom_share": {
+        "roi": {"gas": 0.60, "electricity": 0.55},
+        "ni": {"gas": 0.55, "electricity": 0.55},
+    },
+    "nondom_eur_per_kwh": {"electricity": 0.21, "gas": 0.075},
+    "nondom_gbp_per_kwh": {"electricity": 0.24, "gas": 0.055},
     "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},
     "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.325},
     # The cold economy - island cooling loads, electricity basis.
@@ -350,6 +364,42 @@ WHY_HEAT = {
               "dagger. Challenge and input welcome at "
               "contact@causewaygt.com"),
 }
+
+
+# ------------------------------------------------ per-week tariff history
+# No regulated cap exists in either jurisdiction's oil-heated world and
+# none in ROI electricity - representative standard domestic unit rates
+# by period, dagger throughout (the representativeness caveat the UK
+# series does not carry). Backfilled weeks freeze at first computation:
+# a wrong early row is permanent, so rows are added only once verified
+# against SEAI/CSO/CRU archives. Single verified period at porting.
+# Verified against announcements, 27 Jul 2026: Utility Regulator NI
+# (Power NI elec +6.2% and Firmus Ten Towns gas +15.65% both eff
+# 1 Jul 2026; Firmus -10.1% eff Apr 2026) and Electric Ireland
+# (elec +8%, gas +7.7% eff 1 Jul 2026 - first change since Oct 2022,
+# prices held through the window's start). Pre-July rows are
+# back-derived from the announced percentages against the July rates,
+# so carry ~+/-1% derivation uncertainty (announced changes are
+# bill-basis where unit-rate basis was unavailable) - dagger.
+TARIFF_HISTORY = [
+    # (from_date, {eur: {electricity, gas}, gbp: {electricity, gas}})
+    ("2026-01-01", {"eur": {"electricity": 0.333, "gas": 0.107},
+                    "gbp": {"electricity": 0.306, "gas": 0.0722}}),
+    ("2026-04-01", {"eur": {"electricity": 0.333, "gas": 0.107},
+                    "gbp": {"electricity": 0.306, "gas": 0.0649}}),
+    ("2026-07-01", {"eur": {"electricity": 0.36, "gas": 0.115},
+                    "gbp": {"electricity": 0.325, "gas": 0.075}}),
+]
+
+
+def tariffs_for(date_iso):
+    """Resolve the tariff period in force on a date. Dagger."""
+    row = TARIFF_HISTORY[0][1]
+    for frm, rates in TARIFF_HISTORY:
+        if date_iso >= frm:
+            row = rates
+    return row
+
 
 # ---------------------------------------------------------------- utilities
 
@@ -863,7 +913,7 @@ def feed_eirgrid():
     try:
         pl = http_get(EIRGRID_ENDPOINT, params={
             "region": "ALL", "chartType": "co2",
-            "dateRange": "month", "dateFrom": dmy(start),
+            "dateRange": "month", "dateFrom": dmy(end - dt.timedelta(days=150)),
             "dateTo": dmy(end), "areas": "co2intensity"},
             timeout=90).json()
         got = parse_eirgrid_rows(pl, field="CO2_INTENSITY",
@@ -1023,6 +1073,21 @@ def feed_ecb_fx():
     out = {"eur_gbp": rate, "gbp_eur": round(1 / rate, 5),
            "rate_date": cube_day.get("time"), "latest_day": cube_day.get("time"),
            "source": "ECB euro foreign exchange reference rates (daily)"}
+    # 90-day history for per-week pricing of the back-look. Soft.
+    try:
+        r90 = http_get("https://www.ecb.europa.eu/stats/eurofxref/"
+                       "eurofxref-hist-90d.xml")
+        root90 = ElementTree.fromstring(r90.content)
+        ser = prev_series("ecb_fx", "eur_gbp_daily")
+        for cube in root90.findall(".//e:Cube[@time]", ns):
+            for c in cube.findall("e:Cube", ns):
+                if c.get("currency") == "GBP":
+                    ser[cube.get("time")] = float(c.get("rate"))
+        out["eur_gbp_daily"] = trim_series(ser)
+        log(f"ecb_fx: history {len(out['eur_gbp_daily'])} days retained")
+    except Exception as e:
+        out["eur_gbp_daily"] = prev_series("ecb_fx", "eur_gbp_daily")
+        log(f"ecb_fx: history skipped ({e.__class__.__name__})")
     return out, recency_status(out["latest_day"], 5)
 
 
@@ -1710,7 +1775,95 @@ def derive_gas_calibration(reg, hdd_roi, anchors=None):
                      "the regression sees.")}
 
 
-def derive_hero(feeds, anchors=None):
+
+# ------------------------------------------------------ weekly back-look
+def week_inputs(feeds, w_end):
+    """Per-week pricing context for a calendar week ending w_end (Sun):
+    NI oil (CCNI 900L weekly mean, p/L), ROI oil (bulletin week), fx
+    (weekly mean of daily ECB), electricity EF (weekly CI mean or
+    anchor), tariffs (period resolver). Returns None if a required
+    input is absent - the week is not built."""
+    w_start = (dt.date.fromisoformat(w_end)
+               - dt.timedelta(days=6)).isoformat()
+    days = [(dt.date.fromisoformat(w_start) + dt.timedelta(days=i))
+            .isoformat() for i in range(7)]
+    ccni = (((feeds.get("ccni_oil") or {}).get("series_gbp") or {})
+            .get("daily") or {}).get("900l") or {}
+    ni_vals = [ccni[d] / 9.0 for d in days if d in ccni]
+    if not ni_vals:
+        return None
+    bull = ((feeds.get("oil_bulletin") or {})
+            .get("roi_heating_gasoil_eur_per_1000l") or {})
+    b_days = [d for d in sorted(bull) if d <= w_end]
+    if not b_days:
+        return None
+    fxs = ((feeds.get("ecb_fx") or {}).get("eur_gbp_daily") or {})
+    fx_vals = [fxs[d] for d in days if d in fxs]
+    fx = (sum(fx_vals) / len(fx_vals)) if fx_vals \
+        else (feeds.get("ecb_fx") or {}).get("eur_gbp") or 0.855
+    co2 = ((feeds.get("eirgrid") or {})
+           .get("co2_intensity_g_per_kwh") or {})
+    ci_vals = [co2[d] for d in days if d in co2]
+    ef = round(sum(ci_vals) / len(ci_vals), 1) if len(ci_vals) >= 4 \
+        else None
+    return {"ni_oil_ppl": round(sum(ni_vals) / len(ni_vals), 2),
+            "roi_oil_eur_1000l": bull[b_days[-1]],
+            "fx": round(fx, 5), "ef_electricity": ef,
+            "ef_source": ("weekly grid CI" if ef else "anchor"),
+            "tariffs": tariffs_for(w_end)}
+
+
+def build_history(feeds, anchors=None):
+    """UK-pattern weekly history: complete calendar weeks (Mon-Sun),
+    hero combined four + what-if twins per entry, frozen after the two
+    most recent, capped at 60, append-or-update by week_ending. The
+    Irish hero is anchor x HDD, so depth is bounded by the PRICE feeds
+    (CCNI from 2026-02-26), not gas. Records the GNI feed's empirical
+    window each run (gas_window) per the porting handover."""
+    prev = list((PREVIOUS_DERIVED or {}).get("history") or [])
+    frozen = {e["week_ending"]: e for e in prev[:-2]} if len(prev) > 2 \
+        else {}
+    hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
+    if not hdd:
+        return prev
+    today = today_utc()
+    last_sun = today - dt.timedelta(days=(today.isoweekday() % 7) or 7)
+    out = []
+    for k in range(59, -1, -1):
+        w_end = (last_sun - dt.timedelta(weeks=k)).isoformat()
+        if w_end in frozen:
+            out.append(frozen[w_end])
+            continue
+        ctx = week_inputs(feeds, w_end)
+        if ctx is None:
+            continue
+        h = derive_hero(feeds, anchors, week_ctx={"week_ending": w_end,
+                                                  **ctx})
+        if h is None:
+            continue
+        out.append({
+            "week_ending": w_end,
+            "purchased_gwh": h["combined"]["purchased_gwh"],
+            "served_gwh": h["combined"]["served_gwh"],
+            "indigenous_pct": h["combined"]["indigenous_share_pct"],
+            "bill_eur_m": h["combined"]["bill_eur_m"],
+            "bill_gbp_m": h["combined"]["bill_gbp_m"],
+            "emissions_kt": h["combined"]["emissions_kt_co2"],
+            "wf_purchased_gwh": h["what_if_combined"]["purchased_gwh"],
+            "wf_indigenous_pct":
+                h["what_if_combined"]["indigenous_share_pct"],
+            "wf_bill_eur_m": h["what_if_combined"]["bill_eur_m"],
+            "wf_bill_gbp_m": h["what_if_combined"]["bill_gbp_m"],
+            "wf_emissions_kt":
+                h["what_if_combined"]["emissions_kt_co2"],
+            "hdd": h["hdd_week"],
+            "ef_electricity": ctx["ef_electricity"] or None,
+            "ef_source": ctx["ef_source"],
+        })
+    return out[-60:]
+
+
+def derive_hero(feeds, anchors=None, week_ctx=None):
     """
     Weekly hero four-stat + what-if, per jurisdiction and all-island.
     Each jurisdiction is shaped by its own HDD series (island fallback);
@@ -1723,21 +1876,38 @@ def derive_hero(feeds, anchors=None):
     island_hdd = hddf.get("hdd_island") or {}
     if len(island_hdd) < 200:
         return None
-    fx = (feeds.get("ecb_fx") or {}).get("eur_gbp") or 0.855
+    W = week_ctx or {}
+    fx = W.get("fx") or (feeds.get("ecb_fx") or {}).get("eur_gbp") or 0.855
     shf = a["space_heat_fraction"]
 
-    oil_eur_kwh = None
-    ob = (feeds.get("oil_bulletin") or {}).get("latest_value")
-    if ob:
-        oil_eur_kwh = ob / 1000.0 / a["kerosene_kwh_per_litre"]
-    oil_gbp_kwh = None
-    ccni = ((feeds.get("ccni_oil") or {}).get("series_gbp") or {}).get(
-        "daily", {}).get("900l") or {}
-    if ccni:
-        oil_gbp_kwh = ccni[max(ccni)] / 900.0 / a["kerosene_kwh_per_litre"]
+    if W:
+        # historic week: prices, fx, EF and tariffs from the week itself
+        oil_eur_kwh = W["roi_oil_eur_1000l"] / 1000.0 \
+            / a["kerosene_kwh_per_litre"]
+        oil_gbp_kwh = W["ni_oil_ppl"] / 100.0 \
+            / a["kerosene_kwh_per_litre"]
+    else:
+        oil_eur_kwh = None
+        ob = (feeds.get("oil_bulletin") or {}).get("latest_value")
+        if ob:
+            oil_eur_kwh = ob / 1000.0 / a["kerosene_kwh_per_litre"]
+        oil_gbp_kwh = None
+        ccni = ((feeds.get("ccni_oil") or {}).get("series_gbp") or {}).get(
+            "daily", {}).get("900l") or {}
+        if ccni:
+            oil_gbp_kwh = ccni[max(ccni)] / 900.0 \
+                / a["kerosene_kwh_per_litre"]
 
     def hdd_stats(series):
         days = sorted(series)
+        if W:
+            w_end = W["week_ending"]
+            wk = [d for d in days if d <= w_end][-7:]
+            yr = [d for d in days if d <= w_end][-365:]
+            if len(wk) < 7 or len(yr) < 200:
+                return (0.0, 0.0, w_end)
+            return (sum(series[d] for d in wk),
+                    sum(series[d] for d in yr), w_end)
         wk = days[-7:]
         return (sum(series[d] for d in wk),
                 sum(series[d] for d in days[-365:]), wk[-1])
@@ -1772,9 +1942,15 @@ def derive_hero(feeds, anchors=None):
                 if price is None:
                     price = 0.11 if cur == "eur" else 0.09  # dagger fallback
             else:
-                table = a["retail_eur_per_kwh"] if cur == "eur" \
-                    else a["retail_gbp_per_kwh"]
+                table = ((W.get("tariffs") or {}).get(cur)
+                         or (a["retail_eur_per_kwh"] if cur == "eur"
+                             else a["retail_gbp_per_kwh"]))
                 price = table.get(fuel, table["gas"])
+                if fuel in ("gas", "electricity"):
+                    nd = (a["nondom_eur_per_kwh"] if cur == "eur"
+                          else a["nondom_gbp_per_kwh"])[fuel]
+                    ds = a["dom_share"][jur][fuel]
+                    price = ds * price + (1 - ds) * nd
             inp_t += inp
             useful_t += useful
             indig_t += indig
@@ -1784,15 +1960,28 @@ def derive_hero(feeds, anchors=None):
         bill_eur = bill_t if cur == "eur" else bill_t / fx
         bill_gbp = bill_t * fx if cur == "eur" else bill_t
 
+        dom_elec = ((W.get("tariffs") or {}).get(cur, {})
+                    .get("electricity")
+                    or (a["retail_eur_per_kwh"]["electricity"]
+                        if cur == "eur"
+                        else a["retail_gbp_per_kwh"]["electricity"]))
+        nondom_elec = (a["nondom_eur_per_kwh"] if cur == "eur"
+                       else a["nondom_gbp_per_kwh"])["electricity"]
+        # cooling is wholly non-domestic (UK convention)
+        elec_price = nondom_elec
+        # what-if heat-pump electricity blends at the domestic share of
+        # delivered heat (UK convention)
+        heat_dom = j["residential_heat_twh"] / max(
+            j["residential_heat_twh"] + j["services_heat_twh"], 1e-9)
+        wf_elec_price = heat_dom * dom_elec + (1 - heat_dom) * nondom_elec
+
         # what-if: 20% of useful heat moves to geothermal heat pumps
         spf = a["geothermal_spf"]
         moved = useful_t * 0.20
         elec_in = moved / spf
         ambient = moved - elec_in
         scale = 0.80
-        blend = (a["retail_eur_per_kwh"]["electricity"] if cur == "eur"
-                 else a["retail_gbp_per_kwh"]["electricity"])
-        wf_bill_native = bill_t * scale + elec_in * blend
+        wf_bill_native = bill_t * scale + elec_in * wf_elec_price
         wf = {
             "heat_purchased_gwh": round(inp_t * scale + elec_in, 1),
             "indigenous_share_pct": round(100 * (
@@ -1832,9 +2021,6 @@ def derive_hero(feeds, anchors=None):
         if comfort_a > 0:
             frac = odh_frac if odh_frac is not None else 1.0 / 52.0
             cool_week += comfort_a * 1000.0 * (0.3 / 52.0 + 0.7 * frac)
-        elec_price = (a["retail_eur_per_kwh"]["electricity"]
-                      if cur == "eur"
-                      else a["retail_gbp_per_kwh"]["electricity"])
         cool_bill_native = cool_week * elec_price
         cool_kt = cool_week * EF["electricity"] / 1000.0
         cool_indig = cool_week * j["elec_indigenous"]
@@ -1942,17 +2128,22 @@ def derive_hero(feeds, anchors=None):
     # otherwise. The 280 g anchor predates the EirGrid restoration;
     # live summer intensity runs ~210-220 g.
     EF = dict(a["ef_g_per_kwh"])
-    co2 = ((feeds.get("eirgrid") or {})
-           .get("co2_intensity_g_per_kwh") or {})
-    cdays = sorted(co2)[-14:]
-    ef_src = "anchor"
-    if len(cdays) >= 7:
-        EF["electricity"] = round(
-            sum(co2[d] for d in cdays) / len(cdays), 1)
-        ef_src = f"live grid intensity, {len(cdays)}-day mean"
-    log(f"hero: electricity EF {EF['electricity']} g/kWh ({ef_src})")
+    if W:
+        ef_src = W["ef_source"]
+        if W.get("ef_electricity"):
+            EF["electricity"] = W["ef_electricity"]
+    else:
+        co2 = ((feeds.get("eirgrid") or {})
+               .get("co2_intensity_g_per_kwh") or {})
+        cdays = sorted(co2)[-14:]
+        ef_src = "anchor"
+        if len(cdays) >= 7:
+            EF["electricity"] = round(
+                sum(co2[d] for d in cdays) / len(cdays), 1)
+            ef_src = f"live grid intensity, {len(cdays)}-day mean"
+        log(f"hero: electricity EF {EF['electricity']} g/kWh ({ef_src})")
 
-    odh = hddf.get("odh26_island") or {}
+    odh = {} if W else (hddf.get("odh26_island") or {})
     odh_frac = None
     odays = sorted(odh)[-365:]
     if len(odays) >= 300:
@@ -2056,7 +2247,11 @@ def derive_hero(feeds, anchors=None):
                   "materially wider band than gas. Hot water is carried as a flat "
                   "18.3% of annual (UK-aligned convention, Jul 2026 "
                   "cross-calibration); space heat follows the week's "
-                  "degree days. Cooling is the cold-economy "
+                  "degree days. Bills are sector-blended: services gas and "
+                  "electricity, and all cooling, price at non-domestic "
+                  "rates (dagger, pending Eurostat band prices); oil "
+                  "prices identically across sectors. Cooling is the "
+                  "cold-economy "
                   "census (dagger loads beside the CSO data-centre "
                   "anchor), flat across the year with the comfort share "
                   "following live overheating degree-hours once a season "
@@ -2183,21 +2378,6 @@ def derive_cool(feeds, anchors=None):
     # supply shape: flat loads spread 1/n; comfort follows ODH26
     comfort = loads["comfort"]
     flat = elec_total - comfort
-    # electricity emission factor: live all-island grid intensity
-    # (trailing 14-day mean) once at least 7 days exist; anchor
-    # otherwise. The 280 g anchor predates the EirGrid restoration;
-    # live summer intensity runs ~210-220 g.
-    EF = dict(a["ef_g_per_kwh"])
-    co2 = ((feeds.get("eirgrid") or {})
-           .get("co2_intensity_g_per_kwh") or {})
-    cdays = sorted(co2)[-14:]
-    ef_src = "anchor"
-    if len(cdays) >= 7:
-        EF["electricity"] = round(
-            sum(co2[d] for d in cdays) / len(cdays), 1)
-        ef_src = f"live grid intensity, {len(cdays)}-day mean"
-    log(f"hero: electricity EF {EF['electricity']} g/kWh ({ef_src})")
-
     odh = hddf.get("odh26_island") or {}
     odh_days = [d for d in days if d in odh]
     odh_used = False
@@ -2322,10 +2502,12 @@ FEEDS = {
 
 
 def main():
-    global PREVIOUS_FEEDS
+    global PREVIOUS_FEEDS, PREVIOUS_DERIVED
     if DATA_PATH.exists():
         try:
-            PREVIOUS_FEEDS = json.loads(DATA_PATH.read_text()).get("feeds", {})
+            prev_doc = json.loads(DATA_PATH.read_text())
+            PREVIOUS_FEEDS = prev_doc.get("feeds", {})
+            PREVIOUS_DERIVED = prev_doc.get("derived", {})
         except Exception:
             log("warning - previous data.json unreadable, starting clean")
 
@@ -2375,6 +2557,14 @@ def main():
     hg = derive_heat_gap(feeds)
     if hg:
         derived["heat_gap"] = hg
+    derived["history"] = build_history(feeds)
+    gw = sorted(((feeds.get("gni_live") or {}).get("ndm_gwh_daily")
+                 or {}))
+    derived["gas_window"] = {"from": gw[0], "to": gw[-1],
+                             "days": len(gw)} if gw else None
+    log(f"history: {len(derived['history'])} complete weeks"
+        + (f", gas_window {derived['gas_window']['days']}d"
+           if derived["gas_window"] else ""))
     reg = derived.get("roi_space_heat_regression")
     cal = derive_gas_calibration(
         reg, (feeds.get("hdd") or {}).get("hdd_roi") or {})
