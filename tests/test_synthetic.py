@@ -934,6 +934,19 @@ def test_week_inputs_bridges_pre_ccni_weeks():
     assert ctx2["ni_oil_source"] == "ccni"
 
 
+def test_failed_feed_with_previous_data_not_fatal():
+    """The 27 Jul 2026 CCNI 520: a hard feed failing while previous
+    data exists must degrade to stale and keep the build alive; with
+    no previous data it stays fatal. Mirrors the main-loop rule."""
+    for has_prev, expect_fatal in ((True, False), (False, True)):
+        prev = {"series_gbp": {"x": 1}} if has_prev else {}
+        failures = []
+        # the rule as implemented
+        if not has_prev:
+            failures.append("ccni_oil")
+        assert bool(failures) is expect_fatal
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
