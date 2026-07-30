@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.6.1"
+PIPELINE_VERSION = "4.6.2"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -1575,21 +1575,62 @@ def feed_entsog_probe():
         log(f"entsog_probe: point {k}: label={v[0]} tso={v[1]} "
             f"adj={v[2]} dir={v[3]} type={v[4]}")
     out["ie_points"] = sorted(pts)
+
+    # Round 4a: the SNIP (Scotland->NI) is UK->UK, invisible to both
+    # IE filters - label sweep of a large page for NI-relevant points.
+    try:
+        r = http_get("https://transparency.entsog.eu/api/v1/"
+                     "operatorpointdirections?tSOCountry=UK"
+                     "&limit=3000", timeout=120)
+        rows = (r.json() or {}).get("operatorpointdirections", [])
+        WANT = ("twynholm", "ballylumford", "brighouse", "belfast",
+                "larne", "islandmagee", "scotland", "sniP".lower(),
+                "moffat", "south north", "gormanston")
+        hits = {}
+        for row in rows:
+            lbl = (row.get("pointLabel") or "").lower()
+            if any(w in lbl for w in WANT):
+                hits[row.get("pointKey")] = (row.get("pointLabel"),
+                                             row.get("directionKey"),
+                                             row.get("adjacentCountry"),
+                                             row.get("adjacentZones"))
+        log(f"entsog_probe: UK sweep {len(rows)} rows, "
+            f"NI-relevant hits {len(hits)}")
+        for k, v in sorted(hits.items())[:10]:
+            log(f"entsog_probe: NI point {k}: label={v[0]} dir={v[1]} "
+                f"adj={v[2]} zones={v[3]}")
+        out["ni_candidate_points"] = sorted(hits)
+    except Exception as e:
+        log(f"entsog_probe: UK sweep {e.__class__.__name__}: {e}")
+
+    # Round 4b: flow sample - endpoint-name fallback + explicit window
+    # (the plural 'operationaldatas' 404'd on 30 Jul 2026).
     if pts:
-        pk = sorted(pts)[0]
-        try:
-            r2 = http_get("https://transparency.entsog.eu/api/v1/"
-                          "operationaldatas?pointKey=" + pk +
-                          "&indicator=Physical+Flow&periodType=day"
-                          "&limit=5", timeout=90)
-            rows = (r2.json() or {}).get("operationaldatas", []) or \
-                (r2.json() or {}).get("operationalData", [])
-            log(f"entsog_probe: {pk} flow rows {len(rows)}"
-                + (f"; sample period={rows[0].get('periodFrom')} "
-                   f"value={rows[0].get('value')} "
-                   f"unit={rows[0].get('unit')}" if rows else ""))
-        except Exception as e:
-            log(f"entsog_probe: flow sample {e.__class__.__name__}: {e}")
+        pk = "ITP-00090" if "ITP-00090" in pts else sorted(pts)[0]
+        frm = (today_utc() - dt.timedelta(days=6)).isoformat()
+        to = today_utc().isoformat()
+        for ep in ("operationaldata", "operationalData",
+                   "operationaldatas"):
+            try:
+                r2 = http_get(
+                    f"https://transparency.entsog.eu/api/v1/{ep}"
+                    f"?pointKey={pk}&indicator=Physical%20Flow"
+                    f"&periodType=day&from={frm}&to={to}&limit=10",
+                    timeout=90)
+                j2 = r2.json() or {}
+                key = next((k for k in j2
+                            if isinstance(j2[k], list)), None)
+                rows = j2.get(key) or []
+                log(f"entsog_probe: /{ep} {pk} rows {len(rows)}"
+                    + (f"; sample period={rows[0].get('periodFrom')} "
+                       f"value={rows[0].get('value')} "
+                       f"unit={rows[0].get('unit')} "
+                       f"dir={rows[0].get('directionKey')}"
+                       if rows else ""))
+                if rows:
+                    break
+            except Exception as e:
+                log(f"entsog_probe: /{ep} {e.__class__.__name__}")
     out["latest_day"] = today_utc().isoformat()
     return out, "ok"
 
