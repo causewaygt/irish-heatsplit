@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.6.2"
+PIPELINE_VERSION = "4.6.3"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -1584,8 +1584,9 @@ def feed_entsog_probe():
                      "&limit=3000", timeout=120)
         rows = (r.json() or {}).get("operatorpointdirections", [])
         WANT = ("twynholm", "ballylumford", "brighouse", "belfast",
-                "larne", "islandmagee", "scotland", "sniP".lower(),
-                "moffat", "south north", "gormanston")
+                "larne", "islandmagee", "scotland", "snip",
+                "moffat", "south north", "gormanston", "corrib",
+                "inch", "bellanaboy")
         hits = {}
         for row in rows:
             lbl = (row.get("pointLabel") or "").lower()
@@ -1603,34 +1604,51 @@ def feed_entsog_probe():
     except Exception as e:
         log(f"entsog_probe: UK sweep {e.__class__.__name__}: {e}")
 
-    # Round 4b: flow sample - endpoint-name fallback + explicit window
-    # (the plural 'operationaldatas' 404'd on 30 Jul 2026).
-    if pts:
-        pk = "ITP-00090" if "ITP-00090" in pts else sorted(pts)[0]
-        frm = (today_utc() - dt.timedelta(days=6)).isoformat()
-        to = today_utc().isoformat()
-        for ep in ("operationaldata", "operationalData",
-                   "operationaldatas"):
-            try:
-                r2 = http_get(
-                    f"https://transparency.entsog.eu/api/v1/{ep}"
-                    f"?pointKey={pk}&indicator=Physical%20Flow"
-                    f"&periodType=day&from={frm}&to={to}&limit=10",
-                    timeout=90)
-                j2 = r2.json() or {}
-                key = next((k for k in j2
-                            if isinstance(j2[k], list)), None)
-                rows = j2.get(key) or []
-                log(f"entsog_probe: /{ep} {pk} rows {len(rows)}"
-                    + (f"; sample period={rows[0].get('periodFrom')} "
-                       f"value={rows[0].get('value')} "
-                       f"unit={rows[0].get('unit')} "
-                       f"dir={rows[0].get('directionKey')}"
-                       if rows else ""))
-                if rows:
-                    break
-            except Exception as e:
-                log(f"entsog_probe: /{ep} {e.__class__.__name__}")
+    # Round 5 (30 Jul 2026): /operationaldata confirmed (Moffat
+    # 128.8 GWh/d). Collect 7 days of Physical Flow for the island
+    # shortlist and confront the gni_live jurisdiction finding: the
+    # Total-minus-ROI LDM difference is ~35.8 GWh/d - if the NI-bound
+    # physical flows match that magnitude, the MATERIAL verdict gains
+    # an independent witness.
+    SHORT = {"ITP-00495": "Moffat (IE)", "ITP-00496": "Moffat (NI)",
+             "ITP-00090": "Moffat (combined)",
+             "ITP-00222": "South North CSEP",
+             "ITP-00077": "Twynholm (SNIP)",
+             "DIS-00015": "Greater Belfast"}
+    frm = (today_utc() - dt.timedelta(days=8)).isoformat()
+    to = today_utc().isoformat()
+    means = {}
+    for pk, lbl in SHORT.items():
+        try:
+            r2 = http_get(
+                "https://transparency.entsog.eu/api/v1/operationaldata"
+                f"?pointKey={pk}&indicator=Physical%20Flow"
+                f"&periodType=day&from={frm}&to={to}&limit=20",
+                timeout=90)
+            j2 = r2.json() or {}
+            key = next((k for k in j2 if isinstance(j2[k], list)),
+                       None)
+            rows = j2.get(key) or []
+            vals = [float(x["value"]) / 1e6 for x in rows
+                    if x.get("value") is not None]
+            if vals:
+                means[lbl] = sum(vals) / len(vals)
+            log(f"entsog_probe: {lbl} ({pk}): {len(vals)} days, "
+                + (f"mean {means[lbl]:.1f} GWh/d" if vals else "no data"))
+        except Exception as e:
+            log(f"entsog_probe: {lbl} {e.__class__.__name__}")
+    out["flow_means_gwh_d"] = {k: round(v, 2)
+                               for k, v in means.items()}
+    ni_bound = means.get("Moffat (NI)")
+    if ni_bound is not None:
+        log(f"entsog_probe: jurisdiction confrontation - Moffat (NI) "
+            f"mean {ni_bound:.1f} GWh/d vs gni_live Total-ROI LDM "
+            f"difference ~35.8 GWh/d "
+            + ("-> magnitudes MATCH: independent witness for the "
+               "MATERIAL verdict"
+               if abs(ni_bound - 35.8) < 12 else
+               "-> magnitudes differ: scope of the LDM difference "
+               "needs a second look"))
     out["latest_day"] = today_utc().isoformat()
     return out, "ok"
 
