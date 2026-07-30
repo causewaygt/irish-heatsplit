@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.6.3"
+PIPELINE_VERSION = "4.6.4"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -1604,51 +1604,75 @@ def feed_entsog_probe():
     except Exception as e:
         log(f"entsog_probe: UK sweep {e.__class__.__name__}: {e}")
 
-    # Round 5 (30 Jul 2026): /operationaldata confirmed (Moffat
-    # 128.8 GWh/d). Collect 7 days of Physical Flow for the island
-    # shortlist and confront the gni_live jurisdiction finding: the
-    # Total-minus-ROI LDM difference is ~35.8 GWh/d - if the NI-bound
-    # physical flows match that magnitude, the MATERIAL verdict gains
-    # an independent witness.
-    SHORT = {"ITP-00495": "Moffat (IE)", "ITP-00496": "Moffat (NI)",
-             "ITP-00090": "Moffat (combined)",
-             "ITP-00222": "South North CSEP",
-             "ITP-00077": "Twynholm (SNIP)",
-             "DIS-00015": "Greater Belfast"}
-    frm = (today_utc() - dt.timedelta(days=8)).isoformat()
+    # Round 6 (30 Jul 2026): Moffat combined, Twynholm and Greater
+    # Belfast answer with sane values; the island-side mirror points
+    # (Moffat IE/NI, South North) return non-JSON error documents -
+    # their TSOs appear not to publish Physical Flow, so the UK-side
+    # points are the observables. Retain daily series for the points
+    # that answer: this is NI's first observed gas record, banking
+    # from today. Jurisdiction confrontation runs on SNIP flow, the
+    # measurable NI-bound artery (South North, ROI->NI, unmeasured).
+    SHORT = {"ITP-00090": ("moffat_combined", "Moffat (combined)"),
+             "ITP-00077": ("twynholm_snip", "Twynholm (SNIP)"),
+             "DIS-00015": ("greater_belfast", "Greater Belfast"),
+             "ITP-00495": ("moffat_ie", "Moffat (IE)"),
+             "ITP-00496": ("moffat_ni", "Moffat (NI)"),
+             "ITP-00222": ("south_north", "South North CSEP")}
+    frm = (today_utc() - dt.timedelta(days=10)).isoformat()
     to = today_utc().isoformat()
     means = {}
-    for pk, lbl in SHORT.items():
-        try:
-            r2 = http_get(
-                "https://transparency.entsog.eu/api/v1/operationaldata"
-                f"?pointKey={pk}&indicator=Physical%20Flow"
-                f"&periodType=day&from={frm}&to={to}&limit=20",
-                timeout=90)
-            j2 = r2.json() or {}
-            key = next((k for k in j2 if isinstance(j2[k], list)),
-                       None)
-            rows = j2.get(key) or []
-            vals = [float(x["value"]) / 1e6 for x in rows
-                    if x.get("value") is not None]
-            if vals:
-                means[lbl] = sum(vals) / len(vals)
-            log(f"entsog_probe: {lbl} ({pk}): {len(vals)} days, "
-                + (f"mean {means[lbl]:.1f} GWh/d" if vals else "no data"))
-        except Exception as e:
-            log(f"entsog_probe: {lbl} {e.__class__.__name__}")
-    out["flow_means_gwh_d"] = {k: round(v, 2)
-                               for k, v in means.items()}
-    ni_bound = means.get("Moffat (NI)")
-    if ni_bound is not None:
-        log(f"entsog_probe: jurisdiction confrontation - Moffat (NI) "
-            f"mean {ni_bound:.1f} GWh/d vs gni_live Total-ROI LDM "
-            f"difference ~35.8 GWh/d "
+    for pk, (slug, lbl) in SHORT.items():
+        got = {}
+        for dk in ("exit", "entry"):
+            try:
+                r2 = http_get(
+                    "https://transparency.entsog.eu/api/v1/"
+                    "operationaldata"
+                    f"?pointKey={pk}&indicator=Physical%20Flow"
+                    f"&periodType=day&directionKey={dk}"
+                    f"&from={frm}&to={to}&limit=30", timeout=90)
+                ctype = r2.headers.get("content-type", "?")
+                if "json" not in ctype:
+                    log(f"entsog_probe: {lbl} [{dk}] non-JSON "
+                        f"({r2.status_code}, {ctype[:30]})")
+                    continue
+                j2 = r2.json() or {}
+                key = next((k for k in j2
+                            if isinstance(j2[k], list)), None)
+                for x in (j2.get(key) or []):
+                    try:
+                        d = str(x.get("periodFrom", ""))[:10]
+                        v = float(x["value"]) / 1e6
+                        if d:
+                            got[d] = got.get(d, 0.0) + v
+                    except (TypeError, ValueError, KeyError):
+                        continue
+                if got:
+                    break
+            except Exception as e:
+                log(f"entsog_probe: {lbl} [{dk}] "
+                    f"{e.__class__.__name__}")
+        if got:
+            ser = prev_series("entsog_probe", f"{slug}_gwh_daily")
+            ser.update(got)
+            out[f"{slug}_gwh_daily"] = trim_series(ser)
+            means[slug] = sum(got.values()) / len(got)
+            log(f"entsog_probe: {lbl}: {len(got)} days, mean "
+                f"{means[slug]:.1f} GWh/d, series "
+                f"{len(out[f'{slug}_gwh_daily'])}d retained")
+    snip = means.get("twynholm_snip")
+    if snip is not None:
+        sn = means.get("south_north")
+        ni_bound = snip + (sn or 0.0)
+        note = ("SNIP + South North" if sn is not None
+                else "SNIP alone; South North (ROI->NI) unmeasured")
+        log(f"entsog_probe: jurisdiction confrontation - NI-bound "
+            f"{ni_bound:.1f} GWh/d ({note}) vs gni_live Total-ROI "
+            f"LDM difference ~35.8 GWh/d "
             + ("-> magnitudes MATCH: independent witness for the "
                "MATERIAL verdict"
                if abs(ni_bound - 35.8) < 12 else
-               "-> magnitudes differ: scope of the LDM difference "
-               "needs a second look"))
+               "-> gap remains: scope needs a second look"))
     out["latest_day"] = today_utc().isoformat()
     return out, "ok"
 
