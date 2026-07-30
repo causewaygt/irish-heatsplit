@@ -947,6 +947,25 @@ def test_failed_feed_with_previous_data_not_fatal():
         assert bool(failures) is expect_fatal
 
 
+# ----------------------------- live SEM indigenous share (4.6.0)
+
+def test_sem_mix_live_indigenous_share():
+    feeds = _hero_fixture_feeds()
+    base = derive_hero(feeds)
+    assert base["elec_indigenous_source"].startswith("anchor")
+    days = sorted(feeds["hdd"]["hdd_island"])[-14:]
+    feeds["sem_mix"] = {"indigenous_share_daily":
+                        {d: 80.0 for d in days}}
+    live = derive_hero(feeds)
+    assert "live SEM mix" in live["elec_indigenous_source"]
+    # a far-above-anchor share must raise the indigenous share
+    assert live["indigenous_share_pct"] > base["indigenous_share_pct"]
+    # under 7 days: anchor retained
+    feeds["sem_mix"] = {"indigenous_share_daily": {days[-1]: 80.0}}
+    assert derive_hero(feeds)["elec_indigenous_source"]\
+        .startswith("anchor")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
