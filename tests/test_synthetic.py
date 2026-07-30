@@ -949,21 +949,20 @@ def test_failed_feed_with_previous_data_not_fatal():
 
 # ----------------------------- live SEM indigenous share (4.6.0)
 
-def test_sem_mix_live_indigenous_share():
+def test_sem_mix_held_at_anchor_pending_validation():
+    """4.6.1: the live SEM share failed its CI cross-examination
+    (missing solar, unverified import sign) - the hero must hold the
+    anchor even with a full series present, while the feed keeps
+    collecting for the diagnostic."""
     feeds = _hero_fixture_feeds()
     base = derive_hero(feeds)
     assert base["elec_indigenous_source"].startswith("anchor")
     days = sorted(feeds["hdd"]["hdd_island"])[-14:]
     feeds["sem_mix"] = {"indigenous_share_daily":
                         {d: 80.0 for d in days}}
-    live = derive_hero(feeds)
-    assert "live SEM mix" in live["elec_indigenous_source"]
-    # a far-above-anchor share must raise the indigenous share
-    assert live["indigenous_share_pct"] > base["indigenous_share_pct"]
-    # under 7 days: anchor retained
-    feeds["sem_mix"] = {"indigenous_share_daily": {days[-1]: 80.0}}
-    assert derive_hero(feeds)["elec_indigenous_source"]\
-        .startswith("anchor")
+    held = derive_hero(feeds)
+    assert held["elec_indigenous_source"].startswith("anchor")
+    assert held["indigenous_share_pct"] == base["indigenous_share_pct"]
 
 
 if __name__ == "__main__":
