@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.5.0"
+PIPELINE_VERSION = "4.6.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -62,7 +62,7 @@ RETRIES = 3
 
 # Best-effort context feeds - failure marks stale but never pages or
 # fails the run; regressions stay visible via status badges and flags.
-SOFT_FEEDS = {"gb_oil", "entsog_probe", "sem_mix_probe"}
+SOFT_FEEDS = {"gb_oil", "entsog_probe", "sem_mix"}
 
 # Feeds known broken for reasons outside this pipeline - marked stale,
 # logged, but neither paged nor allowed to fail the run.
@@ -1549,55 +1549,95 @@ def feed_entsog_probe():
     interconnection points. Goal: observe Moffat / SNIP physical flows
     as (a) an independent NI gas measurement and (b) a cross-check of
     the gni_live jurisdiction finding (Total LDM 25% above ROI LDM)."""
-    out = {"source": "ENTSOG Transparency Platform (probe)"}
-    r = http_get("https://transparency.entsog.eu/api/v1/"
-                 "interconnections?fromCountryKey=GB"
-                 "&toCountryKey=IE&limit=200", timeout=60)
-    ics = (r.json() or {}).get("interconnections", [])
-    names = sorted({(i.get("pointLabel") or i.get("pointKey") or "?")
-                    for i in ics})[:20]
-    log(f"entsog_probe: GB->IE interconnections {len(ics)}, "
-        f"points: {names}")
-    keys = sorted({i.get("pointKey") for i in ics
-                   if i.get("pointKey")})[:6]
-    out["gb_ie_points"] = keys
-    if keys:
-        r2 = http_get("https://transparency.entsog.eu/api/v1/"
-                      "operationaldatas?pointKey=" + keys[0] +
-                      "&indicator=Physical%20Flow&periodType=day"
-                      "&limit=10", timeout=60)
-        rows = (r2.json() or {}).get("operationalData", [])
-        log(f"entsog_probe: point {keys[0]} physical-flow rows "
-            f"{len(rows)}; sample keys: "
-            f"{sorted(rows[0].keys())[:10] if rows else '-'}")
-        if rows:
-            s = rows[0]
-            log(f"entsog_probe: sample row period={s.get('periodFrom')} "
-                f"value={s.get('value')} unit={s.get('unit')} "
-                f"direction={s.get('directionKey')}")
+    # 27 Jul 2026: country-filtered /interconnections 404'd -
+    # schema-discovery mode: small unfiltered pages, log actual field
+    # names, filter for Ireland client-side.
+    out = {"source": "ENTSOG Transparency Platform (probe, discovery)"}
+    for ep in ("interconnections", "operatorpointdirections"):
+        try:
+            r = http_get(f"https://transparency.entsog.eu/api/v1/"
+                         f"{ep}?limit=3", timeout=60)
+            j = r.json() or {}
+            key = next((k for k in j if isinstance(j[k], list)), None)
+            rows = j.get(key) or []
+            log(f"entsog_probe: /{ep} top-level keys {sorted(j)[:6]}, "
+                f"list '{key}' n={len(rows)}")
+            if rows:
+                log(f"entsog_probe: /{ep} row fields: "
+                    f"{sorted(rows[0].keys())[:18]}")
+                ie = [k for k in rows[0]
+                      if "ountry" in k or "oint" in k][:8]
+                log(f"entsog_probe: /{ep} country/point fields: {ie}")
+        except Exception as e:
+            log(f"entsog_probe: /{ep} {e.__class__.__name__}: {e}")
     out["latest_day"] = today_utc().isoformat()
     return out, "ok"
 
 
-def feed_sem_mix_probe():
-    """Energy-Charts (Fraunhofer ISE) public_power for Ireland - SEM
-    generation mix by fuel. Goal: a live electricity indigenous share
-    (wind/hydro/solar vs gas/coal/imports), retiring the
-    elec_indigenous dagger the way live grid CI retired the emission
-    factor."""
-    out = {"source": "energy-charts.info public_power IE (probe)"}
+def feed_sem_mix():
+    """Energy-Charts (Fraunhofer ISE) public_power for Ireland (SEM,
+    all-island) - adopted 30 Jul 2026 after the probe confirmed 13
+    half-hourly production types. Computes a daily indigenous share of
+    electricity: wind + hydro RoR + peat + Others x other-indigenous
+    anchor, over generation plus imports; gas-fired generation is
+    credited at the gas indigenous anchor for cross-fuel consistency.
+    Pumped storage (both directions) is recycled load - excluded."""
+    out = {"source": ("energy-charts.info public_power IE - "
+                      "SEM all-island, half-hourly")}
+    end = today_utc()
+    start = end - dt.timedelta(days=35)
     r = http_get("https://api.energy-charts.info/public_power"
-                 "?country=ie", timeout=60)
+                 f"?country=ie&start={start.isoformat()}"
+                 f"&end={end.isoformat()}", timeout=90)
     j = r.json() or {}
-    types = [p.get("name") for p in (j.get("production_types") or [])]
-    n = len(j.get("unix_seconds") or [])
-    log(f"sem_mix_probe: production types ({len(types)}): {types}")
-    log(f"sem_mix_probe: {n} timestamps; deprecated flag: "
-        f"{j.get('deprecated')}")
-    out["production_types"] = types
-    out["n_timestamps"] = n
-    out["latest_day"] = today_utc().isoformat()
-    return out, "ok"
+    stamps = j.get("unix_seconds") or []
+    types = {p.get("name"): p.get("data") or []
+             for p in (j.get("production_types") or [])}
+    a_ind = ANCHORS["indigenous"]
+    W_IND = {"Wind onshore": 1.0, "Hydro Run-of-River": 1.0,
+             "Fossil peat": a_ind.get("peat", 1.0),
+             "Others": a_ind.get("other", 0.9),
+             "Fossil gas": a_ind.get("gas", 0.0),
+             "Fossil oil": a_ind.get("oil", 0.0)}
+    GEN = ["Wind onshore", "Hydro Run-of-River", "Fossil peat",
+           "Others", "Fossil gas", "Fossil oil"]
+    days = {}
+    for i, ts in enumerate(stamps):
+        d = dt.datetime.fromtimestamp(ts, dt.timezone.utc)\
+            .date().isoformat()
+        rec = days.setdefault(d, {"ind": 0.0, "gen": 0.0,
+                                  "imp": 0.0, "n": 0})
+        vals = {t: (types.get(t) or [None])[i]
+                if i < len(types.get(t) or []) else None for t in GEN}
+        if any(v is None for v in vals.values()):
+            continue
+        gen = sum(vals.values())
+        ind = sum(v * W_IND[t] for t, v in vals.items())
+        x = (types.get("Cross border electricity trading")
+             or [None])[i] if i < len(
+                 types.get("Cross border electricity trading") or []) \
+            else None
+        imp = max(x, 0.0) if x is not None else 0.0
+        rec["ind"] += ind
+        rec["gen"] += gen
+        rec["imp"] += imp
+        rec["n"] += 1
+    ser = prev_series("sem_mix", "indigenous_share_daily")
+    for d, rec in days.items():
+        if rec["n"] >= 40:   # >=20h of half-hours = a complete-ish day
+            denom = rec["gen"] + rec["imp"]
+            if denom > 0:
+                ser[d] = round(100.0 * rec["ind"] / denom, 2)
+    out["indigenous_share_daily"] = trim_series(ser)
+    ds = sorted(out["indigenous_share_daily"])
+    log(f"sem_mix: {len(days)} days fetched, "
+        f"{len(ds)} complete retained"
+        + (f", latest {ds[-1]} at "
+           f"{out['indigenous_share_daily'][ds[-1]]}%" if ds else ""))
+    if not ds:
+        raise RuntimeError("sem_mix: no complete days")
+    out["latest_day"] = ds[-1]
+    return out, recency_status(out["latest_day"], 4)
 
 
 def feed_gb_oil():
@@ -2329,6 +2369,25 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
     # (trailing 14-day mean) once at least 7 days exist; anchor
     # otherwise. The 280 g anchor predates the EirGrid restoration;
     # live summer intensity runs ~210-220 g.
+    # live electricity indigenous share (SEM all-island): trailing
+    # 14-day mean of the sem_mix daily series once >=7 days exist,
+    # applied to both jurisdictions (one grid, one market); anchors
+    # otherwise. Historic weeks keep anchors - the series is young.
+    ind_src = "anchor (SEAI RES-E / DfE)"
+    if not W:
+        sm = ((feeds.get("sem_mix") or {})
+              .get("indigenous_share_daily") or {})
+        sdays = sorted(sm)[-14:]
+        if len(sdays) >= 7:
+            live_ind = round(
+                sum(sm[d] for d in sdays) / len(sdays) / 100.0, 3)
+            a = {**a,
+                 "roi": {**a["roi"], "elec_indigenous": live_ind},
+                 "ni": {**a["ni"], "elec_indigenous": live_ind}}
+            ind_src = (f"live SEM mix, {len(sdays)}-day mean "
+                       f"({live_ind*100:.1f}%)")
+        log(f"hero: elec indigenous share - {ind_src}")
+
     EF = dict(a["ef_g_per_kwh"])
     if W:
         ef_src = W["ef_source"]
@@ -2441,6 +2500,7 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
         "roi": roi, "ni": ni,
         "ef_electricity_g_per_kwh": EF["electricity"],
         "ef_electricity_source": ef_src,
+        "elec_indigenous_source": ind_src,
         "basis": ("Scaffold estimator (dagger throughout) - annual anchors "
                   "shaped by each jurisdiction's weekly HDD; SEAI 2024, "
                   "DfE/NISRA, Causeway estimates. Oil, the island's "
@@ -2702,7 +2762,7 @@ FEEDS = {
     "ccni_oil": feed_ccni_oil,
     "gb_oil": feed_gb_oil,
     "entsog_probe": feed_entsog_probe,
-    "sem_mix_probe": feed_sem_mix_probe,
+    "sem_mix": feed_sem_mix,
 }
 
 
