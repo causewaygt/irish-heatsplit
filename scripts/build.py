@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.6.0"
+PIPELINE_VERSION = "4.6.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -1549,27 +1549,47 @@ def feed_entsog_probe():
     interconnection points. Goal: observe Moffat / SNIP physical flows
     as (a) an independent NI gas measurement and (b) a cross-check of
     the gni_live jurisdiction finding (Total LDM 25% above ROI LDM)."""
-    # 27 Jul 2026: country-filtered /interconnections 404'd -
-    # schema-discovery mode: small unfiltered pages, log actual field
-    # names, filter for Ireland client-side.
-    out = {"source": "ENTSOG Transparency Platform (probe, discovery)"}
-    for ep in ("interconnections", "operatorpointdirections"):
+    # Round 3 (30 Jul 2026): schema discovered - filter
+    # operatorpointdirections by tSOCountry / adjacentCountry, list
+    # Ireland-facing points, then sample one day of Physical Flow.
+    out = {"source": "ENTSOG Transparency Platform (probe, round 3)"}
+    pts = {}
+    for q in ("tSOCountry=IE", "adjacentCountry=IE"):
         try:
-            r = http_get(f"https://transparency.entsog.eu/api/v1/"
-                         f"{ep}?limit=3", timeout=60)
-            j = r.json() or {}
-            key = next((k for k in j if isinstance(j[k], list)), None)
-            rows = j.get(key) or []
-            log(f"entsog_probe: /{ep} top-level keys {sorted(j)[:6]}, "
-                f"list '{key}' n={len(rows)}")
-            if rows:
-                log(f"entsog_probe: /{ep} row fields: "
-                    f"{sorted(rows[0].keys())[:18]}")
-                ie = [k for k in rows[0]
-                      if "ountry" in k or "oint" in k][:8]
-                log(f"entsog_probe: /{ep} country/point fields: {ie}")
+            r = http_get("https://transparency.entsog.eu/api/v1/"
+                         f"operatorpointdirections?{q}&limit=300",
+                         timeout=90)
+            rows = (r.json() or {}).get("operatorpointdirections", [])
+            for row in rows:
+                k = row.get("pointKey")
+                if k:
+                    pts[k] = (row.get("pointLabel"),
+                              row.get("tSOCountry"),
+                              row.get("adjacentCountry"),
+                              row.get("directionKey"),
+                              row.get("crossBorderPointType"))
+            log(f"entsog_probe: {q} -> {len(rows)} rows")
         except Exception as e:
-            log(f"entsog_probe: /{ep} {e.__class__.__name__}: {e}")
+            log(f"entsog_probe: {q} {e.__class__.__name__}: {e}")
+    for k, v in sorted(pts.items())[:12]:
+        log(f"entsog_probe: point {k}: label={v[0]} tso={v[1]} "
+            f"adj={v[2]} dir={v[3]} type={v[4]}")
+    out["ie_points"] = sorted(pts)
+    if pts:
+        pk = sorted(pts)[0]
+        try:
+            r2 = http_get("https://transparency.entsog.eu/api/v1/"
+                          "operationaldatas?pointKey=" + pk +
+                          "&indicator=Physical+Flow&periodType=day"
+                          "&limit=5", timeout=90)
+            rows = (r2.json() or {}).get("operationaldatas", []) or \
+                (r2.json() or {}).get("operationalData", [])
+            log(f"entsog_probe: {pk} flow rows {len(rows)}"
+                + (f"; sample period={rows[0].get('periodFrom')} "
+                   f"value={rows[0].get('value')} "
+                   f"unit={rows[0].get('unit')}" if rows else ""))
+        except Exception as e:
+            log(f"entsog_probe: flow sample {e.__class__.__name__}: {e}")
     out["latest_day"] = today_utc().isoformat()
     return out, "ok"
 
@@ -2369,23 +2389,36 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
     # (trailing 14-day mean) once at least 7 days exist; anchor
     # otherwise. The 280 g anchor predates the EirGrid restoration;
     # live summer intensity runs ~210-220 g.
-    # live electricity indigenous share (SEM all-island): trailing
-    # 14-day mean of the sem_mix daily series once >=7 days exist,
-    # applied to both jurisdictions (one grid, one market); anchors
-    # otherwise. Historic weeks keep anchors - the series is young.
+    # Electricity indigenous share: HELD AT ANCHOR. The sem_mix live
+    # share failed its cross-examination on first adoption (30 Jul
+    # 2026): 14-day mean 31.2% against anchors of 41.3/46% during a
+    # fortnight whose live grid intensity (~179 g/kWh) implies ~half
+    # of generation zero-carbon. Two identified biases: the IE feed
+    # has no Solar category, and the cross-border sign convention is
+    # unverified (exports may be inflating the denominator). The feed
+    # keeps collecting; the diagnostic below logs the divergence each
+    # run; the anchor is not replaced until the live share reconciles
+    # with the CI evidence.
     ind_src = "anchor (SEAI RES-E / DfE)"
     if not W:
         sm = ((feeds.get("sem_mix") or {})
               .get("indigenous_share_daily") or {})
         sdays = sorted(sm)[-14:]
         if len(sdays) >= 7:
-            live_ind = round(
-                sum(sm[d] for d in sdays) / len(sdays) / 100.0, 3)
-            a = {**a,
-                 "roi": {**a["roi"], "elec_indigenous": live_ind},
-                 "ni": {**a["ni"], "elec_indigenous": live_ind}}
-            ind_src = (f"live SEM mix, {len(sdays)}-day mean "
-                       f"({live_ind*100:.1f}%)")
+            live_ind = sum(sm[d] for d in sdays) / len(sdays)
+            co2d = ((feeds.get("eirgrid") or {})
+                    .get("co2_intensity_g_per_kwh") or {})
+            cdd = sorted(co2d)[-14:]
+            ci_note = ""
+            if len(cdd) >= 7:
+                ci = sum(co2d[d] for d in cdd) / len(cdd)
+                # CI-implied zero-carbon share against a ~420 g/kWh
+                # dagger fossil-fleet average - coarse, diagnostic only
+                zc = max(0.0, min(1.0, 1.0 - ci / 420.0)) * 100.0
+                ci_note = f"; CI-implied zero-carbon ~{zc:.0f}%"
+            log(f"sem_mix diagnostic: 14d live share {live_ind:.1f}% "
+                f"vs anchors ROI 41.3 / NI 46{ci_note} - held at "
+                f"anchor pending solar/sign validation")
         log(f"hero: elec indigenous share - {ind_src}")
 
     EF = dict(a["ef_g_per_kwh"])
