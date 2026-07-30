@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.4.1"
+PIPELINE_VERSION = "4.5.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -62,7 +62,7 @@ RETRIES = 3
 
 # Best-effort context feeds - failure marks stale but never pages or
 # fails the run; regressions stay visible via status badges and flags.
-SOFT_FEEDS = {"gb_oil"}
+SOFT_FEEDS = {"gb_oil", "entsog_probe", "sem_mix_probe"}
 
 # Feeds known broken for reasons outside this pipeline - marked stale,
 # logged, but neither paged nor allowed to fail the run.
@@ -1537,6 +1537,69 @@ def feed_ccni_oil():
     return out, recency_status(out["latest_day"], 7)
 
 
+
+# ---------------------------------------------------------------- probes
+# Structured probes (soft): fetch and log response shape only, so a run
+# log establishes what each source actually serves before anything
+# depends on it - the pattern that adopted the EirGrid CO2 series.
+# Candidates from Paul Deane's source list, 27 Jul 2026.
+
+def feed_entsog_probe():
+    """ENTSOG Transparency Platform - GB<->IE / GB<->GB(NI)
+    interconnection points. Goal: observe Moffat / SNIP physical flows
+    as (a) an independent NI gas measurement and (b) a cross-check of
+    the gni_live jurisdiction finding (Total LDM 25% above ROI LDM)."""
+    out = {"source": "ENTSOG Transparency Platform (probe)"}
+    r = http_get("https://transparency.entsog.eu/api/v1/"
+                 "interconnections?fromCountryKey=GB"
+                 "&toCountryKey=IE&limit=200", timeout=60)
+    ics = (r.json() or {}).get("interconnections", [])
+    names = sorted({(i.get("pointLabel") or i.get("pointKey") or "?")
+                    for i in ics})[:20]
+    log(f"entsog_probe: GB->IE interconnections {len(ics)}, "
+        f"points: {names}")
+    keys = sorted({i.get("pointKey") for i in ics
+                   if i.get("pointKey")})[:6]
+    out["gb_ie_points"] = keys
+    if keys:
+        r2 = http_get("https://transparency.entsog.eu/api/v1/"
+                      "operationaldatas?pointKey=" + keys[0] +
+                      "&indicator=Physical%20Flow&periodType=day"
+                      "&limit=10", timeout=60)
+        rows = (r2.json() or {}).get("operationalData", [])
+        log(f"entsog_probe: point {keys[0]} physical-flow rows "
+            f"{len(rows)}; sample keys: "
+            f"{sorted(rows[0].keys())[:10] if rows else '-'}")
+        if rows:
+            s = rows[0]
+            log(f"entsog_probe: sample row period={s.get('periodFrom')} "
+                f"value={s.get('value')} unit={s.get('unit')} "
+                f"direction={s.get('directionKey')}")
+    out["latest_day"] = today_utc().isoformat()
+    return out, "ok"
+
+
+def feed_sem_mix_probe():
+    """Energy-Charts (Fraunhofer ISE) public_power for Ireland - SEM
+    generation mix by fuel. Goal: a live electricity indigenous share
+    (wind/hydro/solar vs gas/coal/imports), retiring the
+    elec_indigenous dagger the way live grid CI retired the emission
+    factor."""
+    out = {"source": "energy-charts.info public_power IE (probe)"}
+    r = http_get("https://api.energy-charts.info/public_power"
+                 "?country=ie", timeout=60)
+    j = r.json() or {}
+    types = [p.get("name") for p in (j.get("production_types") or [])]
+    n = len(j.get("unix_seconds") or [])
+    log(f"sem_mix_probe: production types ({len(types)}): {types}")
+    log(f"sem_mix_probe: {n} timestamps; deprecated flag: "
+        f"{j.get('deprecated')}")
+    out["production_types"] = types
+    out["n_timestamps"] = n
+    out["latest_day"] = today_utc().isoformat()
+    return out, "ok"
+
+
 def feed_gb_oil():
     """
     GB heating-oil context line, two strategies (SOFT feed):
@@ -2638,6 +2701,8 @@ FEEDS = {
     "gni_live": feed_gni_live,
     "ccni_oil": feed_ccni_oil,
     "gb_oil": feed_gb_oil,
+    "entsog_probe": feed_entsog_probe,
+    "sem_mix_probe": feed_sem_mix_probe,
 }
 
 
