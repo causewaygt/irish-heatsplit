@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.2.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.3.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -13,6 +13,9 @@
 <meta property="og:description" content="Live tracker: the island's heat bill, the oil price at the border, the tax in the litre, and the geothermal alternative. Most of Ireland's heat has no meter – this site makes it visible.">
 <meta property="og:url" content="https://causewaygt.github.io/irish-heatsplit/">
 <meta property="og:image" content="https://causewaygt.github.io/irish-heatsplit/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta property="og:image:alt" content="Irish Heat Split – live weekly heat tracker for the island of Ireland, by Causeway Energies">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Irish Heat Split – how the island of Ireland heats itself, weekly">
 <meta name="twitter:description" content="Same fuel, two price regimes, one island. A live, self-updating public tracker by Causeway Energies.">
@@ -824,7 +827,15 @@ function heroCards(h, HIST){
       indig:es.reduce((a,e)=>a+G(e).indigenous_pct*G(e).purchased_gwh,0)/wsum,
       wf_purchased:sum('wf_purchased_gwh'), wf_bill_e:sum('wf_bill_eur_m'),
       wf_bill_g:sum('wf_bill_gbp_m'), wf_kt:sum('wf_emissions_kt'),
-      wf_indig:es.reduce((a,e)=>a+G(e).wf_indigenous_pct*G(e).purchased_gwh,0)/wsum};
+      wf_indig:es.reduce((a,e)=>a+G(e).wf_indigenous_pct*G(e).purchased_gwh,0)/wsum,
+      split:es.every(e=>G(e).heat_gwh!=null)?{
+        heat:sum('heat_gwh'), cold:sum('cold_gwh'),
+        bh:sum('bill_heat_eur_m'), bc:sum('bill_cold_eur_m'),
+        eh:sum('emissions_heat_kt'), ec:sum('emissions_cold_kt'),
+        wfh:sum('wf_heat_gwh'), wfc:sum('wf_cold_gwh'),
+        wfbh:sum('wf_bill_heat_eur_m'), wfbc:sum('wf_bill_cold_eur_m'),
+        wfeh:sum('wf_emissions_heat_kt'), wfec:sum('wf_emissions_cold_kt')
+      }:null};
   }
   function eScale(g){return g>=1000?fmt(g/1000,1)+' TWh':fmt(g,0)+' GWh';}
   function mScale(m,s){return m>=1000?s+fmt(m/1000,1)+'bn':s+fmt(m,0)+'m';}
@@ -859,15 +870,19 @@ function heroCards(h, HIST){
       const es=wv.entries;
       const cap=(wv.n<sumN?' ('+wv.n+' live wks)':'');
       const lbl='over the last '+WLBL[WIN]+cap;
+      const S=wv.split;
       const cards2=[
         [eScale(wv.purchased),
-         'heating &amp; cooling energy purchased '+lbl],
+         'heating &amp; cooling energy purchased '+lbl+
+         (S?' \u2013 heat '+eScale(S.heat)+' \u00b7 cold economy '+eScale(S.cold):'')],
         [fmt(wv.indig,0)+'%',
          'indigenous share of heat &amp; cooling \u2013 energy-weighted avg '+lbl],
         [mScale(wv.bill_e,'\u20ac')+' \u2002|\u2002 '+mScale(wv.bill_g,'\u00a3'),
-         'the island\u2019s heat &amp; cooling bill '+lbl],
+         'the island\u2019s heat &amp; cooling bill '+lbl+
+         (S?' (heat '+mScale(S.bh,'\u20ac')+' \u00b7 cold economy '+mScale(S.bc,'\u20ac')+')':'')],
         [ktScale(wv.kt),
-         'heating &amp; cooling emissions '+lbl+' (CO\u2082e)'],
+         'heating &amp; cooling emissions '+lbl+' (CO\u2082e'+
+         (S?' \u2013 heat '+ktScale(S.eh)+' \u00b7 cold economy '+ktScale(S.ec):'')+')'],
       ];
       const TK2=[['purchased_gwh','down'],['indigenous_pct','up'],
         ['bill_eur_m','down'],['emissions_kt','down']];
@@ -879,10 +894,14 @@ function heroCards(h, HIST){
       drawTrends(HIST, WIN, state);
       if(el('whatif') && !el('whatif').hidden){
         el('whatifRow').innerHTML=[
-          [eScale(wv.wf_purchased),'purchased \u2013 the ground heats free and cools for a fraction\u2020'],
+          [eScale(wv.wf_purchased),'purchased \u2013 the ground heats free and cools for a fraction\u2020'+
+           (S?' (heat '+eScale(S.wfh)+' \u00b7 cold economy '+eScale(S.wfc)+')':'')],
           [fmt(wv.wf_indig,0)+' %','indigenous share'],
-          [mScale(wv.wf_bill_e,'\u20ac')+' \u2002|\u2002 '+mScale(wv.wf_bill_g,'\u00a3'),'the bill'],
-          [ktScale(wv.wf_kt),'CO\u2082e (saves '+ktScale(wv.kt-wv.wf_kt)+')'],
+          [mScale(wv.wf_bill_e,'\u20ac')+' \u2002|\u2002 '+mScale(wv.wf_bill_g,'\u00a3'),
+           'the bill'+(S?' (heat '+mScale(S.wfbh,'\u20ac')+' \u00b7 cold '+mScale(S.wfbc,'\u20ac')+
+           ' \u00b7 saves '+mScale(wv.bill_e-wv.wf_bill_e,'\u20ac')+' '+lbl+')':'')],
+          [ktScale(wv.wf_kt),'CO\u2082e (saves '+ktScale(wv.kt-wv.wf_kt)+
+           (S?' \u2013 heat '+ktScale(S.wfeh)+' \u00b7 cold '+ktScale(S.wfec):'')+')'],
         ].map(r=>'<div class="wcell"><div class="val">'+r[0]+'</div>'+
           '<div class="lab">'+r[1]+'</div></div>').join('');
       }
@@ -1397,7 +1416,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.2.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.3.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
