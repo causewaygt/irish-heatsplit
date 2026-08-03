@@ -781,7 +781,8 @@ def test_build_history_freezes_all_but_two():
     feeds = _history_fixture_feeds()
     B.PREVIOUS_DERIVED = {}
     h1 = build_history(feeds)
-    B.PREVIOUS_DERIVED = {"history": h1}
+    B.PREVIOUS_DERIVED = {"history": h1,
+                          "history_schema": B.HISTORY_SCHEMA}
     # perturb an input that would change every recomputed week
     for d in feeds["ccni_oil"]["series_gbp"]["daily"]["900l"]:
         feeds["ccni_oil"]["series_gbp"]["daily"]["900l"][d] = 900.0
@@ -963,6 +964,81 @@ def test_sem_mix_held_at_anchor_pending_validation():
     held = derive_hero(feeds)
     assert held["elec_indigenous_source"].startswith("anchor")
     assert held["indigenous_share_pct"] == base["indigenous_share_pct"]
+
+
+# ------------------------- heat/cold splits + restatement (schema 2)
+
+def test_splits_reconcile_per_series_per_currency():
+    import build as B
+    B.PREVIOUS_DERIVED = {}
+    feeds = _history_fixture_feeds()
+    hist = build_history(feeds)
+    assert hist
+    for e in hist:
+        for pre in ("", "wf_"):
+            tot = e[pre + "purchased_gwh"]
+            assert abs(e[pre + "heat_gwh"] + e[pre + "cold_gwh"]
+                       - tot) <= 0.25, (e["week_ending"], pre)
+            for cur in ("eur", "gbp"):
+                bt = e[pre + "bill_" + cur + "_m"]
+                assert abs(e[pre + "bill_heat_" + cur + "_m"]
+                           + e[pre + "bill_cold_" + cur + "_m"]
+                           - bt) <= 0.25, (e["week_ending"], pre, cur)
+            kt = e[pre + "emissions_kt"]
+            assert abs(e[pre + "emissions_heat_kt"]
+                       + e[pre + "emissions_cold_kt"]
+                       - kt) <= 0.25, (e["week_ending"], pre)
+        assert e["wf_cold_gwh"] < e["cold_gwh"]
+        assert "fx_eur_gbp" in e
+
+
+def test_seed_strip_restate_regains_identical_fields():
+    """The handover's core test: strip the schema-2 fields and the
+    schema key from a built history, rerun, and every week must regain
+    them with values identical to the fresh baseline - stored inputs
+    reused, nothing historical altered."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    NEWK = [k for k in h1[0]
+            if "heat_" in k or "cold_" in k or k == "fx_eur_gbp"]
+    legacy = [{k: v for k, v in e.items() if k not in NEWK}
+              for e in h1]
+    B.PREVIOUS_DERIVED = {"history": legacy}   # schema implicit 1
+    h2 = build_history(feeds)
+    assert [e["week_ending"] for e in h2] == \
+        [e["week_ending"] for e in h1]
+    for e1, e2 in zip(h1[:-2], h2[:-2]):
+        for k in NEWK:
+            assert e2.get(k) == e1[k], ("restated field differs",
+                                        e1["week_ending"], k)
+        for k in ("purchased_gwh", "bill_eur_m", "emissions_kt",
+                  "indigenous_pct"):
+            assert e2[k] == e1[k], ("stored field moved", k)
+
+
+def test_restatement_reuses_stored_ef():
+    """A week whose grid CI has rolled out of retention must be
+    restated with its STORED ef_electricity, not a recomputed one."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    NEWK = [k for k in h1[0]
+            if "heat_" in k or "cold_" in k or k == "fx_eur_gbp"]
+    legacy = [{k: v for k, v in e.items() if k not in NEWK}
+              for e in h1]
+    # sentinel factor on an old (frozen, CI-less) week
+    tgt = legacy[0]
+    assert tgt.get("ef_source") == "anchor"
+    tgt["ef_electricity"] = 250.0
+    B.PREVIOUS_DERIVED = {"history": legacy}
+    h2 = build_history(feeds)
+    e2 = h2[0]
+    assert e2["ef_electricity"] == 250.0
+    assert abs(e2["emissions_cold_kt"]
+               - e2["cold_gwh"] * 0.25) <= 0.15
 
 
 if __name__ == "__main__":
