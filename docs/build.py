@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.6.2"
+PIPELINE_VERSION = "4.7.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -56,6 +56,15 @@ SERIES_KEEP_DAYS = 1150
 # effective 1 Oct 2025; Electric Ireland electricity frozen through
 # the winter, gas -4% from Sep 2025).
 HISTORY_START = "2025-10-01"
+# History schema (splits handover, 1 Aug 2026). Bump triggers a
+# one-time restatement: stored weeks recompute through derive_hero
+# with their STORED per-entry inputs (ef_electricity injected, oil
+# and fx from the retained series) - existing fields must re-round
+# identically, only new fields appear. Unlike the UK, the Irish
+# recompute window is the price feeds at 1,150-day retention, so all
+# weeks are restatable and stranding risk is ~nil - measured, not
+# assumed, by the drift check below.
+HISTORY_SCHEMA = 2
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
@@ -1584,8 +1593,9 @@ def feed_entsog_probe():
                      "&limit=3000", timeout=120)
         rows = (r.json() or {}).get("operatorpointdirections", [])
         WANT = ("twynholm", "ballylumford", "brighouse", "belfast",
-                "larne", "islandmagee", "scotland", "sniP".lower(),
-                "moffat", "south north", "gormanston")
+                "larne", "islandmagee", "scotland", "snip",
+                "moffat", "south north", "gormanston", "corrib",
+                "inch", "bellanaboy")
         hits = {}
         for row in rows:
             lbl = (row.get("pointLabel") or "").lower()
@@ -1603,34 +1613,75 @@ def feed_entsog_probe():
     except Exception as e:
         log(f"entsog_probe: UK sweep {e.__class__.__name__}: {e}")
 
-    # Round 4b: flow sample - endpoint-name fallback + explicit window
-    # (the plural 'operationaldatas' 404'd on 30 Jul 2026).
-    if pts:
-        pk = "ITP-00090" if "ITP-00090" in pts else sorted(pts)[0]
-        frm = (today_utc() - dt.timedelta(days=6)).isoformat()
-        to = today_utc().isoformat()
-        for ep in ("operationaldata", "operationalData",
-                   "operationaldatas"):
+    # Round 6 (30 Jul 2026): Moffat combined, Twynholm and Greater
+    # Belfast answer with sane values; the island-side mirror points
+    # (Moffat IE/NI, South North) return non-JSON error documents -
+    # their TSOs appear not to publish Physical Flow, so the UK-side
+    # points are the observables. Retain daily series for the points
+    # that answer: this is NI's first observed gas record, banking
+    # from today. Jurisdiction confrontation runs on SNIP flow, the
+    # measurable NI-bound artery (South North, ROI->NI, unmeasured).
+    SHORT = {"ITP-00090": ("moffat_combined", "Moffat (combined)"),
+             "ITP-00077": ("twynholm_snip", "Twynholm (SNIP)"),
+             "DIS-00015": ("greater_belfast", "Greater Belfast"),
+             "ITP-00495": ("moffat_ie", "Moffat (IE)"),
+             "ITP-00496": ("moffat_ni", "Moffat (NI)"),
+             "ITP-00222": ("south_north", "South North CSEP")}
+    frm = (today_utc() - dt.timedelta(days=10)).isoformat()
+    to = today_utc().isoformat()
+    means = {}
+    for pk, (slug, lbl) in SHORT.items():
+        got = {}
+        for dk in ("exit", "entry"):
             try:
                 r2 = http_get(
-                    f"https://transparency.entsog.eu/api/v1/{ep}"
+                    "https://transparency.entsog.eu/api/v1/"
+                    "operationaldata"
                     f"?pointKey={pk}&indicator=Physical%20Flow"
-                    f"&periodType=day&from={frm}&to={to}&limit=10",
-                    timeout=90)
+                    f"&periodType=day&directionKey={dk}"
+                    f"&from={frm}&to={to}&limit=30", timeout=90)
+                ctype = r2.headers.get("content-type", "?")
+                if "json" not in ctype:
+                    log(f"entsog_probe: {lbl} [{dk}] non-JSON "
+                        f"({r2.status_code}, {ctype[:30]})")
+                    continue
                 j2 = r2.json() or {}
                 key = next((k for k in j2
                             if isinstance(j2[k], list)), None)
-                rows = j2.get(key) or []
-                log(f"entsog_probe: /{ep} {pk} rows {len(rows)}"
-                    + (f"; sample period={rows[0].get('periodFrom')} "
-                       f"value={rows[0].get('value')} "
-                       f"unit={rows[0].get('unit')} "
-                       f"dir={rows[0].get('directionKey')}"
-                       if rows else ""))
-                if rows:
+                for x in (j2.get(key) or []):
+                    try:
+                        d = str(x.get("periodFrom", ""))[:10]
+                        v = float(x["value"]) / 1e6
+                        if d:
+                            got[d] = got.get(d, 0.0) + v
+                    except (TypeError, ValueError, KeyError):
+                        continue
+                if got:
                     break
             except Exception as e:
-                log(f"entsog_probe: /{ep} {e.__class__.__name__}")
+                log(f"entsog_probe: {lbl} [{dk}] "
+                    f"{e.__class__.__name__}")
+        if got:
+            ser = prev_series("entsog_probe", f"{slug}_gwh_daily")
+            ser.update(got)
+            out[f"{slug}_gwh_daily"] = trim_series(ser)
+            means[slug] = sum(got.values()) / len(got)
+            log(f"entsog_probe: {lbl}: {len(got)} days, mean "
+                f"{means[slug]:.1f} GWh/d, series "
+                f"{len(out[f'{slug}_gwh_daily'])}d retained")
+    snip = means.get("twynholm_snip")
+    if snip is not None:
+        sn = means.get("south_north")
+        ni_bound = snip + (sn or 0.0)
+        note = ("SNIP + South North" if sn is not None
+                else "SNIP alone; South North (ROI->NI) unmeasured")
+        log(f"entsog_probe: jurisdiction confrontation - NI-bound "
+            f"{ni_bound:.1f} GWh/d ({note}) vs gni_live Total-ROI "
+            f"LDM difference ~35.8 GWh/d "
+            + ("-> magnitudes MATCH: independent witness for the "
+               "MATERIAL verdict"
+               if abs(ni_bound - 35.8) < 12 else
+               "-> gap remains: scope needs a second look"))
     out["latest_day"] = today_utc().isoformat()
     return out, "ok"
 
@@ -2100,6 +2151,8 @@ def build_history(feeds, anchors=None):
         }
 
     prev = list((PREVIOUS_DERIVED or {}).get("history") or [])
+    prev_schema = int((PREVIOUS_DERIVED or {})
+                      .get("history_schema") or 1)
     frozen = {e["week_ending"]: e for e in prev[:-2]} if len(prev) > 2 \
         else {}
     hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
@@ -2112,26 +2165,59 @@ def build_history(feeds, anchors=None):
         w_end = (last_sun - dt.timedelta(weeks=k)).isoformat()
         if w_end in frozen:
             e = frozen[w_end]
-            if "ni" not in e or "roi" not in e:
-                # schema migration (4.2.0): attach jurisdiction blocks
-                # by recomputation; stored island values stay frozen.
-                # Self-verifying: recompute drift beyond rounding is
-                # logged, never silently absorbed.
+            needs = (prev_schema < HISTORY_SCHEMA or "ni" not in e
+                     or "roi" not in e)
+            if needs:
+                # Restatement (schema policy, 1 Aug 2026 handover):
+                # recompute through derive_hero with the entry's
+                # STORED inputs - ef_electricity injected so weeks
+                # whose grid CI has rolled out of retention keep the
+                # factor they were built with; oil, fx and tariffs
+                # come from the retained series and the resolver.
+                # Existing fields must re-round identically (audited
+                # below); only new fields appear. Sub-block splits:
+                # DEFERRED - combined-level is the like-for-like
+                # scope; extend when a panel displays them.
                 ctx = week_inputs(feeds, w_end)
                 if ctx is not None:
+                    if e.get("ef_electricity"):
+                        ctx = {**ctx,
+                               "ef_electricity": e["ef_electricity"],
+                               "ef_source": e.get("ef_source",
+                                                  ctx["ef_source"])}
                     h2 = derive_hero(feeds, anchors,
                                      week_ctx={"week_ending": w_end,
                                                **ctx})
                     if h2 is not None:
-                        drift = abs(h2["combined"]["purchased_gwh"]
-                                    - e["purchased_gwh"])
+                        drift = max(
+                            abs(h2["combined"]["purchased_gwh"]
+                                - e["purchased_gwh"]),
+                            abs(h2["combined"]["bill_eur_m"]
+                                - e["bill_eur_m"]),
+                            abs(h2["combined"]["emissions_kt_co2"]
+                                - e["emissions_kt"]))
                         if drift > 0.5:
-                            log(f"history: migration drift {w_end} "
-                                f"{drift:.1f} GWh - island values "
-                                f"kept frozen, review")
+                            log(f"history: restatement drift {w_end} "
+                                f"{drift:.1f} - stored values kept "
+                                f"frozen, review")
                         e = dict(e)
-                        e["ni"] = jur_sub(h2["ni"])
-                        e["roi"] = jur_sub(h2["roi"])
+                        C2, W2 = h2["combined"], h2["what_if_combined"]
+                        for k in ("heat_gwh", "cold_gwh",
+                                  "bill_heat_eur_m", "bill_cold_eur_m",
+                                  "bill_heat_gbp_m", "bill_cold_gbp_m",
+                                  "emissions_heat_kt",
+                                  "emissions_cold_kt"):
+                            e[k] = C2[k]
+                            e["wf_" + k] = W2[k]
+                        e.setdefault("fx_eur_gbp", ctx["fx"])
+                        e.setdefault("ni", jur_sub(h2["ni"]))
+                        e.setdefault("roi", jur_sub(h2["roi"]))
+                    else:
+                        log(f"history: {w_end} unrecomputable - "
+                            f"kept at prior schema (caption degrades)")
+                else:
+                    log(f"history: {w_end} outside recompute window - "
+                        f"kept at prior schema (caption degrades)")
             out.append(e)
             continue
         ctx = week_inputs(feeds, w_end)
@@ -2141,6 +2227,7 @@ def build_history(feeds, anchors=None):
                                                   **ctx})
         if h is None:
             continue
+        C, WFC = h["combined"], h["what_if_combined"]
         out.append({
             "week_ending": w_end,
             "purchased_gwh": h["combined"]["purchased_gwh"],
@@ -2159,6 +2246,22 @@ def build_history(feeds, anchors=None):
             "hdd": h["hdd_week"],
             "ef_electricity": ctx["ef_electricity"] or None,
             "ef_source": ctx["ef_source"],
+            "heat_gwh": C["heat_gwh"], "cold_gwh": C["cold_gwh"],
+            "bill_heat_eur_m": C["bill_heat_eur_m"],
+            "bill_cold_eur_m": C["bill_cold_eur_m"],
+            "bill_heat_gbp_m": C["bill_heat_gbp_m"],
+            "bill_cold_gbp_m": C["bill_cold_gbp_m"],
+            "emissions_heat_kt": C["emissions_heat_kt"],
+            "emissions_cold_kt": C["emissions_cold_kt"],
+            "wf_heat_gwh": WFC["heat_gwh"],
+            "wf_cold_gwh": WFC["cold_gwh"],
+            "wf_bill_heat_eur_m": WFC["bill_heat_eur_m"],
+            "wf_bill_cold_eur_m": WFC["bill_cold_eur_m"],
+            "wf_bill_heat_gbp_m": WFC["bill_heat_gbp_m"],
+            "wf_bill_cold_gbp_m": WFC["bill_cold_gbp_m"],
+            "wf_emissions_heat_kt": WFC["emissions_heat_kt"],
+            "wf_emissions_cold_kt": WFC["emissions_cold_kt"],
+            "fx_eur_gbp": ctx["fx"],
             "ni_oil_source": ctx["ni_oil_source"],
             "ni": jur_sub(h["ni"]),
             "roi": jur_sub(h["roi"]),
@@ -2350,6 +2453,19 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                                  else bill_t)
                                 + cooling["bill_gbp_m"], 1),
             "emissions_kt_co2": round(kt_t + cool_kt, 1),
+            # heat/cold splits (schema 2): cold = the cold-economy
+            # electricity; heat = the fuel side. Pairs reconcile per
+            # currency within rounding.
+            "heat_gwh": round(inp_t, 1),
+            "cold_gwh": round(cool_week, 1),
+            "bill_heat_eur_m": round(bill_t if cur == "eur"
+                                     else bill_t / fx, 1),
+            "bill_cold_eur_m": cooling["bill_eur_m"],
+            "bill_heat_gbp_m": round(bill_t * fx if cur == "eur"
+                                     else bill_t, 1),
+            "bill_cold_gbp_m": cooling["bill_gbp_m"],
+            "emissions_heat_kt": round(kt_t, 1),
+            "emissions_cold_kt": round(cool_kt, 1),
             # delivered basis: purchased electricity carries the grid
             # share; the balance of the cooling service is ambient
             # rejection, indigenous by convention
@@ -2397,6 +2513,20 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                 + cool_wf_elec * j["elec_indigenous"]
                 + (cool_served - cool_wf_elec))
                 / max(useful_t + cool_served, 1e-9), 1),
+            # what-if splits: cold at (1 - R x ground_cooling_saving)
+            # - deliberately NOT the UK's COP-20 arithmetic, per the
+            # what-if parameters addendum to the cross-calibration
+            "heat_gwh": round(wf["heat_purchased_gwh"], 1),
+            "cold_gwh": round(cool_wf_elec, 1),
+            "bill_heat_eur_m": round(wf["bill_eur_m"], 1),
+            "bill_cold_eur_m": round(wf_cool_bill if cur == "eur"
+                                     else wf_cool_bill / fx, 1),
+            "bill_heat_gbp_m": round(wf["bill_gbp_m"], 1),
+            "bill_cold_gbp_m": round(wf_cool_bill * fx if cur == "eur"
+                                     else wf_cool_bill, 1),
+            "emissions_heat_kt": round(wf["emissions_kt_co2"], 1),
+            "emissions_cold_kt": round(
+                cool_wf_elec * EF["electricity"] / 1000.0, 1),
         }
         return {
             "heat_purchased_gwh": round(inp_t, 1),
@@ -2518,7 +2648,8 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
             or y["cooling"]["comfort_shaped_by_odh"])
         combined = addd("combined", ("purchased_gwh", "served_gwh",
                                      "bill_eur_m", "bill_gbp_m",
-                                     "emissions_kt_co2"))
+                                     "emissions_kt_co2",
+                                     "heat_gwh", "cold_gwh", "bill_heat_eur_m", "bill_cold_eur_m", "bill_heat_gbp_m", "bill_cold_gbp_m", "emissions_heat_kt", "emissions_cold_kt"))
         served = x["combined"]["served_gwh"] + y["combined"]["served_gwh"]
         combined["indigenous_share_pct"] = round(
             (x["combined"]["indigenous_share_pct"]
@@ -2526,7 +2657,8 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
              + y["combined"]["indigenous_share_pct"]
              * y["combined"]["served_gwh"]) / max(served, 1e-9), 1)
         wfc = addd("what_if_combined", ("purchased_gwh", "bill_eur_m",
-                                        "bill_gbp_m", "emissions_kt_co2"))
+                                        "bill_gbp_m", "emissions_kt_co2",
+                                        "heat_gwh", "cold_gwh", "bill_heat_eur_m", "bill_cold_eur_m", "bill_heat_gbp_m", "bill_cold_gbp_m", "emissions_heat_kt", "emissions_cold_kt"))
         wfc["indigenous_share_pct"] = round(
             (x["what_if_combined"]["indigenous_share_pct"]
              * x["combined"]["served_gwh"]
@@ -2906,6 +3038,7 @@ def main():
     if hg:
         derived["heat_gap"] = hg
     derived["history"] = build_history(feeds)
+    derived["history_schema"] = HISTORY_SCHEMA
     gw = sorted(((feeds.get("gni_live") or {}).get("ndm_gwh")
                  or {}))
     derived["gas_window"] = {"from": gw[0], "to": gw[-1],
