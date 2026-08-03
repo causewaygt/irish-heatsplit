@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.6.4"
+PIPELINE_VERSION = "4.7.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -56,6 +56,15 @@ SERIES_KEEP_DAYS = 1150
 # effective 1 Oct 2025; Electric Ireland electricity frozen through
 # the winter, gas -4% from Sep 2025).
 HISTORY_START = "2025-10-01"
+# History schema (splits handover, 1 Aug 2026). Bump triggers a
+# one-time restatement: stored weeks recompute through derive_hero
+# with their STORED per-entry inputs (ef_electricity injected, oil
+# and fx from the retained series) - existing fields must re-round
+# identically, only new fields appear. Unlike the UK, the Irish
+# recompute window is the price feeds at 1,150-day retention, so all
+# weeks are restatable and stranding risk is ~nil - measured, not
+# assumed, by the drift check below.
+HISTORY_SCHEMA = 2
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
@@ -2142,6 +2151,8 @@ def build_history(feeds, anchors=None):
         }
 
     prev = list((PREVIOUS_DERIVED or {}).get("history") or [])
+    prev_schema = int((PREVIOUS_DERIVED or {})
+                      .get("history_schema") or 1)
     frozen = {e["week_ending"]: e for e in prev[:-2]} if len(prev) > 2 \
         else {}
     hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
@@ -2154,26 +2165,59 @@ def build_history(feeds, anchors=None):
         w_end = (last_sun - dt.timedelta(weeks=k)).isoformat()
         if w_end in frozen:
             e = frozen[w_end]
-            if "ni" not in e or "roi" not in e:
-                # schema migration (4.2.0): attach jurisdiction blocks
-                # by recomputation; stored island values stay frozen.
-                # Self-verifying: recompute drift beyond rounding is
-                # logged, never silently absorbed.
+            needs = (prev_schema < HISTORY_SCHEMA or "ni" not in e
+                     or "roi" not in e)
+            if needs:
+                # Restatement (schema policy, 1 Aug 2026 handover):
+                # recompute through derive_hero with the entry's
+                # STORED inputs - ef_electricity injected so weeks
+                # whose grid CI has rolled out of retention keep the
+                # factor they were built with; oil, fx and tariffs
+                # come from the retained series and the resolver.
+                # Existing fields must re-round identically (audited
+                # below); only new fields appear. Sub-block splits:
+                # DEFERRED - combined-level is the like-for-like
+                # scope; extend when a panel displays them.
                 ctx = week_inputs(feeds, w_end)
                 if ctx is not None:
+                    if e.get("ef_electricity"):
+                        ctx = {**ctx,
+                               "ef_electricity": e["ef_electricity"],
+                               "ef_source": e.get("ef_source",
+                                                  ctx["ef_source"])}
                     h2 = derive_hero(feeds, anchors,
                                      week_ctx={"week_ending": w_end,
                                                **ctx})
                     if h2 is not None:
-                        drift = abs(h2["combined"]["purchased_gwh"]
-                                    - e["purchased_gwh"])
+                        drift = max(
+                            abs(h2["combined"]["purchased_gwh"]
+                                - e["purchased_gwh"]),
+                            abs(h2["combined"]["bill_eur_m"]
+                                - e["bill_eur_m"]),
+                            abs(h2["combined"]["emissions_kt_co2"]
+                                - e["emissions_kt"]))
                         if drift > 0.5:
-                            log(f"history: migration drift {w_end} "
-                                f"{drift:.1f} GWh - island values "
-                                f"kept frozen, review")
+                            log(f"history: restatement drift {w_end} "
+                                f"{drift:.1f} - stored values kept "
+                                f"frozen, review")
                         e = dict(e)
-                        e["ni"] = jur_sub(h2["ni"])
-                        e["roi"] = jur_sub(h2["roi"])
+                        C2, W2 = h2["combined"], h2["what_if_combined"]
+                        for k in ("heat_gwh", "cold_gwh",
+                                  "bill_heat_eur_m", "bill_cold_eur_m",
+                                  "bill_heat_gbp_m", "bill_cold_gbp_m",
+                                  "emissions_heat_kt",
+                                  "emissions_cold_kt"):
+                            e[k] = C2[k]
+                            e["wf_" + k] = W2[k]
+                        e.setdefault("fx_eur_gbp", ctx["fx"])
+                        e.setdefault("ni", jur_sub(h2["ni"]))
+                        e.setdefault("roi", jur_sub(h2["roi"]))
+                    else:
+                        log(f"history: {w_end} unrecomputable - "
+                            f"kept at prior schema (caption degrades)")
+                else:
+                    log(f"history: {w_end} outside recompute window - "
+                        f"kept at prior schema (caption degrades)")
             out.append(e)
             continue
         ctx = week_inputs(feeds, w_end)
@@ -2183,6 +2227,7 @@ def build_history(feeds, anchors=None):
                                                   **ctx})
         if h is None:
             continue
+        C, WFC = h["combined"], h["what_if_combined"]
         out.append({
             "week_ending": w_end,
             "purchased_gwh": h["combined"]["purchased_gwh"],
@@ -2201,6 +2246,22 @@ def build_history(feeds, anchors=None):
             "hdd": h["hdd_week"],
             "ef_electricity": ctx["ef_electricity"] or None,
             "ef_source": ctx["ef_source"],
+            "heat_gwh": C["heat_gwh"], "cold_gwh": C["cold_gwh"],
+            "bill_heat_eur_m": C["bill_heat_eur_m"],
+            "bill_cold_eur_m": C["bill_cold_eur_m"],
+            "bill_heat_gbp_m": C["bill_heat_gbp_m"],
+            "bill_cold_gbp_m": C["bill_cold_gbp_m"],
+            "emissions_heat_kt": C["emissions_heat_kt"],
+            "emissions_cold_kt": C["emissions_cold_kt"],
+            "wf_heat_gwh": WFC["heat_gwh"],
+            "wf_cold_gwh": WFC["cold_gwh"],
+            "wf_bill_heat_eur_m": WFC["bill_heat_eur_m"],
+            "wf_bill_cold_eur_m": WFC["bill_cold_eur_m"],
+            "wf_bill_heat_gbp_m": WFC["bill_heat_gbp_m"],
+            "wf_bill_cold_gbp_m": WFC["bill_cold_gbp_m"],
+            "wf_emissions_heat_kt": WFC["emissions_heat_kt"],
+            "wf_emissions_cold_kt": WFC["emissions_cold_kt"],
+            "fx_eur_gbp": ctx["fx"],
             "ni_oil_source": ctx["ni_oil_source"],
             "ni": jur_sub(h["ni"]),
             "roi": jur_sub(h["roi"]),
@@ -2392,6 +2453,19 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                                  else bill_t)
                                 + cooling["bill_gbp_m"], 1),
             "emissions_kt_co2": round(kt_t + cool_kt, 1),
+            # heat/cold splits (schema 2): cold = the cold-economy
+            # electricity; heat = the fuel side. Pairs reconcile per
+            # currency within rounding.
+            "heat_gwh": round(inp_t, 1),
+            "cold_gwh": round(cool_week, 1),
+            "bill_heat_eur_m": round(bill_t if cur == "eur"
+                                     else bill_t / fx, 1),
+            "bill_cold_eur_m": cooling["bill_eur_m"],
+            "bill_heat_gbp_m": round(bill_t * fx if cur == "eur"
+                                     else bill_t, 1),
+            "bill_cold_gbp_m": cooling["bill_gbp_m"],
+            "emissions_heat_kt": round(kt_t, 1),
+            "emissions_cold_kt": round(cool_kt, 1),
             # delivered basis: purchased electricity carries the grid
             # share; the balance of the cooling service is ambient
             # rejection, indigenous by convention
@@ -2439,6 +2513,20 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                 + cool_wf_elec * j["elec_indigenous"]
                 + (cool_served - cool_wf_elec))
                 / max(useful_t + cool_served, 1e-9), 1),
+            # what-if splits: cold at (1 - R x ground_cooling_saving)
+            # - deliberately NOT the UK's COP-20 arithmetic, per the
+            # what-if parameters addendum to the cross-calibration
+            "heat_gwh": round(wf["heat_purchased_gwh"], 1),
+            "cold_gwh": round(cool_wf_elec, 1),
+            "bill_heat_eur_m": round(wf["bill_eur_m"], 1),
+            "bill_cold_eur_m": round(wf_cool_bill if cur == "eur"
+                                     else wf_cool_bill / fx, 1),
+            "bill_heat_gbp_m": round(wf["bill_gbp_m"], 1),
+            "bill_cold_gbp_m": round(wf_cool_bill * fx if cur == "eur"
+                                     else wf_cool_bill, 1),
+            "emissions_heat_kt": round(wf["emissions_kt_co2"], 1),
+            "emissions_cold_kt": round(
+                cool_wf_elec * EF["electricity"] / 1000.0, 1),
         }
         return {
             "heat_purchased_gwh": round(inp_t, 1),
@@ -2560,7 +2648,8 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
             or y["cooling"]["comfort_shaped_by_odh"])
         combined = addd("combined", ("purchased_gwh", "served_gwh",
                                      "bill_eur_m", "bill_gbp_m",
-                                     "emissions_kt_co2"))
+                                     "emissions_kt_co2",
+                                     "heat_gwh", "cold_gwh", "bill_heat_eur_m", "bill_cold_eur_m", "bill_heat_gbp_m", "bill_cold_gbp_m", "emissions_heat_kt", "emissions_cold_kt"))
         served = x["combined"]["served_gwh"] + y["combined"]["served_gwh"]
         combined["indigenous_share_pct"] = round(
             (x["combined"]["indigenous_share_pct"]
@@ -2568,7 +2657,8 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
              + y["combined"]["indigenous_share_pct"]
              * y["combined"]["served_gwh"]) / max(served, 1e-9), 1)
         wfc = addd("what_if_combined", ("purchased_gwh", "bill_eur_m",
-                                        "bill_gbp_m", "emissions_kt_co2"))
+                                        "bill_gbp_m", "emissions_kt_co2",
+                                        "heat_gwh", "cold_gwh", "bill_heat_eur_m", "bill_cold_eur_m", "bill_heat_gbp_m", "bill_cold_gbp_m", "emissions_heat_kt", "emissions_cold_kt"))
         wfc["indigenous_share_pct"] = round(
             (x["what_if_combined"]["indigenous_share_pct"]
              * x["combined"]["served_gwh"]
@@ -2948,6 +3038,7 @@ def main():
     if hg:
         derived["heat_gap"] = hg
     derived["history"] = build_history(feeds)
+    derived["history_schema"] = HISTORY_SCHEMA
     gw = sorted(((feeds.get("gni_live") or {}).get("ndm_gwh")
                  or {}))
     derived["gas_window"] = {"from": gw[0], "to": gw[-1],
