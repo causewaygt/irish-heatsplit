@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.9.0"
+PIPELINE_VERSION = "4.10.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -71,7 +71,8 @@ RETRIES = 3
 
 # Best-effort context feeds - failure marks stale but never pages or
 # fails the run; regressions stay visible via status badges and flags.
-SOFT_FEEDS = {"gb_oil", "entsog_probe", "sem_mix"}
+SOFT_FEEDS = {"gb_oil", "entsog_probe", "sem_mix",
+              "eirgrid_probe"}
 
 # Feeds known broken for reasons outside this pipeline - marked stale,
 # logged, but neither paged nor allowed to fail the run.
@@ -1762,6 +1763,99 @@ def feed_entsog_probe():
     return out, "ok"
 
 
+
+def feed_eirgrid_probe():
+    """Discovery dispatch for the v7 hourly engine (A'.2). One run,
+    four chart types x three regions, answering the questions that
+    stand between us and the 13-month hourly store:
+
+      1. HISTORY DEPTH - does the endpoint serve a year, or only a
+         rolling window? This is the single unknown that decides
+         whether the store backfills or fills forward.
+      2. WIND and SOLAR - both are on the endpoint we already use for
+         demand and co2; we have simply never asked. Solar matters:
+         AIRAA shows 3,260 MW in Ireland for 2026 rising to 6,880 by
+         2031, and Energy-Charts cannot see it at all (which is the
+         likeliest cause of the sem_mix indigenous-share shortfall).
+      3. GRANULARITY - 15-minute rows aggregate to hourly MEANS, never
+         samples; confirm the interval actually returned.
+      4. REGIONALITY - is wind/solar published per jurisdiction as
+         demand is, or all-island only?
+
+    Soft, log-only. Nothing downstream depends on it.
+    """
+    out = {"source": "EirGrid Smart Grid Dashboard (probe, A'.2)"}
+    end = today_utc()
+
+    def dmy(d):
+        return d.strftime("%d-%b-%Y").replace(" 0", " ")
+
+    def probe(chart, region, days, areas=None):
+        start = end - dt.timedelta(days=days)
+        p = {"region": region, "chartType": chart,
+             "dateRange": "month", "dateFrom": dmy(start),
+             "dateTo": dmy(end)}
+        if areas:
+            p["areas"] = areas
+        r = http_get(EIRGRID_ENDPOINT, params=p, timeout=120).json()
+        rows = (r or {}).get("Rows", []) or []
+        stamps = [x.get("EffectiveTime") for x in rows
+                  if x.get("EffectiveTime")]
+        vals = [x.get("Value") for x in rows if x.get("Value") is not None]
+        return rows, stamps, vals
+
+    # --- 1/2/4: which charts answer, for which regions
+    for chart, areas in (("wind", None), ("solar", None),
+                         ("demand", "demandactual"), ("co2", None)):
+        for region in ("ALL", "ROI", "NI"):
+            try:
+                rows, stamps, vals = probe(chart, region, 8, areas)
+                if rows:
+                    fields = sorted(rows[0].keys())[:8]
+                    log(f"eirgrid_probe: {chart}/{region} {len(rows)} rows,"
+                        f" {len(vals)} valued, span "
+                        f"{stamps[0] if stamps else '-'} .. "
+                        f"{stamps[-1] if stamps else '-'}; fields {fields}")
+                else:
+                    log(f"eirgrid_probe: {chart}/{region} 0 rows")
+            except Exception as e:
+                log(f"eirgrid_probe: {chart}/{region} "
+                    f"{e.__class__.__name__}: {e}")
+
+    # --- 3: interval actually returned (from the densest series)
+    try:
+        rows, stamps, _ = probe("demand", "ALL", 2, "demandactual")
+        if len(stamps) >= 3:
+            def parse(s):
+                for f in ("%d-%b-%Y %H:%M:%S", "%d-%B-%Y %H:%M:%S"):
+                    try:
+                        return dt.datetime.strptime(s, f)
+                    except ValueError:
+                        continue
+                return None
+            ts = [parse(s) for s in stamps[:6]]
+            gaps = [round((b - a).total_seconds() / 60)
+                    for a, b in zip(ts, ts[1:]) if a and b]
+            log(f"eirgrid_probe: interval minutes {gaps} "
+                f"(aggregate to hourly MEANS, never sample)")
+    except Exception as e:
+        log(f"eirgrid_probe: interval {e.__class__.__name__}")
+
+    # --- 1 in earnest: how far back will it go?
+    for days in (35, 120, 400):
+        try:
+            rows, stamps, vals = probe("wind", "ALL", days)
+            first = stamps[0] if stamps else "-"
+            log(f"eirgrid_probe: DEPTH wind/ALL request {days}d -> "
+                f"{len(rows)} rows, {len(vals)} valued, earliest {first}")
+        except Exception as e:
+            log(f"eirgrid_probe: DEPTH {days}d "
+                f"{e.__class__.__name__}: {e}")
+
+    out["latest_day"] = end.isoformat()
+    return out, "ok"
+
+
 def feed_sem_mix():
     """Energy-Charts (Fraunhofer ISE) public_power for Ireland (SEM,
     all-island) - adopted 30 Jul 2026 after the probe confirmed 13
@@ -3051,6 +3145,7 @@ FEEDS = {
     "gb_oil": feed_gb_oil,
     "entsog_probe": feed_entsog_probe,
     "sem_mix": feed_sem_mix,
+    "eirgrid_probe": feed_eirgrid_probe,
 }
 
 
