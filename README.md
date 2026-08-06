@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.0.0 / site 4.0.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.9.0 / site 4.3.0.
 
 ## The premise
 
@@ -122,8 +122,8 @@ register rendered as chart markers.
 **The scaffold estimator.** Weekly figures are not measurements – no such
 measurements exist for most of the island's heat. They are annual anchors
 (SEAI, DfE/NISRA, Causeway estimates) shaped by each week's weather: hot
-water is carried as a flat term (18.3% of annual input – the UK-aligned
-convention of the July 2026 cross-calibration†), and the space-heating
+water is carried as a flat term (22.4% of annual input – SEAI's National
+Heat Study residential split, applied to this site's sector mix†), and the space-heating
 share follows the week's fraction of the trailing year's heating degree
 days. Per-capita heat input sits at parity with the UK (6.2 vs 6.3
 MWh/person, input basis). Each jurisdiction is shaped by its own HDD
