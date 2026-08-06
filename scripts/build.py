@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.7.1"
+PIPELINE_VERSION = "4.9.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -153,9 +153,9 @@ ANCHORS = {
     #   defrost_derate 0.90 - performance penalty in the 0-7 C humid
     #     band that dominates the island's winter; dagger.
     #   dhw_share 0.20 - hot water as a share of heat-pump duty in
-    #     the modelled route; sits alongside the 18.3% DHW share of
-    #     national heat input (UK-aligned convention, Jul 2026
-    #     cross-calibration); dagger.
+    #     the modelled route; sits alongside the 22.4% DHW share of
+    #     national heat input (SEAI National Heat Study re-anchoring,
+    #     Aug 2026); dagger.
     "ashp": {"flow_c": 45.0, "carnot_fraction": 0.38,
              "defrost_derate": 0.90, "dhw_share": 0.20,
              "dhw_flow_c": 55.0, "dhw_source_c": 10.0},
@@ -168,16 +168,22 @@ ANCHORS = {
                      "other": 100, "electricity": 280},          # dagger -
     # electricity factor replaced by live grid intensity once eirgrid returns
     "indigenous": {"oil": 0.0, "peat": 1.0, "other": 0.9},      # dagger
-    # CROSS-CALIBRATED 18 Jul 2026 against the UK sibling (input basis,
-    # buildings only): UK 430.6 TWh / 68m = 6.3 MWh/person; island
-    # 43.8 / 7.1 = 6.2 - per-capita parity, ratio 0.98. Anchors sound.
-    # CONVENTION ALIGNED same date: the flat weekly term is hot water,
-    # 18.3% of annual heat input (the UK's ECUK-derived DHW share,
-    # adopted dagger pending an SEAI-specific Irish split); space heat,
-    # 81.7%, is HDD-shaped. The previous 28% flat base was absorbing
-    # space heat into the weather-independent term, overstating summer
-    # weeks ~1.5x. Weekly = A x [0.183/52 + 0.817 x Hw/Hy].
-    "space_heat_fraction": 0.817,   # = 1 - DHW share; see above
+    # CROSS-CALIBRATED 18 Jul 2026 against the UK sibling (input
+    # basis, buildings only): UK 430.6 TWh / 68m = 6.3 MWh/person;
+    # island 43.8 / 7.1 = 6.2 - per-capita parity, ratio 0.98.
+    # RE-ANCHORED 6 Aug 2026 to an Irish source. SEAI National Heat
+    # Study Report 1 puts residential hot water at 25% of residential
+    # heat demand (space heating 75%). Applied to this file's own
+    # sector split - island residential 32.3 TWh, services 11.5 TWh -
+    # with services hot water at 15% (dagger; SEAI does not publish
+    # the services split), the island hot-water share is 22.4% and
+    # the weather-driven space share 77.6%. This REPLACES the
+    # UK-aligned 18.3% adopted in July, which was explicitly marked
+    # as pending an SEAI-specific figure. Caption symmetry with the
+    # UK sibling is now broken by design: both sites shape space heat
+    # by degree days and carry hot water flat, but each uses its own
+    # national hot-water share. Weekly = A x [0.224/52 + 0.776 x Hw/Hy].
+    "space_heat_fraction": 0.776,   # = 1 - DHW share; see above
     "kerosene_kwh_per_litre": 10.35,   # industry standard figure
     # Tariff anchors, July 2026 pass. Sourced bands, dagger on the point:
     #  ROI electricity: standard 24h ~35c (Electric Ireland, May 2026);
@@ -214,7 +220,19 @@ ANCHORS = {
     #  ni_cooling: food processing, retail refrigeration, small DC.
     #  rejection: refrigeration/comfort reject compressor work PLUS the
     #    heat they pump - factors dagger; DC rejects ~all electricity.
+    # CORRECTION 6 Aug 2026 (SEAI National Heat Study, Report 1):
+    # the census previously carried TOTAL data-centre electricity as
+    # cold-economy cooling load. It is not: SEAI finds cooling is
+    # ~14% of data-centre electricity, the balance being IT load that
+    # BECOMES heat rather than removing it. The DC line is now priced
+    # at its cooling share; the heat it rejects is unchanged, so the
+    # rejection and service factors rise to match (see below) and the
+    # delivered cooling service is preserved. SEAI's absolute (0.4
+    # TWh) is a 2019-base figure and is stale against today's fleet -
+    # the transferable parameter is the SHARE, applied to the current
+    # metered total.
     "cool": {"dc_share_of_roi_elec": 0.22, "dc_share_2028": 0.29,
+             "dc_cooling_share": 0.14,     # SEAI NHS Report 1
              "roi_elec_twh": 31.0,
              "loads_twh": {"dc": None,          # computed: share x elec
                            # Cold-economy load census, TWh/yr of electricity. DC from CSO
@@ -231,13 +249,26 @@ ANCHORS = {
                            "process": 0.8,
                            "comfort": 1.0,
                            "ni_all": 1.2},
+             # Census total after the 6 Aug 2026 correction: ~6.2 TWh
+             # of cooling electricity island-wide (DC cooling ~1.0,
+             # refrigeration 2.3, process 0.8, comfort 1.0, NI 1.2),
+             # against SEAI's ROI cooling picture of ~7.5 TWh on a
+             # 2019 base including retail refrigeration at 6 TWh -
+             # our refrigeration line is the one now looking light
+             # and is next for component sourcing.
              # AUDIT 18 Jul 2026: census scope is the full cold economy
              # (DC + cold chain + process + comfort) - deliberately
              # wider than comfort-only national cooling lines (e.g. the
              # UK tracker's ECUK-anchored figure); the two are not
              # ratio-comparable and the hero basis says so. Component
              # source hardening scheduled for the autumn cycle.
-             "rejection_factor": {"dc": 0.97, "refrigeration": 2.5,
+             # dc 7.1: with the line repriced to cooling electricity
+             # only, the heat rejected is unchanged (the whole DC draw
+             # ends as heat), so heat rejected per unit COOLING
+             # electricity = 1/0.14 ~ 7.1. Physical output preserved
+             # across the 6 Aug 2026 correction; only the purchased
+             # side moved.
+             "rejection_factor": {"dc": 7.1, "refrigeration": 2.5,
                                   # Heat-rejection factors: kWh of heat rejected per kWh of
     # electricity drawn - approximately (COP + 1) for vapour
     # compression, near 1.0 for DC where most draw is IT load
@@ -258,7 +289,11 @@ ANCHORS = {
              # Service factors: kWh of COOLING SERVICE delivered per kWh of
     # electricity - the delivered-basis multiplier that lets the
     # out-bar legitimately exceed the in-bar. Dagger throughout.
-    "cooling_service_factor": {"dc": 1.0, "refrigeration": 2.5,
+    # dc 6.1: cooling service (heat removed from IT equipment) per
+    # unit cooling electricity - an effective seasonal EER, high
+    # because Ireland's climate permits extensive free cooling.
+    # Raised from 1.0 with the 6 Aug 2026 repricing.
+    "cooling_service_factor": {"dc": 6.1, "refrigeration": 2.5,
                                         "process": 2.5, "comfort": 3.0,
                                         "ni_all": 2.0}},
 }
@@ -2448,7 +2483,8 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
         # (30% dagger ventilation floor) once a season of it exists.
         cc = a["cool"]
         if jur == "roi":
-            dc = cc["roi_elec_twh"] * cc["dc_share_of_roi_elec"]
+            dc = (cc["roi_elec_twh"] * cc["dc_share_of_roi_elec"]
+                  * cc["dc_cooling_share"])
             l = cc["loads_twh"]
             comfort_a = l["comfort"]
             flat_a = dc + l["refrigeration"] + l["process"]
@@ -2754,8 +2790,8 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                   "majority heating fuel, is modelled from annual "
                   "anchors, not metered - its weekly estimates carry a "
                   "materially wider band than gas. Hot water is carried as a flat "
-                  "18.3% of annual (UK-aligned convention, Jul 2026 "
-                  "cross-calibration); space heat follows the week's "
+                  "22.4% of annual (SEAI National Heat Study, Aug 2026 "
+                  "re-anchoring); space heat follows the week's "
                   "degree days. Bills are sector-blended: services gas and "
                   "electricity, and all cooling, price at non-domestic "
                   "rates (dagger, pending Eurostat band prices); oil "
@@ -2765,7 +2801,9 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                   "anchor), flat across the year with the comfort share "
                   "following live overheating degree-hours once a season "
                   "exists - a cold-economy scope, wider than comfort-only national "
-                  "cooling lines and not one-to-one comparable with them. "
+                  "cooling lines and not one-to-one comparable with them; the "
+                  "data-centre line counts cooling electricity (~14% of "
+                  "the fleet's draw, SEAI), not the whole draw. "
                   "Electricity emissions use the live all-island grid "
                   "intensity when available. Challenge and input "
                   "welcome at contact@causewaygt.com"),
@@ -2880,7 +2918,10 @@ def derive_cool(feeds, anchors=None):
     n = len(hs)
 
     loads = dict(c["loads_twh"])
-    loads["dc"] = round(c["roi_elec_twh"] * c["dc_share_of_roi_elec"], 1)
+    # DC line = COOLING electricity only (total x cooling share), not
+    # the whole data-centre draw - see the correction note in ANCHORS
+    dc_total = c["roi_elec_twh"] * c["dc_share_of_roi_elec"]
+    loads["dc"] = round(dc_total * c["dc_cooling_share"], 2)
     rf = c["rejection_factor"]
     elec_total = round(sum(loads.values()), 1)
     reject_total = round(sum(loads[k] * rf[k] for k in loads), 1)
