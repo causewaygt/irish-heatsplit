@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.7.0"
+PIPELINE_VERSION = "4.7.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -140,9 +140,30 @@ ANCHORS = {
     # for humid Irish winters; DHW share at higher flow. Calibrated to the
     # GB Electrification of Heat field-trial median (~2.8-2.9) rather than
     # laboratory SCOP figures.
+    # PROVENANCE (audit, 2 Aug 2026 - these become the v7 hourly COP
+    # engine's foundation, so every parameter is declared here):
+    #   flow_c 45.0 - mid-range radiator flow for a retrofit onto
+    #     existing emitters (weather compensation 30-50 C in v7);
+    #     dagger, convention not measurement.
+    #   carnot_fraction 0.38 - typical field-observed fraction of
+    #     Carnot for modern inverter ASHP; consistent with the SPF
+    #     anchors below and with UK field-trial ranges 0.35-0.45.
+    #     Dagger; the SPF anchor pins the annual, so this shapes the
+    #     seasonal SHAPE, not the level.
+    #   defrost_derate 0.90 - performance penalty in the 0-7 C humid
+    #     band that dominates the island's winter; dagger.
+    #   dhw_share 0.20 - hot water as a share of heat-pump duty in
+    #     the modelled route; sits alongside the 18.3% DHW share of
+    #     national heat input (UK-aligned convention, Jul 2026
+    #     cross-calibration); dagger.
     "ashp": {"flow_c": 45.0, "carnot_fraction": 0.38,
              "defrost_derate": 0.90, "dhw_share": 0.20,
              "dhw_flow_c": 55.0, "dhw_source_c": 10.0},
+    # Fuel emission factors, g CO2e per kWh of fuel INPUT (not
+    # delivered): oil/gas/peat from the SEAI emission-factor series
+    # for kerosene, natural gas and milled peat; "other" is a
+    # biomass-weighted residual (dagger); electricity is the anchor
+    # replaced at runtime by live all-island grid intensity.
     "ef_g_per_kwh": {"oil": 257, "gas": 205, "peat": 340,
                      "other": 100, "electricity": 280},          # dagger -
     # electricity factor replaced by live grid intensity once eirgrid returns
@@ -196,7 +217,17 @@ ANCHORS = {
     "cool": {"dc_share_of_roi_elec": 0.22, "dc_share_2028": 0.29,
              "roi_elec_twh": 31.0,
              "loads_twh": {"dc": None,          # computed: share x elec
-                           "refrigeration": 2.3,
+                           # Cold-economy load census, TWh/yr of electricity. DC from CSO
+    # data-centre metered consumption (22% of ROI electricity);
+    # the remainder are Causeway estimates pending component-level
+    # sourcing in the autumn pass - each a dagger:
+    #   refrigeration 2.3 - food/dairy/pharma cold chain, scaled from
+    #     the sector's share of industrial electricity
+    #   process 0.8 - industrial process cooling excl. cold chain
+    #   comfort 1.0 - comfort cooling AND ventilation in services
+    #     buildings (the UK sibling's whole cooling scope, roughly)
+    #   ni_all 1.2 - the NI cold economy, all categories
+    "refrigeration": 2.3,
                            "process": 0.8,
                            "comfort": 1.0,
                            "ni_all": 1.2},
@@ -207,9 +238,16 @@ ANCHORS = {
              # ratio-comparable and the hero basis says so. Component
              # source hardening scheduled for the autumn cycle.
              "rejection_factor": {"dc": 0.97, "refrigeration": 2.5,
-                                  "process": 2.0, "comfort": 3.0,
+                                  # Heat-rejection factors: kWh of heat rejected per kWh of
+    # electricity drawn - approximately (COP + 1) for vapour
+    # compression, near 1.0 for DC where most draw is IT load
+    # rejected as heat. All dagger, all Causeway judgement.
+    "process": 2.0, "comfort": 3.0,
                                   "ni_all": 1.8},
-             "dh_share_of_national_heat": 0.01,
+             # District heat as a share of national heat - order 1% on the
+    # island against ~2% GB and 50%+ in Denmark; dagger, and the
+    # number the geothermal panel's district-heat argument rests on.
+    "dh_share_of_national_heat": 0.01,
              # dagger: electricity saving on cooling load moved to
              # ground-coupled systems (free cooling / high-EER ATES)
              "ground_cooling_saving": 0.70,
@@ -217,7 +255,10 @@ ANCHORS = {
              # (seasonal system EER). DC ~1.0: its service is heat
              # removal, roughly its electricity; vapour-compression
              # loads deliver a multiple of theirs.
-             "cooling_service_factor": {"dc": 1.0, "refrigeration": 2.5,
+             # Service factors: kWh of COOLING SERVICE delivered per kWh of
+    # electricity - the delivered-basis multiplier that lets the
+    # out-bar legitimately exceed the in-bar. Dagger throughout.
+    "cooling_service_factor": {"dc": 1.0, "refrigeration": 2.5,
                                         "process": 2.5, "comfort": 3.0,
                                         "ni_all": 2.0}},
 }
