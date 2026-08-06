@@ -327,9 +327,11 @@ def test_hero_v3_cooling_and_combined():
         assert wf["emissions_kt_co2"] < b["combined"]["emissions_kt_co2"]
         assert wf["indigenous_share_pct"] \
             > b["combined"]["indigenous_share_pct"]
-    # ROI carries nearly all island cooling
+    # ROI carries most island cooling. Ratio fell from ~9x to ~4x
+    # with the 6 Aug 2026 DC repricing (the overstated DC line had
+    # been inflating the ROI side); NI has no data centres at all.
     assert h["roi"]["cooling"]["elec_gwh"] \
-        > 6 * h["ni"]["cooling"]["elec_gwh"]
+        > 3 * h["ni"]["cooling"]["elec_gwh"]
     # island reconciles
     assert abs(h["cooling"]["elec_gwh"]
                - h["roi"]["cooling"]["elec_gwh"]
@@ -441,7 +443,9 @@ def test_cool_derivation():
     c = derive_cool(feeds)
     assert c is not None
     assert 20 <= c["stranded_summer_pct"] <= 60, c
-    assert abs(c["dc_twh"] - 31.0 * 0.22) < 0.1
+    # DC line is cooling electricity (6 Aug 2026 correction), not the
+    # whole data-centre draw
+    assert abs(c["dc_twh"] - 31.0 * 0.22 * 0.14) < 0.05
     # census: electricity total = sum of loads; rejection exceeds elec
     assert abs(c["cooling_elec_twh"]
                - sum(c["loads_twh"].values())) < 0.05
@@ -1039,6 +1043,26 @@ def test_restatement_reuses_stored_ef():
     assert e2["ef_electricity"] == 250.0
     assert abs(e2["emissions_cold_kt"]
                - e2["cold_gwh"] * 0.25) <= 0.15
+
+
+def test_dc_line_is_cooling_electricity_not_total_draw():
+    """6 Aug 2026 correction (SEAI National Heat Study Report 1): the
+    data-centre line is COOLING electricity (~14% of DC draw), not the
+    whole draw. The heat rejected must be unchanged by the repricing -
+    only the purchased side moved."""
+    from build import ANCHORS
+    c = ANCHORS["cool"]
+    dc_total = c["roi_elec_twh"] * c["dc_share_of_roi_elec"]
+    dc_cool = dc_total * c["dc_cooling_share"]
+    assert 0.10 <= c["dc_cooling_share"] <= 0.20
+    # the line itself must be the cooling share, not the total
+    cool = derive_cool(_hero_fixture_feeds())
+    assert abs(cool["loads_twh"]["dc"] - dc_cool) < 0.05, \
+        ("DC line reverted to total draw", cool["loads_twh"]["dc"])
+    # heat rejected preserved: cooling elec x rejection ~ total draw
+    rejected = dc_cool * c["rejection_factor"]["dc"]
+    assert abs(rejected - dc_total) / dc_total < 0.05, \
+        ("rejection factor no longer preserves rejected heat", rejected)
 
 
 if __name__ == "__main__":
