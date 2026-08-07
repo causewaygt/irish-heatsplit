@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.16.0"
+PIPELINE_VERSION = "4.17.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -62,7 +62,13 @@ HOURLY_PATH = ROOT / "docs" / "hourly.json"
 # holds temperature rather than degree hours so that hourly HDD (base
 # 15.5), ODH26 and the Carnot source temperature all derive from one
 # retained series instead of three.
-HOURLY_SCHEMA = 2
+# 3 (7 Aug 2026): the store is written as flat arrays against a base
+# hour instead of one key per value. At schema 2 the file reached
+# 1,025 kB rewritten daily, and the repeated 13-character keys were
+# most of it. Readers must tolerate BOTH shapes - expand_hourly()
+# accepts a schema 1/2 document so the first run after this change
+# inherits its own history rather than refilling from empty.
+HOURLY_SCHEMA = 3
 HOURLY_MONTHS = 13          # rolling window the store keeps
 HOURLY_CHUNKS_PER_RUN = 16  # walk-back budget; 14 fills 13 months
 # Open-Meteo serves long hourly spans in one request, so the
@@ -3502,7 +3508,13 @@ def fetch_hourly_temp(previous, floor_key, end_day):
                     "end_date": e.isoformat(),
                     "hourly": "temperature_2m",
                     "timezone": "Europe/Dublin",
-                }, timeout=240).json()
+                    # 90, not 240. The first live run (7 Aug 2026)
+                    # spent 256 s on a ReadTimeout and the identical
+                    # retry then succeeded in three seconds, so a
+                    # long timeout buys nothing here but wasted
+                    # runner minutes - the retry budget is what
+                    # actually absorbs the transient.
+                }, timeout=90).json()
             got = weighted_hourly_temp(payload, names, weights)
             have.update(got)
             log(f"hourly: temp_ai archive {start.isoformat()}.."
@@ -3534,13 +3546,88 @@ def fetch_hourly_temp(previous, floor_key, end_day):
     return have
 
 
+def _naive_hour(key):
+    """Hour key -> datetime, parsed as written. The keys are IRISH
+    LOCAL CLOCK, so this is not a UTC instant and must never be
+    treated as one; it exists only to give the keys a total order and
+    a spacing, which is all the array encoding needs."""
+    return dt.datetime.strptime(key, "%Y-%m-%dT%H")
+
+
+def compact_hourly(series):
+    """
+    {name: {hour_key: value}} -> (t0, n, {name: [value|None] * n}).
+
+    Position i is the key t0 + i hours, formatted the same way. On the
+    spring transition the local clock skips an hour, which shows up
+    here as one null a year in every series - the alternative, a
+    stored key list, costs about 140 kB to avoid a gap that is already
+    indistinguishable from a feed gap. The autumn fold repeats a local
+    hour, but the source dict has already collapsed it to one entry,
+    so offsets stay unique in both directions.
+    """
+    keys = set()
+    for v in series.values():
+        keys |= set(v or {})
+    if not keys:
+        return None, 0, {k: [] for k in series}
+    t0 = min(keys)
+    h0 = _naive_hour(t0)
+    n = int((_naive_hour(max(keys)) - h0).total_seconds() // 3600) + 1
+    out = {}
+    for name, v in series.items():
+        arr = [None] * n
+        for k, val in (v or {}).items():
+            i = int((_naive_hour(k) - h0).total_seconds() // 3600)
+            if 0 <= i < n:
+                arr[i] = val
+        out[name] = arr
+    return t0, n, out
+
+
+def expand_hourly(doc):
+    """
+    Read a store document of ANY schema back into
+    {name: {hour_key: value}}.
+
+    Schema 1 and 2 wrote a dict per series; schema 3 writes flat
+    arrays against `t0`. Both are accepted, so the run that first
+    writes schema 3 still inherits the schema-2 file already in the
+    repo instead of refilling 13 months from empty.
+    """
+    ser = (doc or {}).get("series") or {}
+    if not ser:
+        return {}
+    sample = next(iter(ser.values()))
+    if isinstance(sample, dict):
+        return {k: dict(v or {}) for k, v in ser.items()}
+    t0 = doc.get("t0")
+    if not t0:
+        log("hourly: array-form store without t0 - previous state "
+            "discarded, refilling")
+        return {}
+    h0 = _naive_hour(t0)
+    out = {}
+    for name, arr in ser.items():
+        d = {}
+        for i, val in enumerate(arr or []):
+            if val is None:
+                continue
+            d[(h0 + dt.timedelta(hours=i)).strftime("%Y-%m-%dT%H")] = val
+        out[name] = d
+    return out
+
+
 def build_hourly_store(previous):
     """Walk back in ~28-day chunks until the window is covered, then
     keep only the most recent chunk (plus a 2-day revision re-fetch)
     on subsequent runs. Returns the store document or None."""
     prev = (previous or {})
-    series = {k: dict(prev.get("series", {}).get(k) or {})
-              for k in HOURLY_SERIES}
+    # NB: `prior`, not `prev_series` - there is a module-level
+    # prev_series() helper for the weekly feeds and shadowing it here
+    # would be a trap for the next edit.
+    prior = expand_hourly(prev)
+    series = {k: dict(prior.get(k) or {}) for k in HOURLY_SERIES}
     end = today_utc()
     floor = (end - dt.timedelta(days=30 * HOURLY_MONTHS)).strftime(
         "%Y-%m-%dT00")
@@ -3584,7 +3671,7 @@ def build_hourly_store(previous):
             added += len(got)
             time.sleep(0.4)            # throttle: ~56 chunk requests
                                        # per cold build trips limits
-        before = len(prev.get("series", {}).get(name) or {})
+        before = len(prior.get(name) or {})
         series[name] = {k: v for k, v in sorted(have.items())
                         if k >= floor}
         after = len(series[name])
@@ -3603,7 +3690,7 @@ def build_hourly_store(previous):
         return None
 
     # --- fifth series: island hourly temperature (Open-Meteo).
-    prev_t = dict(prev.get("series", {}).get("temp_ai") or {})
+    prev_t = dict(prior.get("temp_ai") or {})
     try:
         t_all = fetch_hourly_temp(prev_t, floor, end)
     except Exception as exc:
@@ -3612,6 +3699,10 @@ def build_hourly_store(previous):
         t_all = prev_t
     series["temp_ai"] = {k: v for k, v in sorted(t_all.items())
                          if k >= floor}
+    # temp is fetched outside the EirGrid walk, so it was missing from
+    # `added` and the run line read short (5,751 on 7 Aug 2026 while
+    # temp alone had brought in 9,384 hours).
+    added += len(set(series["temp_ai"]) - set(prev_t))
     if prev_t and len(series["temp_ai"]) < len(prev_t) - 24:
         log(f"hourly: WARNING temp_ai shrank {len(prev_t)}h -> "
             f"{len(series['temp_ai'])}h in one run - investigate "
@@ -3669,12 +3760,18 @@ def build_hourly_store(previous):
         log(f"hourly: heat layer "
             f"{'ready' if heat_ready else 'not ready'} "
             f"(temp_ai {per_series.get('temp_ai', 0)}%)")
+    t0, n_hours, packed = compact_hourly(series)
+    log(f"hourly: encoded {sum(len(v) for v in series.values())} values "
+        f"as {len(packed)} arrays of {n_hours} from {t0}")
     return {"schema": HOURLY_SCHEMA,
+            "t0": t0, "hours": n_hours,
             "heat_ready": heat_ready,
             "generated": dt.datetime.now(dt.timezone.utc)
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
             "months": HOURLY_MONTHS, "complete": complete,
             "completeness_pct": per_series,
+            "encoding": ("series are flat arrays; position i is the "
+                         "hour t0 + i, null where absent"),
             "basis": ("All-island 15-minute EirGrid series aggregated "
                       "to hourly means (>=3 of 4 quarters required). "
                       "Demand, wind and solar in MW; carbon intensity "
@@ -3685,7 +3782,7 @@ def build_hourly_store(previous):
                       "EVERY series is keyed on Irish local clock, "
                       "not UTC, so temperature and demand describe "
                       "the same hour year-round."),
-            "series": series}
+            "series": packed}
 
 
 def main():
