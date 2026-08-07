@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.13.3"
+PIPELINE_VERSION = "4.14.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -73,7 +73,12 @@ HISTORY_START = "2025-10-01"
 # recompute window is the price feeds at 1,150-day retention, so all
 # weeks are restatable and stranding risk is ~nil - measured, not
 # assumed, by the drift check below.
-HISTORY_SCHEMA = 3
+# 4 (7 Aug 2026): forces a re-run of the schema-3 migration, which
+# used setdefault() for the ni/roi blocks and therefore left frozen
+# weeks with jurisdiction blocks predating the per-fuel addition -
+# so the windowed energy bars worked all-island but fell back to the
+# live week for NI and ROI.
+HISTORY_SCHEMA = 4
 # Anchor epoch. Bump whenever a change to ANCHORS alters what a past
 # week WOULD have computed - as distinct from HISTORY_SCHEMA, which
 # tracks new FIELDS. A schema bump adds fields and leaves stored
@@ -2494,9 +2499,21 @@ def build_history(feeds, anchors=None):
                             e[k] = C2[k]
                             e["wf_" + k] = W2[k]
                         e.setdefault("fx_eur_gbp", ctx["fx"])
+                        # Assign, never setdefault: a block that
+                        # already exists from an older schema must be
+                        # REFRESHED so it gains new sub-fields. This
+                        # is safe and idempotent because everything
+                        # is recomputed from the entry's own stored
+                        # inputs.
                         e["fuels"] = fuel_sub(h2)
-                        e.setdefault("ni", jur_sub(h2["ni"]))
-                        e.setdefault("roi", jur_sub(h2["roi"]))
+                        e["ni"] = jur_sub(h2["ni"])
+                        e["roi"] = jur_sub(h2["roi"])
+                        # NOT setdefault: these keys already exist
+                        # from earlier schemas, so a defaulting write
+                        # silently skipped the per-fuel addition.
+                        # A schema migration refreshes the block.
+                        e["ni"] = jur_sub(h2["ni"])
+                        e["roi"] = jur_sub(h2["roi"])
                     else:
                         log(f"history: {w_end} unrecomputable - "
                             f"kept at prior schema (caption degrades)")
