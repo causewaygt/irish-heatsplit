@@ -49,16 +49,17 @@ jobs:
             fi
             echo "push rejected - rebuilding on latest main (attempt $i)"
             git fetch origin main
-            # keep the freshly generated data.json staged, drop our
+            # keep the freshly generated outputs staged, drop our
             # commit, re-commit on top of whatever main now holds.
             # Generated artefacts are never merged or rebased.
             git reset --soft origin/main
-            # BOTH outputs must be committed. Until 7 Aug 2026 only
-          # data.json was added, so docs/hourly.json was written and
-          # then discarded with the runner - the hourly store rebuilt
-          # from empty every run and its completeness swung with
-          # whichever chunk requests happened to survive.
-          git add docs/data.json docs/hourly.json
+            git add docs/data.json docs/hourly.json
+            # A concurrent run may already have pushed byte-identical
+            # outputs. Without this guard the re-commit exits non-zero,
+            # and because Actions runs `run:` blocks under bash -e the
+            # whole step fails red on a benign no-op.
+            git diff --cached --quiet && {
+              echo "no change after rebuild - already on main"; exit 0; }
             git commit -m "$MSG"
           done
           echo "push failed after 3 attempts"; exit 1
