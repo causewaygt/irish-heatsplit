@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.9.0 / site 4.3.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.11.0 / site 4.3.0.
 
 ## The premise
 
@@ -193,6 +193,30 @@ The full estimation methodology is published as
 [methodology.pdf](https://causewaygt.github.io/irish-heatsplit/methodology.pdf)
 and linked from the site footer.
 
+## The hourly store
+
+`docs/hourly.json` holds a rolling 13 months of all-island demand,
+wind, solar and carbon intensity at hourly resolution – EirGrid's
+15-minute series aggregated to hourly means, an hour requiring at
+least three of its four quarters. It backfills by walking ~28-day
+chunks and re-fetches the most recent chunk each run for revisions.
+It is a **separate file with its own schema**: a failure there cannot
+corrupt the weekly tracker, and the grid panel simply stays absent
+until the store reports 95% completeness. Groundwork for the
+electrification-headroom and dispatch-down absorption panels.
+
+## The hourly store
+
+`docs/hourly.json` holds a rolling 13 months of all-island demand,
+wind, solar and carbon intensity at hourly resolution – EirGrid's
+15-minute series aggregated to hourly means, an hour requiring at
+least three of its four quarters. It backfills by walking ~28-day
+chunks and re-fetches the most recent chunk each run for revisions.
+It is a **separate file with its own schema**: a failure there cannot
+corrupt the weekly tracker, and the grid panel stays absent until the
+store reports 95% completeness. Groundwork for the electrification-
+headroom and dispatch-down absorption panels.
+
 ## Sibling comparability
 
 This tracker is read beside the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
@@ -214,7 +238,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 57 tests, no network
+python3 tests/test_synthetic.py   # 67 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
