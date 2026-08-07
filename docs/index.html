@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.4.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.4.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -764,6 +764,7 @@ function heroCards(h, HIST){
   function nb(b,state){return state==='ni'
     ?'\u00a3'+fmt(b.bill_gbp_m,0)+'m':'\u20ac'+fmt(b.bill_eur_m,0)+'m';}
   function ioBars(b, W){
+    b = b || {};        // W-only calls pass no scope block
     // W: optional windowed aggregate {fuels:{f:{i,u}}, purchased,
     // served}. Present -> the bars show the window; absent -> the
     // live week, exactly as before.
@@ -932,7 +933,7 @@ function heroCards(h, HIST){
         el('ioScale').textContent =
           'Totals over the last '+WLBL[WIN]+cap+
           ' \u2013 shares of the window, not of one week.';
-        el('ioBars').innerHTML = ioBars(null, {
+        el('ioBars').innerHTML = ioBars(b, {
           fuels: wv.fuels, purchased: wv.purchased,
           served: wv.entries.reduce((a,e)=>a+(G2(e).served_gwh||0),0)});
       }
@@ -1447,7 +1448,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.4.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.4.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
