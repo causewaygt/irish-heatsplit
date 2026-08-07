@@ -44,9 +44,18 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.10.2"
+PIPELINE_VERSION = "4.11.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
+# The hourly store lives in its OWN file: a malformed hourly write can
+# never corrupt the weekly tracker's data, the grid panel can be absent
+# while everything else renders, and the store versions independently
+# of HISTORY_SCHEMA / ANCHOR_EPOCH. Fetched by the page only when the
+# grid panel needs it.
+HOURLY_PATH = ROOT / "docs" / "hourly.json"
+HOURLY_SCHEMA = 1
+HOURLY_MONTHS = 13          # rolling window the store keeps
+HOURLY_CHUNKS_PER_RUN = 16  # walk-back budget; 14 fills 13 months
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
 # tariff-confidence floor with a full trailing HDD year beneath its
 # earliest week.
@@ -3215,6 +3224,131 @@ FEEDS = {
 }
 
 
+
+# ------------------------------------------------------- hourly store
+# EirGrid serves a ~30-day window of 15-minute rows ending at dateTo,
+# for chartType x region, with `areas` matching the chart. Probe round
+# 2 (7 Aug 2026) confirmed historic windows return correctly-dated
+# data a year back, so the 13-month store backfills by chunked
+# walking. dateRange=year returns nothing - month chunks are the
+# mechanism. All-island scope, per the v7 grid-layer decision.
+HOURLY_SERIES = {
+    "demand_ai": ("demand", "ALL", "demandactual"),
+    "wind_ai": ("wind", "ALL", "windactual"),
+    "solar_ai": ("solar", "ALL", "solaractual"),
+    "co2_ai": ("co2", "ALL", "co2intensity"),
+}
+
+
+def _hour_key(ts):
+    """15-minute stamp -> UTC hour key. EirGrid stamps are local
+    clock; the weekly layer already treats these as day-local, and the
+    grid layer needs consistency with it rather than with UTC."""
+    for f in ("%d-%b-%Y %H:%M:%S", "%d-%B-%Y %H:%M:%S"):
+        try:
+            return dt.datetime.strptime(ts, f).strftime("%Y-%m-%dT%H")
+        except ValueError:
+            continue
+    return None
+
+
+def hourly_from_rows(rows, min_quarters=3):
+    """15-minute rows -> hourly MEANS (never samples). An hour needs
+    at least min_quarters of its four values or it is dropped, so a
+    partial hour cannot masquerade as a low one."""
+    buckets = {}
+    for r in rows or []:
+        v = r.get("Value")
+        if v is None:
+            continue
+        k = _hour_key(str(r.get("EffectiveTime") or ""))
+        if k:
+            buckets.setdefault(k, []).append(float(v))
+    return {k: round(sum(v) / len(v), 2)
+            for k, v in buckets.items() if len(v) >= min_quarters}
+
+
+def fetch_hourly_chunk(chart, region, areas, end_day):
+    """One ~30-day window ending end_day."""
+    def dmy(d):
+        return d.strftime("%d-%b-%Y").replace(" 0", " ")
+    payload = http_get(EIRGRID_ENDPOINT, params={
+        "region": region, "chartType": chart, "dateRange": "month",
+        "dateFrom": dmy(end_day - dt.timedelta(days=27)),
+        "dateTo": dmy(end_day), "areas": areas,
+    }, timeout=120).json()
+    return hourly_from_rows((payload or {}).get("Rows", []))
+
+
+def build_hourly_store(previous):
+    """Walk back in ~28-day chunks until the window is covered, then
+    keep only the most recent chunk (plus a 2-day revision re-fetch)
+    on subsequent runs. Returns the store document or None."""
+    prev = (previous or {})
+    series = {k: dict(prev.get("series", {}).get(k) or {})
+              for k in HOURLY_SERIES}
+    end = today_utc()
+    floor = (end - dt.timedelta(days=30 * HOURLY_MONTHS)).strftime(
+        "%Y-%m-%dT00")
+    added = 0
+    for name, (chart, region, areas) in HOURLY_SERIES.items():
+        have = series[name]
+        # chunk ends: newest first, walking back to the floor
+        ends, cursor = [], end
+        while len(ends) < HOURLY_CHUNKS_PER_RUN:
+            ends.append(cursor)
+            cursor = cursor - dt.timedelta(days=28)
+            if cursor.strftime("%Y-%m-%dT00") < floor:
+                break
+        for e in ends:
+            span_start = (e - dt.timedelta(days=27)).strftime("%Y-%m-%dT00")
+            span_end = e.strftime("%Y-%m-%dT23")
+            covered = sum(1 for k in have if span_start <= k <= span_end)
+            # newest chunk always re-fetched (2-day revision window);
+            # older chunks skipped once substantially covered
+            if e != ends[0] and covered >= 600:
+                continue
+            try:
+                got = fetch_hourly_chunk(chart, region, areas, e)
+                have.update(got)
+                added += len(got)
+            except Exception as exc:
+                log(f"hourly: {name} chunk to {e.isoformat()} "
+                    f"{exc.__class__.__name__}")
+        series[name] = {k: v for k, v in sorted(have.items())
+                        if k >= floor}
+    counts = {k: len(v) for k, v in series.items()}
+    if not any(counts.values()):
+        log("hourly: no data - store not written")
+        return None
+    spans = {k: (min(v), max(v)) for k, v in series.items() if v}
+    ref = spans.get("demand_ai")
+    log(f"hourly: {added} hour-values fetched this run; "
+        + ", ".join(f"{k} {n}h" for k, n in counts.items())
+        + (f"; span {ref[0]} .. {ref[1]}" if ref else ""))
+    # completeness against the covered span (>=95% expected)
+    if ref:
+        h0 = dt.datetime.strptime(ref[0], "%Y-%m-%dT%H")
+        h1 = dt.datetime.strptime(ref[1], "%Y-%m-%dT%H")
+        expect = int((h1 - h0).total_seconds() // 3600) + 1
+        pct = 100.0 * counts["demand_ai"] / max(expect, 1)
+        log(f"hourly: demand completeness {pct:.1f}% of {expect}h "
+            + ("- OK" if pct >= 95 else "- BELOW GATE, panel withheld"))
+        complete = pct >= 95
+    else:
+        complete = False
+    return {"schema": HOURLY_SCHEMA,
+            "generated": dt.datetime.now(dt.timezone.utc)
+            .strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "months": HOURLY_MONTHS, "complete": complete,
+            "basis": ("All-island 15-minute EirGrid series aggregated "
+                      "to hourly means (>=3 of 4 quarters required). "
+                      "Demand, wind and solar in MW; carbon intensity "
+                      "in g CO2 per kWh. Source: EirGrid Smart Grid "
+                      "Dashboard."),
+            "series": series}
+
+
 def main():
     global PREVIOUS_FEEDS, PREVIOUS_DERIVED
     if DATA_PATH.exists():
@@ -3325,6 +3459,24 @@ def main():
     }
     DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
     DATA_PATH.write_text(json.dumps(doc, indent=1, sort_keys=True))
+
+    # hourly store - separate file, separate schema, cannot corrupt
+    # the weekly tracker if it fails
+    try:
+        prev_hourly = {}
+        if HOURLY_PATH.exists():
+            try:
+                prev_hourly = json.loads(HOURLY_PATH.read_text())
+            except Exception:
+                log("hourly: previous store unreadable, rebuilding")
+        store = build_hourly_store(prev_hourly)
+        if store:
+            HOURLY_PATH.write_text(json.dumps(store, separators=(",", ":")))
+            log(f"wrote {HOURLY_PATH} "
+                f"({HOURLY_PATH.stat().st_size // 1024} kB)")
+    except Exception as exc:
+        log(f"hourly: store step failed ({exc.__class__.__name__}: "
+            f"{exc}) - weekly output unaffected")
     log(f"wrote {DATA_PATH} ({DATA_PATH.stat().st_size/1024:.0f} kB)")
 
     if failures:
