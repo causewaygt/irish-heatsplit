@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.16.0 / site 4.6.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.17.0 / site 4.6.1.
 
 ## The premise
 
@@ -218,6 +218,16 @@ mixed clocks the store would put temperature an hour out of step with
 demand from late March to late October – silently, and in the
 direction that misaligns an evening peak with the cold that caused it.
 
+**The series are written as flat arrays**, not one key per value:
+`t0` is the base hour and position *i* is `t0 + i` hours, null where
+absent. At one key per value the file reached 1,025 kB rewritten
+daily and the repeated 13-character keys were most of it; the array
+form is about 30% of that. Readers accept both shapes, so the run
+that first writes the new encoding still inherits the old file rather
+than refilling thirteen months from empty. The spring clock change
+skips a local hour and shows up as one null a year – the same shape
+as a feed gap, and indistinguishable from one by design.
+
 The store is a **separate file with its own schema**: a failure there
 cannot corrupt the weekly tracker. Two gates, deliberately separate.
 `complete` covers the demand/wind/solar trio and governs the grid
@@ -252,7 +262,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 87 tests, no network
+python3 tests/test_synthetic.py   # 92 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
