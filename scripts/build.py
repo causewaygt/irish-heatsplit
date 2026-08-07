@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.10.0"
+PIPELINE_VERSION = "4.10.2"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
@@ -65,6 +65,18 @@ HISTORY_START = "2025-10-01"
 # weeks are restatable and stranding risk is ~nil - measured, not
 # assumed, by the drift check below.
 HISTORY_SCHEMA = 2
+# Anchor epoch. Bump whenever a change to ANCHORS alters what a past
+# week WOULD have computed - as distinct from HISTORY_SCHEMA, which
+# tracks new FIELDS. A schema bump adds fields and leaves stored
+# values alone; an epoch bump rewrites every recomputable week onto
+# the new basis, using that week's own stored prices, tariffs, fx and
+# emission factor. Without it a basis change leaves the series half on
+# one footing and half on another, and the heat/cold splits stop
+# reconciling with the totals they were derived from.
+#   1 - launch basis
+#   2 - 6 Aug 2026: data-centre line repriced to its cooling share
+#       (SEAI NHS R1) and hot water re-anchored 18.3% -> 22.4%
+ANCHOR_EPOCH = 2
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
@@ -1784,73 +1796,98 @@ def feed_eirgrid_probe():
 
     Soft, log-only. Nothing downstream depends on it.
     """
-    out = {"source": "EirGrid Smart Grid Dashboard (probe, A'.2)"}
+    # ROUND 2 (7 Aug 2026). Round 1's 400s were a parameter error, not
+    # a missing series: `areas` must match the chart (demand ->
+    # demandactual, co2 -> co2intensity), and I omitted it for wind,
+    # solar and co2. Round 1 did establish: 15-minute interval,
+    # 2,845/2,880 rows valued (98.8%), all three regions served for
+    # demand, and a month returned regardless of the span requested -
+    # so depth is the walk-back question tested below.
+    out = {"source": "EirGrid Smart Grid Dashboard (probe, round 2)"}
     end = today_utc()
 
     def dmy(d):
         return d.strftime("%d-%b-%Y").replace(" 0", " ")
 
-    def probe(chart, region, days, areas=None):
-        start = end - dt.timedelta(days=days)
-        p = {"region": region, "chartType": chart,
-             "dateRange": "month", "dateFrom": dmy(start),
-             "dateTo": dmy(end)}
-        if areas:
-            p["areas"] = areas
-        r = http_get(EIRGRID_ENDPOINT, params=p, timeout=120).json()
+    def call(chart, region, areas, frm, to, rng="month"):
+        r = http_get(EIRGRID_ENDPOINT, params={
+            "region": region, "chartType": chart, "dateRange": rng,
+            "dateFrom": dmy(frm), "dateTo": dmy(to), "areas": areas,
+        }, timeout=120).json()
         rows = (r or {}).get("Rows", []) or []
-        stamps = [x.get("EffectiveTime") for x in rows
-                  if x.get("EffectiveTime")]
+        st = [x.get("EffectiveTime") for x in rows if x.get("EffectiveTime")]
         vals = [x.get("Value") for x in rows if x.get("Value") is not None]
-        return rows, stamps, vals
+        return rows, st, vals
 
-    # --- 1/2/4: which charts answer, for which regions
-    for chart, areas in (("wind", None), ("solar", None),
-                         ("demand", "demandactual"), ("co2", None)):
-        for region in ("ALL", "ROI", "NI"):
+    # --- A: correct areas names for wind and solar
+    CAND = {"wind": ["windactual", "windforecast", "generationactual"],
+            "solar": ["solaractual", "solarforecast"],
+            "co2": ["co2intensity"], "demand": ["demandactual"]}
+    good = {}
+    for chart, names in CAND.items():
+        for areas in names:
             try:
-                rows, stamps, vals = probe(chart, region, 8, areas)
+                rows, st, vals = call(chart, "ALL", areas,
+                                      end - dt.timedelta(days=8), end)
                 if rows:
-                    fields = sorted(rows[0].keys())[:8]
-                    log(f"eirgrid_probe: {chart}/{region} {len(rows)} rows,"
-                        f" {len(vals)} valued, span "
-                        f"{stamps[0] if stamps else '-'} .. "
-                        f"{stamps[-1] if stamps else '-'}; fields {fields}")
-                else:
-                    log(f"eirgrid_probe: {chart}/{region} 0 rows")
+                    good[chart] = areas
+                    log(f"eirgrid_probe: {chart}/ALL areas={areas} OK - "
+                        f"{len(rows)} rows, {len(vals)} valued, "
+                        f"{st[0]} .. {st[-1]}")
+                    break
+                log(f"eirgrid_probe: {chart} areas={areas} 0 rows")
+            except Exception as e:
+                log(f"eirgrid_probe: {chart} areas={areas} "
+                    f"{e.__class__.__name__}")
+
+    # --- B: regionality of whichever series answered
+    for chart, areas in good.items():
+        if chart in ("demand", "co2"):
+            continue
+        for region in ("ROI", "NI"):
+            try:
+                rows, st, vals = call(chart, region, areas,
+                                      end - dt.timedelta(days=8), end)
+                log(f"eirgrid_probe: {chart}/{region} {len(rows)} rows, "
+                    f"{len(vals)} valued")
             except Exception as e:
                 log(f"eirgrid_probe: {chart}/{region} "
-                    f"{e.__class__.__name__}: {e}")
+                    f"{e.__class__.__name__}")
 
-    # --- 3: interval actually returned (from the densest series)
-    try:
-        rows, stamps, _ = probe("demand", "ALL", 2, "demandactual")
-        if len(stamps) >= 3:
-            def parse(s):
-                for f in ("%d-%b-%Y %H:%M:%S", "%d-%B-%Y %H:%M:%S"):
-                    try:
-                        return dt.datetime.strptime(s, f)
-                    except ValueError:
-                        continue
-                return None
-            ts = [parse(s) for s in stamps[:6]]
-            gaps = [round((b - a).total_seconds() / 60)
-                    for a, b in zip(ts, ts[1:]) if a and b]
-            log(f"eirgrid_probe: interval minutes {gaps} "
-                f"(aggregate to hourly MEANS, never sample)")
-    except Exception as e:
-        log(f"eirgrid_probe: interval {e.__class__.__name__}")
-
-    # --- 1 in earnest: how far back will it go?
-    for days in (35, 120, 400):
+    # --- C: THE DEPTH QUESTION. Can past months be walked? If a
+    # request centred on a historic month returns that month's data,
+    # the 13-month store backfills by chunked walking. If it returns
+    # the current month (or nothing), the store fills forward instead
+    # and the seasonal exhibit waits for the calendar.
+    areas = good.get("demand", "demandactual")
+    for back in (2, 6, 12):
+        m_end = end - dt.timedelta(days=30 * back)
+        m_start = m_end - dt.timedelta(days=27)
         try:
-            rows, stamps, vals = probe("wind", "ALL", days)
-            first = stamps[0] if stamps else "-"
-            log(f"eirgrid_probe: DEPTH wind/ALL request {days}d -> "
-                f"{len(rows)} rows, {len(vals)} valued, earliest {first}")
+            rows, st, vals = call("demand", "ALL", areas, m_start, m_end)
+            first = st[0] if st else "-"
+            last = st[-1] if st else "-"
+            hit = ("HISTORIC DATA RETURNED - walk-back works"
+                   if st and str(m_end.year) in str(first)
+                   and first[:6].lower() in
+                   dmy(m_start).lower()[:6] + dmy(m_end).lower()[:6]
+                   else "check span against request")
+            log(f"eirgrid_probe: WALK-BACK {back}mo "
+                f"(asked {dmy(m_start)}..{dmy(m_end)}) -> "
+                f"{len(rows)} rows, got {first} .. {last} [{hit}]")
         except Exception as e:
-            log(f"eirgrid_probe: DEPTH {days}d "
+            log(f"eirgrid_probe: WALK-BACK {back}mo "
                 f"{e.__class__.__name__}: {e}")
+
+    # --- D: does dateRange=year serve more than a month?
+    try:
+        rows, st, vals = call("demand", "ALL", areas,
+                              end - dt.timedelta(days=365), end,
+                              rng="year")
+        log(f"eirgrid_probe: dateRange=year -> {len(rows)} rows, "
+            f"{st[0] if st else '-'} .. {st[-1] if st else '-'}")
+    except Exception as e:
+        log(f"eirgrid_probe: dateRange=year {e.__class__.__name__}: {e}")
 
     out["latest_day"] = end.isoformat()
     return out, "ok"
@@ -2323,6 +2360,13 @@ def build_history(feeds, anchors=None):
     prev = list((PREVIOUS_DERIVED or {}).get("history") or [])
     prev_schema = int((PREVIOUS_DERIVED or {})
                       .get("history_schema") or 1)
+    prev_epoch = int((PREVIOUS_DERIVED or {})
+                     .get("anchor_epoch") or 1)
+    re_anchor = prev_epoch < ANCHOR_EPOCH
+    if re_anchor and prev:
+        log(f"history: anchor epoch {prev_epoch} -> {ANCHOR_EPOCH}, "
+            f"re-anchoring {len(prev)} stored weeks onto the new "
+            f"basis (own-week prices retained)")
     frozen = {e["week_ending"]: e for e in prev[:-2]} if len(prev) > 2 \
         else {}
     hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
@@ -2335,8 +2379,8 @@ def build_history(feeds, anchors=None):
         w_end = (last_sun - dt.timedelta(weeks=k)).isoformat()
         if w_end in frozen:
             e = frozen[w_end]
-            needs = (prev_schema < HISTORY_SCHEMA or "ni" not in e
-                     or "roi" not in e)
+            needs = (prev_schema < HISTORY_SCHEMA or re_anchor
+                     or "ni" not in e or "roi" not in e)
             if needs:
                 # Restatement (schema policy, 1 Aug 2026 handover):
                 # recompute through derive_hero with the entry's
@@ -2366,12 +2410,34 @@ def build_history(feeds, anchors=None):
                                 - e["bill_eur_m"]),
                             abs(h2["combined"]["emissions_kt_co2"]
                                 - e["emissions_kt"]))
-                        if drift > 0.5:
+                        if drift > 0.5 and not re_anchor:
                             log(f"history: restatement drift {w_end} "
                                 f"{drift:.1f} - stored values kept "
                                 f"frozen, review")
                         e = dict(e)
                         C2, W2 = h2["combined"], h2["what_if_combined"]
+                        if re_anchor:
+                            # basis change: rewrite the stored values
+                            # too, so totals and splits stay on one
+                            # footing across the whole series
+                            e.update({
+                                "purchased_gwh": C2["purchased_gwh"],
+                                "served_gwh": C2["served_gwh"],
+                                "indigenous_pct":
+                                    C2["indigenous_share_pct"],
+                                "bill_eur_m": C2["bill_eur_m"],
+                                "bill_gbp_m": C2["bill_gbp_m"],
+                                "emissions_kt": C2["emissions_kt_co2"],
+                                "wf_purchased_gwh": W2["purchased_gwh"],
+                                "wf_indigenous_pct":
+                                    W2["indigenous_share_pct"],
+                                "wf_bill_eur_m": W2["bill_eur_m"],
+                                "wf_bill_gbp_m": W2["bill_gbp_m"],
+                                "wf_emissions_kt":
+                                    W2["emissions_kt_co2"],
+                                "ni": jur_sub(h2["ni"]),
+                                "roi": jur_sub(h2["roi"]),
+                            })
                         for k in ("heat_gwh", "cold_gwh",
                                   "bill_heat_eur_m", "bill_cold_eur_m",
                                   "bill_heat_gbp_m", "bill_cold_gbp_m",
@@ -3216,6 +3282,7 @@ def main():
         derived["heat_gap"] = hg
     derived["history"] = build_history(feeds)
     derived["history_schema"] = HISTORY_SCHEMA
+    derived["anchor_epoch"] = ANCHOR_EPOCH
     gw = sorted(((feeds.get("gni_live") or {}).get("ndm_gwh")
                  or {}))
     derived["gas_window"] = {"from": gw[0], "to": gw[-1],
