@@ -6,6 +6,7 @@ the Actions run logs (14 Jul 2026).
     python3 tests/test_synthetic.py
 """
 
+import json
 import datetime as dt
 import math
 import random
@@ -26,6 +27,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    week_inputs, tariffs_for, ni_bridge_margin,
                    hourly_from_rows, build_hourly_store,
                    weighted_hourly_temp,
+                   compact_hourly, expand_hourly,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -1614,7 +1616,7 @@ def test_hourly_store_carries_temperature_and_gates_it_separately():
     finally:
         B.fetch_hourly_chunk, B.fetch_hourly_temp = real, real_t
         B.time.sleep = real_s
-    assert store["schema"] == 2
+    assert store["schema"] == B.HOURLY_SCHEMA
     assert "temp_ai" in store["series"]
     assert store["complete"] is True            # grid layer unaffected
     assert store["heat_ready"] is False         # heat layer waits
@@ -1702,6 +1704,102 @@ def test_hourly_temp_keeps_previous_when_every_chunk_fails():
     finally:
         B.http_get, B.time.sleep = real_get, real_sleep
     assert out == prev
+
+
+def test_hourly_compaction_round_trips():
+    """Arrays in, dicts out, byte for byte the same values."""
+    series = {
+        "demand_ai": {"2026-01-08T00": 4100.0, "2026-01-08T01": 4050.5,
+                      "2026-01-08T03": 3990.0},
+        "temp_ai": {"2026-01-08T00": 1.25, "2026-01-08T03": -0.5},
+    }
+    t0, n, packed = compact_hourly(series)
+    assert t0 == "2026-01-08T00"
+    assert n == 4
+    assert packed["demand_ai"] == [4100.0, 4050.5, None, 3990.0]
+    assert packed["temp_ai"] == [1.25, None, None, -0.5]
+    back = expand_hourly({"t0": t0, "series": packed})
+    assert back == series
+
+
+def test_hourly_compaction_survives_the_spring_clock_change():
+    """The keys are Irish LOCAL clock, so the spring transition skips
+    a local hour. Offsets must stay a bijection across it - the gap
+    reads as one null, and every key on both sides comes back
+    unchanged. This is the case that would silently shift a whole
+    series by an hour if the encoding assumed contiguity."""
+    # 29 Mar 2026: local 01:00 does not exist (00:00 -> 02:00).
+    series = {"demand_ai": {"2026-03-29T00": 3000.0,
+                            "2026-03-29T02": 3100.0,
+                            "2026-03-29T03": 3200.0}}
+    t0, n, packed = compact_hourly(series)
+    assert packed["demand_ai"] == [3000.0, None, 3100.0, 3200.0]
+    assert expand_hourly({"t0": t0, "series": packed}) == series
+
+
+def test_hourly_store_reads_the_schema_2_file_it_replaces():
+    """The first run after the encoding change must inherit the
+    dict-form store already in the repo, not refill 13 months from
+    empty."""
+    old_doc = {"schema": 2,
+               "series": {"demand_ai": {"2026-01-08T00": 4100.0},
+                          "temp_ai": {"2026-01-08T00": 1.25}}}
+    got = expand_hourly(old_doc)
+    assert got["demand_ai"] == {"2026-01-08T00": 4100.0}
+    assert got["temp_ai"] == {"2026-01-08T00": 1.25}
+    assert expand_hourly({}) == {}
+    assert expand_hourly({"schema": 3, "series": {"demand_ai": [1.0]}}) == {}
+
+
+def test_hourly_store_writes_arrays_and_reloads_itself():
+    """End to end: build a store, feed its own document back in, and
+    the second build must see everything the first one held."""
+    import build as B
+
+    def fake_chunk(chart, region, areas, end_day):
+        base = end_day - dt.timedelta(days=27)
+        out = {}
+        for d in range(28):
+            day = base + dt.timedelta(days=d)
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 1000.0
+        return out
+
+    real, real_t, real_s = B.fetch_hourly_chunk, B.fetch_hourly_temp, B.time.sleep
+    B.fetch_hourly_chunk = fake_chunk
+    B.fetch_hourly_temp = lambda prev, floor, end: dict(prev or {})
+    B.time.sleep = lambda *_: None
+    try:
+        first = build_hourly_store({})
+        # written form is arrays against a base hour
+        assert isinstance(first["series"]["demand_ai"], list)
+        assert first["t0"] and first["hours"] > 9000
+        # and it survives a JSON round trip into the next run
+        reloaded = json.loads(json.dumps(first))
+        second = build_hourly_store(reloaded)
+    finally:
+        B.fetch_hourly_chunk, B.fetch_hourly_temp = real, real_t
+        B.time.sleep = real_s
+    assert second["completeness_pct"]["demand_ai"] >= 95
+    assert len(second["series"]["demand_ai"]) >= len(first["series"]["demand_ai"]) - 24
+
+
+def test_array_encoding_is_materially_smaller():
+    """The point of the change. A dict-form store of the live shape
+    must shrink substantially when written as arrays."""
+    series = {}
+    base = dt.datetime(2025, 7, 13)
+    for name in ("demand_ai", "wind_ai", "solar_ai", "co2_ai", "temp_ai"):
+        d = {}
+        for i in range(9384):
+            k = (base + dt.timedelta(hours=i)).strftime("%Y-%m-%dT%H")
+            d[k] = round(1000 + i % 997 + 0.5, 2)
+        series[name] = d
+    dict_bytes = len(json.dumps(series, separators=(",", ":")))
+    t0, n, packed = compact_hourly(series)
+    arr_bytes = len(json.dumps({"t0": t0, "hours": n, "series": packed},
+                               separators=(",", ":")))
+    assert arr_bytes < dict_bytes * 0.55, (arr_bytes, dict_bytes)
 
 
 if __name__ == "__main__":
