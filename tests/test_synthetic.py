@@ -1148,6 +1148,7 @@ def test_hourly_store_shape_and_isolation(monkey=None):
     assert store["schema"] == B.HOURLY_SCHEMA
     assert set(store["series"]) == set(B.HOURLY_SERIES)
     assert store["complete"] is True
+    assert store["completeness_pct"]["demand_ai"] >= 95
     # 13 months of hours, within a chunk's tolerance
     n = len(store["series"]["demand_ai"])
     assert 9000 <= n <= 10200, n
@@ -1166,6 +1167,65 @@ def test_hourly_store_never_breaks_weekly_output():
     finally:
         B.fetch_hourly_chunk = real
     assert store is None      # nothing written, caller carries on
+
+
+def test_hourly_carbon_gap_does_not_pass_as_complete():
+    """A demand-only gate would have passed the 7 Aug 2026 store with
+    carbon at 86%. The core trio gates the store; carbon gates itself."""
+    import build as B
+
+    def patchy(chart, region, areas, end_day):
+        base = end_day - dt.timedelta(days=27)
+        out, skip = {}, (chart == "co2")
+        for d in range(28):
+            day = base + dt.timedelta(days=d)
+            if skip and d < 8:          # carbon missing early
+                continue
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 1.0
+        return out
+
+    real = B.fetch_hourly_chunk
+    B.fetch_hourly_chunk = patchy
+    try:
+        store = build_hourly_store({})
+    finally:
+        B.fetch_hourly_chunk = real
+    assert store["complete"] is True                  # trio fine
+    assert store["completeness_pct"]["co2_ai"] < 95   # carbon flagged
+
+
+def test_cold_census_reconciles_with_seai():
+    """7 Aug 2026: the ROI cold-economy census must stay within 5% of
+    the SEAI National Heat Study final-energy cooling total, and the
+    process line within 10% of SEAI's industry figure. Pins both sides
+    so neither can drift silently again."""
+    from build import ANCHORS
+    c = ANCHORS["cool"]
+    dc = (c["roi_elec_twh"] * c["dc_share_of_roi_elec"]
+          * c["dc_cooling_share"])
+    L = c["loads_twh"]
+    roi = dc + L["refrigeration"] + L["process"] + L["comfort"]
+    SEAI_ROI = 5.041      # GWh/1000: 2868+221+93+804+1055
+    assert abs(roi - SEAI_ROI) / SEAI_ROI < 0.05, (roi, SEAI_ROI)
+    assert abs(L["process"] - 0.804) / 0.804 < 0.10
+
+
+def test_service_factors_track_seai_ratios():
+    """Commercial-type loads use SEAI's implied useful-to-final ratio
+    (2.07). Process is deliberately ABOVE SEAI's 1.00 pass-through but
+    below the old 2.5. Data centres keep their own high factor."""
+    from build import ANCHORS
+    sf = ANCHORS["cool"]["cooling_service_factor"]
+    assert sf["refrigeration"] == sf["comfort"] == 2.07
+    assert 1.0 < sf["process"] <= 2.5
+    assert sf["dc"] > 5.0
+    # aggregate excluding DC must sit near SEAI's 1.86, not the old 2.6
+    c = ANCHORS["cool"]; L = c["loads_twh"]
+    elec = L["refrigeration"] + L["process"] + L["comfort"]
+    serv = (L["refrigeration"] * sf["refrigeration"]
+            + L["process"] * sf["process"] + L["comfort"] * sf["comfort"])
+    assert 1.8 <= serv / elec <= 2.2, serv / elec
 
 
 if __name__ == "__main__":
