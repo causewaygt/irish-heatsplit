@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.5.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.6.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -83,6 +83,11 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
   color:var(--faint);background:none;border:1px solid var(--line);
   border-radius:3px;padding:2px 8px;cursor:pointer}
 .trendctl button[aria-pressed="true"]{color:#3AAA35;border-color:#3AAA35}
+/* At the head of the page the bar governs everything below it, so it
+   aligns left with the headline it rewords rather than floating right
+   as a footnote to one panel. The rule under it says so. */
+.trendctl.trendtop{justify-content:flex-start;margin:0 0 14px;
+  padding-bottom:10px;border-bottom:1px solid var(--line)}
 .trend{margin-top:8px}
 .trend svg{display:block;width:100%;height:34px}
 .trend .tr-actual{fill:none;stroke:#DCE5E0;stroke-width:1.6;vector-effect:non-scaling-stroke}
@@ -319,13 +324,21 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </div>
 <header>
   <div class="wrap">
+    <div class="trendctl trendtop" id="trendctl" hidden>
+      <span>TREND – LIVE WEEKS</span>
+      <button data-win="2" aria-pressed="true">1w</button>
+      <button data-win="5">4w</button>
+      <button data-win="13">12w</button>
+      <button data-win="53">12m</button>
+      <span id="trendspan"></span>
+    </div>
     <h1 class="headline">How the island of Ireland
       <span class="hot">heated</span> and <span class="cold">cooled</span>
-      itself this week.</h1>
+      itself <span id="h1Win">this week</span>.</h1>
     <p class="strap">A weekly estimate of the energy behind the island's
       building heat, by jurisdiction and source – official annual figures
-      shaped by this week's weather, and how much of that heat no one can
-      see. Estimates, not measurements.<span class="dag">†</span>
+      shaped by <span id="strapWin">this week's</span> weather, and how much
+      of that heat no one can see. Estimates, not measurements.<span class="dag">†</span>
       Sibling of the
       <a href="https://causewaygt.github.io/uk-heatsplit/">UK Heat Split</a>,
       by <a href="https://causewaygt.com">Causeway Energies</a>.</p>
@@ -336,21 +349,13 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 <main class="wrap">
 
 <section id="hero" aria-labelledby="hero-h">
-  <h2 id="hero-h">This week, <span id="heroScope">all island</span> <span class="dag">†</span></h2>
+  <h2 id="hero-h"><span id="heroWin">This week</span>, <span id="heroScope">all island</span> <span class="dag">†</span></h2>
   <div class="seg" role="tablist" aria-label="Hero jurisdiction">
     <button class="segbtn active" id="heroAll" role="tab">All island</button>
     <button class="segbtn" id="heroNIbtn" role="tab">NI</button>
     <button class="segbtn" id="heroROIbtn" role="tab">ROI</button>
   </div>
   <div class="hstats" id="heroCards"></div>
-  <div class="trendctl" id="trendctl" hidden>
-    <span>TREND – LIVE WEEKS</span>
-    <button data-win="2" aria-pressed="true">1w</button>
-    <button data-win="5">4w</button>
-    <button data-win="13">12w</button>
-    <button data-win="53">12m</button>
-    <span id="trendspan"></span>
-  </div>
   <div class="whatif" id="whatif" hidden>
     <div class="wtitle">What if <span class="wbig">20%</span> of heat &amp; cooling moved to <span class="wbig">geothermal</span></div>
     <div class="wrow" id="whatifRow"></div>
@@ -858,6 +863,19 @@ function heroCards(h, HIST){
   let WIN=2;
   const SUMN={2:0,5:4,13:12,53:52};
   const WLBL={5:'4 weeks',13:'12 weeks',53:'12 months'};
+  // Plain-English name for each window, for the two page titles only.
+  // 4w is called a month and 12w a quarter - near enough to name, and
+  // not near enough to compute with, which is why the label under
+  // every figure keeps stating the true span ('over the last 12
+  // weeks (12 live wks)'). Nothing numeric rests on the rounding.
+  const WNAME={2:'week',5:'month',13:'quarter',53:'year'};
+  const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
+  function setWording(){
+    const w='this '+(WNAME[WIN]||'week');
+    const h1=el('h1Win'); if(h1) h1.textContent=w;
+    const st=el('strapWin'); if(st) st.textContent=w+'\u2019s';
+    const hw=el('heroWin'); if(hw) hw.textContent=cap1(w);
+  }
   function windowed(n, scope){
     const G=e=>scope==='all'?e:(e[scope]||null);
     const es=HIST.slice(-n).filter(e=>G(e));
@@ -895,6 +913,7 @@ function heroCards(h, HIST){
   function mScale(m,s){return m>=1000?s+fmt(m/1000,1)+'bn':s+fmt(m,0)+'m';}
   function ktScale(k){return k>=1000?fmt(k/1000,1)+' Mt':fmt(k,0)+' kt';}
   function render(state){
+    setWording();
     ['heroAll','heroNIbtn','heroROIbtn'].forEach(id=>el(id).classList.remove('active'));
     el(state==='ni'?'heroNIbtn':state==='roi'?'heroROIbtn':'heroAll')
       .classList.add('active');
@@ -1479,7 +1498,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.5.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.6.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
