@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-08-07T15:46:44+00:00",
+ "built_utc": "2026-08-07T15:53:45+00:00",
  "derived": {
   "anchor_epoch": 3,
   "cool": {
@@ -30,9 +30,9 @@
    "within_gate": false
   },
   "gas_window": {
-   "days": 120,
+   "days": 121,
    "from": "2026-04-08",
-   "to": "2026-08-05"
+   "to": "2026-08-06"
   },
   "heat_gap": {
    "basis": "Standard tariffs, July 2026 pass (Power NI/UR review, ROI standard 24h rates) - dagger; time-of-use and night tariffs materially lower for heat-pump households. Oil prices live. ASHP SPF is modelled from each jurisdiction's HDD-weighted climate (Carnot-fraction, defrost derate, DHW share - all dagger), calibrated to GB field-trial medians. Kerosene 10.35 kWh/L; boiler efficiencies 82%/85% dagger. Challenge and input welcome at contact@causewaygt.com",
@@ -467,6 +467,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 121.5,
     "emissions_kt": 155.2,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 39.9,
+      "u": 39.9
+     },
+     "gas": {
+      "i": 126.8,
+      "u": 107.7
+     },
+     "oil": {
+      "i": 290.7,
+      "u": 238.4
+     },
+     "other": {
+      "i": 19.0,
+      "u": 13.2
+     },
+     "peat": {
+      "i": 22.8,
+      "u": 13.7
+     }
+    },
     "fx_eur_gbp": 0.8717,
     "hdd": 15.7,
     "heat_gwh": 499.2,
@@ -528,6 +554,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 179.4,
     "emissions_kt": 213.1,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 58.9,
+      "u": 58.9
+     },
+     "gas": {
+      "i": 186.4,
+      "u": 158.4
+     },
+     "oil": {
+      "i": 426.3,
+      "u": 349.6
+     },
+     "other": {
+      "i": 27.9,
+      "u": 19.4
+     },
+     "peat": {
+      "i": 36.3,
+      "u": 21.8
+     }
+    },
     "fx_eur_gbp": 0.86922,
     "hdd": 27.6,
     "heat_gwh": 735.7,
@@ -589,6 +641,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 165.8,
     "emissions_kt": 199.5,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 54.5,
+      "u": 54.5
+     },
+     "gas": {
+      "i": 173.1,
+      "u": 147.1
+     },
+     "oil": {
+      "i": 397.8,
+      "u": 326.1
+     },
+     "other": {
+      "i": 25.9,
+      "u": 18.1
+     },
+     "peat": {
+      "i": 30.1,
+      "u": 18.0
+     }
+    },
     "fx_eur_gbp": 0.8693,
     "hdd": 24.8,
     "heat_gwh": 681.3,
@@ -650,6 +728,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 247.4,
     "emissions_kt": 281.0,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 81.3,
+      "u": 81.3
+     },
+     "gas": {
+      "i": 257.5,
+      "u": 219.0
+     },
+     "oil": {
+      "i": 590.3,
+      "u": 484.0
+     },
+     "other": {
+      "i": 38.5,
+      "u": 26.9
+     },
+     "peat": {
+      "i": 47.9,
+      "u": 28.8
+     }
+    },
     "fx_eur_gbp": 0.8695,
     "hdd": 42.1,
     "heat_gwh": 1015.5,
@@ -711,6 +815,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 237.3,
     "emissions_kt": 271.1,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 78.0,
+      "u": 78.0
+     },
+     "gas": {
+      "i": 247.3,
+      "u": 210.2
+     },
+     "oil": {
+      "i": 567.0,
+      "u": 465.0
+     },
+     "other": {
+      "i": 36.9,
+      "u": 25.8
+     },
+     "peat": {
+      "i": 45.4,
+      "u": 27.2
+     }
+    },
     "fx_eur_gbp": 0.8781,
     "hdd": 40.3,
     "heat_gwh": 974.6,
@@ -772,6 +902,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 141.1,
     "emissions_kt": 174.8,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 46.4,
+      "u": 46.4
+     },
+     "gas": {
+      "i": 147.1,
+      "u": 125.1
+     },
+     "oil": {
+      "i": 337.4,
+      "u": 276.6
+     },
+     "other": {
+      "i": 22.0,
+      "u": 15.3
+     },
+     "peat": {
+      "i": 26.8,
+      "u": 16.1
+     }
+    },
     "fx_eur_gbp": 0.87976,
     "hdd": 20.0,
     "heat_gwh": 579.7,
@@ -833,6 +989,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 240.3,
     "emissions_kt": 274.0,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 79.0,
+      "u": 79.0
+     },
+     "gas": {
+      "i": 250.5,
+      "u": 212.9
+     },
+     "oil": {
+      "i": 574.9,
+      "u": 471.5
+     },
+     "other": {
+      "i": 37.5,
+      "u": 26.2
+     },
+     "peat": {
+      "i": 45.0,
+      "u": 27.0
+     }
+    },
     "fx_eur_gbp": 0.8814,
     "hdd": 40.8,
     "heat_gwh": 986.9,
@@ -894,6 +1076,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 405.0,
     "emissions_kt": 438.6,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 133.0,
+      "u": 133.0
+     },
+     "gas": {
+      "i": 421.5,
+      "u": 358.2
+     },
+     "oil": {
+      "i": 965.1,
+      "u": 791.4
+     },
+     "other": {
+      "i": 62.9,
+      "u": 44.0
+     },
+     "peat": {
+      "i": 79.5,
+      "u": 47.7
+     }
+    },
     "fx_eur_gbp": 0.88122,
     "hdd": 75.4,
     "heat_gwh": 1661.9,
@@ -955,6 +1163,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 317.6,
     "emissions_kt": 351.3,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 104.3,
+      "u": 104.3
+     },
+     "gas": {
+      "i": 330.5,
+      "u": 281.0
+     },
+     "oil": {
+      "i": 757.0,
+      "u": 620.8
+     },
+     "other": {
+      "i": 49.4,
+      "u": 34.5
+     },
+     "peat": {
+      "i": 62.4,
+      "u": 37.4
+     }
+    },
     "fx_eur_gbp": 0.87748,
     "hdd": 57.2,
     "heat_gwh": 1303.6,
@@ -1016,6 +1250,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 316.0,
     "emissions_kt": 349.7,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 103.7,
+      "u": 103.7
+     },
+     "gas": {
+      "i": 329.0,
+      "u": 279.7
+     },
+     "oil": {
+      "i": 753.9,
+      "u": 618.2
+     },
+     "other": {
+      "i": 49.2,
+      "u": 34.4
+     },
+     "peat": {
+      "i": 61.2,
+      "u": 36.7
+     }
+    },
     "fx_eur_gbp": 0.87624,
     "hdd": 56.9,
     "heat_gwh": 1297.0,
@@ -1077,6 +1337,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 243.7,
     "emissions_kt": 277.4,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 80.0,
+      "u": 80.0
+     },
+     "gas": {
+      "i": 253.8,
+      "u": 215.8
+     },
+     "oil": {
+      "i": 581.6,
+      "u": 476.9
+     },
+     "other": {
+      "i": 37.9,
+      "u": 26.5
+     },
+     "peat": {
+      "i": 47.1,
+      "u": 28.2
+     }
+    },
     "fx_eur_gbp": 0.8748,
     "hdd": 40.9,
     "heat_gwh": 1000.5,
@@ -1138,6 +1424,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 324.5,
     "emissions_kt": 358.2,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 106.6,
+      "u": 106.6
+     },
+     "gas": {
+      "i": 337.8,
+      "u": 287.1
+     },
+     "oil": {
+      "i": 773.8,
+      "u": 634.6
+     },
+     "other": {
+      "i": 50.5,
+      "u": 35.3
+     },
+     "peat": {
+      "i": 63.3,
+      "u": 38.0
+     }
+    },
     "fx_eur_gbp": 0.87668,
     "hdd": 58.0,
     "heat_gwh": 1332.0,
@@ -1199,6 +1511,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 344.5,
     "emissions_kt": 378.2,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 113.1,
+      "u": 113.1
+     },
+     "gas": {
+      "i": 358.4,
+      "u": 304.8
+     },
+     "oil": {
+      "i": 820.9,
+      "u": 673.1
+     },
+     "other": {
+      "i": 53.5,
+      "u": 37.5
+     },
+     "peat": {
+      "i": 67.8,
+      "u": 40.7
+     }
+    },
     "fx_eur_gbp": 0.87333,
     "hdd": 62.7,
     "heat_gwh": 1413.8,
@@ -1260,6 +1598,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 456.7,
     "emissions_kt": 490.3,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 149.9,
+      "u": 149.9
+     },
+     "gas": {
+      "i": 475.1,
+      "u": 403.9
+     },
+     "oil": {
+      "i": 1087.9,
+      "u": 892.1
+     },
+     "other": {
+      "i": 70.9,
+      "u": 49.7
+     },
+     "peat": {
+      "i": 89.9,
+      "u": 53.9
+     }
+    },
     "fx_eur_gbp": 0.87208,
     "hdd": 87.1,
     "heat_gwh": 1873.7,
@@ -1321,6 +1685,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 438.5,
     "emissions_kt": 472.1,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 143.9,
+      "u": 143.9
+     },
+     "gas": {
+      "i": 456.4,
+      "u": 387.9
+     },
+     "oil": {
+      "i": 1045.4,
+      "u": 857.2
+     },
+     "other": {
+      "i": 68.1,
+      "u": 47.7
+     },
+     "peat": {
+      "i": 85.7,
+      "u": 51.4
+     }
+    },
     "fx_eur_gbp": 0.86734,
     "hdd": 82.6,
     "heat_gwh": 1799.5,
@@ -1382,6 +1772,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 372.2,
     "emissions_kt": 405.8,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 122.2,
+      "u": 122.2
+     },
+     "gas": {
+      "i": 387.2,
+      "u": 329.1
+     },
+     "oil": {
+      "i": 886.8,
+      "u": 727.2
+     },
+     "other": {
+      "i": 57.8,
+      "u": 40.5
+     },
+     "peat": {
+      "i": 73.1,
+      "u": 43.9
+     }
+    },
     "fx_eur_gbp": 0.86692,
     "hdd": 69.5,
     "heat_gwh": 1527.1,
@@ -1443,6 +1859,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 345.0,
     "emissions_kt": 378.7,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 113.3,
+      "u": 113.3
+     },
+     "gas": {
+      "i": 358.6,
+      "u": 304.9
+     },
+     "oil": {
+      "i": 820.4,
+      "u": 672.7
+     },
+     "other": {
+      "i": 53.5,
+      "u": 37.4
+     },
+     "peat": {
+      "i": 69.4,
+      "u": 41.6
+     }
+    },
     "fx_eur_gbp": 0.8708,
     "hdd": 63.6,
     "heat_gwh": 1415.1,
@@ -1504,6 +1946,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 344.7,
     "emissions_kt": 378.4,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 113.2,
+      "u": 113.2
+     },
+     "gas": {
+      "i": 359.0,
+      "u": 305.2
+     },
+     "oil": {
+      "i": 822.7,
+      "u": 674.6
+     },
+     "other": {
+      "i": 53.6,
+      "u": 37.6
+     },
+     "peat": {
+      "i": 66.7,
+      "u": 40.0
+     }
+    },
     "fx_eur_gbp": 0.86734,
     "hdd": 63.2,
     "heat_gwh": 1415.2,
@@ -1565,6 +2033,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 346.8,
     "emissions_kt": 380.5,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 113.9,
+      "u": 113.9
+     },
+     "gas": {
+      "i": 361.2,
+      "u": 307.1
+     },
+     "oil": {
+      "i": 828.1,
+      "u": 679.0
+     },
+     "other": {
+      "i": 54.0,
+      "u": 37.8
+     },
+     "peat": {
+      "i": 66.7,
+      "u": 40.0
+     }
+    },
     "fx_eur_gbp": 0.86534,
     "hdd": 63.6,
     "heat_gwh": 1423.9,
@@ -1626,6 +2120,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 363.4,
     "emissions_kt": 397.0,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 119.3,
+      "u": 119.3
+     },
+     "gas": {
+      "i": 378.6,
+      "u": 321.8
+     },
+     "oil": {
+      "i": 867.9,
+      "u": 711.7
+     },
+     "other": {
+      "i": 56.5,
+      "u": 39.6
+     },
+     "peat": {
+      "i": 69.6,
+      "u": 41.8
+     }
+    },
     "fx_eur_gbp": 0.87044,
     "hdd": 67.0,
     "heat_gwh": 1492.0,
@@ -1687,6 +2207,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 326.0,
     "emissions_kt": 359.7,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 107.0,
+      "u": 107.0
+     },
+     "gas": {
+      "i": 339.6,
+      "u": 288.7
+     },
+     "oil": {
+      "i": 778.4,
+      "u": 638.3
+     },
+     "other": {
+      "i": 50.7,
+      "u": 35.5
+     },
+     "peat": {
+      "i": 62.7,
+      "u": 37.6
+     }
+    },
     "fx_eur_gbp": 0.87226,
     "hdd": 59.5,
     "heat_gwh": 1338.5,
@@ -1748,6 +2294,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 256.8,
     "emissions_kt": 290.5,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 84.3,
+      "u": 84.3
+     },
+     "gas": {
+      "i": 267.5,
+      "u": 227.3
+     },
+     "oil": {
+      "i": 612.9,
+      "u": 502.6
+     },
+     "other": {
+      "i": 40.0,
+      "u": 28.0
+     },
+     "peat": {
+      "i": 49.6,
+      "u": 29.7
+     }
+    },
     "fx_eur_gbp": 0.87322,
     "hdd": 44.4,
     "heat_gwh": 1054.1,
@@ -1808,6 +2380,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 326.8,
     "emissions_kt": 360.5,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 107.3,
+      "u": 107.3
+     },
+     "gas": {
+      "i": 340.1,
+      "u": 289.1
+     },
+     "oil": {
+      "i": 778.9,
+      "u": 638.7
+     },
+     "other": {
+      "i": 50.8,
+      "u": 35.6
+     },
+     "peat": {
+      "i": 64.0,
+      "u": 38.4
+     }
+    },
     "fx_eur_gbp": 0.87051,
     "hdd": 59.5,
     "heat_gwh": 1341.1,
@@ -1868,6 +2466,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 317.3,
     "emissions_kt": 350.9,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 104.2,
+      "u": 104.2
+     },
+     "gas": {
+      "i": 330.2,
+      "u": 280.7
+     },
+     "oil": {
+      "i": 756.5,
+      "u": 620.3
+     },
+     "other": {
+      "i": 49.3,
+      "u": 34.5
+     },
+     "peat": {
+      "i": 61.9,
+      "u": 37.2
+     }
+    },
     "fx_eur_gbp": 0.86437,
     "hdd": 57.3,
     "heat_gwh": 1302.2,
@@ -1928,6 +2552,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 261.7,
     "emissions_kt": 295.4,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 85.9,
+      "u": 85.9
+     },
+     "gas": {
+      "i": 272.3,
+      "u": 231.4
+     },
+     "oil": {
+      "i": 623.4,
+      "u": 511.2
+     },
+     "other": {
+      "i": 40.6,
+      "u": 28.4
+     },
+     "peat": {
+      "i": 51.5,
+      "u": 30.9
+     }
+    },
     "fx_eur_gbp": 0.86411,
     "hdd": 45.3,
     "heat_gwh": 1073.6,
@@ -1988,6 +2638,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 307.5,
     "emissions_kt": 341.2,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 101.0,
+      "u": 101.0
+     },
+     "gas": {
+      "i": 320.3,
+      "u": 272.2
+     },
+     "oil": {
+      "i": 733.9,
+      "u": 601.8
+     },
+     "other": {
+      "i": 47.9,
+      "u": 33.4
+     },
+     "peat": {
+      "i": 59.4,
+      "u": 35.6
+     }
+    },
     "fx_eur_gbp": 0.86551,
     "hdd": 55.3,
     "heat_gwh": 1262.4,
@@ -2048,6 +2724,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 274.0,
     "emissions_kt": 307.7,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 90.0,
+      "u": 90.0
+     },
+     "gas": {
+      "i": 285.5,
+      "u": 242.8
+     },
+     "oil": {
+      "i": 654.9,
+      "u": 537.0
+     },
+     "other": {
+      "i": 42.7,
+      "u": 29.8
+     },
+     "peat": {
+      "i": 52.1,
+      "u": 31.3
+     }
+    },
     "fx_eur_gbp": 0.87001,
     "hdd": 48.6,
     "heat_gwh": 1125.2,
@@ -2108,6 +2810,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 267.4,
     "emissions_kt": 301.0,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 87.8,
+      "u": 87.8
+     },
+     "gas": {
+      "i": 278.3,
+      "u": 236.6
+     },
+     "oil": {
+      "i": 637.6,
+      "u": 522.9
+     },
+     "other": {
+      "i": 41.5,
+      "u": 29.1
+     },
+     "peat": {
+      "i": 52.0,
+      "u": 31.2
+     }
+    },
     "fx_eur_gbp": 0.87077,
     "hdd": 47.4,
     "heat_gwh": 1097.2,
@@ -2168,6 +2896,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 241.0,
     "emissions_kt": 274.7,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 79.1,
+      "u": 79.1
+     },
+     "gas": {
+      "i": 251.0,
+      "u": 213.3
+     },
+     "oil": {
+      "i": 575.1,
+      "u": 471.6
+     },
+     "other": {
+      "i": 37.5,
+      "u": 26.2
+     },
+     "peat": {
+      "i": 46.7,
+      "u": 28.0
+     }
+    },
     "fx_eur_gbp": 0.87013,
     "hdd": 41.5,
     "heat_gwh": 989.4,
@@ -2228,6 +2982,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 213.9,
     "emissions_kt": 247.5,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 70.3,
+      "u": 70.3
+     },
+     "gas": {
+      "i": 222.8,
+      "u": 189.4
+     },
+     "oil": {
+      "i": 511.0,
+      "u": 419.0
+     },
+     "other": {
+      "i": 33.3,
+      "u": 23.4
+     },
+     "peat": {
+      "i": 40.8,
+      "u": 24.5
+     }
+    },
     "fx_eur_gbp": 0.86872,
     "hdd": 35.8,
     "heat_gwh": 878.1,
@@ -2288,6 +3068,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 167.7,
     "emissions_kt": 201.3,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 55.1,
+      "u": 55.1
+     },
+     "gas": {
+      "i": 174.5,
+      "u": 148.3
+     },
+     "oil": {
+      "i": 399.8,
+      "u": 327.8
+     },
+     "other": {
+      "i": 26.1,
+      "u": 18.3
+     },
+     "peat": {
+      "i": 32.5,
+      "u": 19.5
+     }
+    },
     "fx_eur_gbp": 0.86641,
     "hdd": 26.0,
     "heat_gwh": 688.0,
@@ -2348,6 +3154,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 224.7,
     "emissions_kt": 258.3,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 73.8,
+      "u": 73.8
+     },
+     "gas": {
+      "i": 234.1,
+      "u": 199.0
+     },
+     "oil": {
+      "i": 536.7,
+      "u": 440.1
+     },
+     "other": {
+      "i": 35.0,
+      "u": 24.5
+     },
+     "peat": {
+      "i": 42.9,
+      "u": 25.7
+     }
+    },
     "fx_eur_gbp": 0.86378,
     "hdd": 38.3,
     "heat_gwh": 922.5,
@@ -2408,6 +3240,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 228.4,
     "emissions_kt": 262.2,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 75.0,
+      "u": 75.0
+     },
+     "gas": {
+      "i": 238.1,
+      "u": 202.4
+     },
+     "oil": {
+      "i": 545.9,
+      "u": 447.6
+     },
+     "other": {
+      "i": 35.6,
+      "u": 25.0
+     },
+     "peat": {
+      "i": 43.6,
+      "u": 26.2
+     }
+    },
     "fx_eur_gbp": 0.86734,
     "hdd": 39.8,
     "heat_gwh": 938.2,
@@ -2468,6 +3326,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 108.4,
     "emissions_kt": 142.0,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 35.6,
+      "u": 35.6
+     },
+     "gas": {
+      "i": 112.9,
+      "u": 95.9
+     },
+     "oil": {
+      "i": 258.5,
+      "u": 212.1
+     },
+     "other": {
+      "i": 16.8,
+      "u": 11.8
+     },
+     "peat": {
+      "i": 20.9,
+      "u": 12.5
+     }
+    },
     "fx_eur_gbp": 0.86619,
     "hdd": 13.6,
     "heat_gwh": 444.7,
@@ -2528,6 +3412,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 48.6,
     "emissions_kt": 82.2,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 15.9,
+      "u": 15.9
+     },
+     "gas": {
+      "i": 50.7,
+      "u": 43.1
+     },
+     "oil": {
+      "i": 116.4,
+      "u": 95.5
+     },
+     "other": {
+      "i": 7.6,
+      "u": 5.3
+     },
+     "peat": {
+      "i": 8.9,
+      "u": 5.3
+     }
+    },
     "fx_eur_gbp": 0.86527,
     "hdd": 0.1,
     "heat_gwh": 199.5,
@@ -2588,6 +3498,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 112.7,
     "emissions_kt": 146.4,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 37.0,
+      "u": 37.0
+     },
+     "gas": {
+      "i": 117.5,
+      "u": 99.9
+     },
+     "oil": {
+      "i": 269.7,
+      "u": 221.2
+     },
+     "other": {
+      "i": 17.6,
+      "u": 12.3
+     },
+     "peat": {
+      "i": 21.1,
+      "u": 12.7
+     }
+    },
     "fx_eur_gbp": 0.8645,
     "hdd": 14.4,
     "heat_gwh": 462.9,
@@ -2648,6 +3584,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 133.3,
     "emissions_kt": 167.0,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 43.8,
+      "u": 43.8
+     },
+     "gas": {
+      "i": 139.2,
+      "u": 118.3
+     },
+     "oil": {
+      "i": 319.6,
+      "u": 262.1
+     },
+     "other": {
+      "i": 20.8,
+      "u": 14.6
+     },
+     "peat": {
+      "i": 24.3,
+      "u": 14.6
+     }
+    },
     "fx_eur_gbp": 0.86313,
     "hdd": 18.9,
     "heat_gwh": 547.7,
@@ -2708,6 +3670,32 @@
     "emissions_cold_kt": 33.7,
     "emissions_heat_kt": 53.2,
     "emissions_kt": 86.9,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 17.5,
+      "u": 17.5
+     },
+     "gas": {
+      "i": 55.5,
+      "u": 47.3
+     },
+     "oil": {
+      "i": 127.6,
+      "u": 104.6
+     },
+     "other": {
+      "i": 8.3,
+      "u": 5.9
+     },
+     "peat": {
+      "i": 9.7,
+      "u": 5.8
+     }
+    },
     "fx_eur_gbp": 0.86542,
     "hdd": 1.3,
     "heat_gwh": 218.7,
@@ -2768,6 +3756,32 @@
     "emissions_cold_kt": 28.0,
     "emissions_heat_kt": 45.9,
     "emissions_kt": 73.8,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 15.3,
+      "u": 15.3
+     },
+     "gas": {
+      "i": 48.6,
+      "u": 41.3
+     },
+     "oil": {
+      "i": 111.4,
+      "u": 91.4
+     },
+     "other": {
+      "i": 7.2,
+      "u": 5.0
+     },
+     "peat": {
+      "i": 8.9,
+      "u": 5.3
+     }
+    },
     "fx_eur_gbp": 0.86254,
     "hdd": 0.1,
     "heat_gwh": 191.4,
@@ -2828,6 +3842,32 @@
     "emissions_cold_kt": 22.4,
     "emissions_heat_kt": 49.0,
     "emissions_kt": 71.4,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 16.6,
+      "u": 16.6
+     },
+     "gas": {
+      "i": 52.8,
+      "u": 44.9
+     },
+     "oil": {
+      "i": 121.6,
+      "u": 99.7
+     },
+     "other": {
+      "i": 7.9,
+      "u": 5.5
+     },
+     "peat": {
+      "i": 8.9,
+      "u": 5.3
+     }
+    },
     "fx_eur_gbp": 0.8595,
     "hdd": 0.3,
     "heat_gwh": 208.0,
@@ -2888,6 +3928,32 @@
     "emissions_cold_kt": 24.6,
     "emissions_heat_kt": 44.8,
     "emissions_kt": 69.5,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 15.1,
+      "u": 15.1
+     },
+     "gas": {
+      "i": 47.9,
+      "u": 40.7
+     },
+     "oil": {
+      "i": 109.7,
+      "u": 90.0
+     },
+     "other": {
+      "i": 7.1,
+      "u": 5.0
+     },
+     "peat": {
+      "i": 8.9,
+      "u": 5.3
+     }
+    },
     "fx_eur_gbp": 0.8538,
     "hdd": 0.0,
     "heat_gwh": 188.7,
@@ -2948,6 +4014,32 @@
     "emissions_cold_kt": 21.2,
     "emissions_heat_kt": 44.4,
     "emissions_kt": 65.6,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 15.1,
+      "u": 15.1
+     },
+     "gas": {
+      "i": 47.9,
+      "u": 40.7
+     },
+     "oil": {
+      "i": 109.7,
+      "u": 90.0
+     },
+     "other": {
+      "i": 7.1,
+      "u": 5.0
+     },
+     "peat": {
+      "i": 8.9,
+      "u": 5.3
+     }
+    },
     "fx_eur_gbp": 0.85122,
     "hdd": 0.0,
     "heat_gwh": 188.7,
@@ -3009,6 +4101,32 @@
     "emissions_cold_kt": 20.7,
     "emissions_heat_kt": 44.3,
     "emissions_kt": 65.1,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 15.1,
+      "u": 15.1
+     },
+     "gas": {
+      "i": 47.9,
+      "u": 40.7
+     },
+     "oil": {
+      "i": 109.7,
+      "u": 90.0
+     },
+     "other": {
+      "i": 7.1,
+      "u": 5.0
+     },
+     "peat": {
+      "i": 8.9,
+      "u": 5.3
+     }
+    },
     "fx_eur_gbp": 0.85228,
     "hdd": 0.0,
     "heat_gwh": 188.7,
@@ -3017,6 +4135,32 @@
      "bill_eur_m": 12.8,
      "bill_gbp_m": 10.9,
      "emissions_kt": 16.9,
+     "fuels": {
+      "cool": {
+       "i": 23.1,
+       "u": 47.8
+      },
+      "electricity": {
+       "i": 4.5,
+       "u": 4.5
+      },
+      "gas": {
+       "i": 14.6,
+       "u": 12.4
+      },
+      "oil": {
+       "i": 34.7,
+       "u": 28.5
+      },
+      "other": {
+       "i": 2.2,
+       "u": 1.6
+      },
+      "peat": {
+       "i": 0.0,
+       "u": 0.0
+      }
+     },
      "indigenous_pct": 41.0,
      "purchased_gwh": 79.1,
      "served_gwh": 94.7,
@@ -3032,6 +4176,32 @@
      "bill_eur_m": 37.5,
      "bill_gbp_m": 32.0,
      "emissions_kt": 48.2,
+     "fuels": {
+      "cool": {
+       "i": 97.2,
+       "u": 277.2
+      },
+      "electricity": {
+       "i": 10.6,
+       "u": 10.6
+      },
+      "gas": {
+       "i": 33.3,
+       "u": 28.3
+      },
+      "oil": {
+       "i": 75.0,
+       "u": 61.5
+      },
+      "other": {
+       "i": 4.9,
+       "u": 3.4
+      },
+      "peat": {
+       "i": 8.9,
+       "u": 5.3
+      }
+     },
      "indigenous_pct": 61.6,
      "purchased_gwh": 229.9,
      "served_gwh": 386.4,
@@ -3070,6 +4240,32 @@
     "emissions_cold_kt": 23.9,
     "emissions_heat_kt": 51.5,
     "emissions_kt": 75.4,
+    "fuels": {
+     "cool": {
+      "i": 120.3,
+      "u": 325.0
+     },
+     "electricity": {
+      "i": 17.4,
+      "u": 17.4
+     },
+     "gas": {
+      "i": 55.4,
+      "u": 47.1
+     },
+     "oil": {
+      "i": 127.6,
+      "u": 104.7
+     },
+     "other": {
+      "i": 8.3,
+      "u": 5.9
+     },
+     "peat": {
+      "i": 8.9,
+      "u": 5.4
+     }
+    },
     "fx_eur_gbp": 0.85599,
     "hdd": 0.8,
     "heat_gwh": 217.8,
@@ -3078,6 +4274,32 @@
      "bill_eur_m": 16.1,
      "bill_gbp_m": 13.7,
      "emissions_kt": 24.2,
+     "fuels": {
+      "cool": {
+       "i": 23.1,
+       "u": 47.8
+      },
+      "electricity": {
+       "i": 6.7,
+       "u": 6.7
+      },
+      "gas": {
+       "i": 21.9,
+       "u": 18.6
+      },
+      "oil": {
+       "i": 52.2,
+       "u": 42.8
+      },
+      "other": {
+       "i": 3.4,
+       "u": 2.4
+      },
+      "peat": {
+       "i": 0.0,
+       "u": 0.0
+      }
+     },
      "indigenous_pct": 34.3,
      "purchased_gwh": 107.3,
      "served_gwh": 118.3,
@@ -3093,6 +4315,32 @@
      "bill_eur_m": 38.1,
      "bill_gbp_m": 32.6,
      "emissions_kt": 51.2,
+     "fuels": {
+      "cool": {
+       "i": 97.2,
+       "u": 277.2
+      },
+      "electricity": {
+       "i": 10.7,
+       "u": 10.7
+      },
+      "gas": {
+       "i": 33.5,
+       "u": 28.5
+      },
+      "oil": {
+       "i": 75.4,
+       "u": 61.9
+      },
+      "other": {
+       "i": 4.9,
+       "u": 3.5
+      },
+      "peat": {
+       "i": 8.9,
+       "u": 5.4
+      }
+     },
      "indigenous_pct": 61.5,
      "purchased_gwh": 230.7,
      "served_gwh": 387.1,
@@ -3119,7 +4367,7 @@
     "wf_purchased_gwh": 286.6
    }
   ],
-  "history_schema": 2,
+  "history_schema": 3,
   "roi_space_heat_regression": {
    "baseload_gwh_per_day": 16.64,
    "method": "within-month centred OLS (within-class centring)",
@@ -3164,7 +4412,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-08-07T15:46:13+00:00",
+   "fetched_utc": "2026-08-07T15:53:11+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -3734,7 +4982,7 @@
     "2026-08-06": 0.85705,
     "2026-08-07": 0.85765
    },
-   "fetched_utc": "2026-08-07T15:45:55+00:00",
+   "fetched_utc": "2026-08-07T15:52:51+00:00",
    "gbp_eur": 1.16598,
    "latest_day": "2026-08-07",
    "rate_date": "2026-08-07",
@@ -3845,7 +5093,7 @@
      "2026-08-04": 112.0,
      "2026-08-05": 107.04,
      "2026-08-06": 110.32,
-     "2026-08-07": 103.33
+     "2026-08-07": 103.4
     },
     "ni": {
      "2026-06-19": 19.11,
@@ -3897,7 +5145,7 @@
      "2026-08-04": 19.27,
      "2026-08-05": 17.66,
      "2026-08-06": 18.77,
-     "2026-08-07": 17.09
+     "2026-08-07": 17.11
     },
     "roi": {
      "2026-06-19": 93.91,
@@ -3949,22 +5197,22 @@
      "2026-08-04": 92.73,
      "2026-08-05": 89.38,
      "2026-08-06": 91.55,
-     "2026-08-07": 86.24
+     "2026-08-07": 86.29
     }
    },
-   "fetched_utc": "2026-08-07T15:45:45+00:00",
+   "fetched_utc": "2026-08-07T15:52:39+00:00",
    "latest_day": "2026-08-07",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "eirgrid_probe": {
-   "fetched_utc": "2026-08-07T15:46:44+00:00",
+   "fetched_utc": "2026-08-07T15:53:44+00:00",
    "latest_day": "2026-08-07",
    "source": "EirGrid Smart Grid Dashboard (probe, round 2)",
    "status": "ok"
   },
   "entsog_probe": {
-   "fetched_utc": "2026-08-07T15:46:29+00:00",
+   "fetched_utc": "2026-08-07T15:53:29+00:00",
    "greater_belfast_gwh_daily": {
     "2026-07-20": 4.22306,
     "2026-07-21": 4.827287,
@@ -4084,7 +5332,7 @@
    }
   },
   "gb_oil": {
-   "fetched_utc": "2026-08-07T15:46:13+00:00",
+   "fetched_utc": "2026-08-07T15:53:11+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -7040,7 +8288,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-08-07T15:45:56+00:00",
+   "fetched_utc": "2026-08-07T15:52:52+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -18860,14 +20108,15 @@
     "2026-07-30": 6.887,
     "2026-07-31": 6.9,
     "2026-08-01": 5.67,
-    "2026-08-02": 5.255,
-    "2026-08-03": 5.549,
-    "2026-08-04": 6.569,
-    "2026-08-05": 6.865
+    "2026-08-02": 5.432,
+    "2026-08-03": 5.726,
+    "2026-08-04": 6.746,
+    "2026-08-05": 7.071,
+    "2026-08-06": 7.15
    },
-   "fetched_utc": "2026-08-07T15:46:12+00:00",
+   "fetched_utc": "2026-08-07T15:53:09+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
-   "latest_day": "2026-08-05",
+   "latest_day": "2026-08-06",
    "ndm_gwh": {
     "2026-04-08": 24.134,
     "2026-04-09": 30.228,
@@ -18985,10 +20234,11 @@
     "2026-07-30": 8.561,
     "2026-07-31": 8.806,
     "2026-08-01": 8.041,
-    "2026-08-02": 8.004,
-    "2026-08-03": 7.82,
-    "2026-08-04": 8.562,
-    "2026-08-05": 9.294
+    "2026-08-02": 7.828,
+    "2026-08-03": 7.643,
+    "2026-08-04": 8.386,
+    "2026-08-05": 9.089,
+    "2026-08-06": 9.152
    },
    "roi_ldm_gwh": {
     "2026-04-08": 125.903,
@@ -19110,7 +20360,8 @@
     "2026-08-02": 108.583,
     "2026-08-03": 110.118,
     "2026-08-04": 113.006,
-    "2026-08-05": 91.385
+    "2026-08-05": 91.385,
+    "2026-08-06": 110.652
    },
    "roi_power_gen_gwh": {
     "2026-04-08": 108.766,
@@ -19232,7 +20483,8 @@
     "2026-08-02": 93.485,
     "2026-08-03": 95.85,
     "2026-08-04": 98.686,
-    "2026-08-05": 76.998
+    "2026-08-05": 76.998,
+    "2026-08-06": 96.004
    },
    "source": "Gas Networks Ireland Data Transparency - gasconsumption API, daily by market sector",
    "status": "ok",
@@ -19356,13 +20608,14 @@
     "2026-08-02": 141.038,
     "2026-08-03": 144.896,
     "2026-08-04": 152.77,
-    "2026-08-05": 126.169
+    "2026-08-05": 126.169,
+    "2026-08-06": 146.181
    },
    "unit_detection": "kWh->GWh"
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-08-07T15:45:54+00:00",
+   "fetched_utc": "2026-08-07T15:52:49+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -22915,7 +24168,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-08-07T15:46:00+00:00",
+   "fetched_utc": "2026-08-07T15:52:57+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -23258,7 +24511,7 @@
    "status": "ok"
   },
   "sem_mix": {
-   "fetched_utc": "2026-08-07T15:46:30+00:00",
+   "fetched_utc": "2026-08-07T15:53:31+00:00",
    "indigenous_share_daily": {
     "2026-06-25": 47.93,
     "2026-06-26": 46.75,
@@ -23306,7 +24559,7 @@
    "auction": "SEM-DA",
    "dam_avg_eur_mwh": 156.67,
    "dam_avg_gbp_mwh": 134.25,
-   "fetched_utc": "2026-08-07T15:45:58+00:00",
+   "fetched_utc": "2026-08-07T15:52:53+00:00",
    "latest_day": "2026-08-05",
    "markets": {
     "NI-DA": {
@@ -23514,7 +24767,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "4.12.2",
+ "pipeline_version": "4.13.0",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
