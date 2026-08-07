@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.12.1"
+PIPELINE_VERSION = "4.12.2"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -3345,8 +3345,16 @@ def build_hourly_store(previous):
             except Exception as exc:
                 log(f"hourly: {name} chunk to {e.isoformat()} "
                     f"{exc.__class__.__name__}")
+        before = len(prev.get("series", {}).get(name) or {})
         series[name] = {k: v for k, v in sorted(have.items())
                         if k >= floor}
+        after = len(series[name])
+        # A series must never shrink except by the rolling floor.
+        # 7 Aug 2026: demand_ai lost its oldest 600 hours in a single
+        # run while the other series kept theirs - loud, not silent.
+        if before and after < before - 24:
+            log(f"hourly: WARNING {name} shrank {before}h -> {after}h "
+                f"in one run - investigate before trusting the panel")
     counts = {k: len(v) for k, v in series.items()}
     if not any(counts.values()):
         log("hourly: no data - store not written")
@@ -3363,10 +3371,19 @@ def build_hourly_store(previous):
     # overlay drawn on that would have passed a demand-only gate.
     complete, per_series = False, {}
     if ref:
-        h0 = dt.datetime.strptime(ref[0], "%Y-%m-%dT%H")
-        h1 = dt.datetime.strptime(ref[1], "%Y-%m-%dT%H")
+        # Denominator is the INTENDED window (floor -> latest hour in
+        # the store), not one series' own span. Using demand's span
+        # let other series score 106.8% on 7 Aug 2026 when demand
+        # shrank - a completeness figure above 100% is a bug signal,
+        # so the denominator must not depend on the numerator.
+        latest = max(mx for _, mx in spans.values())
+        h0 = dt.datetime.strptime(floor, "%Y-%m-%dT%H")
+        h1 = dt.datetime.strptime(latest, "%Y-%m-%dT%H")
         expect = int((h1 - h0).total_seconds() // 3600) + 1
         for k, n in counts.items():
+            sp = spans.get(k)
+            log(f"hourly: {k} span "
+                + (f"{sp[0]} .. {sp[1]}" if sp else "empty"))
             pct = 100.0 * n / max(expect, 1)
             per_series[k] = round(pct, 1)
             log(f"hourly: {k} completeness {pct:.1f}% of {expect}h "
