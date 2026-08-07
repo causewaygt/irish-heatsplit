@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.4.3
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.5.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -96,6 +96,12 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 .hstat .hval{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:clamp(1.7rem,4vw,2.3rem);line-height:1.1}
 .hstat .hlab{font-size:.8rem;color:var(--muted);margin-top:4px;max-width:220px}
 .wcell .val{color:var(--green)}
+.iolegend{display:flex;flex-wrap:wrap;gap:10px 16px;margin:8px 0 4px;font-size:.72rem;color:var(--muted)}
+.iokey{display:inline-flex;align-items:center;gap:5px}
+.iokey i{width:11px;height:11px;border-radius:2px;display:inline-block}
+.iokey i.kh{background:repeating-linear-gradient(45deg,#E0A24A 0 4px,#6B4A1F 4px 8px)}
+.ionote{font-size:.76rem;color:var(--muted);margin:2px 0 0}
+.ionote b{color:#8FE38A}
 .iotitle{font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin:18px 0 6px}
 .iorow{display:flex;align-items:center;gap:10px;margin:4px 0}
 .iolab{font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:var(--ink2);min-width:84px;text-align:right;line-height:1.2}
@@ -748,7 +754,11 @@ function heroCards(h, HIST){
   const FUELS=[
     ['oil','Oil',CLR.amber],
     ['gas','Gas','#2F8F8C'],
-    ['electricity','Electric',CLR.green],
+    ['electricity','Resistive electric','#7FBF4D'],
+    ['heatpump','Heat pumps \u2013 electricity','#3AAA35'],
+    // ambient carries no input: it appears on the out-bar only, which
+    // is the whole point - free heat nobody purchased
+    ['ambient','Heat pumps \u2013 ambient heat harvested','#8FE38A'],
     ['peat','Peat','#8a5a3b'],
     ['other','Other','#5c6f76'],
   ];
@@ -817,13 +827,28 @@ function heroCards(h, HIST){
       }
       return segs;
     }
+    const amb=(bf['ambient']||{}).useful_gwh||0;
+    const legend = FUELS.filter(f=>((bf[f[0]]||{}).in_gwh||0)>0
+                                 ||((bf[f[0]]||{}).useful_gwh||0)>0)
+      .map(f=>'<span class="iokey"><i style="background:'+f[2]+
+        '"></i>'+f[1]+'</span>').join('')
+      + (coolIn>0?'<span class="iokey"><i style="background:'+COOLC+
+        '"></i>Cooling &amp; ventilation</span>':'')
+      + (loss>0?'<span class="iokey"><i class="kh"></i>'+
+        'Lost in conversion</span>':'');
+    const ambNote = amb>0
+      ? '<p class="ionote">Ambient heat harvested by heat pumps'+
+        (W?' over the window':' this week')+': <b>'+fmt(amb,0)+
+        ' GWh</b> \u2013 free heat from the environment, never '+
+        'purchased.<span class="dag">\u2020</span></p>' : '';
     return '<div class="iotitle">Energy in \u2013 fuel &amp; electricity purchased</div>'+
       '<div class="iorow"><div class="iolab">'+fmt(tot,0)+' GWh in</div>'+
       '<div class="iotrack">'+bar('in')+'</div></div>'+
-      '<div class="iotitle">Useful heat &amp; cooling out \u2013 after boiler and system losses\u2020</div>'+
+      '<div class="iotitle">Useful heat &amp; cooling out \u2013 after boiler losses, heat-pump harvest and cooling delivery\u2020</div>'+
       '<div class="iorow"><div class="iolab">'+fmt(served,0)+
       ' GWh served</div><div class="iotrack">'+bar('out')+'</div></div>'+
-      '<div class="iofoot">Served per unit purchased this week: <b>'+
+      '<div class="iolegend">'+legend+'</div>'+ambNote+
+      '<div class="iofoot">Served per unit purchased'+(W?' over the window':' this week')+': <b>'+
       Math.round(100*served/tot)+'%\u2020</b> \u00b7 oil share of energy in: <b>'+
       Math.round(100*((bf.oil||{}).in_gwh||0)/tot)+'%\u2020</b>'+
       ((b.cooling||{}).comfort_shaped_by_odh?
@@ -1454,7 +1479,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.4.3 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.5.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
