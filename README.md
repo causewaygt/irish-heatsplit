@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.14.0 / site 4.4.3.
+(Causeway Geothermal NI Ltd). Pipeline 4.16.0 / site 4.6.0.
 
 ## The premise
 
@@ -70,8 +70,12 @@ and prices the alternative. The data gap is the story.
   own climate, not the brochure.
 - **The cold economy** – a census of the island's cooling loads: data
   centres, the food-export cold chain, process cooling, comfort cooling
-  and NI, ≈12 TWh† of electricity rejecting ≈19 TWh† of heat a year –
-  refrigeration rejects more heat than the electricity it draws. Flat
+  and NI, 6.25 TWh† of electricity rejecting ≈19 TWh† of heat a year –
+  refrigeration rejects more heat than the electricity it draws. The
+  electricity figure fell from ≈12 TWh on 6 August 2026 when the
+  data-centre line was repriced to its cooling share; the heat
+  rejected did not move, because the physical output was never in
+  question – only the share of the draw that counts as cooling. Flat
   loads against the degree-day demand shape, comfort shaped by the live
   overheating-degree record once a season exists; the stranded share is
   the seasonal-storage (ATES) wedge.
@@ -108,7 +112,10 @@ client-side with Plotly. GitHub Pages serves `/docs`.
 | `gni_live` | Gas Networks Ireland gasconsumption API | daily | ~8-day windows, weekly anchors backfill |
 | `gni_ckan` | GNI via data.gov.ie (CC BY 4.0) | quarterly | calibration series for the regression |
 | `semopx` | SEMOpx day-ahead results | daily | dual-currency power price |
-| `eirgrid` | Smart Grid Dashboard (/api/chart/) | daily | quarter-hour demand → daily GWh, island/NI/ROI; incomplete days excluded; CO₂ probe in progress |
+| `eirgrid` | Smart Grid Dashboard (/api/chart/) | daily | quarter-hour demand → daily GWh, island/NI/ROI; incomplete days excluded; carbon intensity live and stored hourly |
+| `sem_mix` | third-party generation mix | daily | DIAGNOSTIC ONLY – reads ~33% indigenous against ~55% implied by grid carbon intensity; held at anchor and logging its two suspects (missing solar in the feed, an unverified cross-border sign convention) until they reconcile |
+| `entsog_probe` | ENTSOG transparency platform | daily | SOFT – physical gas flows; the measurement behind the NI-exit finding below |
+| `eirgrid_probe` | Smart Grid Dashboard (/api/chart/) | daily | SOFT, log-only discovery; retires once the wind/solar feeds are formalised |
 
 Feed statuses: **ok** (fetched, current), **lagging** (fetched, source
 publishes on a lag), **stale** (fetch failed, previous values retained).
@@ -198,24 +205,31 @@ and linked from the site footer.
 `docs/hourly.json` holds a rolling 13 months of all-island demand,
 wind, solar and carbon intensity at hourly resolution – EirGrid's
 15-minute series aggregated to hourly means, an hour requiring at
-least three of its four quarters. It backfills by walking ~28-day
-chunks and re-fetches the most recent chunk each run for revisions.
-It is a **separate file with its own schema**: a failure there cannot
-corrupt the weekly tracker, and the grid panel simply stays absent
-until the store reports 95% completeness. Groundwork for the
-electrification-headroom and dispatch-down absorption panels.
+least three of its four quarters – plus island air temperature,
+population-weighted from ERA5 on the same station weights the daily
+HDD feed uses. Both sources backfill by walking chunks and re-fetch
+the most recent for revisions.
 
-## The hourly store
+**Every series is keyed on Irish local clock, not UTC.** EirGrid
+stamps its rows on local time and the weekly layer already treats
+them that way, so the temperature request asks Open-Meteo for
+`Europe/Dublin` rather than the UTC the daily HDD feed uses. Joined on
+mixed clocks the store would put temperature an hour out of step with
+demand from late March to late October – silently, and in the
+direction that misaligns an evening peak with the cold that caused it.
 
-`docs/hourly.json` holds a rolling 13 months of all-island demand,
-wind, solar and carbon intensity at hourly resolution – EirGrid's
-15-minute series aggregated to hourly means, an hour requiring at
-least three of its four quarters. It backfills by walking ~28-day
-chunks and re-fetches the most recent chunk each run for revisions.
-It is a **separate file with its own schema**: a failure there cannot
-corrupt the weekly tracker, and the grid panel stays absent until the
-store reports 95% completeness. Groundwork for the electrification-
-headroom and dispatch-down absorption panels.
+The store is a **separate file with its own schema**: a failure there
+cannot corrupt the weekly tracker. Two gates, deliberately separate.
+`complete` covers the demand/wind/solar trio and governs the grid
+panel; `heat_ready` additionally requires the temperature series at
+95%, and governs the electrification computations. Carbon gates
+itself as an overlay. Nothing already shipping can be withdrawn by a
+series that is still filling.
+
+Groundwork for the electrification-headroom and dispatch-down
+absorption panels. Holding temperature rather than degree hours means
+hourly HDD, ODH₂₆ and the Carnot source temperature all derive from
+one retained series.
 
 ## Sibling comparability
 
@@ -238,7 +252,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 78 tests, no network
+python3 tests/test_synthetic.py   # 87 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
