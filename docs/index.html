@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.6.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.6.2
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -39,9 +39,9 @@ h1,h2{font-weight:900;text-transform:uppercase;letter-spacing:.06em}
 h1{font-size:clamp(1.5rem,4.5vw,2.4rem)}
 h2{font-size:1.02rem;color:var(--green);margin-bottom:14px}
 a{color:var(--green)}
-header{padding:34px 0 10px;border-bottom:1px solid var(--line)}
-.strap{color:var(--muted);margin-top:6px;max-width:640px}
-.badges{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:.76rem}
+header{padding:14px 0 10px;border-bottom:1px solid var(--line)}
+.strap{color:var(--muted);margin-top:8px;max-width:900px}
+.badges{margin:0 0 16px;display:flex;gap:8px;flex-wrap:wrap;font-size:.76rem}
 .badge{border:1px solid var(--line);border-radius:3px;padding:2px 8px;
   color:var(--muted)}
 .badge b{font-weight:700}
@@ -85,9 +85,14 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 .trendctl button[aria-pressed="true"]{color:#3AAA35;border-color:#3AAA35}
 /* At the head of the page the bar governs everything below it, so it
    aligns left with the headline it rewords rather than floating right
-   as a footnote to one panel. The rule under it says so. */
-.trendctl.trendtop{justify-content:flex-start;margin:0 0 14px;
-  padding-bottom:10px;border-bottom:1px solid var(--line)}
+   as a footnote to one panel. The rule under it says so. Sized up
+   from the 11px in-panel version: at the top of the page it is a
+   control the reader is meant to find, not a caption. */
+.trendctl.trendtop{justify-content:flex-start;margin:0 0 10px;
+  padding-bottom:9px;border-bottom:1px solid var(--line);font-size:12px}
+.trendctl.trendtop button{font-size:13px;letter-spacing:.09em;
+  font-weight:600;padding:4px 12px}
+.trendctl.trendtop #trendspan{font-size:11px}
 .trend{margin-top:8px}
 .trend svg{display:block;width:100%;height:34px}
 .trend .tr-actual{fill:none;stroke:#DCE5E0;stroke-width:1.6;vector-effect:non-scaling-stroke}
@@ -325,11 +330,11 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 <header>
   <div class="wrap">
     <div class="trendctl trendtop" id="trendctl" hidden>
-      <span>TREND – LIVE WEEKS</span>
-      <button data-win="2" aria-pressed="true">1w</button>
-      <button data-win="5">4w</button>
-      <button data-win="13">12w</button>
-      <button data-win="53">12m</button>
+      <span>SHOW</span>
+      <button data-win="2" title="1 week" aria-pressed="true">WEEK</button>
+      <button data-win="5" title="4 weeks">MONTH</button>
+      <button data-win="13" title="12 weeks">QUARTER</button>
+      <button data-win="53" title="12 months">YEAR</button>
       <span id="trendspan"></span>
     </div>
     <h1 class="headline">How the island of Ireland
@@ -341,7 +346,6 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       Sibling of the
       <a href="https://causewaygt.github.io/uk-heatsplit/">UK Heat Split</a>,
       by <a href="https://causewaygt.com">Causeway Energies</a>.</p>
-    <div class="badges" id="badges" aria-label="Data feed status"></div>
   </div>
 </header>
 
@@ -622,6 +626,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <span class="dag">†</span> are current Causeway Energies estimates –
       challenge and input welcome at
       <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
+    <div class="badges" id="badges" aria-label="Data feed status"></div>
     <table aria-label="Feed status detail"><thead>
       <tr><th>Feed</th><th>Source</th><th>Status</th><th>Latest</th><th>Licence / terms</th><th>Flags</th></tr>
     </thead><tbody id="feedTable"></tbody></table>
@@ -868,9 +873,15 @@ function heroCards(h, HIST){
   // every figure keeps stating the true span ('over the last 12
   // weeks (12 live wks)'). Nothing numeric rests on the rounding.
   const WNAME={2:'week',5:'month',13:'quarter',53:'year'};
+  // The buttons carry the round word; this carries the exact span, so
+  // the rounding is never the only thing on screen.
+  const WSPAN={2:'1 week',5:'4 weeks',13:'12 weeks',53:'12 months'};
   const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
   function setWording(){
     const w='this '+(WNAME[WIN]||'week');
+    const ts=el('trendspan');
+    if(ts) ts.textContent='\u00b7 '+(WSPAN[WIN]||'')+' \u00b7 '+
+      HIST.length+' wks on record \u00b7 what-if in green';
     const h1=el('h1Win'); if(h1) h1.textContent=w;
     // strapWin was retired with the 4.6.1 strap rewrite; the guard
     // stays so the setter survives either copy.
@@ -1030,8 +1041,6 @@ function heroCards(h, HIST){
   const ctl=el('trendctl');
   if(ctl && HIST.length>=2){
     ctl.hidden=false;
-    el('trendspan').textContent='\u00b7 '+HIST.length+
-      ' wks on record \u00b7 what-if in green';
     ctl.querySelectorAll('button').forEach(b=>{
       b.addEventListener('click',()=>{
         WIN=+b.dataset.win;
@@ -1499,7 +1508,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.6.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.6.2 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
