@@ -1498,6 +1498,43 @@ def test_migration_refreshes_jurisdiction_blocks():
                                      e["week_ending"])
 
 
+# ------------------------- heat-pump split and ambient harvest (4.15)
+
+def test_heat_pump_split_and_ambient_harvest():
+    """The electricity line splits into resistive and heat-pump, and
+    the ambient harvest appears on the OUT side only - it is free heat
+    that was never purchased. Anchors: Census 2022 (ROI) and Census
+    2021 Table 27 (NI)."""
+    h = derive_hero(_hero_fixture_feeds())
+    bf = h["by_fuel"]
+    for k in ("electricity", "heatpump", "ambient"):
+        assert k in bf, k
+    # ambient is out-only
+    assert bf["ambient"]["in_gwh"] == 0.0
+    assert bf["ambient"]["useful_gwh"] > 0
+    # heat-pump electricity is purchased and delivers 1:1 before ambient
+    assert bf["heatpump"]["in_gwh"] > 0
+    assert bf["heatpump"]["useful_gwh"] == bf["heatpump"]["in_gwh"]
+    # ambient implies an SPF above 2 on the heat-pump electricity
+    spf_implied = (bf["heatpump"]["useful_gwh"]
+                   + bf["ambient"]["useful_gwh"]) \
+        / max(bf["heatpump"]["in_gwh"], 1e-9)
+    assert 2.0 < spf_implied < 4.5, spf_implied
+    # served must exceed purchased-side heat by at least the harvest
+    assert h["combined"]["served_gwh"] > 0
+
+
+def test_heat_pump_anchors_are_census_floors():
+    from build import ANCHORS
+    hp = ANCHORS["heat_pumps"]
+    # ROI Census 2022: 71,000 households with heat pumps
+    assert hp["roi"]["households"] == 71000
+    # NI Census 2021 Table 27: ~692 air source + ~615 geothermal
+    assert 1200 <= hp["ni"]["households"] <= 1400
+    # the uplift acknowledges four years of NZEB and grants since
+    assert hp["roi"]["census_uplift"] >= 1.0
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
