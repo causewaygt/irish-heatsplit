@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.14.0"
+PIPELINE_VERSION = "4.15.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -92,7 +92,10 @@ HISTORY_SCHEMA = 4
 #       (SEAI NHS R1) and hot water re-anchored 18.3% -> 22.4%
 #   3 - 7 Aug 2026: cooling service factors re-anchored to the SEAI
 #       National Heat Study supporting data (useful-to-final ratios)
-ANCHOR_EPOCH = 3
+#   4 - 7 Aug 2026: heat-pump stock split out of the electricity line
+#       so the bars can show heat-pump electricity and the ambient heat
+#       it harvests, on census anchors
+ANCHOR_EPOCH = 4
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
@@ -260,6 +263,38 @@ ANCHORS = {
     # TWh) is a 2019-base figure and is stale against today's fleet -
     # the transferable parameter is the SHARE, applied to the current
     # metered total.
+    # Heat-pump stock, from the two censuses - the anchor that lets the
+    # electricity line split into resistive and heat-pump, and the free
+    # ambient heat appear on the out-bar.
+    #   ROI: Census 2022 - 71,000 households with heat pumps, of which
+    #        57,000 air source and 14,000 ground source. A FLOOR: NZEB
+    #        has made heat pumps near-universal in new dwellings since
+    #        2019 and four further years of SEAI grants have followed,
+    #        so 2026 stock is materially higher (dagger uplift 1.5).
+    #   NI:  Census 2021 Table 27 - air source 0.09% and geothermal
+    #        0.08% of 768,808 households = ~692 and ~615. The 615
+    #        confirms the 500-700 dagger this file has carried for the
+    #        NI domestic ground-source count.
+    #   Non-domestic tail: WGC2026 gives ROI 20,128 ground-source
+    #        systems against the census's 14,000 households; the ~6,000
+    #        difference is the non-domestic and communal tail. At the
+    #        fleet's ~11 kW average the stock is overwhelmingly
+    #        domestic-scale. SSRH, the ROI non-domestic register, had
+    #        supported only ~EUR0.5m of heat-pump projects by 2023.
+    #   Communal schemes serving apartment blocks are UNDER-COUNTED by
+    #        both censuses (a shared plant reads as many households);
+    #        district heat is ~1% of island heat, so the error is small
+    #        but real - dagger.
+    "heat_pumps": {
+        "roi": {"households": 71000, "census_uplift": 1.5,
+                "nondom_equivalent": 6000},
+        "ni": {"households": 1307, "census_uplift": 1.5,
+               "nondom_equivalent": 200},
+        # delivered heat per heat-pumped dwelling, MWh/yr - below the
+        # stock average because heat-pumped homes are newer and better
+        # insulated; dagger.
+        "delivered_mwh_per_dwelling": 9.0,
+    },
     "cool": {"dc_share_of_roi_elec": 0.22, "dc_share_2028": 0.29,
              "dc_cooling_share": 0.14,     # SEAI NHS Report 1
              "roi_elec_twh": 31.0,
@@ -2633,12 +2668,42 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
             return annual_gwh * ((1 - shf) / 52.0
                                  + shf * hdd_week / hdd_year)
 
+        # Heat-pump share of the electricity line. The stock is an
+        # annual quantity; its delivered heat is shaped by the same
+        # weekly profile as everything else, so the split holds
+        # week to week. hp_useful is delivered heat; hp_elec is the
+        # purchased part; the remainder is ambient heat harvested
+        # from the environment - free, and never purchased.
+        hpa = a.get("heat_pumps") or {}
+        hpj = hpa.get(jur) or {}
+        hp_annual_twh = (
+            (hpj.get("households", 0) * hpj.get("census_uplift", 1.0)
+             + hpj.get("nondom_equivalent", 0))
+            * hpa.get("delivered_mwh_per_dwelling", 9.0) / 1e6)
+        spf = j.get("ashp_climate_spf") or a["ashp"].get("climate_spf") \
+            or 2.85
+        hp_useful = week_input_gwh(hp_annual_twh)
+        hp_elec = hp_useful / spf
+        hp_ambient = hp_useful - hp_elec
+
         inp_t = useful_t = indig_t = kt_t = bill_t = 0.0
         by_fuel = {}
         for fuel, share in j["fuel_shares"].items():
             inp = week_input_gwh(heat_twh) * share
             eff = a["efficiency"][fuel]
             useful = inp * eff
+            if fuel == "electricity":
+                # split the line: resistive keeps the remainder, the
+                # heat-pump part is carried separately, and the
+                # ambient harvest is an out-bar-only entry (no input)
+                hp_in = min(hp_elec, inp)
+                by_fuel["heatpump"] = {"in_gwh": round(hp_in, 1),
+                                       "useful_gwh": round(hp_in, 1)}
+                by_fuel["ambient"] = {
+                    "in_gwh": 0.0,
+                    "useful_gwh": round(hp_in * (spf - 1.0), 1)}
+                inp = inp - hp_in
+                useful = inp * eff
             by_fuel[fuel] = {"in_gwh": round(inp, 1),
                              "useful_gwh": round(useful, 1)}
             indig = useful * (
@@ -2662,6 +2727,13 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                     price = ds * price + (1 - ds) * nd
             inp_t += inp
             useful_t += useful
+            if fuel == "electricity":
+                # heat-pump electricity and its ambient harvest join
+                # the totals: purchased counts only the electricity,
+                # delivered counts electricity x SPF
+                inp_t += by_fuel["heatpump"]["in_gwh"]
+                useful_t += (by_fuel["heatpump"]["useful_gwh"]
+                             + by_fuel["ambient"]["useful_gwh"])
             indig_t += indig
             kt_t += kt
             bill_t += inp * price   # GWh x cur/kWh = millions of cur
