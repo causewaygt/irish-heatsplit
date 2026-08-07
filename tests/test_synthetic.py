@@ -1255,6 +1255,33 @@ def test_completeness_denominator_is_the_intended_window():
         assert pct <= 100.0, (k, pct)
 
 
+def test_history_carries_per_fuel_for_windowed_bars():
+    """Schema 3: every entry carries per-fuel in/useful at island and
+    jurisdiction level, and the fuel sums reconcile with the entry's
+    own totals - otherwise a windowed bar would contradict the
+    windowed headline above it."""
+    import build as B
+    B.PREVIOUS_DERIVED = {}
+    hist = build_history(_history_fixture_feeds())
+    assert hist
+    for e in hist:
+        for block in (e, e["ni"], e["roi"]):
+            f = block["fuels"]
+            assert "cool" in f
+            assert any(k != "cool" for k in f), f
+            for v in f.values():
+                assert "i" in v and "u" in v
+        # island fuel 'in' must sum to purchased within rounding
+        tot_in = sum(v["i"] for v in e["fuels"].values())
+        assert abs(tot_in - e["purchased_gwh"]) <= 1.0, \
+            (e["week_ending"], tot_in, e["purchased_gwh"])
+        # NI + ROI fuel sums reconcile to the island's
+        for f in e["fuels"]:
+            pair = e["ni"]["fuels"].get(f, {"i": 0})["i"] \
+                + e["roi"]["fuels"].get(f, {"i": 0})["i"]
+            assert abs(pair - e["fuels"][f]["i"]) <= 0.5, f
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
