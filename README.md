@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.13.0 / site 4.4.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.13.0 / site 4.4.1.
 
 ## The premise
 
