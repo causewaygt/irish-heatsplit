@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.13.0"
+PIPELINE_VERSION = "4.13.2"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -3356,13 +3356,24 @@ def build_hourly_store(previous):
             # store converges over successive runs instead.
             if e != ends[0] and covered >= 660:
                 continue
-            try:
-                got = fetch_hourly_chunk(chart, region, areas, e)
-                have.update(got)
-                added += len(got)
-            except Exception as exc:
+            got = {}
+            for attempt in (1, 2):
+                try:
+                    got = fetch_hourly_chunk(chart, region, areas, e)
+                    if got:
+                        break
+                except Exception as exc:
+                    log(f"hourly: {name} chunk to {e.isoformat()} "
+                        f"attempt {attempt} {exc.__class__.__name__}")
+                if attempt == 1:
+                    time.sleep(3)      # back off, then retry in-run
+            if not got:
                 log(f"hourly: {name} chunk to {e.isoformat()} "
-                    f"{exc.__class__.__name__}")
+                    f"EMPTY after 2 attempts - gap left for next run")
+            have.update(got)
+            added += len(got)
+            time.sleep(0.4)            # throttle: ~56 chunk requests
+                                       # per cold build trips limits
         before = len(prev.get("series", {}).get(name) or {})
         series[name] = {k: v for k, v in sorted(have.items())
                         if k >= floor}
