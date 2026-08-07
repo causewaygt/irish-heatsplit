@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.3.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.4.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -763,13 +763,24 @@ function heroCards(h, HIST){
   }
   function nb(b,state){return state==='ni'
     ?'\u00a3'+fmt(b.bill_gbp_m,0)+'m':'\u20ac'+fmt(b.bill_eur_m,0)+'m';}
-  function ioBars(b){
-    const bf=b.by_fuel||{};
-    const coolIn=(b.cooling||{}).elec_gwh||0;
-    const coolOut=(b.cooling||{}).served_gwh||coolIn;
-    const tot=(b.combined||{}).purchased_gwh||b.heat_purchased_gwh||1;
-    const served=(b.combined||{}).served_gwh||b.heat_delivered_gwh;
-    const loss=Math.max(0,b.heat_purchased_gwh-b.heat_delivered_gwh);
+  function ioBars(b, W){
+    // W: optional windowed aggregate {fuels:{f:{i,u}}, purchased,
+    // served}. Present -> the bars show the window; absent -> the
+    // live week, exactly as before.
+    const bf = W ? Object.fromEntries(Object.entries(W.fuels||{})
+                     .filter(([k])=>k!=='cool')
+                     .map(([k,v])=>[k,{in_gwh:v.i,useful_gwh:v.u}]))
+                 : (b.by_fuel||{});
+    const coolIn = W ? (((W.fuels||{}).cool||{}).i||0)
+                     : ((b.cooling||{}).elec_gwh||0);
+    const coolOut = W ? (((W.fuels||{}).cool||{}).u||coolIn)
+                      : ((b.cooling||{}).served_gwh||coolIn);
+    const tot = W ? (W.purchased||1)
+                  : ((b.combined||{}).purchased_gwh||b.heat_purchased_gwh||1);
+    const served = W ? (W.served||W.purchased||1)
+                     : ((b.combined||{}).served_gwh||b.heat_delivered_gwh);
+    const loss = W ? 0
+                   : Math.max(0,b.heat_purchased_gwh-b.heat_delivered_gwh);
     const scale=Math.max(tot, served+loss)||1;
     function bar(kind){
       let segs='';
@@ -835,7 +846,18 @@ function heroCards(h, HIST){
         wfh:sum('wf_heat_gwh'), wfc:sum('wf_cold_gwh'),
         wfbh:sum('wf_bill_heat_eur_m'), wfbc:sum('wf_bill_cold_eur_m'),
         wfeh:sum('wf_emissions_heat_kt'), wfec:sum('wf_emissions_cold_kt')
-      }:null};
+      }:null,
+      fuels:es.every(e=>G(e).fuels)?(()=>{
+        const acc={};
+        es.forEach(e=>{
+          const f=G(e).fuels||{};
+          Object.keys(f).forEach(k=>{
+            acc[k]=acc[k]||{i:0,u:0};
+            acc[k].i+=f[k].i||0; acc[k].u+=f[k].u||0;
+          });
+        });
+        return acc;
+      })():null};
   }
   function eScale(g){return g>=1000?fmt(g/1000,1)+' TWh':fmt(g,0)+' GWh';}
   function mScale(m,s){return m>=1000?s+fmt(m/1000,1)+'bn':s+fmt(m,0)+'m';}
@@ -904,6 +926,15 @@ function heroCards(h, HIST){
            (S?' \u2013 heat '+ktScale(S.wfeh)+' \u00b7 cold '+ktScale(S.wfec):'')+')'],
         ].map(r=>'<div class="wcell"><div class="val">'+r[0]+'</div>'+
           '<div class="lab">'+r[1]+'</div></div>').join('');
+      }
+      if(wv.fuels){
+        const G2=e=>state==='all'?e:(e[state]||{});
+        el('ioScale').textContent =
+          'Totals over the last '+WLBL[WIN]+cap+
+          ' \u2013 shares of the window, not of one week.';
+        el('ioBars').innerHTML = ioBars(null, {
+          fuels: wv.fuels, purchased: wv.purchased,
+          served: wv.entries.reduce((a,e)=>a+(G2(e).served_gwh||0),0)});
       }
       return;
     }
@@ -1416,7 +1447,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.3.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.4.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
