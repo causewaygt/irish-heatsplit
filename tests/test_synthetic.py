@@ -1282,6 +1282,222 @@ def test_history_carries_per_fuel_for_windowed_bars():
             assert abs(pair - e["fuels"][f]["i"]) <= 0.5, f
 
 
+def test_hourly_chunk_retried_within_the_run():
+    """7 Aug 2026: a chunk that fails once must be retried in the same
+    run, not left as a gap until tomorrow."""
+    import build as B
+    calls = {"n": 0}
+
+    def flaky(chart, region, areas, end_day):
+        calls["n"] += 1
+        if calls["n"] % 3 == 1:          # first of every three fails
+            raise RuntimeError("transient")
+        base = end_day - dt.timedelta(days=27)
+        return {(base + dt.timedelta(days=d)).strftime("%Y-%m-%dT")
+                + f"{h:02d}": 1.0
+                for d in range(28) for h in range(24)}
+
+    real_fetch, real_sleep = B.fetch_hourly_chunk, B.time.sleep
+    B.fetch_hourly_chunk = flaky
+    B.time.sleep = lambda *_: None       # no real delays in tests
+    try:
+        store = build_hourly_store({})
+    finally:
+        B.fetch_hourly_chunk = real_fetch
+        B.time.sleep = real_sleep
+    # every series still lands complete despite one-in-three failures
+    for k, pct in store["completeness_pct"].items():
+        assert pct >= 95, (k, pct)
+
+
+def test_migration_refreshes_jurisdiction_blocks():
+    """7 Aug 2026: the schema-3 migration used setdefault() for ni/roi,
+    so frozen weeks kept jurisdiction blocks from the previous schema
+    and the windowed energy bars had no per-fuel data for NI or ROI.
+    A migration must REFRESH those blocks, not default them."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    # simulate the older shape: jurisdiction blocks without 'fuels'
+    stale = []
+    for e in h1:
+        c = dict(e)
+        c["ni"] = {k: v for k, v in e["ni"].items() if k != "fuels"}
+        c["roi"] = {k: v for k, v in e["roi"].items() if k != "fuels"}
+        stale.append(c)
+    B.PREVIOUS_DERIVED = {"history": stale,
+                          "history_schema": B.HISTORY_SCHEMA - 1,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
+    h2 = build_history(feeds)
+    for e in h2[:-2]:
+        assert "fuels" in e["ni"], ("NI block not refreshed",
+                                    e["week_ending"])
+        assert "fuels" in e["roi"], ("ROI block not refreshed",
+                                     e["week_ending"])
+
+
+def test_schema_migration_adds_fuels_to_jurisdiction_blocks():
+    """A schema-2 entry already has ni/roi, so setdefault skipped them
+    and jurisdiction windows had no per-fuel data - the energy bars
+    then kept the previous scope instead of redrawing. Migration must
+    add the field while leaving frozen values untouched."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    legacy = []
+    for e in h1:
+        e2 = {k: v for k, v in e.items() if k != "fuels"}
+        e2["ni"] = {k: v for k, v in e["ni"].items() if k != "fuels"}
+        e2["roi"] = {k: v for k, v in e["roi"].items() if k != "fuels"}
+        legacy.append(e2)
+    B.PREVIOUS_DERIVED = {"history": legacy, "history_schema": 2,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
+    h2 = build_history(feeds)
+    for e in h2[:-2]:
+        assert "fuels" in e, "island fuels missing"
+        for scope in ("ni", "roi"):
+            assert "fuels" in e[scope], (scope, e["week_ending"])
+            assert e[scope]["fuels"], (scope, "empty")
+    # frozen island values untouched by the migration
+    for a, b in zip(legacy[:-2], h2[:-2]):
+        assert a["purchased_gwh"] == b["purchased_gwh"]
+
+
+def test_migration_refreshes_existing_jurisdiction_blocks():
+    """Schema 3 attached ni/roi with setdefault, so weeks that already
+    had those blocks never gained per-fuel data. A migration must
+    REFRESH existing sub-blocks, not default them."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    # simulate the schema-3 store: ni/roi present but fuel-less
+    stale = []
+    for e in h1:
+        c = dict(e)
+        c["ni"] = {k: v for k, v in e["ni"].items() if k != "fuels"}
+        c["roi"] = {k: v for k, v in e["roi"].items() if k != "fuels"}
+        stale.append(c)
+    B.PREVIOUS_DERIVED = {"history": stale, "history_schema": 3,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
+    h2 = build_history(feeds)
+    for e in h2[:-2]:
+        assert "fuels" in e["ni"], ("ni block not refreshed",
+                                    e["week_ending"])
+        assert "fuels" in e["roi"], ("roi block not refreshed",
+                                     e["week_ending"])
+
+
+def test_schema_migration_adds_fuels_to_existing_jur_blocks():
+    """Schema 4: a stored week that already has ni/roi blocks WITHOUT
+    fuels must gain them. Schema 3 used setdefault here, which skipped
+    exactly this case and left the windowed bars stuck on the live
+    week for NI and ROI."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    legacy = []
+    for e in h1:
+        e2 = dict(e)
+        for scope in ("ni", "roi"):
+            e2[scope] = {k: v for k, v in e[scope].items()
+                         if k != "fuels"}
+        legacy.append(e2)
+    B.PREVIOUS_DERIVED = {"history": legacy, "history_schema": 3,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
+    h2 = build_history(feeds)
+    for e in h2[:-2]:
+        assert "fuels" in e["ni"], ("ni fuels missing", e["week_ending"])
+        assert "fuels" in e["roi"], ("roi fuels missing", e["week_ending"])
+        assert "cool" in e["ni"]["fuels"]
+
+
+def test_schema_migration_adds_fuels_to_existing_subblocks():
+    """A frozen week that already has ni/roi from an older schema must
+    still gain the new per-fuel field - setdefault silently skipped
+    them at 4.13.0 and the jurisdiction x window bars stayed blank."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    # simulate a schema-3 store: island fuels present, sub-blocks not
+    old = []
+    for e in h1:
+        c = dict(e)
+        c["ni"] = {k: v for k, v in e["ni"].items() if k != "fuels"}
+        c["roi"] = {k: v for k, v in e["roi"].items() if k != "fuels"}
+        old.append(c)
+    B.PREVIOUS_DERIVED = {"history": old, "history_schema": 3,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
+    h2 = build_history(feeds)
+    for e in h2[:-2]:
+        for scope in ("ni", "roi"):
+            assert "fuels" in e[scope], (e["week_ending"], scope)
+        # frozen values beside the new field are untouched
+        assert e["purchased_gwh"] == \
+            next(x for x in old if x["week_ending"] ==
+                 e["week_ending"])["purchased_gwh"]
+
+
+def test_schema_migration_adds_fields_inside_sub_blocks():
+    """A schema bump must reach INSIDE existing ni/roi sub-blocks.
+    setdefault left schema-2 blocks without per-fuel data, so
+    jurisdiction windows had nothing to sum (site 4.4.0-4.4.3)."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    # emulate a schema-2 store: sub-blocks present, no fuels anywhere
+    legacy = []
+    for e in h1:
+        e2 = {k: v for k, v in e.items() if k != "fuels"}
+        for s in ("ni", "roi"):
+            e2[s] = {k: v for k, v in e[s].items() if k != "fuels"}
+        legacy.append(e2)
+    B.PREVIOUS_DERIVED = {"history": legacy, "history_schema": 2,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
+    h2 = build_history(feeds)
+    for e in h2[:-2]:
+        assert "fuels" in e, e["week_ending"]
+        for s in ("ni", "roi"):
+            assert "fuels" in e[s], (e["week_ending"], s)
+            assert e[s]["fuels"], (e["week_ending"], s)
+        # stored values untouched by a pure schema bump
+    for e0, e2 in zip(legacy[:-2], h2[:-2]):
+        for k in ("purchased_gwh", "bill_eur_m", "emissions_kt"):
+            assert e2[k] == e0[k], k
+
+
+def test_migration_refreshes_jurisdiction_blocks():
+    """Schema 3 used setdefault for ni/roi, so entries migrated from an
+    older schema kept blocks WITHOUT the new per-fuel data and the
+    windowed bars had nothing to sum for NI or ROI. A migration must
+    refresh existing sub-blocks, not merely create missing ones."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    # simulate an older store: ni/roi present but lacking 'fuels'
+    older = []
+    for e in h1:
+        e2 = dict(e)
+        e2["ni"] = {k: v for k, v in e["ni"].items() if k != "fuels"}
+        e2["roi"] = {k: v for k, v in e["roi"].items() if k != "fuels"}
+        e2.pop("fuels", None)
+        older.append(e2)
+    B.PREVIOUS_DERIVED = {"history": older, "history_schema": 3,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
+    h2 = build_history(feeds)
+    for e in h2[:-2]:
+        assert "fuels" in e["ni"], ("NI block not refreshed",
+                                    e["week_ending"])
+        assert "fuels" in e["roi"], ("ROI block not refreshed",
+                                     e["week_ending"])
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
