@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.11.0"
+PIPELINE_VERSION = "4.12.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -85,7 +85,9 @@ HISTORY_SCHEMA = 2
 #   1 - launch basis
 #   2 - 6 Aug 2026: data-centre line repriced to its cooling share
 #       (SEAI NHS R1) and hot water re-anchored 18.3% -> 22.4%
-ANCHOR_EPOCH = 2
+#   3 - 7 Aug 2026: cooling service factors re-anchored to the SEAI
+#       National Heat Study supporting data (useful-to-final ratios)
+ANCHOR_EPOCH = 3
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
@@ -271,13 +273,20 @@ ANCHORS = {
                            "process": 0.8,
                            "comfort": 1.0,
                            "ni_all": 1.2},
-             # Census total after the 6 Aug 2026 correction: ~6.2 TWh
-             # of cooling electricity island-wide (DC cooling ~1.0,
-             # refrigeration 2.3, process 0.8, comfort 1.0, NI 1.2),
-             # against SEAI's ROI cooling picture of ~7.5 TWh on a
-             # 2019 base including retail refrigeration at 6 TWh -
-             # our refrigeration line is the one now looking light
-             # and is next for component sourcing.
+             # CENSUS VALIDATED 7 Aug 2026 against the SEAI
+             # National Heat Study supporting data (final-energy
+             # table). SEAI ROI cooling electricity: commercial
+             # 2,868 + public 221 + agriculture 93 + industry 804
+             # + data centres 1,055 (their 2026 projection) =
+             # 5,041 GWh. Our ROI lines (dc 955 + refrigeration
+             # 2,300 + process 800 + comfort 1,000) = 5,055 GWh -
+             # 14 GWh apart on 5 TWh, with industry/process
+             # matching to 4 GWh. The earlier suspicion that
+             # refrigeration was light came from comparing SEAI's
+             # USEFUL demand against our ELECTRICITY; the
+             # like-for-like comparison holds. The open question is
+             # now the internal split between refrigeration and
+             # comfort within the commercial total, not the total.
              # AUDIT 18 Jul 2026: census scope is the full cold economy
              # (DC + cold chain + process + comfort) - deliberately
              # wider than comfort-only national cooling lines (e.g. the
@@ -315,9 +324,23 @@ ANCHORS = {
     # unit cooling electricity - an effective seasonal EER, high
     # because Ireland's climate permits extensive free cooling.
     # Raised from 1.0 with the 6 Aug 2026 repricing.
-    "cooling_service_factor": {"dc": 6.1, "refrigeration": 2.5,
-                                        "process": 2.5, "comfort": 3.0,
-                                        "ni_all": 2.0}},
+    # RE-ANCHORED 7 Aug 2026 to the SEAI National Heat Study
+    # supporting data, which publishes useful cooling demand AND
+    # final cooling consumption per sector - their ratio IS the
+    # service factor. SEAI's ROI implied ratios: commercial 2.07,
+    # public 2.57, industry 1.00, agriculture 1.00, aggregate 1.86
+    # (excluding data centres). We adopt 2.07 for the commercial-type
+    # loads - refrigeration and comfort - and hold process at 2.2
+    # dagger rather than copying SEAI's 1.00, which is a modelling
+    # pass-through (a COP of exactly 1.0 for process chilling is not
+    # a physical claim). NI carries the commercial ratio. The data
+    # centre factor stays 6.1 on its own provenance: Irish free
+    # cooling genuinely delivers an effective EER above 6, and SEAI
+    # models data centres in a separate sheet at 14% cooling share,
+    # which our census already follows.
+    "cooling_service_factor": {"dc": 6.1, "refrigeration": 2.07,
+                                        "process": 2.2, "comfort": 2.07,
+                                        "ni_all": 2.07}},
 }
 
 # Policy events rendered as chart annotations - date, jurisdiction, label.
@@ -2972,6 +2995,9 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                   "exists - a cold-economy scope, wider than comfort-only national "
                   "cooling lines and not one-to-one comparable with them; the "
                   "data-centre line counts cooling electricity (~14% of "
+                  "the fleet's draw, SEAI), not the whole draw, and "
+                  "delivered cooling uses the SEAI National Heat "
+                  "Study's useful-to-final ratios. "
                   "the fleet's draw, SEAI), not the whole draw. "
                   "Electricity emissions use the live all-island grid "
                   "intensity when available. Challenge and input "
@@ -3327,20 +3353,32 @@ def build_hourly_store(previous):
         + ", ".join(f"{k} {n}h" for k, n in counts.items())
         + (f"; span {ref[0]} .. {ref[1]}" if ref else ""))
     # completeness against the covered span (>=95% expected)
+    # Completeness is judged PER SERIES against the reference span,
+    # not on demand alone: the first store (7 Aug 2026) had demand at
+    # 100% while carbon intensity reached only 86%, and a carbon
+    # overlay drawn on that would have passed a demand-only gate.
+    complete, per_series = False, {}
     if ref:
         h0 = dt.datetime.strptime(ref[0], "%Y-%m-%dT%H")
         h1 = dt.datetime.strptime(ref[1], "%Y-%m-%dT%H")
         expect = int((h1 - h0).total_seconds() // 3600) + 1
-        pct = 100.0 * counts["demand_ai"] / max(expect, 1)
-        log(f"hourly: demand completeness {pct:.1f}% of {expect}h "
-            + ("- OK" if pct >= 95 else "- BELOW GATE, panel withheld"))
-        complete = pct >= 95
-    else:
-        complete = False
+        for k, n in counts.items():
+            pct = 100.0 * n / max(expect, 1)
+            per_series[k] = round(pct, 1)
+            log(f"hourly: {k} completeness {pct:.1f}% of {expect}h "
+                + ("- OK" if pct >= 95 else "- BELOW GATE"))
+        # the store is usable when the load/generation trio is whole;
+        # carbon is an overlay and gates itself in the panel
+        core = ("demand_ai", "wind_ai", "solar_ai")
+        complete = all(per_series.get(k, 0) >= 95 for k in core)
+        log(f"hourly: core trio {'complete' if complete else 'INCOMPLETE'}"
+            f"; carbon overlay "
+            f"{'available' if per_series.get('co2_ai', 0) >= 95 else 'withheld'}")
     return {"schema": HOURLY_SCHEMA,
             "generated": dt.datetime.now(dt.timezone.utc)
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
             "months": HOURLY_MONTHS, "complete": complete,
+            "completeness_pct": per_series,
             "basis": ("All-island 15-minute EirGrid series aggregated "
                       "to hourly means (>=3 of 4 quarters required). "
                       "Demand, wind and solar in MW; carbon intensity "
