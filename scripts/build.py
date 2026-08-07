@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.12.0"
+PIPELINE_VERSION = "4.12.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -3330,9 +3330,13 @@ def build_hourly_store(previous):
             span_start = (e - dt.timedelta(days=27)).strftime("%Y-%m-%dT00")
             span_end = e.strftime("%Y-%m-%dT23")
             covered = sum(1 for k in have if span_start <= k <= span_end)
-            # newest chunk always re-fetched (2-day revision window);
-            # older chunks skipped once substantially covered
-            if e != ends[0] and covered >= 600:
+            # Newest chunk always re-fetched (2-day revision window).
+            # Older chunks are skipped only once NEARLY whole: at the
+            # original 600/672 threshold a chunk sitting at, say, 620
+            # was never retried and its gap became permanent - which
+            # is why carbon stalled at 93.6% on 7 Aug 2026. At 98% the
+            # store converges over successive runs instead.
+            if e != ends[0] and covered >= 660:
                 continue
             try:
                 got = fetch_hourly_chunk(chart, region, areas, e)
