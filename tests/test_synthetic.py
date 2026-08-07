@@ -786,7 +786,8 @@ def test_build_history_freezes_all_but_two():
     B.PREVIOUS_DERIVED = {}
     h1 = build_history(feeds)
     B.PREVIOUS_DERIVED = {"history": h1,
-                          "history_schema": B.HISTORY_SCHEMA}
+                          "history_schema": B.HISTORY_SCHEMA,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
     # perturb an input that would change every recomputed week
     for d in feeds["ccni_oil"]["series_gbp"]["daily"]["900l"]:
         feeds["ccni_oil"]["series_gbp"]["daily"]["900l"][d] = 900.0
@@ -1009,7 +1010,8 @@ def test_seed_strip_restate_regains_identical_fields():
             if "heat_" in k or "cold_" in k or k == "fx_eur_gbp"]
     legacy = [{k: v for k, v in e.items() if k not in NEWK}
               for e in h1]
-    B.PREVIOUS_DERIVED = {"history": legacy}   # schema implicit 1
+    B.PREVIOUS_DERIVED = {"history": legacy,        # schema implicit 1
+                          "anchor_epoch": B.ANCHOR_EPOCH}
     h2 = build_history(feeds)
     assert [e["week_ending"] for e in h2] == \
         [e["week_ending"] for e in h1]
@@ -1037,7 +1039,8 @@ def test_restatement_reuses_stored_ef():
     tgt = legacy[0]
     assert tgt.get("ef_source") == "anchor"
     tgt["ef_electricity"] = 250.0
-    B.PREVIOUS_DERIVED = {"history": legacy}
+    B.PREVIOUS_DERIVED = {"history": legacy,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
     h2 = build_history(feeds)
     e2 = h2[0]
     assert e2["ef_electricity"] == 250.0
@@ -1063,6 +1066,30 @@ def test_dc_line_is_cooling_electricity_not_total_draw():
     rejected = dc_cool * c["rejection_factor"]["dc"]
     assert abs(rejected - dc_total) / dc_total < 0.05, \
         ("rejection factor no longer preserves rejected heat", rejected)
+
+
+def test_anchor_epoch_rewrites_whole_series_onto_one_basis():
+    """A basis change (not a schema change) must re-anchor every
+    recomputable week, totals included - otherwise the series steps
+    mid-record and the splits stop reconciling with their totals."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    h1 = build_history(feeds)
+    # pretend the stored series predates the current anchors
+    stale = [dict(e) for e in h1]
+    for e in stale[:-2]:
+        e["purchased_gwh"] = round(e["purchased_gwh"] * 1.9, 1)
+        e["cold_gwh"] = round(e["cold_gwh"] * 1.9, 1)
+    B.PREVIOUS_DERIVED = {"history": stale,
+                          "history_schema": B.HISTORY_SCHEMA,
+                          "anchor_epoch": B.ANCHOR_EPOCH - 1}
+    h2 = build_history(feeds)
+    for e0, e2 in zip(h1[:-2], h2[:-2]):
+        assert abs(e2["purchased_gwh"] - e0["purchased_gwh"]) < 0.05, \
+            ("week not re-anchored", e2["week_ending"])
+        assert abs(e2["heat_gwh"] + e2["cold_gwh"]
+                   - e2["purchased_gwh"]) <= 0.25
 
 
 if __name__ == "__main__":
