@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.4.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.4.2
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -780,8 +780,14 @@ function heroCards(h, HIST){
                   : ((b.combined||{}).purchased_gwh||b.heat_purchased_gwh||1);
     const served = W ? (W.served||W.purchased||1)
                      : ((b.combined||{}).served_gwh||b.heat_delivered_gwh);
-    const loss = W ? 0
-                   : Math.max(0,b.heat_purchased_gwh-b.heat_delivered_gwh);
+    // Conversion loss over a window: the per-fuel blocks carry both
+    // purchased (i) and useful (u), so the loss is their difference
+    // summed across heat fuels. Zeroing it (site 4.4.0-4.4.1) made
+    // "lost in conversion" vanish from every windowed view.
+    const loss = W
+      ? Object.entries(W.fuels||{}).reduce((a,[k,v])=>
+          k==='cool'?a:a+Math.max(0,(v.i||0)-(v.u||0)),0)
+      : Math.max(0,b.heat_purchased_gwh-b.heat_delivered_gwh);
     const scale=Math.max(tot, served+loss)||1;
     function bar(kind){
       let segs='';
@@ -1448,7 +1454,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.4.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.4.2 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
