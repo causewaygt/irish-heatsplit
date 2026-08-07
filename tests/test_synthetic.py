@@ -25,6 +25,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    parse_eirgrid_rows, build_history,
                    week_inputs, tariffs_for, ni_bridge_margin,
                    hourly_from_rows, build_hourly_store,
+                   weighted_hourly_temp,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -1140,13 +1141,16 @@ def test_hourly_store_shape_and_isolation(monkey=None):
         return out
 
     real = B.fetch_hourly_chunk
+    real_t = B.fetch_hourly_temp
     B.fetch_hourly_chunk = fake_chunk
+    B.fetch_hourly_temp = lambda prev, floor, end: dict(prev or {})
     try:
         store = build_hourly_store({})
     finally:
         B.fetch_hourly_chunk = real
+        B.fetch_hourly_temp = real_t
     assert store["schema"] == B.HOURLY_SCHEMA
-    assert set(store["series"]) == set(B.HOURLY_SERIES)
+    assert set(store["series"]) == set(B.HOURLY_SERIES) | {"temp_ai"}
     assert store["complete"] is True
     assert store["completeness_pct"]["demand_ai"] >= 95
     # 13 months of hours, within a chunk's tolerance
@@ -1186,11 +1190,14 @@ def test_hourly_carbon_gap_does_not_pass_as_complete():
         return out
 
     real = B.fetch_hourly_chunk
+    real_t = B.fetch_hourly_temp
     B.fetch_hourly_chunk = patchy
+    B.fetch_hourly_temp = lambda prev, floor, end: dict(prev or {})
     try:
         store = build_hourly_store({})
     finally:
         B.fetch_hourly_chunk = real
+        B.fetch_hourly_temp = real_t
     assert store["complete"] is True                  # trio fine
     assert store["completeness_pct"]["co2_ai"] < 95   # carbon flagged
 
@@ -1246,11 +1253,14 @@ def test_completeness_denominator_is_the_intended_window():
         return out
 
     real = B.fetch_hourly_chunk
+    real_t = B.fetch_hourly_temp
     B.fetch_hourly_chunk = uneven
+    B.fetch_hourly_temp = lambda prev, floor, end: dict(prev or {})
     try:
         store = build_hourly_store({})
     finally:
         B.fetch_hourly_chunk = real
+        B.fetch_hourly_temp = real_t
     for k, pct in store["completeness_pct"].items():
         assert pct <= 100.0, (k, pct)
 
@@ -1298,16 +1308,22 @@ def test_hourly_chunk_retried_within_the_run():
                 for d in range(28) for h in range(24)}
 
     real_fetch, real_sleep = B.fetch_hourly_chunk, B.time.sleep
+    real_t = B.fetch_hourly_temp
+    B.fetch_hourly_temp = lambda prev, floor, end: dict(prev or {})
     B.fetch_hourly_chunk = flaky
     B.time.sleep = lambda *_: None       # no real delays in tests
     try:
         store = build_hourly_store({})
     finally:
         B.fetch_hourly_chunk = real_fetch
+        B.fetch_hourly_temp = real_t
         B.time.sleep = real_sleep
-    # every series still lands complete despite one-in-three failures
-    for k, pct in store["completeness_pct"].items():
-        assert pct >= 95, (k, pct)
+    # every EirGrid series still lands complete despite one-in-three
+    # failures. temp_ai comes from a different source on a different
+    # walk and is stubbed empty here, so it is not the subject.
+    for k in B.HOURLY_SERIES:
+        assert store["completeness_pct"][k] >= 95, (
+            k, store["completeness_pct"][k])
 
 
 def test_migration_refreshes_jurisdiction_blocks():
@@ -1533,6 +1549,159 @@ def test_heat_pump_anchors_are_census_floors():
     assert 1200 <= hp["ni"]["households"] <= 1400
     # the uplift acknowledges four years of NZEB and grants since
     assert hp["roi"]["census_uplift"] >= 1.0
+
+
+def test_weighted_hourly_temp_population_weights():
+    """Island temperature is the population-weighted mean of the
+    stations, hour by hour, on whatever clock Open-Meteo was asked
+    for."""
+    payload = [
+        {"hourly": {"time": ["2026-01-08T08:00", "2026-01-08T09:00"],
+                    "temperature_2m": [0.0, 2.0]}},
+        {"hourly": {"time": ["2026-01-08T08:00", "2026-01-08T09:00"],
+                    "temperature_2m": [10.0, 12.0]}},
+    ]
+    out = weighted_hourly_temp(payload, ["A", "B"], {"A": 0.6, "B": 0.4})
+    assert out["2026-01-08T08"] == 4.0      # 0.6*0 + 0.4*10
+    assert out["2026-01-08T09"] == 6.0      # 0.6*2 + 0.4*12
+    assert set(out) == {"2026-01-08T08", "2026-01-08T09"}
+
+
+def test_weighted_hourly_temp_partial_coverage_is_unbiased():
+    """A station missing an hour must not drag the island mean toward
+    zero. The divisor is the weight PRESENT, not the full 1.0 - a
+    plain weighted sum would report 4.0 for an hour that is 10 C
+    everywhere it was measured."""
+    payload = [
+        {"hourly": {"time": ["2026-01-08T08"], "temperature_2m": [None]}},
+        {"hourly": {"time": ["2026-01-08T08"], "temperature_2m": [10.0]}},
+    ]
+    out = weighted_hourly_temp(payload, ["A", "B"], {"A": 0.6, "B": 0.4})
+    assert out["2026-01-08T08"] == 10.0
+
+
+def test_hourly_store_carries_temperature_and_gates_it_separately():
+    """Schema 2. The temperature series rides in the store, and
+    `heat_ready` is a gate of its own: a store whose grid trio is
+    whole still reports the heat layer as not ready until the
+    temperature series fills, and reports it WITHOUT withdrawing
+    anything the grid gate already allows."""
+    import build as B
+
+    def fake_chunk(chart, region, areas, end_day):
+        base = end_day - dt.timedelta(days=27)
+        out = {}
+        for d in range(28):
+            day = base + dt.timedelta(days=d)
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 1000.0
+        return out
+
+    def thin_temp(prev, floor, end):
+        """Only a fortnight of temperature - the first-run state."""
+        out = {}
+        for d in range(14):
+            day = end - dt.timedelta(days=d)
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 5.0
+        return out
+
+    real, real_t, real_s = B.fetch_hourly_chunk, B.fetch_hourly_temp, B.time.sleep
+    B.fetch_hourly_chunk, B.fetch_hourly_temp = fake_chunk, thin_temp
+    B.time.sleep = lambda *_: None
+    try:
+        store = build_hourly_store({})
+    finally:
+        B.fetch_hourly_chunk, B.fetch_hourly_temp = real, real_t
+        B.time.sleep = real_s
+    assert store["schema"] == 2
+    assert "temp_ai" in store["series"]
+    assert store["complete"] is True            # grid layer unaffected
+    assert store["heat_ready"] is False         # heat layer waits
+    assert store["completeness_pct"]["temp_ai"] < 95
+
+
+def test_temperature_tail_cannot_depress_grid_completeness():
+    """temp_ai carries a forecast tail past the last EirGrid hour. If
+    it set the completeness denominator, every grid series would be
+    marked short for a reason that has nothing to do with them."""
+    import build as B
+
+    def fake_chunk(chart, region, areas, end_day):
+        base = end_day - dt.timedelta(days=27)
+        out = {}
+        for d in range(28):
+            day = base + dt.timedelta(days=d)
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 1000.0
+        return out
+
+    def temp_with_tail(prev, floor, end):
+        out = {}
+        start = dt.datetime.strptime(floor, "%Y-%m-%dT%H").date()
+        day = start
+        while day <= end + dt.timedelta(days=2):     # two days beyond
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 5.0
+            day += dt.timedelta(days=1)
+        return out
+
+    real, real_t, real_s = B.fetch_hourly_chunk, B.fetch_hourly_temp, B.time.sleep
+    B.fetch_hourly_chunk, B.fetch_hourly_temp = fake_chunk, temp_with_tail
+    B.time.sleep = lambda *_: None
+    try:
+        store = build_hourly_store({})
+    finally:
+        B.fetch_hourly_chunk, B.fetch_hourly_temp = real, real_t
+        B.time.sleep = real_s
+    assert store["completeness_pct"]["demand_ai"] >= 95
+    assert store["complete"] is True
+    assert store["heat_ready"] is True
+
+
+def test_hourly_temp_request_uses_irish_local_clock():
+    """The join in the store is only valid if both sides share a
+    clock. EirGrid stamps are local; the temperature request must ask
+    for Europe/Dublin, not the UTC the daily HDD feed uses."""
+    import build as B
+    seen = []
+
+    class R:
+        @staticmethod
+        def json():
+            return [{"hourly": {"time": [], "temperature_2m": []}}]
+
+    def fake_get(url, **kw):
+        seen.append((url, (kw.get("params") or {}).get("timezone")))
+        return R
+
+    real_get, real_sleep = B.http_get, B.time.sleep
+    B.http_get, B.time.sleep = fake_get, lambda *a, **k: None
+    try:
+        B.fetch_hourly_temp({}, "2025-07-01T00", B.today_utc())
+    finally:
+        B.http_get, B.time.sleep = real_get, real_sleep
+    assert seen, "no request issued"
+    assert all(tz == "Europe/Dublin" for _, tz in seen), seen
+    assert any("archive" in u for u, _ in seen)
+
+
+def test_hourly_temp_keeps_previous_when_every_chunk_fails():
+    """Soft by construction: a bad day at Open-Meteo must leave the
+    retained depth alone rather than truncate the series."""
+    import build as B
+    prev = {"2026-01-0" + str(d) + "T12": 4.0 for d in range(1, 9)}
+
+    def boom(url, **kw):
+        raise RuntimeError("open-meteo down")
+
+    real_get, real_sleep = B.http_get, B.time.sleep
+    B.http_get, B.time.sleep = boom, lambda *a, **k: None
+    try:
+        out = B.fetch_hourly_temp(prev, "2025-07-01T00", B.today_utc())
+    finally:
+        B.http_get, B.time.sleep = real_get, real_sleep
+    assert out == prev
 
 
 if __name__ == "__main__":
