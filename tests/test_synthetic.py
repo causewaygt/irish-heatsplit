@@ -24,6 +24,7 @@ from build import (space_heat_split, autodetect_scale_to_gwh,   # noqa: E402
                    derive_gas_calibration, odh26_from_hourly,
                    parse_eirgrid_rows, build_history,
                    week_inputs, tariffs_for, ni_bridge_margin,
+                   hourly_from_rows, build_hourly_store,
                    ANCHORS,
                    parse_gb_oil_page)
 
@@ -1090,6 +1091,81 @@ def test_anchor_epoch_rewrites_whole_series_onto_one_basis():
             ("week not re-anchored", e2["week_ending"])
         assert abs(e2["heat_gwh"] + e2["cold_gwh"]
                    - e2["purchased_gwh"]) <= 0.25
+
+
+# ------------------------------------ hourly store (A'.2, v7 engine)
+
+def _qrows(day, hours, val=100.0, quarters=4):
+    rows = []
+    for h in range(hours):
+        for q in range(quarters):
+            rows.append({
+                "EffectiveTime":
+                    f"{day}-Jul-2026 {h:02d}:{q*15:02d}:00",
+                "Value": val + q,        # mean = val + 1.5 at q=4
+            })
+    return rows
+
+
+def test_hourly_means_not_samples():
+    """15-minute rows must aggregate to hourly MEANS, and an hour with
+    fewer than 3 of its 4 quarters must be dropped rather than shown
+    low."""
+    got = hourly_from_rows(_qrows("09", 3, 100.0))
+    assert len(got) == 3
+    for k, v in got.items():
+        assert abs(v - 101.5) < 0.01, (k, v)   # mean of 100..103
+    # a 2-quarter hour is dropped
+    thin = hourly_from_rows(_qrows("09", 1, 100.0, quarters=2))
+    assert thin == {}, thin
+    # ... but accepted at 3 quarters
+    ok3 = hourly_from_rows(_qrows("09", 1, 100.0, quarters=3))
+    assert len(ok3) == 1
+
+
+def test_hourly_store_shape_and_isolation(monkey=None):
+    """The store builds from stubbed chunks, keeps its own schema, and
+    reports completeness. No network."""
+    import build as B
+    calls = []
+
+    def fake_chunk(chart, region, areas, end_day):
+        calls.append((chart, end_day.isoformat()))
+        base = end_day - dt.timedelta(days=27)
+        out = {}
+        for d in range(28):
+            day = base + dt.timedelta(days=d)
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 1000.0
+        return out
+
+    real = B.fetch_hourly_chunk
+    B.fetch_hourly_chunk = fake_chunk
+    try:
+        store = build_hourly_store({})
+    finally:
+        B.fetch_hourly_chunk = real
+    assert store["schema"] == B.HOURLY_SCHEMA
+    assert set(store["series"]) == set(B.HOURLY_SERIES)
+    assert store["complete"] is True
+    # 13 months of hours, within a chunk's tolerance
+    n = len(store["series"]["demand_ai"])
+    assert 9000 <= n <= 10200, n
+    # every configured series was walked
+    assert len({c[0] for c in calls}) == len(B.HOURLY_SERIES)
+
+
+def test_hourly_store_never_breaks_weekly_output():
+    """A store failure must not touch the weekly document."""
+    import build as B
+    real = B.fetch_hourly_chunk
+    B.fetch_hourly_chunk = lambda *a, **k: (_ for _ in ()).throw(
+        RuntimeError("endpoint down"))
+    try:
+        store = build_hourly_store({})
+    finally:
+        B.fetch_hourly_chunk = real
+    assert store is None      # nothing written, caller carries on
 
 
 if __name__ == "__main__":
