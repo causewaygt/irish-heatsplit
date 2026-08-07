@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.13.2"
+PIPELINE_VERSION = "4.13.3"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -3016,7 +3016,6 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                   "the fleet's draw, SEAI), not the whole draw, and "
                   "delivered cooling uses the SEAI National Heat "
                   "Study's useful-to-final ratios. "
-                  "the fleet's draw, SEAI), not the whole draw. "
                   "Electricity emissions use the live all-island grid "
                   "intensity when available. Challenge and input "
                   "welcome at contact@causewaygt.com"),
