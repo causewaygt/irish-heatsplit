@@ -1228,6 +1228,33 @@ def test_service_factors_track_seai_ratios():
     assert 1.8 <= serv / elec <= 2.2, serv / elec
 
 
+def test_completeness_denominator_is_the_intended_window():
+    """7 Aug 2026: with the denominator taken from demand's own span,
+    a shrunken demand series made the others score 106.8%. A
+    completeness figure can never exceed 100%."""
+    import build as B
+
+    def uneven(chart, region, areas, end_day):
+        base = end_day - dt.timedelta(days=27)
+        out = {}
+        # demand deliberately short on the oldest week
+        skip = 7 if chart == "demand" else 0
+        for d in range(skip, 28):
+            day = base + dt.timedelta(days=d)
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 1.0
+        return out
+
+    real = B.fetch_hourly_chunk
+    B.fetch_hourly_chunk = uneven
+    try:
+        store = build_hourly_store({})
+    finally:
+        B.fetch_hourly_chunk = real
+    for k, pct in store["completeness_pct"].items():
+        assert pct <= 100.0, (k, pct)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
