@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.15.0"
+PIPELINE_VERSION = "4.16.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -53,9 +53,23 @@ DATA_PATH = ROOT / "docs" / "data.json"
 # of HISTORY_SCHEMA / ANCHOR_EPOCH. Fetched by the page only when the
 # grid panel needs it.
 HOURLY_PATH = ROOT / "docs" / "hourly.json"
-HOURLY_SCHEMA = 1
+# 2 (7 Aug 2026): temp_ai added - population-weighted island air
+# temperature per hour, from Open-Meteo, on the SAME local clock as
+# the EirGrid series. Without it the grid layer cannot be computed at
+# all: hourly heat needs an hourly temperature, and the only hourly
+# temperature this pipeline previously touched was a trailing 60 days
+# reduced to daily ODH26 before anything was persisted. The store
+# holds temperature rather than degree hours so that hourly HDD (base
+# 15.5), ODH26 and the Carnot source temperature all derive from one
+# retained series instead of three.
+HOURLY_SCHEMA = 2
 HOURLY_MONTHS = 13          # rolling window the store keeps
 HOURLY_CHUNKS_PER_RUN = 16  # walk-back budget; 14 fills 13 months
+# Open-Meteo serves long hourly spans in one request, so the
+# temperature series walks in far bigger chunks than EirGrid's
+# ~28-day window; 4 x 120 days covers 13 months with room over.
+HOURLY_TEMP_CHUNK_DAYS = 120
+HOURLY_TEMP_CHUNKS_PER_RUN = 5
 # Raised 400 -> 1150 (27 Jul 2026) so the back-look can reach the
 # tariff-confidence floor with a full trailing HDD year beneath its
 # earliest week.
@@ -3412,6 +3426,114 @@ def fetch_hourly_chunk(chart, region, areas, end_day):
     return hourly_from_rows((payload or {}).get("Rows", []))
 
 
+def weighted_hourly_temp(payload, names, weights):
+    """
+    Open-Meteo hourly payloads -> population-weighted island air
+    temperature per hour, keyed 'YYYY-MM-DDTHH'.
+
+    The divisor is the weight ACTUALLY PRESENT in each hour, not the
+    full 1.0. A station missing an hour then leaves the island mean
+    unbiased instead of dragging it toward zero, which a plain
+    weighted sum would do silently and only in the hours where a feed
+    gap already exists. Pure, unit tested.
+    """
+    locs = payload if isinstance(payload, list) else [payload]
+    acc, wt = {}, {}
+    for name, loc in zip(names, locs):
+        w = weights.get(name, 0.0)
+        if w <= 0:
+            continue
+        hh = (loc or {}).get("hourly", {}) or {}
+        for ts, t in zip(hh.get("time", []) or [],
+                         hh.get("temperature_2m", []) or []):
+            if t is None:
+                continue
+            k = str(ts)[:13]
+            acc[k] = acc.get(k, 0.0) + w * float(t)
+            wt[k] = wt.get(k, 0.0) + w
+    return {k: round(acc[k] / wt[k], 2) for k in acc if wt[k] > 0}
+
+
+def fetch_hourly_temp(previous, floor_key, end_day):
+    """
+    Island hourly temperature across the store's window, merged onto
+    whatever previous runs retained.
+
+    TIMEZONE. Requested on Europe/Dublin clock, NOT UTC. _hour_key
+    deliberately keys the EirGrid series on its own local stamps, and
+    the daily HDD feed asks Open-Meteo for UTC. Joining those two
+    would put temperature an hour out of step with demand from late
+    March to late October - silently, and in exactly the direction
+    that misaligns an evening peak with the temperature that caused
+    it. Both sides of this store are therefore local clock.
+
+    The autumn fold repeats one local hour; the later value wins, in
+    both series, for one hour a year.
+    """
+    names = list(STATIONS)
+    lats = ",".join(str(STATIONS[n][0]) for n in names)
+    lons = ",".join(str(STATIONS[n][1]) for n in names)
+    weights = {n: STATIONS[n][2] for n in names}
+    have = dict(previous or {})
+
+    ends, cursor = [], end_day
+    while len(ends) < HOURLY_TEMP_CHUNKS_PER_RUN:
+        ends.append(cursor)
+        cursor = cursor - dt.timedelta(days=HOURLY_TEMP_CHUNK_DAYS)
+        if cursor.strftime("%Y-%m-%dT00") < floor_key:
+            break
+
+    for i, e in enumerate(ends):
+        start = e - dt.timedelta(days=HOURLY_TEMP_CHUNK_DAYS - 1)
+        span_start = start.strftime("%Y-%m-%dT00")
+        span_end = e.strftime("%Y-%m-%dT23")
+        covered = sum(1 for k in have if span_start <= k <= span_end)
+        expect = HOURLY_TEMP_CHUNK_DAYS * 24
+        # Newest chunk always re-fetched (ERA5 revises); older chunks
+        # skipped only once nearly whole, so gaps converge over runs
+        # rather than becoming permanent.
+        if i and covered >= expect * 0.98:
+            continue
+        try:
+            payload = http_get(
+                "https://archive-api.open-meteo.com/v1/archive", params={
+                    "latitude": lats, "longitude": lons,
+                    "start_date": start.isoformat(),
+                    "end_date": e.isoformat(),
+                    "hourly": "temperature_2m",
+                    "timezone": "Europe/Dublin",
+                }, timeout=240).json()
+            got = weighted_hourly_temp(payload, names, weights)
+            have.update(got)
+            log(f"hourly: temp_ai archive {start.isoformat()}.."
+                f"{e.isoformat()} {len(got)}h")
+        except Exception as exc:
+            log(f"hourly: temp_ai archive chunk to {e.isoformat()} "
+                f"{exc.__class__.__name__} - gap left for next run")
+        time.sleep(0.4)
+
+    # ERA5 lags ~5 days; the forecast endpoint covers the tail. Archive
+    # values are authoritative where both exist.
+    try:
+        tail = weighted_hourly_temp(http_get(
+            "https://api.open-meteo.com/v1/forecast", params={
+                "latitude": lats, "longitude": lons,
+                "past_days": 10, "forecast_days": 1,
+                "hourly": "temperature_2m",
+                "timezone": "Europe/Dublin",
+            }, timeout=120).json(), names, weights)
+        added = 0
+        for k, v in tail.items():
+            if k not in have:
+                have[k] = v
+                added += 1
+        log(f"hourly: temp_ai forecast tail +{added}h")
+    except Exception as exc:
+        log(f"hourly: temp_ai forecast tail unavailable "
+            f"({exc.__class__.__name__}) - archive only")
+    return have
+
+
 def build_hourly_store(previous):
     """Walk back in ~28-day chunks until the window is covered, then
     keep only the most recent chunk (plus a 2-day revision re-fetch)
@@ -3472,10 +3594,30 @@ def build_hourly_store(previous):
         if before and after < before - 24:
             log(f"hourly: WARNING {name} shrank {before}h -> {after}h "
                 f"in one run - investigate before trusting the panel")
-    counts = {k: len(v) for k, v in series.items()}
-    if not any(counts.values()):
+    # The grid series gate the store: with EirGrid down there is
+    # nothing for a temperature series to be joined TO, and fetching
+    # one would spend a minute of runner time on a document that is
+    # not going to be written.
+    if not any(len(series[k]) for k in HOURLY_SERIES):
         log("hourly: no data - store not written")
         return None
+
+    # --- fifth series: island hourly temperature (Open-Meteo).
+    prev_t = dict(prev.get("series", {}).get("temp_ai") or {})
+    try:
+        t_all = fetch_hourly_temp(prev_t, floor, end)
+    except Exception as exc:
+        log(f"hourly: temp_ai unavailable ({exc.__class__.__name__}) - "
+            "retaining previous")
+        t_all = prev_t
+    series["temp_ai"] = {k: v for k, v in sorted(t_all.items())
+                         if k >= floor}
+    if prev_t and len(series["temp_ai"]) < len(prev_t) - 24:
+        log(f"hourly: WARNING temp_ai shrank {len(prev_t)}h -> "
+            f"{len(series['temp_ai'])}h in one run - investigate "
+            "before trusting the panel")
+
+    counts = {k: len(v) for k, v in series.items()}
     spans = {k: (min(v), max(v)) for k, v in series.items() if v}
     ref = spans.get("demand_ai")
     log(f"hourly: {added} hour-values fetched this run; "
@@ -3486,14 +3628,20 @@ def build_hourly_store(previous):
     # not on demand alone: the first store (7 Aug 2026) had demand at
     # 100% while carbon intensity reached only 86%, and a carbon
     # overlay drawn on that would have passed a demand-only gate.
-    complete, per_series = False, {}
+    complete, heat_ready, per_series = False, False, {}
     if ref:
         # Denominator is the INTENDED window (floor -> latest hour in
         # the store), not one series' own span. Using demand's span
         # let other series score 106.8% on 7 Aug 2026 when demand
         # shrank - a completeness figure above 100% is a bug signal,
         # so the denominator must not depend on the numerator.
-        latest = max(mx for _, mx in spans.values())
+        # ...and the window is the GRID window. temp_ai carries a
+        # forecast tail that can run a day past the last EirGrid hour;
+        # letting it set the denominator would depress every other
+        # series' completeness for a reason that has nothing to do
+        # with them.
+        latest = max(mx for k, (_, mx) in spans.items()
+                     if k in HOURLY_SERIES)
         h0 = dt.datetime.strptime(floor, "%Y-%m-%dT%H")
         h1 = dt.datetime.strptime(latest, "%Y-%m-%dT%H")
         expect = int((h1 - h0).total_seconds() // 3600) + 1
@@ -3512,7 +3660,17 @@ def build_hourly_store(previous):
         log(f"hourly: core trio {'complete' if complete else 'INCOMPLETE'}"
             f"; carbon overlay "
             f"{'available' if per_series.get('co2_ai', 0) >= 95 else 'withheld'}")
+        # heat_ready is a SEPARATE gate, deliberately. The temperature
+        # series is what the electrification computations need and the
+        # existing panels do not; keeping it out of `complete` means
+        # temp_ai filling over its first few runs can never withdraw
+        # anything already shipping.
+        heat_ready = complete and per_series.get("temp_ai", 0) >= 95
+        log(f"hourly: heat layer "
+            f"{'ready' if heat_ready else 'not ready'} "
+            f"(temp_ai {per_series.get('temp_ai', 0)}%)")
     return {"schema": HOURLY_SCHEMA,
+            "heat_ready": heat_ready,
             "generated": dt.datetime.now(dt.timezone.utc)
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
             "months": HOURLY_MONTHS, "complete": complete,
@@ -3521,7 +3679,12 @@ def build_hourly_store(previous):
                       "to hourly means (>=3 of 4 quarters required). "
                       "Demand, wind and solar in MW; carbon intensity "
                       "in g CO2 per kWh. Source: EirGrid Smart Grid "
-                      "Dashboard."),
+                      "Dashboard. temp_ai is population-weighted "
+                      "island air temperature in degrees C, ERA5 via "
+                      "Open-Meteo, weights as the daily HDD feed. "
+                      "EVERY series is keyed on Irish local clock, "
+                      "not UTC, so temperature and demand describe "
+                      "the same hour year-round."),
             "series": series}
 
 
