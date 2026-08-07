@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.4.2
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.4.3
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -101,7 +101,7 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 .iolab{font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:var(--ink2);min-width:84px;text-align:right;line-height:1.2}
 .iotrack{flex:1;display:flex;height:34px;border:1px solid var(--line);background:rgba(255,255,255,.02)}
 .ioseg{height:100%;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:#0e1d23;white-space:nowrap;overflow:hidden}
-.ioseg.hatch{background:repeating-linear-gradient(45deg,rgba(255,255,255,.10) 0 5px,rgba(255,255,255,.02) 5px 10px)!important;color:var(--muted)}
+.ioseg.hatch{background:repeating-linear-gradient(45deg,#E0A24A 0 5px,#6B4A1F 5px 10px)!important;color:#FFF3E0;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.55)}
 .ioscale{font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--green2);margin:14px 0 2px}
 .iofoot{font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--muted);margin-top:8px}
 .iofoot b{color:var(--green)}
@@ -1454,7 +1454,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.4.2 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.4.3 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
