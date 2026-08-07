@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.12.2"
+PIPELINE_VERSION = "4.13.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -73,7 +73,7 @@ HISTORY_START = "2025-10-01"
 # recompute window is the price feeds at 1,150-day retention, so all
 # weeks are restatable and stranding risk is ~nil - measured, not
 # assumed, by the drift check below.
-HISTORY_SCHEMA = 2
+HISTORY_SCHEMA = 3
 # Anchor epoch. Bump whenever a change to ANCHORS alters what a past
 # week WOULD have computed - as distinct from HISTORY_SCHEMA, which
 # tracks new FIELDS. A schema bump adds fields and leaves stored
@@ -2372,6 +2372,20 @@ def build_history(feeds, anchors=None):
     Irish hero is anchor x HDD, so depth is bounded by the PRICE feeds
     (CCNI from 2026-02-26), not gas. Records the GNI feed's empirical
     window each run (gas_window) per the porting handover."""
+    def fuel_sub(b):
+        """Compact per-fuel in/useful for the windowed energy bars.
+        Keys stay short - this rides in every history entry, three
+        times over (island, NI, ROI)."""
+        bf = b.get("by_fuel") or {}
+        cl = b.get("cooling") or {}
+        out = {f: {"i": round(v.get("in_gwh", 0.0), 1),
+                   "u": round(v.get("useful_gwh", 0.0), 1)}
+               for f, v in bf.items()}
+        out["cool"] = {"i": round(cl.get("elec_gwh", 0.0), 1),
+                       "u": round(cl.get("served_gwh",
+                                         cl.get("elec_gwh", 0.0)), 1)}
+        return out
+
     def jur_sub(b):
         return {
             "purchased_gwh": b["combined"]["purchased_gwh"],
@@ -2380,6 +2394,7 @@ def build_history(feeds, anchors=None):
             "bill_eur_m": b["combined"]["bill_eur_m"],
             "bill_gbp_m": b["combined"]["bill_gbp_m"],
             "emissions_kt": b["combined"]["emissions_kt_co2"],
+            "fuels": fuel_sub(b),
             "wf_purchased_gwh": b["what_if_combined"]["purchased_gwh"],
             "wf_indigenous_pct":
                 b["what_if_combined"]["indigenous_share_pct"],
@@ -2469,6 +2484,7 @@ def build_history(feeds, anchors=None):
                                     W2["emissions_kt_co2"],
                                 "ni": jur_sub(h2["ni"]),
                                 "roi": jur_sub(h2["roi"]),
+                                "fuels": fuel_sub(h2),
                             })
                         for k in ("heat_gwh", "cold_gwh",
                                   "bill_heat_eur_m", "bill_cold_eur_m",
@@ -2478,6 +2494,7 @@ def build_history(feeds, anchors=None):
                             e[k] = C2[k]
                             e["wf_" + k] = W2[k]
                         e.setdefault("fx_eur_gbp", ctx["fx"])
+                        e["fuels"] = fuel_sub(h2)
                         e.setdefault("ni", jur_sub(h2["ni"]))
                         e.setdefault("roi", jur_sub(h2["roi"]))
                     else:
@@ -2530,6 +2547,7 @@ def build_history(feeds, anchors=None):
             "wf_emissions_heat_kt": WFC["emissions_heat_kt"],
             "wf_emissions_cold_kt": WFC["emissions_cold_kt"],
             "fx_eur_gbp": ctx["fx"],
+            "fuels": fuel_sub(h),
             "ni_oil_source": ctx["ni_oil_source"],
             "ni": jur_sub(h["ni"]),
             "roi": jur_sub(h["roi"]),
