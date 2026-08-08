@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.22.0"
+PIPELINE_VERSION = "4.23.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -146,15 +146,89 @@ HISTORY_SCHEMA = 5
 # 5 (8 Aug 2026): NI tariff basis rebuilt (see TARIFF_HISTORY) and
 # the back-look floor moved to 2025-08-06.
 # 6 (8 Aug 2026): ROI domestic moved onto the same all-in basis as NI
-# - Eurostat band prices, standing charges included. Every stored week
-# reprices, and the ROI bill rises materially.
-ANCHOR_EPOCH = 6
+# - Eurostat band prices, standing charges included.
+# 7 (8 Aug 2026): Irish anchors moved to semester 2 2025 (credit-free,
+# see IE_PUBLISHED_P_PER_KWH) and the euro conversion moved from a
+# hard-coded rate to the ECB semester mean computed from the feed.
+ANCHOR_EPOCH = 7
 # The heat/cold split fields carried by both the island entry and,
 # from history schema 5, each jurisdiction sub-block.
 JUR_SPLIT_KEYS = ("heat_gwh", "cold_gwh",
                   "bill_heat_eur_m", "bill_cold_eur_m",
                   "bill_heat_gbp_m", "bill_cold_gbp_m",
                   "emissions_heat_kt", "emissions_cold_kt")
+
+# ---------------------------------------------------------------- Irish
+# anchors: published in sterling, converted at a FETCHED rate.
+#
+# WHY SEMESTER 2 2025 AND NOT AN EARLIER ONE. The Irish domestic
+# electricity series carries government credits as negative taxes -
+# UREGNI says so explicitly, EUR1,500 of them since 2022 with the last
+# EUR125 in Jan/Feb 2025. That is why Ireland reads 31.3 p/kWh in S2
+# 2024, 27.5 in S1 2025 and 35.2 in S2 2025: a 28% jump in one
+# semester caused by a credit ending, not by a price moving. This site
+# prices the REAL cost of heat, so the credit-bearing semesters are
+# unusable and S2 2025 - the first clean one - is the anchor. It also
+# happens to be the semester the back-look starts in.
+#
+# WHY THE RATE IS FETCHED. UREGNI publishes Ireland in sterling,
+# having converted Eurostat's euro at the semester average. Recovering
+# the euro figure therefore needs that same average, and it scales
+# EVERY Irish anchor on the site. It was a hard-coded 0.84 until now,
+# which was my estimate for the wrong semester - S2 2025 ran nearer
+# 0.87, so the estimate was overstating every ROI anchor by about 4%.
+# It is now the ECB semester mean, computed from the daily reference
+# rates this pipeline already retains and logged on every run.
+IE_SEMESTER = "2025-S2"
+# Used ONLY if the semester mean cannot be computed. Logged as
+# unverified when it fires, because a silent fallback here would move
+# the whole ROI side without saying so.
+IE_FX_FALLBACK = 0.87
+IE_FX = {"rate": IE_FX_FALLBACK, "source": "fallback (UNVERIFIED)",
+         "semester": IE_SEMESTER}
+
+# Published Irish figures, pence per kWh, semester 2 2025, as UREGNI
+# prints them. Domestic incl all taxes; non-domestic incl CCL excl VAT.
+# Electricity non-domestic is consumption-weighted across the bands
+# below Large + Very Large using UREGNI's own published consumption
+# shares (5.1 / 32.9 / 19.1 / 26.8 / 16.1%); gas non-domestic is band
+# I1, where services buildings sit.
+IE_PUBLISHED_P_PER_KWH = {
+    "domestic_electricity": 35.2,
+    "domestic_gas": 11.3,
+    "nondom_electricity": 22.68,
+    "nondom_gas": 9.3,
+}
+# Level from the semester, timing from the announcements. Electric
+# Ireland held from Oct 2022 to 1 Jul 2026, then +8% / +7.7%.
+IE_STEPS = [("2026-07-01", {"domestic_electricity": 1.08,
+                            "domestic_gas": 1.077})]
+
+
+def ie_eur(key, date_iso=None):
+    """Published Irish sterling figure -> EUR/kWh at the fetched
+    semester rate, stepped by any announcement on or before the date."""
+    v = IE_PUBLISHED_P_PER_KWH[key] / 100.0 / IE_FX["rate"]
+    for frm, steps in IE_STEPS:
+        if date_iso and date_iso >= frm and key in steps:
+            v *= steps[key]
+    return round(v, 4)
+
+
+def semester_means(daily, min_days=110):
+    """{date: rate} -> {'YYYY-S1'|'YYYY-S2': mean}. Semesters with
+    fewer than min_days observations are DROPPED, not averaged thin -
+    a part-semester mean is indistinguishable from a whole one and
+    would silently mis-scale every Irish anchor."""
+    buckets = {}
+    for d, v in (daily or {}).items():
+        try:
+            y, m = int(d[:4]), int(d[5:7])
+        except (ValueError, IndexError):
+            continue
+        buckets.setdefault(f"{y}-S{1 if m <= 6 else 2}", []).append(v)
+    return {k: round(sum(v) / len(v), 5)
+            for k, v in buckets.items() if len(v) >= min_days}
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
@@ -297,7 +371,7 @@ ANCHORS = {
         "ni": {"gas": 0.55, "electricity": 0.55},
     },
     # NON-DOMESTIC RATES - Utility Regulator Retail Energy Market
-    # Monitoring, semester 2 2024 (2024 AREMM data publication).
+    # Monitoring, semester 2 2025 (Q1 2026 QREMM, published 16 Jun 2026).
     #
     # WHAT WAS WRONG. Both jurisdictions carried LARGE-USER prices.
     # The NI pair (24.0p / 5.5p) was the GB QEP manufacturing average
@@ -312,18 +386,20 @@ ANCHORS = {
     # excluding only Large + Very Large. That top band is seventeen NI
     # connections and 683 GWh of unambiguously heavy industry and data
     # centres; every band below it is where services buildings live.
-    # Weighting is by NI I&C consumption (AREMM Table 4), applied to
-    # both jurisdictions because Ireland's band consumption split is
-    # not published in the same table - a dagger, but the two price
-    # ladders are close enough that the weighting choice moves the
-    # answer far less than the band choice did.
-    #   band (MWh/yr)      NI p/kWh   IE p/kWh   NI GWh
-    #   very small <20        28.5       31.4      304
-    #   small 20-500          26.1       26.9    1,554
-    #   small/med 500-2k      22.8       22.0      763
-    #   medium 2k-20k         19.6       19.3    1,246
-    #   large+VL >20k         16.9       17.4      683   <- excluded
-    #   weighted (services)   23.5       23.8    3,866
+    # Weighting is UREGNI's published I&C consumption share per band,
+    # applied to both jurisdictions because Ireland's own split is not
+    # published alongside - a dagger, but a much smaller one than the
+    # band choice, and the two ladders track each other closely.
+    # Semester 2 2025 (Q1 2026 QREMM), with UREGNI's own published
+    # consumption shares - no proxy weighting needed any more:
+    #   band (MWh/yr)      NI p/kWh   IE p/kWh   % of I&C GWh
+    #   very small <20        28.6       26.2       5.1
+    #   small 20-500          26.3       25.4      32.9
+    #   small/med 500-2k      23.3       22.2      19.1
+    #   medium 2k-20k         20.2       19.0      26.8
+    #   large+VL >20k         17.8       16.1      16.1   <- excluded
+    #   weighted (services)   23.8       22.7      83.9
+    # Ireland has crossed BELOW NI since 2024 on both fuels.
     # Ireland converted back to euro at 0.84, the semester average -
     # UREGNI converts Eurostat's euro figures to sterling for the
     # comparison, so this recovers the original.
@@ -345,8 +421,8 @@ ANCHORS = {
     # for the services share. I&C figures include CCL and EXCLUDE VAT,
     # which is the convention this site already applies to services.
     #
-    # VINTAGE - and a live consequence. Held at S2 2024, the latest
-    # published semester, and they do NOT move week to week. REMM lags
+    # VINTAGE - and a live consequence. Held at S2 2025, the latest
+    # published semester (Q1 2026 QREMM, 16 Jun 2026), and they do NOT move week to week. REMM lags
     # about nine months. Since the domestic rates ARE stepped through
     # to 2026 and NI gas fell about 15% over that span, NI
     # non-domestic gas (8.67p, 2024) now prints ABOVE NI domestic gas
@@ -360,8 +436,9 @@ ANCHORS = {
     # Level from the semester series and timing from tariff
     # announcements is the intended design; until that is built the
     # services share of every week is priced at a 2024 semester.
+    # set per run by apply_ie_fx() from the fetched semester rate
     "nondom_eur_per_kwh": {"electricity": 0.284, "gas": 0.102},
-    "nondom_gbp_per_kwh": {"electricity": 0.235, "gas": 0.0867},
+    "nondom_gbp_per_kwh": {"electricity": 0.2381, "gas": 0.080},
     "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},
     "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.325},
     # The cold economy - island cooling loads, electricity basis.
@@ -769,24 +846,59 @@ TARIFF_HISTORY = [
     # including VAT and standing charges. gbp: UREGNI regulated bills,
     # gas weighted SSE/Firmus by customers. eur: Eurostat band prices
     # (S2 2024) stepped by the Electric Ireland announcements.
-    ("2025-08-06", {"eur": {"electricity": 0.373, "gas": 0.1345},
+    ("2025-08-06", {"eur": None,
                     "gbp": {"electricity": 0.3091, "gas": 0.0884}}),
-    ("2025-10-01", {"eur": {"electricity": 0.373, "gas": 0.1345},
+    ("2025-10-01", {"eur": None,
                     "gbp": {"electricity": 0.3216, "gas": 0.0809}}),
-    ("2026-04-01", {"eur": {"electricity": 0.373, "gas": 0.1345},
+    ("2026-04-01", {"eur": None,
                     "gbp": {"electricity": 0.3216, "gas": 0.0739}}),
-    ("2026-07-01", {"eur": {"electricity": 0.4028, "gas": 0.1448},
+    ("2026-07-01", {"eur": None,
                     "gbp": {"electricity": 0.3416, "gas": 0.0770}}),
 ]
 
 
 def tariffs_for(date_iso):
-    """Resolve the tariff period in force on a date. Dagger."""
+    """
+    Resolve the tariff period in force on a date. Dagger.
+
+    The sterling side is a table of regulated all-in rates. The euro
+    side is DERIVED at call time from the published Irish figures and
+    the fetched semester rate, because a hard-coded euro row would go
+    stale silently the moment the exchange rate moved - and it did,
+    by about 4%, between the semester I first guessed and the one the
+    anchors actually belong to.
+    """
     row = TARIFF_HISTORY[0][1]
     for frm, rates in TARIFF_HISTORY:
         if date_iso >= frm:
             row = rates
-    return row
+    return {"gbp": row["gbp"],
+            "eur": {"electricity": ie_eur("domestic_electricity", date_iso),
+                    "gas": ie_eur("domestic_gas", date_iso)}}
+
+
+def apply_ie_fx(feeds):
+    """Set the euro conversion from the ECB semester mean and refresh
+    the euro anchors that depend on it. Called once per run, before
+    anything prices a week."""
+    sem = ((feeds.get("ecb_fx") or {}).get("eur_gbp_semester") or {})
+    rate = sem.get(IE_SEMESTER)
+    if rate:
+        IE_FX.update(rate=rate,
+                     source=f"ECB semester mean {IE_SEMESTER}")
+    else:
+        IE_FX.update(rate=IE_FX_FALLBACK,
+                     source="fallback (UNVERIFIED)")
+        log(f"fx: WARNING {IE_SEMESTER} semester mean unavailable - "
+            f"every Irish anchor is on the {IE_FX_FALLBACK} fallback")
+    ANCHORS["nondom_eur_per_kwh"] = {
+        "electricity": ie_eur("nondom_electricity"),
+        "gas": ie_eur("nondom_gas"),
+    }
+    log(f"fx: EUR/GBP {IE_FX['rate']} ({IE_FX['source']}); "
+        f"ROI domestic {tariffs_for(HISTORY_START)['eur']}, "
+        f"non-domestic {ANCHORS['nondom_eur_per_kwh']}")
+    return IE_FX["rate"]
 
 
 # ---------------------------------------------------------------- utilities
@@ -1471,8 +1583,13 @@ def feed_ecb_fx():
             for c in cube.findall("e:Cube", ns):
                 if c.get("currency") == "GBP":
                     ser[cube.get("time")] = float(c.get("rate"))
-        if not ser or min(ser) > HISTORY_START:
-            # one-time deep backfill to the back-look floor
+        sem = dict(prev_series("ecb_fx", "eur_gbp_semester"))
+        sem.update(semester_means(ser))
+        if not ser or min(ser) > HISTORY_START or IE_SEMESTER not in sem:
+            # Deep backfill to the back-look floor. Also fires when the
+            # Irish anchor semester is not yet covered - the daily
+            # series starts at HISTORY_START, which can sit inside the
+            # semester and leave the mean short of its day count.
             import zipfile
             zr = http_get("https://www.ecb.europa.eu/stats/eurofxref/"
                           "eurofxref-hist.zip", timeout=120)
@@ -1482,9 +1599,17 @@ def feed_ecb_fx():
             cols = lines[0].split(",")
             gi = cols.index("GBP")
             added = 0
+            # The zip is the FULL series back to 1999, so semester
+            # means come off it whole rather than off the trimmed
+            # daily window - which is the point of fetching it here.
+            whole = {}
             for line in lines[1:]:
                 parts = line.split(",")
                 d = parts[0].strip()
+                try:
+                    whole[d] = float(parts[gi])
+                except (ValueError, IndexError):
+                    pass
                 if d < HISTORY_START or d in ser:
                     continue
                 try:
@@ -1492,11 +1617,17 @@ def feed_ecb_fx():
                     added += 1
                 except (ValueError, IndexError):
                     continue
-            log(f"ecb_fx: deep history backfill +{added} days")
+            sem.update(semester_means(whole))
+            log(f"ecb_fx: deep history backfill +{added} days, "
+                f"{len(whole)} days seen, {len(sem)} semester means")
         out["eur_gbp_daily"] = trim_series(ser)
-        log(f"ecb_fx: history {len(out['eur_gbp_daily'])} days retained")
+        out["eur_gbp_semester"] = sem
+        log(f"ecb_fx: history {len(out['eur_gbp_daily'])} days retained, "
+            f"{len(sem)} semester means; {IE_SEMESTER}="
+            f"{sem.get(IE_SEMESTER, 'MISSING')}")
     except Exception as e:
         out["eur_gbp_daily"] = prev_series("ecb_fx", "eur_gbp_daily")
+        out["eur_gbp_semester"] = prev_series("ecb_fx", "eur_gbp_semester")
         log(f"ecb_fx: history skipped ({e.__class__.__name__})")
     return out, recency_status(out["latest_day"], 5)
 
@@ -4086,6 +4217,7 @@ def main():
     derived = {"roi_space_heat_regression": reg} if reg else {}
     if reg:
         log("regression:", reg)
+    apply_ie_fx(feeds)
     hero = derive_hero(feeds)
     if hero:
         derived["hero"] = hero
