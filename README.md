@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.28.1 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.29.0 / site 4.8.0.
 
 ## The premise
 
@@ -377,8 +377,22 @@ Nothing draws from it. It is soft: a failure there cannot touch the
 weekly tracker, and it declines rather than guessing if the store is
 short or has no temperature.
 
-**B.2.2 (dispatch-down absorption) and B.2.3 (coincidence premium) are
-not built.** B.2.2 needs its dispatch-down basis settled first – the
+**B.2.3 has its price series, filling forward.** `price_ai` – SEMOpx
+day-ahead in EUR/MWh – is the store's sixth series, with its own gate so
+it cannot withdraw the grid trio or the heat layer while it climbs. The
+parser was reading the CSV's delivery-timestamp row and discarding it,
+keeping only a daily mean; the stamps are now retained, because B.2.3
+asks what price applied in one hour.
+
+It fills forward only. The report listing serves a recent window and
+resolving an arbitrary historic trade day needs a parameter this
+pipeline has no evidence for, so `semopx_history_probe()` asks the
+question with logging rather than guessing – the same diagnostics-first
+rule the parsers follow. The consequence is worth stating: until the
+probe finds a way back or thirteen months pass, B.2.3 can be computed
+on hours the store has priced, not on the binding hour already found.
+
+**B.2.2 (dispatch-down absorption) is not built.** B.2.2 needs its dispatch-down basis settled first – the
 2,139 GWh spilled in 2025 is an annual figure and there is no hourly
 curtailment series – and it needs the regional split, because an
 all-island absorption number is the one its own caveat disowns.
@@ -404,7 +418,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 128 tests, no network
+python3 tests/test_synthetic.py   # 130 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
