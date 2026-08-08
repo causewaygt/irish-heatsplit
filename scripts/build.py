@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.21.0"
+PIPELINE_VERSION = "4.22.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -144,8 +144,11 @@ HISTORY_SCHEMA = 5
 #       so the bars can show heat-pump electricity and the ambient heat
 #       it harvests, on census anchors
 # 5 (8 Aug 2026): NI tariff basis rebuilt (see TARIFF_HISTORY) and
-# the back-look floor moved to 2025-08-06. Every stored week reprices.
-ANCHOR_EPOCH = 5
+# the back-look floor moved to 2025-08-06.
+# 6 (8 Aug 2026): ROI domestic moved onto the same all-in basis as NI
+# - Eurostat band prices, standing charges included. Every stored week
+# reprices, and the ROI bill rises materially.
+ANCHOR_EPOCH = 6
 # The heat/cold split fields carried by both the island entry and,
 # from history schema 5, each jurisdiction sub-block.
 JUR_SPLIT_KEYS = ("heat_gwh", "cold_gwh",
@@ -342,8 +345,18 @@ ANCHORS = {
     # for the services share. I&C figures include CCL and EXCLUDE VAT,
     # which is the convention this site already applies to services.
     #
-    # VINTAGE. Held at S2 2024, the latest published semester, and
-    # they do NOT move week to week. REMM lags about nine months.
+    # VINTAGE - and a live consequence. Held at S2 2024, the latest
+    # published semester, and they do NOT move week to week. REMM lags
+    # about nine months. Since the domestic rates ARE stepped through
+    # to 2026 and NI gas fell about 15% over that span, NI
+    # non-domestic gas (8.67p, 2024) now prints ABOVE NI domestic gas
+    # (7.70p, Jul 2026). That is a vintage artefact, not a claim that
+    # small business gas is cheaper than household gas - at a common
+    # vintage the ordering is right (domestic 9.88p incl VAT, 9.41p
+    # excl, against 8.67p non-domestic). It is disclosed rather than
+    # escalated away, because applying regulated domestic steps to
+    # unregulated business contracts would be a dagger on a dagger.
+    # It closes when REMM publishes newer semesters.
     # Level from the semester series and timing from tariff
     # announcements is the intended design; until that is built the
     # services share of every week is priced at a 2024 semester.
@@ -706,15 +719,39 @@ WHY_HEAT = {
 # sound. Power NI GBP989 -> 1,029 (+4%, 1 Oct 2025) -> 1,093 (+6.2%,
 # 1 Jul 2026), no change in Apr 2026.
 #
-# ROI is unchanged and on a DIFFERENT basis - standard unit rate incl
-# 9% VAT, no standing charge - because ROI standing charges are not
-# verified from a regulator (the market is deregulated; SEAI sources
-# its prices from the EU price collection, six-monthly). Putting the
-# two jurisdictions on one basis is an open item; until then the NI
-# and ROI bills are not like-for-like at the component level, though
-# each is internally consistent. Electric Ireland held prices from
-# Oct 2022 to 1 Jul 2026 (+8% electricity, +7.7% gas), which is why
-# the backfill row repeats the Oct 2025 euro figures unchanged.
+# ROI DOMESTIC - rebuilt 8 Aug 2026 onto the same KIND of basis as
+# NI. Previously a standard unit rate incl 9% VAT with no standing
+# charge, which meant the two jurisdictions' domestic bills were not
+# comparable at the component level: NI carried the standing charge
+# and ROI did not.
+#
+# The like-for-like artefact is the Eurostat band price, which is
+# computed as total revenue over volume for a consumption band and
+# therefore includes standing charges by construction - the same
+# property that made the REMM non-domestic bands work. Band D2
+# (5,557-55,557 kWh gas) and medium domestic (2,500-4,999 kWh
+# electricity), incl all taxes, semester 2 2024, from the 2024 AREMM
+# data publication: Ireland 31.33 p/kWh electricity and 11.30 p/kWh
+# gas, converted back to euro at 0.84, the semester average UREGNI
+# used to sterling them in the first place.
+#
+# LEVEL from the semester, TIMING from the announcements - the same
+# split the NI oil bridge uses. Electric Ireland held prices from Oct
+# 2022 to 1 Jul 2026, so the S2 2024 level carries unchanged through
+# the backfill row, Oct 2025 and Apr 2026, then steps +8% electricity
+# and +7.7% gas on 1 Jul 2026.
+#
+# TWO DAGGERS, both worth knowing. (1) The band price is a market-wide
+# average across every supplier and tariff, including discounts, while
+# the ROI steps come from the incumbent's standard tariff - so
+# non-incumbent movements between Dec 2024 and Jul 2026 are not
+# captured, and cannot be until REMM publishes newer semesters. (2)
+# The residual asymmetry with NI is now scope, not basis: NI is
+# incumbent-weighted regulated bills, ROI is a market-wide average.
+# Measured against the same tables, NI's regulated electricity runs
+# about 7% ABOVE its own market band and its regulated gas about 18%
+# BELOW - so the two do not bias in one direction and neither is a
+# simple correction on the other.
 #
 # VAT CONVENTION (applies to both jurisdictions and to the UK sibling)
 # Domestic rates INCLUDE VAT - 5% NI, 9% ROI. Non-domestic rates
@@ -728,15 +765,17 @@ WHY_HEAT = {
 # weeks will be priced at a tariff that did not exist yet.
 TARIFF_HISTORY = [
     # (from_date, {eur: {electricity, gas}, gbp: {electricity, gas}})
-    # gbp: all-in incl 5% VAT at the UREGNI consumption basis, gas
-    # weighted SSE/Firmus by customers; eur: unit rate incl 9% VAT.
-    ("2025-08-06", {"eur": {"electricity": 0.333, "gas": 0.107},
+    # BOTH are now all-in effective rates at a stated consumption,
+    # including VAT and standing charges. gbp: UREGNI regulated bills,
+    # gas weighted SSE/Firmus by customers. eur: Eurostat band prices
+    # (S2 2024) stepped by the Electric Ireland announcements.
+    ("2025-08-06", {"eur": {"electricity": 0.373, "gas": 0.1345},
                     "gbp": {"electricity": 0.3091, "gas": 0.0884}}),
-    ("2025-10-01", {"eur": {"electricity": 0.333, "gas": 0.107},
+    ("2025-10-01", {"eur": {"electricity": 0.373, "gas": 0.1345},
                     "gbp": {"electricity": 0.3216, "gas": 0.0809}}),
-    ("2026-04-01", {"eur": {"electricity": 0.333, "gas": 0.107},
+    ("2026-04-01", {"eur": {"electricity": 0.373, "gas": 0.1345},
                     "gbp": {"electricity": 0.3216, "gas": 0.0739}}),
-    ("2026-07-01", {"eur": {"electricity": 0.36, "gas": 0.115},
+    ("2026-07-01", {"eur": {"electricity": 0.4028, "gas": 0.1448},
                     "gbp": {"electricity": 0.3416, "gas": 0.0770}}),
 ]
 
@@ -3288,11 +3327,16 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                   "rate without standing charges, so the two "
                   "jurisdictions are internally consistent but not "
                   "like-for-like at component level (open item). The "
-                  "NI domestic rates are regulated all-in bills and "
-                  "ROI domestic a unit rate without standing charges, "
-                  "so the DOMESTIC side is not yet like-for-like "
-                  "across the two jurisdictions (open item); the "
-                  "services side now is. Cooling is the "
+                  "Domestic rates in BOTH jurisdictions are "
+                  "all-in effective rates at a stated consumption, "
+                  "including VAT and standing charges - NI from the "
+                  "Utility Regulator's regulated bills, ROI from the "
+                  "Eurostat band price (S2 2024) stepped by the "
+                  "supplier announcements. The residual difference is "
+                  "scope rather than basis: NI is incumbent-weighted "
+                  "regulated, ROI a market-wide average including "
+                  "discounts, and the two do not bias in one "
+                  "direction (dagger). Cooling is the "
                   "cold-economy "
                   "census (dagger loads beside the CSO data-centre "
                   "anchor), flat across the year with the comfort share "
