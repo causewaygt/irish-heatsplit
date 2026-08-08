@@ -864,16 +864,32 @@ def test_blend_degenerate_settings_reproduce_domestic_pricing():
 
 def test_blend_direction_lowers_bills():
     """Real shares price services gas/electricity and all cooling at
-    non-domestic rates, which sit below domestic - bills must fall,
-    and the cooling bill must fall hardest in relative terms."""
+    non-domestic rates, so the total bill must fall.
+
+    REVISED 8 Aug 2026. This test used to assert that the COOLING
+    bill also falls, on the reasoning that non-domestic sits below
+    domestic. That held only while the non-domestic anchors were
+    large-user prices. On the REMM band basis ROI non-domestic
+    electricity (37.4 c/kWh, revenue over volume, standing charges
+    included, VAT excluded) sits marginally ABOVE the ROI domestic
+    anchor (36 c/kWh, unit rate, no standing charge, VAT included) -
+    and cooling prices entirely at non-domestic rates, so the cooling
+    bill rises.
+
+    That crossover is not an error in either number; it is the
+    domestic-side basis mismatch, which is a live open item. The test
+    now pins what is defensible - the gas-driven total falls - and
+    watches the electricity crossover so it stays small. If the two
+    ever diverge by more than a tenth, one of the anchors has moved
+    onto a basis the other is not on."""
     feeds = _hero_fixture_feeds()
+    from build import ANCHORS
     degen = derive_hero(feeds, _degenerate_blend_anchors())
     real = derive_hero(feeds)
     assert real["bill_eur_m"] < degen["bill_eur_m"]
-    assert real["cooling"]["bill_eur_m"] < degen["cooling"]["bill_eur_m"]
-    rel_cool = real["cooling"]["bill_eur_m"] / degen["cooling"]["bill_eur_m"]
-    rel_heat = real["bill_eur_m"] / degen["bill_eur_m"]
-    assert rel_cool < rel_heat
+    nd = ANCHORS["nondom_eur_per_kwh"]["electricity"]
+    dom = ANCHORS["retail_eur_per_kwh"]["electricity"]
+    assert abs(nd / dom - 1) < 0.10, (nd, dom)
     # what-if electricity priced between non-domestic and domestic
     assert real["what_if_combined"]["bill_eur_m"] \
         < degen["what_if_combined"]["bill_eur_m"]
@@ -1952,6 +1968,42 @@ def test_history_cap_does_not_drop_the_backfilled_weeks():
     60 within two months, silently undoing the backfill."""
     import build as B
     assert B.HISTORY_MAX >= 105
+
+
+def test_non_domestic_rates_are_services_scaled_not_industrial():
+    """The services share must be priced at services rates. Both
+    jurisdictions previously carried large-user figures - NI was the
+    GB manufacturing average copied from the UK sibling - which is
+    the wrong end of the distribution for offices and retail.
+
+    The published UREGNI semester 2 2024 bands: NI I&C electricity
+    28.5 p/kWh very small against 16.9 large/very large; NI I&C gas
+    8.7 against 5.8. This pins the anchors to the small end and,
+    critically, ABOVE the large-user prices - a future edit that
+    quietly reverts toward the industrial figures should fail here."""
+    import build as B
+    a = B.ANCHORS
+    assert a["nondom_gbp_per_kwh"]["electricity"] == 0.285
+    assert a["nondom_gbp_per_kwh"]["gas"] == 0.087
+    assert a["nondom_eur_per_kwh"]["electricity"] == 0.374
+    assert a["nondom_eur_per_kwh"]["gas"] == 0.102
+    # never back down to the large/very large band
+    assert a["nondom_gbp_per_kwh"]["electricity"] > 0.169
+    assert a["nondom_gbp_per_kwh"]["gas"] > 0.058
+
+
+def test_services_rates_sit_below_domestic_but_not_far_below():
+    """Sanity, not arithmetic. Small non-domestic customers pay close
+    to domestic rates because most of the bill is network and levies;
+    a services rate at half the domestic one is the industrial-band
+    error returning by another route."""
+    import build as B
+    a = B.ANCHORS
+    for cur, dom, nd in (("gbp", "retail_gbp_per_kwh", "nondom_gbp_per_kwh"),
+                         ("eur", "retail_eur_per_kwh", "nondom_eur_per_kwh")):
+        for fuel in ("electricity", "gas"):
+            ratio = a[nd][fuel] / a[dom][fuel]
+            assert 0.6 <= ratio <= 1.3, (cur, fuel, round(ratio, 3))
 
 
 if __name__ == "__main__":
