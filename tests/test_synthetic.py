@@ -2133,6 +2133,71 @@ def test_electricity_ordering_holds_on_the_shipped_anchors():
         assert a["nondom_gbp_per_kwh"]["electricity"] < t["gbp"]["electricity"]
 
 
+def test_history_columnar_round_trip_is_exact():
+    """Keys are written once instead of once per week. The round trip
+    must be exact, including the nulls - ef_electricity is legitimately
+    None in a week with too few carbon observations, and a codec that
+    dropped the key would look lossless on a spot check and lose the
+    distinction between 'no reading' and 'never had the field'."""
+    import build as B
+    B.PREVIOUS_DERIVED = {}
+    hist = build_history(_history_fixture_feeds())
+    assert hist and len(hist) > 3
+    packed = B.compact_history(hist)
+    assert packed["encoding"] == B.HISTORY_ENCODING
+    assert packed["n"] == len(hist)
+    assert B.expand_history(packed) == hist
+    # nested blocks survive as blocks, not flattened
+    assert isinstance(packed["cols"]["ni"], dict)
+    assert isinstance(packed["cols"]["ni"]["purchased_gwh"], list)
+
+
+def test_history_codec_accepts_the_legacy_list():
+    """index.html deploys immediately, data.json only at the next
+    build, so for up to a day each side reads the other's previous
+    shape. Both readers must pass a plain list through untouched."""
+    import build as B
+    legacy = [{"week_ending": "2026-01-04", "purchased_gwh": 1.0},
+              {"week_ending": "2026-01-11", "purchased_gwh": 2.0}]
+    assert B.expand_history(legacy) == legacy
+    assert B.expand_history({}) == []
+    assert B.expand_history(None) == []
+    assert B.expand_history(B.compact_history([])) == []
+
+
+def test_columnar_encoding_is_materially_smaller():
+    """The point of the change: at 52 weeks the entries are wide and
+    shallow, so the repeated key strings outweigh the numbers."""
+    import build as B
+    B.PREVIOUS_DERIVED = {}
+    hist = build_history(_history_fixture_feeds())
+    flat = len(json.dumps(hist, separators=(",", ":")))
+    cols = len(json.dumps(B.compact_history(hist), separators=(",", ":")))
+    assert cols < flat * 0.55, (cols, flat)
+
+
+def test_re_encoding_is_not_a_restatement():
+    """Wire format and content schema are orthogonal. A build reading
+    its own columnar output back must produce the same weeks it wrote,
+    without the migration path firing."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    B.PREVIOUS_DERIVED = {}
+    first = build_history(feeds)
+    B.PREVIOUS_DERIVED = {
+        "history": json.loads(json.dumps(B.compact_history(first))),
+        "history_schema": B.HISTORY_SCHEMA,
+        "anchor_epoch": B.ANCHOR_EPOCH,
+    }
+    try:
+        second = build_history(feeds)
+    finally:
+        B.PREVIOUS_DERIVED = {}
+    assert [e["week_ending"] for e in second] == \
+        [e["week_ending"] for e in first]
+    assert len(second) == len(first)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
