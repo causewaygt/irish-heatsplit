@@ -2267,6 +2267,48 @@ def test_skip_report_groups_by_reason_and_counts_the_attempt():
     assert "1 week(s) [2026-01-03] - reason B" in joined
 
 
+def test_carbon_depth_probe_retries_before_calling_a_month_empty():
+    """The probe decides whether a 24-month window can keep the
+    back-look's central claim - each week at its own week's carbon.
+    On 8 Aug 2026 the endpoint returned 0 rows for co2intensity and
+    demandactual within seconds of serving wind and solar, so a single
+    zero is not evidence of depth. Nothing may be called EMPTY until
+    two independent attempts agree, and a month that answers on the
+    retry must be recorded as data, not as absence."""
+    import build as B
+    calls = []
+
+    class R:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def json(self):
+            return {"Rows": self._rows}
+
+    def flaky(url, **kw):
+        p = kw.get("params") or {}
+        calls.append(p.get("chartType"))
+        # every co2 call fails once, then answers
+        if p.get("chartType") == "co2" and calls.count("co2") % 2 == 1:
+            return R([])
+        return R([{"EffectiveTime": "15-Jan-2025 00:00:00", "Value": 300.0}])
+
+    real_get, real_sleep = B.http_get, B.time.sleep
+    B.http_get, B.time.sleep = flaky, lambda *a, **k: None
+    lines = []
+    real_log = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        B.feed_eirgrid_probe()
+    finally:
+        B.http_get, B.time.sleep = real_get, real_sleep
+        B.log = real_log
+    depth = [l for l in lines if "CARBON DEPTH" in l]
+    assert depth, lines[-5:]
+    assert not any("EMPTY" in l for l in depth), depth
+    assert any("verdict" in l for l in depth)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
