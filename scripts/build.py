@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.24.2"
+PIPELINE_VERSION = "4.25.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -2213,7 +2213,7 @@ def feed_eirgrid_probe():
     # 2,845/2,880 rows valued (98.8%), all three regions served for
     # demand, and a month returned regardless of the span requested -
     # so depth is the walk-back question tested below.
-    out = {"source": "EirGrid Smart Grid Dashboard (probe, round 2)"}
+    out = {"source": "EirGrid Smart Grid Dashboard (probe, round 3)"}
     end = today_utc()
 
     def dmy(d):
@@ -2288,6 +2288,66 @@ def feed_eirgrid_probe():
         except Exception as e:
             log(f"eirgrid_probe: WALK-BACK {back}mo "
                 f"{e.__class__.__name__}: {e}")
+
+    # --- C2: THE CARBON DEPTH QUESTION (round 3, 8 Aug 2026).
+    #
+    # This one decides the shape of the 24-month view. The hourly
+    # store holds 13 months and the daily feed 391 days, so every week
+    # before about mid-July 2025 has no own-week grid intensity from
+    # anything retained. If co2intensity walks back two years, the
+    # extension keeps the back-look's central claim - each week priced
+    # at its own week's carbon. If it does not, those weeks need an
+    # annual or monthly intensity and the window has to say so.
+    #
+    # RETRIED AND REPEATED, deliberately. On 8 Aug 2026 this endpoint
+    # returned 0 rows for co2intensity and demandactual within seconds
+    # of serving wind and solar, and the main feed pulled its 30 days
+    # on the same run. A single zero is therefore not evidence of
+    # depth - it is as likely to be the endpoint being flaky for that
+    # chart at that moment. Nothing here is called EMPTY until two
+    # independent attempts agree.
+    co2_areas = good.get("co2", "co2intensity")
+    depth = {}
+    for back in (12, 18, 24):
+        m_end = end - dt.timedelta(days=30 * back)
+        m_start = m_end - dt.timedelta(days=27)
+        got = []
+        for attempt in (1, 2):
+            try:
+                rows, st, vals = call("co2", "ALL", co2_areas,
+                                      m_start, m_end)
+                got.append((len(rows), len(vals),
+                            st[0] if st else "-", st[-1] if st else "-"))
+                if rows:
+                    break
+                time.sleep(1.5)
+            except Exception as e:
+                got.append((0, 0, f"{e.__class__.__name__}", "-"))
+                time.sleep(1.5)
+        best = max(got, key=lambda g: g[0])
+        # A returned span that lands in the requested month is the
+        # real test; the endpoint is known to serve the current month
+        # regardless of what was asked, which would look like success.
+        want = {dmy(m_start)[3:], dmy(m_end)[3:]}
+        landed = any(w.lower() in str(best[2]).lower() for w in want)
+        if best[0] and landed:
+            verdict = "HISTORIC CARBON RETURNED"
+        elif best[0]:
+            verdict = "rows returned but span is NOT the month asked for"
+        else:
+            verdict = f"EMPTY on {len(got)} attempts - treat as unavailable"
+        depth[f"{back}mo"] = verdict
+        log(f"eirgrid_probe: CARBON DEPTH {back}mo "
+            f"(asked {dmy(m_start)}..{dmy(m_end)}) -> "
+            f"{best[0]} rows, {best[1]} valued, got {best[2]} .. {best[3]} "
+            f"[{verdict}]")
+    out["carbon_depth"] = depth
+    reach = [k for k, v in depth.items() if v == "HISTORIC CARBON RETURNED"]
+    log("eirgrid_probe: CARBON DEPTH verdict - "
+        + (f"own-week carbon reaches {max(reach, key=lambda k: int(k[:-2]))}"
+           if reach else
+           "no historic carbon at any depth tested; a 24-month window "
+           "would need an annual or monthly intensity and must say so"))
 
     # --- D: does dateRange=year serve more than a month?
     try:
