@@ -2198,6 +2198,20 @@ def test_re_encoding_is_not_a_restatement():
     assert len(second) == len(first)
 
 
+def test_nothing_measures_the_history_by_len_of_the_container():
+    """4.24.0 logged "3 complete weeks" for a 52-week record, because
+    len() of the columnar block is its key count - encoding, n, cols.
+    Anything downstream of compact_history() that wants a week count
+    must read `n`, or the counters, never len()."""
+    import build as B
+    B.PREVIOUS_DERIVED = {}
+    hist = build_history(_history_fixture_feeds())
+    packed = B.compact_history(hist)
+    assert len(packed) == 3                      # the trap itself
+    assert packed["n"] == len(hist)              # the right answer
+    assert len(B.expand_history(packed)) == len(hist)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
