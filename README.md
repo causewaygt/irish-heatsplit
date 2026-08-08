@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.26.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.28.0 / site 4.8.0.
 
 ## The premise
 
@@ -340,6 +340,42 @@ absorption panels. Holding temperature rather than degree hours means
 hourly HDD, ODH₂₆ and the Carnot source temperature all derive from
 one retained series.
 
+## Phase B.2 – the grid layer
+
+Three computations run and logged **before any panel is drawn**, so the
+headline is chosen after the numbers are seen rather than before.
+
+**B.2.1, the tightest hour, is live and log-only.** Island useful heat
+is shaped hourly from the store's own degree hours – hot water flat,
+space heat degree-shaped – put through a Carnot-fraction COP at each
+hour's actual air temperature, netted of the resistive heating already
+inside observed demand, and added to observed all-island demand. The
+binding hour is reported against the de-rated dispatchable block
+(~8,595 MW†, of which ~1,490 MW is run-hour-limited) with the observed
+all-island peak of 7,502 MW on 8 January 2025 as the sanity rail. The
+same hour is reported for three routes, on the **same tiers as the UK
+sibling** so the two grid layers read against one ladder – air source
+2.80 and ground source 3.24, both Energy Systems Catapult in-situ field
+figures rather than brochure SCOPs, and a networked geothermal ambient
+loop at 5.0. Ground and network are flat by construction, because a
+borehole field does not care what the air is doing.
+
+The air route is the exception: it is priced at each hour's own
+Carnot-fraction COP, not the seasonal 2.80, because the point of that
+column is that air-source performance collapses in the hour that binds.
+Both figures are logged side by side, and the gap between them is the
+argument.
+
+Nothing draws from it. It is soft: a failure there cannot touch the
+weekly tracker, and it declines rather than guessing if the store is
+short or has no temperature.
+
+**B.2.2 (dispatch-down absorption) and B.2.3 (coincidence premium) are
+not built.** B.2.2 needs its dispatch-down basis settled first – the
+2,139 GWh spilled in 2025 is an annual figure and there is no hourly
+curtailment series – and it needs the regional split, because an
+all-island absorption number is the one its own caveat disowns.
+
 ## Sibling comparability
 
 This tracker is read beside the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
@@ -361,7 +397,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 121 tests, no network
+python3 tests/test_synthetic.py   # 126 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
