@@ -2371,6 +2371,111 @@ def test_semester_of_assigns_by_week_ending():
     assert B.semester_of("2026-01-04") == "2026-S1"
 
 
+def _synthetic_store(hours=9384, start=(2025, 7, 14)):
+    import math
+    t0 = dt.datetime(*start)
+    temps, dem = {}, {}
+    for i in range(hours):
+        h = t0 + dt.timedelta(hours=i)
+        k = h.strftime("%Y-%m-%dT%H")
+        doy = h.timetuple().tm_yday
+        T = (10.5 - 6.5 * math.cos(2 * math.pi * (doy - 15) / 365)
+             - 3 * math.cos(2 * math.pi * (h.hour - 15) / 24))
+        temps[k] = round(T, 2)
+        dem[k] = round(3500 + 900 * max(0.0, 15.5 - T) / 10
+                       + 400 * math.sin(2 * math.pi * (h.hour - 9) / 24), 1)
+    return {"schema": 2, "series": {"temp_ai": temps, "demand_ai": dem}}
+
+
+def test_tightest_hour_lands_in_winter_and_nets_the_resistive_share():
+    """B.2.1. The binding hour must be cold - if it lands in summer
+    the shaping is wrong, not the grid. And electrified heat is added
+    NET of the resistive heating already inside observed demand;
+    counting the heat pump without removing the immersion would
+    double-count it."""
+    import build as B
+    out = B.derive_tightest_hour(_synthetic_store())
+    assert out, "no result"
+    assert out["hour"][5:7] in ("11", "12", "01", "02"), out["hour"]
+    assert out["air_c"] < 5
+    # the three routes must order air > ground > network, always
+    add = out["added_mw"]
+    assert add["air_source"] > add["ground_source"] > add["geothermal_network"]
+    # netting is real: the added load is below the naive heat/COP
+    assert add["air_source"] < out["useful_heat_mw"]
+    assert out["total_with_air_source_mw"] == \
+        out["observed_mw"] + add["air_source"]
+    assert out["headroom_mw"] == out["block_mw"] - \
+        out["total_with_air_source_mw"]
+
+
+def test_tightest_hour_declines_rather_than_guesses():
+    """Log-only and soft. Too short a store, or one without
+    temperature, must return None rather than a number computed from
+    a season."""
+    import build as B
+    assert B.derive_tightest_hour({}) is None
+    assert B.derive_tightest_hour(_synthetic_store(hours=24 * 100)) is None
+    store = _synthetic_store()
+    del store["series"]["temp_ai"]
+    assert B.derive_tightest_hour(store) is None
+
+
+def test_hourly_heat_conserves_the_annual_anchor():
+    """The hourly shaping must not invent or lose heat: summed over
+    the store it has to equal the annual useful-heat anchor scaled to
+    the store's span, and hot water must stay flat."""
+    import build as B
+    store = _synthetic_store()
+    mw = B.hourly_heat_mw(store)
+    assert mw
+    a = B.ANCHORS
+    useful = sum((a[j]["residential_heat_twh"] + a[j]["services_heat_twh"])
+                 * sum(sh * a["efficiency"][f]
+                       for f, sh in a[j]["fuel_shares"].items())
+                 for j in ("ni", "roi"))
+    span_years = len(mw) / (365.25 * 24)
+    assert abs(sum(mw.values()) / 1e6 - useful * span_years) < 0.01
+    # summer minimum is the flat hot-water term, not zero
+    assert min(mw.values()) > 0
+
+
+def test_route_tiers_match_the_uk_sibling():
+    """The two grid layers are read against the same ladder, so the
+    tiers are the UK sibling's field-observed figures - Energy Systems
+    Catapult in-situ, not brochure SCOPs. Anyone re-tuning one site
+    must re-tune both, and this fails if they drift apart."""
+    import build as B
+    assert B.ASHP_SPF == 2.80
+    assert B.GSHP_SPF == 3.24
+    assert B.GEO_NETWORK_SCOP == 5.00
+    out = B.derive_tightest_hour(_synthetic_store())
+    assert out["spf"] == {"air_seasonal": 2.80, "ground": 3.24,
+                          "network": 5.00}
+
+
+def test_air_route_uses_the_hourly_cop_not_the_seasonal_spf():
+    """The air column exists to show that air-source performance
+    collapses in the hour that binds. Pricing it at the seasonal 2.80
+    would hide the effect being measured, so the binding hour's COP
+    must come out BELOW the seasonal figure and the added load must be
+    correspondingly worse than 2.80 would give."""
+    import build as B
+    out = B.derive_tightest_hour(_synthetic_store())
+    assert out["hour_cop_air"] < B.ASHP_SPF, out["hour_cop_air"]
+    # Compare like with like: added load is NET of displaced resistive,
+    # so a gross useful/SPF figure is not the comparator. The test that
+    # holds is the RATIO between routes - if air ran at the seasonal
+    # 2.80 the air/ground gap would be GSHP_SPF/ASHP_SPF; because the
+    # binding hour is colder than the season, it must be wider.
+    ratio = (out["added_mw"]["air_source"]
+             / out["added_mw"]["ground_source"])
+    assert ratio > B.GSHP_SPF / B.ASHP_SPF, ratio
+    # ground and network stay flat, so their ordering is fixed
+    assert (out["added_mw"]["ground_source"]
+            > out["added_mw"]["geothermal_network"])
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
