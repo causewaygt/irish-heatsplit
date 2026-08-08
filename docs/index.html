@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.6.3
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.6.5
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -103,8 +103,15 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 .tr-delta b{font-weight:500;color:#DCE5E0}
 .tr-delta b.good{color:#3AAA35}.tr-delta b.bad{color:#D98E2B}
 .hstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;margin:18px 0 6px}
+/* The grid stretches every card to the row height; making the card
+   a column and letting the LABEL take the slack drops each
+   sparkline onto a common baseline. Labels run to two, three or
+   four lines depending on window, jurisdiction and viewport, so
+   padding a specific label with a blank line only levels the
+   combination it was measured on - this levels all of them. */
+.hstat{display:flex;flex-direction:column}
 .hstat .hval{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:clamp(1.7rem,4vw,2.3rem);line-height:1.1}
-.hstat .hlab{font-size:.8rem;color:var(--muted);margin-top:4px;max-width:220px}
+.hstat .hlab{font-size:.8rem;color:var(--muted);margin-top:4px;max-width:220px;flex:1 0 auto}
 .wcell .val{color:var(--green)}
 .iolegend{display:flex;flex-wrap:wrap;gap:10px 16px;margin:8px 0 4px;font-size:.72rem;color:var(--muted)}
 .iokey{display:inline-flex;align-items:center;gap:5px}
@@ -950,16 +957,13 @@ function heroCards(h, HIST){
     const billLabW = state==='all'?'the island\u2019s heat &amp; cooling bill':
       'the heat &amp; cooling bill';
     const billLab = billLabW+' this week';
-    // A blank line under the indigenous label so its sparkline sits
-    // on the same baseline as the three-line cards beside it.
-    const PAD='<br>\u00a0';
     const cards = [
       [fmt(cb.purchased_gwh,0)+' GWh',
        'energy purchased this week \u2013 for heat '+
        fmt(cb.heat_gwh,0)+' \u00b7 for cooling '+fmt(cb.cold_gwh,0)+
        ' (cold-economy scope\u2020)'],
       [fmt(cb.indigenous_share_pct,0)+'%',
-       'estimated indigenous share of heat &amp; cooling delivered'+PAD],
+       'estimated indigenous share of heat &amp; cooling delivered'],
       [bill(cb, state), billLab+' (heat '+
        m1(cb.bill_heat_eur_m,cb.bill_heat_gbp_m,state)+' \u00b7 cooling '+
        m1(cb.bill_cold_eur_m,cb.bill_cold_gbp_m,state)+', ECB rate)'],
@@ -982,7 +986,7 @@ function heroCards(h, HIST){
             eScale(S.cold)+' (cold-economy scope\u2020)':'')],
         [fmt(wv.indig,0)+'%',
          'indigenous share of heat &amp; cooling \u2013 energy-weighted avg '+
-         lbl+PAD],
+         lbl],
         [mOne(wv.bill_e,wv.bill_g,state),
          billLabW+' '+lbl+
          (S?' (heat '+mOne(S.bh,S.bhg,state)+' \u00b7 cooling '+
@@ -1000,22 +1004,31 @@ function heroCards(h, HIST){
         '" data-good="'+TK2[i][1]+'" hidden></div></div>').join('');
       drawTrends(HIST, WIN, state);
       if(el('whatif') && !el('whatif').hidden){
+        // The heat/cooling components need the per-week split fields;
+        // the SAVES figure is a difference of window totals and needs
+        // nothing but the two aggregates, which every jurisdiction
+        // has always carried. Gating the whole parenthesis on the
+        // splits therefore hid a number that was available - the
+        // clause is now split so an unrestated window still says what
+        // the ground saves.
+        const wfSplit = S ? 'heat '+eScale(S.wfh)+' \u00b7 cooling '+
+              eScale(S.wfc)+' \u00b7 ' : '';
+        const wfBillSplit = S ? 'heat '+mOne(S.wfbh,S.wfbhg,state)+
+              ' \u00b7 cooling '+mOne(S.wfbc,S.wfbcg,state)+' \u00b7 ' : '';
+        const wfKtSplit = S ? 'heat '+ktScale(S.wfeh)+' \u00b7 cooling '+
+              ktScale(S.wfec)+' \u00b7 ' : '';
         el('whatifRow').innerHTML=[
           [eScale(wv.wf_purchased),
-           'purchased'+(S?' (heat '+eScale(S.wfh)+' \u00b7 cooling '+
-            eScale(S.wfc)+' \u00b7 saves '+
-            eScale(wv.purchased-wv.wf_purchased)+' '+lbl+')':'')+
-           ' \u2013 the ground supplies the rest free\u2020'],
+           'purchased ('+wfSplit+'saves '+
+           eScale(wv.purchased-wv.wf_purchased)+' '+lbl+
+           ') \u2013 the ground supplies the rest free\u2020'],
           [fmt(wv.wf_indig,0)+' %','indigenous share'],
           [mOne(wv.wf_bill_e,wv.wf_bill_g,state),
-           SCOPEN(state)+' bill'+
-           (S?' (heat '+mOne(S.wfbh,S.wfbhg,state)+' \u00b7 cooling '+
-            mOne(S.wfbc,S.wfbcg,state)+' \u00b7 saves '+
-            mOne(wv.bill_e-wv.wf_bill_e,wv.bill_g-wv.wf_bill_g,state)+
-            ' '+lbl+')':'')],
+           SCOPEN(state)+' bill ('+wfBillSplit+'saves '+
+           mOne(wv.bill_e-wv.wf_bill_e,wv.bill_g-wv.wf_bill_g,state)+
+           ' '+lbl+')'],
           [ktScale(wv.wf_kt),
-           'emissions'+(S?' (heat '+ktScale(S.wfeh)+' \u00b7 cooling '+
-            ktScale(S.wfec)+' \u00b7 saves '+ktScale(wv.kt-wv.wf_kt)+')':'')],
+           'emissions ('+wfKtSplit+'saves '+ktScale(wv.kt-wv.wf_kt)+')'],
         ].map(r=>'<div class="wcell"><div class="val">'+r[0]+'</div>'+
           '<div class="lab">'+r[1]+'</div></div>').join('');
       }
@@ -1548,7 +1561,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.6.3 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.6.5 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
