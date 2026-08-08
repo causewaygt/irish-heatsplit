@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.28.1"
+PIPELINE_VERSION = "4.29.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -68,7 +68,10 @@ HOURLY_PATH = ROOT / "docs" / "hourly.json"
 # most of it. Readers must tolerate BOTH shapes - expand_hourly()
 # accepts a schema 1/2 document so the first run after this change
 # inherits its own history rather than refilling from empty.
-HOURLY_SCHEMA = 3
+# 4 (8 Aug 2026): price_ai added - SEMOpx day-ahead, EUR/MWh, for
+# B.2.3 (the coincidence premium). Fills FORWARD only; see
+# feed_semopx and semopx_history_probe for why.
+HOURLY_SCHEMA = 4
 HOURLY_MONTHS = 13          # rolling window the store keeps
 HOURLY_CHUNKS_PER_RUN = 16  # walk-back budget; 14 fills 13 months
 # Open-Meteo serves long hourly spans in one request, so the
@@ -1300,6 +1303,8 @@ def parse_semopx_csv(text: str) -> dict:
     """
     fx, day, auction = None, None, None
     markets: dict = {}
+    series: dict = {}
+    stamps: dict = {}
     market, currency, expect_series = None, None, False
     for raw in text.splitlines():
         line = raw.strip()
@@ -1326,14 +1331,23 @@ def parse_semopx_csv(text: str) -> dict:
             if re.match(r"20\d\d-\d\d-\d\dT", parts[0]):
                 if day is None:
                     day = parts[0][:10]
+                # The delivery stamps were being read and discarded.
+                # They are the only thing that makes a price hourly,
+                # and B.2.3 asks what price applied in ONE hour.
+                stamps[(market, currency)] = list(parts)
                 continue
             nums = [n for n in (_num(p) for p in parts) if n is not None]
             if nums and market and currency:
                 markets.setdefault(market, {}).setdefault(
                     currency, []).extend(nums)
+                ts = stamps.get((market, currency)) or []
+                for t, v in zip(ts, nums):
+                    if re.match(r"20\d\d-\d\d-\d\dT", t):
+                        series.setdefault(market, {}).setdefault(
+                            currency, {})[t[:13]] = v
                 expect_series = False
     return {"fx_eur_gbp": fx, "day": day, "auction": auction,
-            "markets": markets}
+            "markets": markets, "series": series}
 
 
 def parse_gni_series(series_list) -> dict:
@@ -1876,6 +1890,51 @@ def feed_gni_live():
     return out, recency_status(latest, 3)
 
 
+def semopx_history_probe():
+    """
+    Can a historic SEMOpx trade day be resolved? Log-only.
+
+    price_ai fills forward, which leaves B.2.3 unable to price the
+    binding hour already found. Before writing a backfill this asks
+    the listing API whether it will hand over an older day at all, and
+    which parameter does it - by trying candidates and reporting what
+    each returns, rather than picking one and hoping. Parsers here are
+    written against evidence from live logs, never guessed; the same
+    rule applies to query parameters.
+    """
+    base = "https://reports.semopx.com/api/v1/documents/static-reports"
+    want = (today_utc() - dt.timedelta(days=120)).isoformat()
+    trials = [
+        ("page_size only, deep page", {"DPuG_ID": "EA-001",
+                                       "page_size": 100, "page": 5,
+                                       "sort_by": "Date",
+                                       "order_by": "DESC"}),
+        ("Date filter", {"DPuG_ID": "EA-001", "page_size": 20,
+                         "Date": want}),
+        ("date range", {"DPuG_ID": "EA-001", "page_size": 20,
+                        "Date_from": want, "Date_to": want}),
+        ("publish range", {"DPuG_ID": "EA-001", "page_size": 20,
+                           "PublishDateFrom": want,
+                           "PublishDateTo": want}),
+    ]
+    for label, params in trials:
+        try:
+            items = http_get(base, params=params).json().get("items", [])
+            da = [it for it in items
+                  if re.search(r"_SEM-DA_", str(it.get("ResourceName") or ""))]
+            days = sorted({str(it.get("ResourceName") or "")[-30:-16]
+                           for it in da})
+            log(f"semopx_probe: {label} -> {len(items)} items, "
+                f"{len(da)} DA, day tags {days[:2]}"
+                f"{'..' + days[-1] if len(days) > 2 else ''} "
+                f"[{'REACHES BACK' if days and days[0][:8] <= want.replace('-', '')[:8] else 'recent window only'}]")
+        except Exception as e:
+            log(f"semopx_probe: {label} -> {e.__class__.__name__}")
+    log(f"semopx_probe: target was {want} (120 days back); if nothing "
+        "reaches it, price_ai fills forward and B.2.3 waits or moves "
+        "to an hour the store has priced")
+
+
 def feed_semopx():
     """
     SEMOpx DAM results. DPuG_ID=EA-001 listing confirmed live but mixes DA
@@ -1922,7 +1981,20 @@ def feed_semopx():
                 for v in series]
         return round(statistics.mean(vals), 2) if vals else None
 
+    # All-island hourly EUR price: NI-DA and ROI-DA are the same
+    # energy market in two currencies and settle at the same euro
+    # price, so the euro series of whichever market carries it is the
+    # island price. Mean where both are present rather than picking.
+    hourly = dict(prev_series("semopx", "dam_hourly_eur_mwh"))
+    fresh = {}
+    for mk, cur in (parsed.get("series") or {}).items():
+        for k, v in (cur.get("EUR") or {}).items():
+            fresh.setdefault(k, []).append(v)
+    for k, vals in fresh.items():
+        hourly[k] = round(statistics.mean(vals), 2)
     out = {
+        "dam_hourly_eur_mwh": trim_series(hourly),
+        "dam_hourly_added": len(fresh),
         "dam_avg_eur_mwh": avg("EUR"),
         "dam_avg_gbp_mwh": avg("GBP"),
         "markets": {mk: {c: round(statistics.mean(v), 2)
@@ -4440,7 +4512,7 @@ def daily_ci_from_hourly(store, min_hours=20):
     return out
 
 
-def build_hourly_store(previous):
+def build_hourly_store(previous, feeds_now=None):
     """Walk back in ~28-day chunks until the window is covered, then
     keep only the most recent chunk (plus a 2-day revision re-fetch)
     on subsequent runs. Returns the store document or None."""
@@ -4530,6 +4602,27 @@ def build_hourly_store(previous):
             f"{len(series['temp_ai'])}h in one run - investigate "
             "before trusting the panel")
 
+    # --- sixth series: SEMOpx day-ahead price, EUR/MWh.
+    #
+    # FILLS FORWARD ONLY. The SEMOpx report listing serves the recent
+    # window; resolving an arbitrary historic trade day needs a filter
+    # this pipeline has no evidence for, and guessing a parameter
+    # against a live API is how the round-1 probe wasted a day. So the
+    # series accumulates from the daily document already fetched, and
+    # semopx_history_probe() asks the backfill question with logging
+    # instead of assumptions.
+    #
+    # CONSEQUENCE, stated because it changes the plan: B.2.3 wants the
+    # price in the tightest hour, and the tightest hour so far is
+    # 5 Jan 2026. Until either the probe finds a way back or thirteen
+    # months pass, B.2.3 can be computed on hours the store has priced,
+    # not on the binding hour already found.
+    price = dict(prev_series("semopx", "dam_hourly_eur_mwh"))
+    price.update(((feeds_now or {}).get("semopx") or {})
+                 .get("dam_hourly_eur_mwh") or {})
+    series["price_ai"] = {k: v for k, v in sorted(price.items())
+                          if k >= floor}
+
     counts = {k: len(v) for k, v in series.items()}
     spans = {k: (min(v), max(v)) for k, v in series.items() if v}
     ref = spans.get("demand_ai")
@@ -4541,7 +4634,7 @@ def build_hourly_store(previous):
     # not on demand alone: the first store (7 Aug 2026) had demand at
     # 100% while carbon intensity reached only 86%, and a carbon
     # overlay drawn on that would have passed a demand-only gate.
-    complete, heat_ready, per_series = False, False, {}
+    complete, heat_ready, price_ready, per_series = False, False, False, {}
     if ref:
         # Denominator is the INTENDED window (floor -> latest hour in
         # the store), not one series' own span. Using demand's span
@@ -4579,15 +4672,23 @@ def build_hourly_store(previous):
         # temp_ai filling over its first few runs can never withdraw
         # anything already shipping.
         heat_ready = complete and per_series.get("temp_ai", 0) >= 95
+        # A third gate. price_ai starts empty and fills a day at a
+        # time, so it must never be able to withdraw the heat layer or
+        # the grid trio while it climbs.
+        price_ready = complete and per_series.get("price_ai", 0) >= 95
         log(f"hourly: heat layer "
             f"{'ready' if heat_ready else 'not ready'} "
             f"(temp_ai {per_series.get('temp_ai', 0)}%)")
+        log(f"hourly: price layer "
+            f"{'ready' if price_ready else 'not ready'} "
+            f"(price_ai {per_series.get('price_ai', 0)}% - fills forward, "
+            f"see semopx_history_probe)")
     t0, n_hours, packed = compact_hourly(series)
     log(f"hourly: encoded {sum(len(v) for v in series.values())} values "
         f"as {len(packed)} arrays of {n_hours} from {t0}")
     return {"schema": HOURLY_SCHEMA,
             "t0": t0, "hours": n_hours,
-            "heat_ready": heat_ready,
+            "heat_ready": heat_ready, "price_ready": price_ready,
             "generated": dt.datetime.now(dt.timezone.utc)
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
             "months": HOURLY_MONTHS, "complete": complete,
@@ -4768,7 +4869,11 @@ def main():
                 prev_hourly = json.loads(HOURLY_PATH.read_text())
             except Exception:
                 log("hourly: previous store unreadable, rebuilding")
-        store = build_hourly_store(prev_hourly)
+        try:
+            semopx_history_probe()
+        except Exception as exc:
+            log(f"semopx_probe: failed ({exc.__class__.__name__})")
+        store = build_hourly_store(prev_hourly, feeds)
         # B.2.1 runs on the store we just wrote, log-only. Soft: a
         # failure here must never touch the weekly tracker.
         try:
