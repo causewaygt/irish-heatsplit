@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.24.0"
+PIPELINE_VERSION = "4.24.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -4344,7 +4344,10 @@ def main():
                  or {}))
     derived["gas_window"] = {"from": gw[0], "to": gw[-1],
                              "days": len(gw)} if gw else None
-    log(f"history: {len(derived['history'])} complete weeks"
+    # len() of the columnar block is its key count, not its week
+    # count - it printed "3 complete weeks" for a 52-week record on
+    # the first 4.24.0 run. Count the weeks, not the container.
+    log(f"history: {derived['weeks_on_record']} complete weeks"
         + (f", gas_window {derived['gas_window']['days']}d"
            if derived["gas_window"] else ""))
     reg = derived.get("roi_space_heat_regression")
