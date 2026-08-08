@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.28.0"
+PIPELINE_VERSION = "4.28.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -3899,12 +3899,27 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
         rows.append((demand[k] + ashp - displaced, k, q, ashp, gshp, net))
     worst = max(rows)
     total_mw, k, q, ashp, gshp, net = worst
+    added = {"air_source": round(ashp - q * res_share),
+             "ground_source": round(gshp - q * res_share),
+             "geothermal_network": round(net - q * res_share)}
+    # Headroom PER ROUTE. The first live run reported it for the air
+    # route alone, which meant the actual result - that only the
+    # network route fits under the block - had to be worked out by
+    # hand from three other numbers. The route ordering IS the
+    # finding; it should not need subtracting.
+    totals = {r: round(demand[k]) + v for r, v in added.items()}
+    headroom = {r: GRID_BLOCK_MW - t for r, t in totals.items()}
+    fits = [r for r, h in headroom.items() if h >= 0]
     out = {
         "hour": k, "observed_mw": round(demand[k]),
+        "total_mw": totals, "headroom_by_route_mw": headroom,
+        "routes_that_fit": fits,
+        # The heat system against the power system, same hour, same
+        # units. This is the quotable one and it was computed all
+        # along without ever being printed.
+        "heat_vs_block_ratio": round(q / GRID_BLOCK_MW, 2),
         "air_c": temps.get(k), "useful_heat_mw": round(q),
-        "added_mw": {"air_source": round(ashp - q * res_share),
-                     "ground_source": round(gshp - q * res_share),
-                     "geothermal_network": round(net - q * res_share)},
+        "added_mw": added,
         "hour_cop_air": round(cop_at(temps.get(k, 5.0)), 2),
         "spf": {"air_seasonal": ASHP_SPF, "ground": GSHP_SPF,
                 "network": GEO_NETWORK_SCOP},
@@ -3922,20 +3937,27 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
                   "dispatchable capacity (dagger); no panel drawn."),
     }
     log(f"B.2.1 tightest hour: {k} at {out['air_c']} C - observed "
-        f"{out['observed_mw']} MW + air-source "
-        f"{out['added_mw']['air_source']} MW = "
-        f"{out['total_with_air_source_mw']} MW against a "
-        f"{GRID_BLOCK_MW} MW block, headroom {out['headroom_mw']} MW")
+        f"{out['observed_mw']} MW against a {GRID_BLOCK_MW} MW "
+        f"de-rated block")
+    for r in ("air_source", "ground_source", "geothermal_network"):
+        h = headroom[r]
+        log(f"B.2.1   {r:<19} +{added[r]:>5} MW -> {totals[r]:>6} MW, "
+            f"headroom {h:+6} MW  "
+            f"[{'FITS' if h >= 0 else 'EXCEEDS THE BLOCK'}]")
+    log(f"B.2.1   routes that fit: "
+        f"{', '.join(fits) if fits else 'NONE'}")
+    log(f"B.2.1   useful heat in that hour {out['useful_heat_mw']} MWth "
+        f"against an {GRID_BLOCK_MW} MW electrical block - the island's "
+        f"heat system is {out['heat_vs_block_ratio']}x its power system")
     log(f"B.2.1   air COP in that hour {out['hour_cop_air']} against a "
         f"seasonal {ASHP_SPF} - the gap IS the argument; ground {GSHP_SPF}, "
         f"network {GEO_NETWORK_SCOP} are flat by construction")
-    log(f"B.2.1   same hour by route - air {out['added_mw']['air_source']}"
-        f" / ground {out['added_mw']['ground_source']}"
-        f" / network {out['added_mw']['geothermal_network']} MW added; "
-        f"useful heat {out['useful_heat_mw']} MW; "
-        f"observed peak on record {OBSERVED_PEAK_MW} MW "
-        f"({OBSERVED_PEAK_AT})")
-    if out["headroom_mw"] < 0:
+    log(f"B.2.1   observed peak on record {OBSERVED_PEAK_MW} MW "
+        f"({OBSERVED_PEAK_AT}) - this hour is "
+        f"{round(100 * out['observed_mw'] / OBSERVED_PEAK_MW)}% of it, "
+        f"which is the sanity rail: a binding hour far below that "
+        f"would mean the shaping picked a mild hour")
+    if min(headroom.values()) < 0:
         log("B.2.1   NOTE headroom is negative - a full electrification "
             "of heat exceeds the de-rated block in this hour. That is a "
             "scenario result, not a forecast: nothing here phases the "
