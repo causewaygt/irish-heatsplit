@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.21.0 / site 4.7.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.22.0 / site 4.7.0.
 
 ## The premise
 
@@ -204,10 +204,18 @@ customer count. This replaced a single-supplier percentage chain with
 the standing charge stripped out – Firmus alone was setting the NI gas
 bill, and the two suppliers are not structurally comparable, since
 SSE's domestic tariff is banded with no standing charge while Firmus
-charges a unit rate plus one. ROI remains a standard unit rate without
-standing charges, because ROI standing charges are not verified from a
-regulator; the two jurisdictions are each internally consistent but
-not like-for-like at component level, which is an open item. Non-domestic
+charges a unit rate plus one. ROI domestic is now the same KIND of quantity: the
+Eurostat band price for semester 2 2024 – total revenue over volume,
+so standing charges are included by construction – stepped by the
+Electric Ireland announcements, which held from October 2022 to 1 July
+2026. Both jurisdictions are therefore all-in effective rates at a
+stated consumption, VAT and standing charges included, and the bills
+are comparable at component level rather than only in total. The
+residual difference is scope, not basis: NI is incumbent-weighted
+regulated, ROI a market-wide average including discounts. Measured
+against the same tables, NI's regulated electricity runs about 7%
+above its own market band while its regulated gas runs about 18%
+below, so the two do not bias in one direction. Non-domestic
 rates for both jurisdictions come from the Utility Regulator's Retail
 Energy Market Monitoring semester bands (S2 2024), which are derived
 Eurostat-style as revenue over volume and therefore include standing
@@ -224,8 +232,14 @@ sit, rather than weighted – the REMM price bands do not map onto the
 network bands the consumption split is published in, and NI I&C gas is
 about two-thirds daily-metered heavy industry. Non-domestic rates are held at the latest
 published semester and do not move weekly – REMM lags about nine
-months, and level-from-semesters with timing-from-announcements is the
-intended design, not yet built.
+months. One consequence is visible on the site: because domestic rates
+ARE stepped through to 2026 and NI gas fell about 15% over that span,
+NI non-domestic gas now prints above NI domestic gas. That is a
+vintage artefact rather than a claim about small business tariffs – at
+a common vintage the ordering is right – and it is disclosed rather
+than escalated away, because applying regulated domestic steps to
+unregulated business contracts would compound one estimate with
+another. It closes when REMM publishes newer semesters.
 
 **Provenance.** Sourced figures cite their publisher. Judgement figures
 carry a dagger (†) and are current Causeway Energies estimates –
@@ -301,7 +315,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 103 tests, no network
+python3 tests/test_synthetic.py   # 106 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
