@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.6.5
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.6.6
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -962,7 +962,7 @@ function heroCards(h, HIST){
        'energy purchased this week \u2013 for heat '+
        fmt(cb.heat_gwh,0)+' \u00b7 for cooling '+fmt(cb.cold_gwh,0)+
        ' (cold-economy scope\u2020)'],
-      [fmt(cb.indigenous_share_pct,0)+'%',
+      [fmt(cb.indigenous_share_pct,0)+' %',
        'estimated indigenous share of heat &amp; cooling delivered'],
       [bill(cb, state), billLab+' (heat '+
        m1(cb.bill_heat_eur_m,cb.bill_heat_gbp_m,state)+' \u00b7 cooling '+
@@ -984,7 +984,7 @@ function heroCards(h, HIST){
          'energy purchased '+lbl+
          (S?' \u2013 for heat '+eScale(S.heat)+' \u00b7 for cooling '+
             eScale(S.cold)+' (cold-economy scope\u2020)':'')],
-        [fmt(wv.indig,0)+'%',
+        [fmt(wv.indig,0)+' %',
          'indigenous share of heat &amp; cooling \u2013 energy-weighted avg '+
          lbl],
         [mOne(wv.bill_e,wv.bill_g,state),
@@ -1561,7 +1561,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.6.5 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.6.6 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
