@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.29.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.30.0 / site 4.8.0.
 
 ## The premise
 
@@ -384,13 +384,19 @@ parser was reading the CSV's delivery-timestamp row and discarding it,
 keeping only a daily mean; the stamps are now retained, because B.2.3
 asks what price applied in one hour.
 
-It fills forward only. The report listing serves a recent window and
-resolving an arbitrary historic trade day needs a parameter this
-pipeline has no evidence for, so `semopx_history_probe()` asks the
-question with logging rather than guessing – the same diagnostics-first
-rule the parsers follow. The consequence is worth stating: until the
-probe finds a way back or thirteen months pass, B.2.3 can be computed
-on hours the store has priced, not on the binding hour already found.
+Prices are keyed on the **Irish local clock**, not the UTC the CSV
+publishes, because every other series in the store is – a UTC key would
+sit an hour out of step with demand from late March to late October,
+and B.2.3 asks what price applied in one hour.
+
+History comes by **paging, not filtering**. The probe found that a
+`Date` parameter returns nothing while a deep descending page reaches
+months back and an unsorted listing returns the oldest documents in the
+archive, so the days are there and simply have to be walked to. The
+backfill is bounded per run – six listing pages, twelve trade days –
+converging over runs in the same pattern the hourly chunks and the
+temperature archive already use, rather than four hundred requests in
+one build.
 
 **B.2.2 (dispatch-down absorption) is not built.** B.2.2 needs its dispatch-down basis settled first – the
 2,139 GWh spilled in 2025 is an annual figure and there is no hourly
@@ -418,7 +424,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 130 tests, no network
+python3 tests/test_synthetic.py   # 133 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
