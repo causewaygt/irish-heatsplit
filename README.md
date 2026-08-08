@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.19.0 / site 4.7.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.20.0 / site 4.7.0.
 
 ## The premise
 
@@ -207,11 +207,20 @@ SSE's domestic tariff is banded with no standing charge while Firmus
 charges a unit rate plus one. ROI remains a standard unit rate without
 standing charges, because ROI standing charges are not verified from a
 regulator; the two jurisdictions are each internally consistent but
-not like-for-like at component level, which is an open item. The NI
-non-domestic rates are the GB QEP-anchored estimates, and NI network
-costs run about 40% of a regulated gas bill under separate price
-controls, so the services side of the NI bill is a flagged
-placeholder.
+not like-for-like at component level, which is an open item. Non-domestic
+rates for both jurisdictions come from the Utility Regulator's Retail
+Energy Market Monitoring semester bands (S2 2024), which are derived
+Eurostat-style as revenue over volume and therefore include standing
+charges – so the services share IS like-for-like across the border.
+They replace large-user prices: NI was carrying the GB manufacturing
+average, which priced offices at industrial rates. NI I&C electricity
+runs 28.5 p/kWh for very small connections against 16.9 for large and
+very large; gas 8.7 against 5.8. Services buildings straddle the very
+small and small bands, so the anchor is the top of that range and is
+flagged as an upper bound. Non-domestic rates are held at the latest
+published semester and do not move weekly – REMM lags about nine
+months, and level-from-semesters with timing-from-announcements is the
+intended design, not yet built.
 
 **Provenance.** Sourced figures cite their publisher. Judgement figures
 carry a dagger (†) and are current Causeway Energies estimates –
@@ -287,7 +296,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 100 tests, no network
+python3 tests/test_synthetic.py   # 102 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
