@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.26.0"
+PIPELINE_VERSION = "4.28.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -3780,6 +3780,169 @@ def derive_ashp_spf(hdd_daily: dict, anchors=None):
             "params": p}
 
 
+# ------------------------------------------------------- Phase B.2.1
+# The de-rated all-island dispatchable block, MW. AIRAA Appendix 3
+# registered capacity x Table 5.18 availability factors, of which
+# ~1,490 MW is run-hour-limited. Dagger. Observed all-island peak was
+# 7,502 MW on 8 Jan 2025, which is the sanity rail: a computed demand
+# far above that on a mild hour means the shaping is wrong, not that
+# the island is short of plant.
+# ROUTE TIERS - aligned with the UK sibling, 8 Aug 2026, so the two
+# grid layers are read against the same ladder. Field-observed
+# in-situ figures, not brochure SCOPs:
+#   ASHP  2.80  Energy Systems Catapult, Electrification of Heat median
+#   GSHP  3.24  Energy Systems Catapult, in-situ GSHP average
+#   NET   5.00  networked geothermal on a shared ambient loop
+# The Irish site keeps its own Carnot-fraction engine for the AIR
+# route, because the whole point of that column is that air-source
+# performance collapses in the hour that binds - a flat 2.80 would
+# hide exactly the effect being measured. ASHP_SPF is therefore the
+# seasonal comparator, not the hourly one, and the two are logged
+# side by side. Ground and network are flat by construction: a
+# borehole field does not care what the air is doing.
+ASHP_SPF = 2.80
+GSHP_SPF = 3.24
+GEO_NETWORK_SCOP = 5.00
+
+GRID_BLOCK_MW = 8595
+GRID_RUN_HOUR_LIMITED_MW = 1490
+OBSERVED_PEAK_MW = 7502
+OBSERVED_PEAK_AT = "2025-01-08"
+
+
+def hourly_heat_mw(store, anchors=None):
+    """
+    Island building-heat demand per hour, MW of USEFUL heat.
+
+    Shaped the way the weekly hero shapes a week, one level finer:
+    hot water flat, space heat following each hour's share of the
+    store's own heating-degree total. Degree hours come from temp_ai,
+    so this is the island's own weather rather than a profile.
+
+    Returns {hour_key: MW} or {} if the store cannot support it.
+    """
+    a = anchors or ANCHORS
+    temps = (expand_hourly(store) or {}).get("temp_ai") or {}
+    if len(temps) < 24 * 300:
+        return {}
+    # useful heat, not input: the anchors are fuel input and each fuel
+    # burns at its own efficiency, so convert before shaping.
+    useful_twh = 0.0
+    for jur in ("ni", "roi"):
+        j = a[jur]
+        heat = j["residential_heat_twh"] + j["services_heat_twh"]
+        useful_twh += heat * sum(sh * a["efficiency"][f]
+                                 for f, sh in j["fuel_shares"].items())
+    n = len(temps)
+    dh = {k: max(0.0, HDD_BASE_C - v) for k, v in temps.items()}
+    total_dh = sum(dh.values())
+    if total_dh <= 0:
+        return {}
+    # The store is ~13 months, so scale the annual anchor to its span
+    # rather than assuming a calendar year.
+    span_years = n / (365.25 * 24)
+    dhw_mwh = useful_twh * (1 - a["space_heat_fraction"]) * 1e6 * span_years
+    space_mwh = useful_twh * a["space_heat_fraction"] * 1e6 * span_years
+    flat = dhw_mwh / n
+    return {k: flat + space_mwh * dh[k] / total_dh for k in temps}
+
+
+def derive_tightest_hour(store, feeds=None, anchors=None):
+    """
+    B.2.1 - the tightest hour. Log-only; nothing draws from it yet,
+    by design: the three B.2 computations are run and logged before
+    any panel is written, so the headline is chosen after the numbers
+    are seen rather than before.
+
+    Electrified heat is added to OBSERVED demand net of the resistive
+    heating it displaces - that share is already in the demand series,
+    so counting the heat pump without removing the immersion would
+    double-count it.
+    """
+    a = anchors or ANCHORS
+    heat = hourly_heat_mw(store, a)
+    if not heat:
+        return None
+    ser = expand_hourly(store) or {}
+    demand, temps = ser.get("demand_ai") or {}, ser.get("temp_ai") or {}
+    hours = sorted(set(heat) & set(demand))
+    if len(hours) < 24 * 300:
+        return None
+
+    p = ANCHORS["ashp"]
+
+    def cop_at(t):
+        lift = max(5.0, p["flow_c"] - t)
+        return p["carnot_fraction"] * (p["flow_c"] + 273.15) / lift \
+            * p["defrost_derate"]
+
+    # resistive share of useful heat, from the fuel shares
+    res = 0.0
+    for jur in ("ni", "roi"):
+        j = a[jur]
+        h = j["residential_heat_twh"] + j["services_heat_twh"]
+        res += h * j["fuel_shares"].get("electricity", 0.0) \
+            * a["efficiency"].get("electricity", 1.0)
+    tot = sum((a[j]["residential_heat_twh"] + a[j]["services_heat_twh"])
+              * sum(sh * a["efficiency"][f]
+                    for f, sh in a[j]["fuel_shares"].items())
+              for j in ("ni", "roi"))
+    res_share = (res / tot) if tot else 0.0
+
+    rows = []
+    for k in hours:
+        q = heat[k]
+        displaced = q * res_share            # already drawn as MW today
+        ashp = q / cop_at(temps.get(k, 5.0))
+        gshp = q / GSHP_SPF
+        net = q / GEO_NETWORK_SCOP
+        rows.append((demand[k] + ashp - displaced, k, q, ashp, gshp, net))
+    worst = max(rows)
+    total_mw, k, q, ashp, gshp, net = worst
+    out = {
+        "hour": k, "observed_mw": round(demand[k]),
+        "air_c": temps.get(k), "useful_heat_mw": round(q),
+        "added_mw": {"air_source": round(ashp - q * res_share),
+                     "ground_source": round(gshp - q * res_share),
+                     "geothermal_network": round(net - q * res_share)},
+        "hour_cop_air": round(cop_at(temps.get(k, 5.0)), 2),
+        "spf": {"air_seasonal": ASHP_SPF, "ground": GSHP_SPF,
+                "network": GEO_NETWORK_SCOP},
+        "total_with_air_source_mw": round(total_mw),
+        "block_mw": GRID_BLOCK_MW,
+        "headroom_mw": round(GRID_BLOCK_MW - total_mw),
+        "observed_peak_mw": OBSERVED_PEAK_MW,
+        "hours_considered": len(hours),
+        "basis": ("Hourly useful heat from temp_ai degree hours (hot "
+                  "water flat, space heat degree-shaped), through a "
+                  "Carnot-fraction COP at each hour's own air "
+                  "temperature, NETTED of the resistive heating "
+                  "already in observed demand, added to observed "
+                  "all-island demand. Block is the de-rated "
+                  "dispatchable capacity (dagger); no panel drawn."),
+    }
+    log(f"B.2.1 tightest hour: {k} at {out['air_c']} C - observed "
+        f"{out['observed_mw']} MW + air-source "
+        f"{out['added_mw']['air_source']} MW = "
+        f"{out['total_with_air_source_mw']} MW against a "
+        f"{GRID_BLOCK_MW} MW block, headroom {out['headroom_mw']} MW")
+    log(f"B.2.1   air COP in that hour {out['hour_cop_air']} against a "
+        f"seasonal {ASHP_SPF} - the gap IS the argument; ground {GSHP_SPF}, "
+        f"network {GEO_NETWORK_SCOP} are flat by construction")
+    log(f"B.2.1   same hour by route - air {out['added_mw']['air_source']}"
+        f" / ground {out['added_mw']['ground_source']}"
+        f" / network {out['added_mw']['geothermal_network']} MW added; "
+        f"useful heat {out['useful_heat_mw']} MW; "
+        f"observed peak on record {OBSERVED_PEAK_MW} MW "
+        f"({OBSERVED_PEAK_AT})")
+    if out["headroom_mw"] < 0:
+        log("B.2.1   NOTE headroom is negative - a full electrification "
+            "of heat exceeds the de-rated block in this hour. That is a "
+            "scenario result, not a forecast: nothing here phases the "
+            "conversion or counts storage, diversity or demand response.")
+    return out
+
+
 def derive_geo_percap(anchors=None, geo=None):
     """
     Ground-source Wth per person - installed today vs the capacity the
@@ -4584,6 +4747,17 @@ def main():
             except Exception:
                 log("hourly: previous store unreadable, rebuilding")
         store = build_hourly_store(prev_hourly)
+        # B.2.1 runs on the store we just wrote, log-only. Soft: a
+        # failure here must never touch the weekly tracker.
+        try:
+            if store and store.get("heat_ready"):
+                derived["tightest_hour"] = derive_tightest_hour(store)
+            elif store:
+                log("B.2.1 skipped - heat layer not ready "
+                    f"(temp_ai {store.get('completeness_pct', {}).get('temp_ai')}%)")
+        except Exception as exc:
+            log(f"B.2.1 failed ({exc.__class__.__name__}) - log-only, "
+                "weekly tracker unaffected")
         if store:
             HOURLY_PATH.write_text(json.dumps(store, separators=(",", ":")))
             log(f"wrote {HOURLY_PATH} "
