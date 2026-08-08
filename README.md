@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.25.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.26.0 / site 4.8.0.
 
 ## The premise
 
@@ -230,9 +230,16 @@ weighting lands at 23.5 p/kWh for NI and 23.8 for Ireland. Gas is band
 I1 (under 278,000 kWh a year), where services buildings overwhelmingly
 sit, rather than weighted – the REMM price bands do not map onto the
 network bands the consumption split is published in, and NI I&C gas is
-about two-thirds daily-metered heavy industry. Non-domestic rates are held at the latest
-published semester and do not move weekly – REMM lags about nine
-months. One consequence is visible on the site: because domestic rates
+about two-thirds daily-metered heavy industry. **Non-domestic rates step by semester.** Three are published – S2
+2024, S1 2025 and S2 2025 – and each week's services share is priced at
+the semester it falls in, assigned by week ending, so a week straddling
+30 June or 31 December lands wholly in the semester it ends in. The
+semester is the resolution because there are no regulated non-domestic
+announcements to give finer timing; domestic keeps dated steps because
+the regulator and the incumbents publish them. Each Irish figure
+converts at the ECB mean for its own semester, not the week's, because
+that is the rate UREGNI used to sterling it. Weeks past the last
+published semester hold at it – REMM lags about nine months. One consequence is visible on the site: because domestic rates
 ARE stepped through to 2026 and NI gas fell about 15% over that span,
 NI non-domestic gas now prints above NI domestic gas. That is a
 vintage artefact rather than a claim about small business tariffs – at
@@ -354,7 +361,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 117 tests, no network
+python3 tests/test_synthetic.py   # 121 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
