@@ -1167,7 +1167,7 @@ def test_hourly_store_shape_and_isolation(monkey=None):
         B.fetch_hourly_chunk = real
         B.fetch_hourly_temp = real_t
     assert store["schema"] == B.HOURLY_SCHEMA
-    assert set(store["series"]) == set(B.HOURLY_SERIES) | {"temp_ai"}
+    assert set(store["series"]) == set(B.HOURLY_SERIES) | {"temp_ai", "price_ai"}
     assert store["complete"] is True
     assert store["completeness_pct"]["demand_ai"] >= 95
     # 13 months of hours, within a chunk's tolerance
@@ -2525,6 +2525,65 @@ def test_a_route_that_exceeds_the_block_is_named_as_such():
     joined = " | ".join(lines)
     assert "EXCEEDS THE BLOCK" in joined
     assert "routes that fit: NONE" in joined
+
+
+def test_semopx_parser_keeps_the_delivery_hours():
+    """The parser was reading the delivery timestamp row and throwing
+    it away, keeping only a daily mean. B.2.3 asks what price applied
+    in ONE hour, so the stamps are the whole point."""
+    import build as B
+    csv = ("Auction;SEM-DA\n"
+           "EUR;GBP;0,85506627\n"
+           "Market;ROI-DA\n"
+           "Index prices;30;EUR\n"
+           "2026-01-05T17:00:00Z;2026-01-05T18:00:00Z\n"
+           "118,42;243,17\n")
+    p = B.parse_semopx_csv(csv)
+    assert p["day"] == "2026-01-05"
+    assert p["series"]["ROI-DA"]["EUR"] == {"2026-01-05T17": 118.42,
+                                            "2026-01-05T18": 243.17}
+    # the daily mean still works - nothing regressed
+    assert p["markets"]["ROI-DA"]["EUR"] == [118.42, 243.17]
+
+
+def test_price_layer_gates_separately_and_cannot_withdraw_the_others():
+    """price_ai starts empty and fills a day at a time. While it
+    climbs it must not be able to pull down the grid trio or the heat
+    layer, which is why it has its own gate rather than joining
+    `complete`."""
+    import build as B
+
+    def fake_chunk(chart, region, areas, end_day):
+        base = end_day - dt.timedelta(days=27)
+        out = {}
+        for d in range(28):
+            day = base + dt.timedelta(days=d)
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 1000.0
+        return out
+
+    def full_temp(prev, floor, end):
+        out, day = {}, dt.datetime.strptime(floor, "%Y-%m-%dT%H").date()
+        while day <= end:
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 5.0
+            day += dt.timedelta(days=1)
+        return out
+
+    real, real_t, real_s = B.fetch_hourly_chunk, B.fetch_hourly_temp, B.time.sleep
+    B.fetch_hourly_chunk, B.fetch_hourly_temp = fake_chunk, full_temp
+    B.time.sleep = lambda *_: None
+    try:
+        store = B.build_hourly_store({}, {"semopx": {
+            "dam_hourly_eur_mwh": {"2026-08-01T00": 90.0}}})
+    finally:
+        B.fetch_hourly_chunk, B.fetch_hourly_temp = real, real_t
+        B.time.sleep = real_s
+    assert store["schema"] == 4
+    assert "price_ai" in store["series"]
+    assert store["complete"] is True          # grid trio unaffected
+    assert store["heat_ready"] is True        # heat layer unaffected
+    assert store["price_ready"] is False      # one hour is not 95%
 
 
 if __name__ == "__main__":
