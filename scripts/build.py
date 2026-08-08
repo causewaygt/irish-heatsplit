@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.23.0"
+PIPELINE_VERSION = "4.24.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -2748,6 +2748,77 @@ def week_inputs(feeds, w_end):
             "tariffs": tariffs_for(w_end)}
 
 
+# Wire format for the history block. Content is HISTORY_SCHEMA; this
+# is how it is written, and the two are deliberately orthogonal - a
+# re-encoding is not a restatement and must not trigger one.
+HISTORY_ENCODING = "columnar-1"
+
+
+def compact_history(entries):
+    """
+    Array of week objects -> columnar. Every key is written once
+    instead of once per week, which is most of the file: the entries
+    are wide and shallow, so at 52 weeks the key strings outweigh the
+    numbers they label. Recurses into the ni/roi/fuels sub-blocks.
+    """
+    if not entries:
+        return {"encoding": HISTORY_ENCODING, "n": 0, "cols": {}}
+
+    def cols_of(objs):
+        keys = []
+        for o in objs:
+            for k in o:
+                if k not in keys:
+                    keys.append(k)
+        out = {}
+        for k in keys:
+            vals = [o.get(k) for o in objs]
+            if any(isinstance(v, dict) for v in vals):
+                out[k] = cols_of([v if isinstance(v, dict) else {}
+                                  for v in vals])
+            else:
+                out[k] = vals
+        return out
+
+    return {"encoding": HISTORY_ENCODING, "n": len(entries),
+            "cols": cols_of(entries)}
+
+
+def expand_history(doc):
+    """
+    Columnar OR the legacy list -> list of week objects.
+
+    Both shapes are accepted, and that is not politeness. index.html
+    publishes the moment Pages deploys while data.json only changes at
+    the next build, so for up to a day the new front end reads the old
+    payload - and the pipeline reads its own previous output the same
+    way. Either side must tolerate either shape.
+    """
+    if isinstance(doc, list):
+        return doc
+    if not isinstance(doc, dict) or not doc.get("cols"):
+        return []
+    n = int(doc.get("n") or 0)
+
+    def rows(cols):
+        out = [{} for _ in range(n)]
+        for k, v in cols.items():
+            if isinstance(v, dict):
+                sub = rows(v)
+                for i in range(n):
+                    out[i][k] = sub[i]
+            else:
+                # Nulls are written back, not skipped. ef_electricity
+                # is legitimately None in a week with too few carbon
+                # observations, and dropping the key instead of the
+                # value would make the round trip inexact for no gain.
+                for i in range(n):
+                    out[i][k] = v[i] if i < len(v) else None
+        return out
+
+    return rows(doc["cols"])
+
+
 def build_history(feeds, anchors=None):
     """UK-pattern weekly history: complete calendar weeks (Mon-Sun),
     hero combined four + what-if twins per entry, frozen after the two
@@ -2796,7 +2867,8 @@ def build_history(feeds, anchors=None):
                for k in JUR_SPLIT_KEYS},
         }
 
-    prev = list((PREVIOUS_DERIVED or {}).get("history") or [])
+    prev = list(expand_history((PREVIOUS_DERIVED or {})
+                               .get("history") or []))
     prev_schema = int((PREVIOUS_DERIVED or {})
                       .get("history_schema") or 1)
     prev_epoch = int((PREVIOUS_DERIVED or {})
@@ -4258,6 +4330,13 @@ def main():
     derived["weeks_on_record"] = len(_h)
     derived["weeks_live"] = sum(1 for e in _h if e.get("live"))
     derived["live_from"] = LIVE_FROM
+    _flat = len(json.dumps(_h, separators=(",", ":")))
+    derived["history"] = compact_history(_h)
+    derived["history_encoding"] = HISTORY_ENCODING
+    _cols = len(json.dumps(derived["history"], separators=(",", ":")))
+    log(f"history: encoded {len(_h)} weeks columnar, "
+        f"{_flat // 1024} kB -> {_cols // 1024} kB "
+        f"({100 * _cols // max(_flat, 1)}%)")
     log(f"history: {derived['weeks_on_record']} weeks on record, "
         f"{derived['weeks_live']} live (from {LIVE_FROM}); "
         f"schema {HISTORY_SCHEMA}, anchor epoch {ANCHOR_EPOCH}")
