@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.17.0 / site 4.6.3.
+(Causeway Geothermal NI Ltd). Pipeline 4.18.0 / site 4.6.6.
 
 ## The premise
 
@@ -262,7 +262,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 92 tests, no network
+python3 tests/test_synthetic.py   # 94 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
