@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.7.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.8.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -764,6 +764,30 @@ function drawTrends(HIST, win, scope){
       rows[rows.length-1].week_ending;
   });
 }
+
+  // Columnar history -> array of week objects. BOTH shapes are
+  // accepted: index.html publishes as soon as Pages deploys while
+  // data.json only changes at the next 04:17 build, so for up to a
+  // day this front end reads the previous payload.
+  function expandHistory(h){
+    if(Array.isArray(h)) return h;
+    if(!h||!h.cols) return [];
+    const n=h.n|0;
+    const rows=cols=>{
+      const out=[]; for(let i=0;i<n;i++) out.push({});
+      Object.keys(cols).forEach(k=>{
+        const v=cols[k];
+        if(v && !Array.isArray(v) && typeof v==='object'){
+          const sub=rows(v);
+          for(let i=0;i<n;i++) out[i][k]=sub[i];
+        } else {
+          for(let i=0;i<n;i++) out[i][k]=(i<v.length?v[i]:null);
+        }
+      });
+      return out;
+    };
+    return rows(h.cols);
+  }
 
 function heroCards(h, HIST){
   HIST=HIST||[];
@@ -1560,7 +1584,8 @@ fetch('data.json').then(r=>{
   statusBadges(D.feeds||{});
   sparkBox(D);
   const hero=(D.derived||{}).hero;
-  if(hero){heroCards(hero,(D.derived||{}).history||[]); invisibleBar(hero);}
+  if(hero){heroCards(hero,expandHistory((D.derived||{}).history));
+           invisibleBar(hero);}
   else el('heroCards').innerHTML='<div class="stat"><div class="lab">Hero</div>'+
     '<div class="sub">Waiting for the first build with degree-day history \u2013 '+
     'check back after the next daily run.</div></div>';
@@ -1572,7 +1597,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.7.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.8.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
