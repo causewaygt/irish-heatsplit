@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.19.0"
+PIPELINE_VERSION = "4.20.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -293,8 +293,53 @@ ANCHORS = {
         "roi": {"gas": 0.60, "electricity": 0.55},
         "ni": {"gas": 0.55, "electricity": 0.55},
     },
-    "nondom_eur_per_kwh": {"electricity": 0.21, "gas": 0.075},
-    "nondom_gbp_per_kwh": {"electricity": 0.24, "gas": 0.055},
+    # NON-DOMESTIC RATES - rebuilt 8 Aug 2026 from the Utility
+    # Regulator's Retail Energy Market Monitoring, semester 2 2024
+    # (2024 AREMM, published 10 Sep 2025).
+    #
+    # WHAT WAS WRONG. Both jurisdictions were carrying LARGE-USER
+    # prices. The NI pair (24.0p / 5.5p) was the GB QEP manufacturing
+    # average lifted verbatim from the UK sibling - wrong jurisdiction
+    # AND wrong sector. The ROI pair was the same shape. But this
+    # site's non-domestic scope is SERVICES BUILDINGS - offices,
+    # retail, hospitality, public estate - not industry, and services
+    # sit at the small end of the distribution where prices are near
+    # domestic, not at the industrial end where they are half that.
+    # NI I&C electricity ran 28.5 p/kWh for very small connections
+    # against 16.9 p/kWh for large and very large; NI I&C gas 8.7
+    # against 5.8. We had been pricing offices at smelter rates.
+    #
+    # THE BASIS. UREGNI derives these the way Eurostat does - volume
+    # sold and revenue submitted per size band, revenue over volume,
+    # so standing charges are INCLUDED by construction. That makes
+    # them like-for-like with the SEAI/Eurostat semester prices on the
+    # ROI side, which is what closes the cross-jurisdiction basis gap
+    # for the services share. I&C figures include CCL and EXCLUDE VAT,
+    # which is the convention this site already applies to services.
+    #
+    # BAND CHOICE (dagger). Anchored on the very small band (<20 MWh
+    # electricity, <73,200 kWh gas). By CONNECTIONS that band is 71%
+    # of I&C electricity and 86% of I&C gas - but by CONSUMPTION it is
+    # only about 7%, and consumption is what this site prices. The
+    # honest position is that services buildings straddle the very
+    # small and small bands, this is the top of that range, and the
+    # figure is therefore an UPPER anchor for services. Closing it
+    # needs the small and medium band NI prices, which are in the
+    # AREMM's Excel data download rather than its text.
+    #
+    # ROI figures are the Ireland comparators in the same tables
+    # (31.4 p/kWh electricity, 8.6 p/kWh gas, very small, S2 2024),
+    # converted back to euro at the semester average 0.84 EUR/GBP -
+    # UREGNI converts Eurostat's euro figures to sterling for the
+    # comparison, so this recovers the original.
+    #
+    # VINTAGE. These are held at S2 2024, the latest published
+    # semester, and do NOT move week to week. REMM lags about nine
+    # months. Level from the semester series and timing from tariff
+    # announcements is the intended design; until that is built the
+    # services share of every week is priced at a 2024 semester.
+    "nondom_eur_per_kwh": {"electricity": 0.374, "gas": 0.102},
+    "nondom_gbp_per_kwh": {"electricity": 0.285, "gas": 0.087},
     "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},
     "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.325},
     # The cold economy - island cooling loads, electricity basis.
@@ -3234,11 +3279,11 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                   "rate without standing charges, so the two "
                   "jurisdictions are internally consistent but not "
                   "like-for-like at component level (open item). The "
-                  "NI non-domestic rates are the GB QEP-anchored "
-                  "estimates, and NI network costs - about 40% of a "
-                  "regulated gas bill - are set under different price "
-                  "controls, so the services side of the NI bill is a "
-                  "placeholder (dagger). Cooling is the "
+                  "NI domestic rates are regulated all-in bills and "
+                  "ROI domestic a unit rate without standing charges, "
+                  "so the DOMESTIC side is not yet like-for-like "
+                  "across the two jurisdictions (open item); the "
+                  "services side now is. Cooling is the "
                   "cold-economy "
                   "census (dagger loads beside the CSO data-centre "
                   "anchor), flat across the year with the comfort share "
