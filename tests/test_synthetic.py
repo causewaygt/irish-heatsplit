@@ -1802,6 +1802,67 @@ def test_array_encoding_is_materially_smaller():
     assert arr_bytes < dict_bytes * 0.55, (arr_bytes, dict_bytes)
 
 
+def test_jurisdiction_blocks_carry_the_heat_cold_splits():
+    """History schema 5. Every windowed card and what-if row under the
+    NI or ROI toggle breaks down into heat, cooling and saves; the
+    front end omits the whole breakdown unless the fields are present
+    on the jurisdiction sub-block, which is why NI and ROI showed bare
+    totals at 4w/12w/12m while all-island showed the split."""
+    import build as B
+    B.PREVIOUS_DERIVED = {}
+    feeds = _history_fixture_feeds()
+    hist = build_history(feeds)
+    assert hist, "no history built"
+    for e in hist:
+        for j in ("ni", "roi"):
+            blk = e[j]
+            for k in B.JUR_SPLIT_KEYS:
+                assert k in blk, (j, k, e["week_ending"])
+                assert "wf_" + k in blk, (j, "wf_" + k, e["week_ending"])
+            # and they must reconcile with that block's own totals
+            assert abs(blk["heat_gwh"] + blk["cold_gwh"]
+                       - blk["purchased_gwh"]) < 1.0
+            assert abs(blk["bill_heat_eur_m"] + blk["bill_cold_eur_m"]
+                       - blk["bill_eur_m"]) < 0.5
+            assert abs(blk["bill_heat_gbp_m"] + blk["bill_cold_gbp_m"]
+                       - blk["bill_gbp_m"]) < 0.5
+            assert abs(blk["emissions_heat_kt"] + blk["emissions_cold_kt"]
+                       - blk["emissions_kt"]) < 0.5
+
+
+def test_schema_5_migration_backfills_frozen_jurisdiction_splits():
+    """A week frozen under schema 4 has jurisdiction blocks without
+    the splits. The bump must REFRESH those blocks, not leave the
+    stored ones in place - otherwise the breakdown returns only for
+    the two live weeks and the window still reads bare."""
+    import build as B
+    B.PREVIOUS_DERIVED = {}
+    feeds = _history_fixture_feeds()
+    fresh = build_history(feeds)
+    assert len(fresh) > 3
+    stale = []
+    for e in fresh:
+        e2 = json.loads(json.dumps(e))
+        for j in ("ni", "roi"):
+            for k in B.JUR_SPLIT_KEYS:
+                e2[j].pop(k, None)
+                e2[j].pop("wf_" + k, None)
+        stale.append(e2)
+    B.PREVIOUS_DERIVED = {"history": stale, "history_schema": 4,
+                          "anchor_epoch": B.ANCHOR_EPOCH}
+    try:
+        out = build_history(feeds)
+    finally:
+        B.PREVIOUS_DERIVED = {}
+    frozen = out[:-2]
+    assert frozen, "nothing frozen to migrate"
+    for e in frozen:
+        for j in ("ni", "roi"):
+            for k in B.JUR_SPLIT_KEYS:
+                assert k in e[j], (j, k, e["week_ending"])
+                assert "wf_" + k in e[j], (j, k, e["week_ending"])
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
