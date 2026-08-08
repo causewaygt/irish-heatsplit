@@ -811,11 +811,15 @@ def test_week_inputs_and_tariff_resolver():
     assert ctx and abs(ctx["ni_oil_ppl"] - 790.0 / 9.0) < 0.05
     assert ctx["fx"] == 0.851
     assert tariffs_for("2026-07-01")["eur"]["electricity"] == 0.36
-    # the three verified periods: pre-April, April-June, July onward
-    assert tariffs_for("2026-03-15")["gbp"]["gas"] == 0.0722
-    assert tariffs_for("2026-05-01")["gbp"]["gas"] == 0.0649
+    # four periods now: the backfill row, then pre-April, April-June
+    # and July onward. NI values are the 8 Aug 2026 rebuild - all-in
+    # at the Regulator's consumption basis, gas weighted across both
+    # regulated suppliers - so they are NOT the old unit-only figures.
+    assert tariffs_for("2026-03-15")["gbp"]["gas"] == 0.0809
+    assert tariffs_for("2026-05-01")["gbp"]["gas"] == 0.0739
     assert tariffs_for("2026-05-01")["eur"]["electricity"] == 0.333
-    assert tariffs_for("2026-06-30")["gbp"]["electricity"] == 0.306
+    assert tariffs_for("2026-06-30")["gbp"]["electricity"] == 0.3216
+    assert tariffs_for("2025-09-01")["gbp"]["gas"] == 0.0884
     # a week before any CCNI data cannot be built
     assert week_inputs(feeds, days[40]) is None
 
@@ -1861,6 +1865,93 @@ def test_schema_5_migration_backfills_frozen_jurisdiction_splits():
             for k in B.JUR_SPLIT_KEYS:
                 assert k in e[j], (j, k, e["week_ending"])
                 assert "wf_" + k in e[j], (j, k, e["week_ending"])
+
+
+def test_tariff_table_covers_the_backfilled_weeks():
+    """tariffs_for() clamps anything before the first row to that row.
+    The floor moved behind the old first row, so the table must reach
+    HISTORY_START or eight weeks would be priced at a tariff that did
+    not exist yet."""
+    import build as B
+    first = B.TARIFF_HISTORY[0][0]
+    assert first <= B.HISTORY_START, (first, B.HISTORY_START)
+    # the backfill row must differ from the Oct 2025 row on NI and
+    # match it on ROI - that asymmetry IS the finding
+    pre = B.tariffs_for(B.HISTORY_START)
+    oct25 = B.tariffs_for("2025-10-01")
+    assert pre["eur"] == oct25["eur"]
+    assert pre["gbp"]["gas"] > oct25["gbp"]["gas"]
+    assert pre["gbp"]["electricity"] < oct25["gbp"]["electricity"]
+
+
+def test_ni_gas_tracks_the_weighted_regulated_bills():
+    """The NI rows are effective all-in rates at the Regulator's
+    consumption basis, weighted by regulated customer count. Recompute
+    from the published annual bills and check the table matches."""
+    import build as B
+    w_sse, w_fir = 198200, 75756
+    ws = w_sse / (w_sse + w_fir)
+    wf = 1 - ws
+    # (period, SSE bill, Firmus bill) at 12,000 kWh, incl VAT
+    for period, sse, fir in (("2025-08-06", 1079, 1014),
+                             ("2025-10-01", 985, 934),
+                             ("2026-04-01", 905, 840),
+                             ("2026-07-01", 905, 972)):
+        want = (ws * sse + wf * fir) / 12000
+        got = B.tariffs_for(period)["gbp"]["gas"]
+        assert abs(got - want) < 5e-5, (period, got, want)
+    for period, bill in (("2025-08-06", 989), ("2025-10-01", 1029),
+                         ("2026-04-01", 1029), ("2026-07-01", 1093)):
+        want = bill / 3200
+        got = B.tariffs_for(period)["gbp"]["electricity"]
+        assert abs(got - want) < 5e-5, (period, got, want)
+
+
+def test_daily_ci_from_hourly_averages_and_drops_thin_days():
+    """Carbon for the backfilled weeks comes from the hourly store.
+    A day with too few hours must be dropped, not averaged thin - a
+    quiet part-day mean would be indistinguishable from a real one."""
+    import build as B
+    ser = {}
+    for h in range(24):
+        ser[f"2025-08-07T{h:02d}"] = 200.0 + h
+    for h in range(5):                       # thin day
+        ser[f"2025-08-08T{h:02d}"] = 400.0
+    out = B.daily_ci_from_hourly({"schema": 2, "series": {"co2_ai": ser}})
+    assert out == {"2025-08-07": round(sum(200.0 + h for h in range(24)) / 24, 1)}
+    assert "2025-08-08" not in out
+    assert B.daily_ci_from_hourly({}) == {}
+
+
+def test_daily_ci_reads_the_array_form_store():
+    """The store on disk is schema 3, so the fallback has to read
+    arrays, not just the dict form."""
+    import build as B
+    ser = {f"2025-08-07T{h:02d}": 300.0 for h in range(24)}
+    t0, n, packed = B.compact_hourly({"co2_ai": ser})
+    out = B.daily_ci_from_hourly({"schema": 3, "t0": t0, "series": packed})
+    assert out == {"2025-08-07": 300.0}
+
+
+def test_backfilled_weeks_are_not_counted_live():
+    """Two counters. A week reconstructed behind LIVE_FROM is on the
+    record but is not a live week, and the milestone counts live."""
+    import build as B
+    assert B.LIVE_FROM > B.HISTORY_START
+    B.PREVIOUS_DERIVED = {}
+    hist = build_history(_history_fixture_feeds())
+    assert hist
+    for e in hist:
+        assert "live" in e, e["week_ending"]
+        assert e["live"] == (e["week_ending"] >= B.LIVE_FROM)
+    assert any(e["live"] for e in hist)
+
+
+def test_history_cap_does_not_drop_the_backfilled_weeks():
+    """52 weeks plus forward growth would have passed the old cap of
+    60 within two months, silently undoing the backfill."""
+    import build as B
+    assert B.HISTORY_MAX >= 105
 
 
 if __name__ == "__main__":
