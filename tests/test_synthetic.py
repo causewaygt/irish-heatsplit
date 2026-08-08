@@ -2407,6 +2407,13 @@ def test_tightest_hour_lands_in_winter_and_nets_the_resistive_share():
         out["observed_mw"] + add["air_source"]
     assert out["headroom_mw"] == out["block_mw"] - \
         out["total_with_air_source_mw"]
+    # headroom is reported for EVERY route, not just air
+    hr = out["headroom_by_route_mw"]
+    assert set(hr) == set(add)
+    for r in add:
+        assert hr[r] == out["block_mw"] - out["observed_mw"] - add[r]
+    assert hr["geothermal_network"] > hr["ground_source"] > hr["air_source"]
+    assert out["routes_that_fit"] == [r for r in add if hr[r] >= 0]
 
 
 def test_tightest_hour_declines_rather_than_guesses():
@@ -2474,6 +2481,50 @@ def test_air_route_uses_the_hourly_cop_not_the_seasonal_spf():
     # ground and network stay flat, so their ordering is fixed
     assert (out["added_mw"]["ground_source"]
             > out["added_mw"]["geothermal_network"])
+
+
+def test_route_ordering_is_reported_not_left_to_subtraction():
+    """The first live run reported headroom for the air route alone,
+    so the actual finding - which routes fit under the block - had to
+    be derived by hand from three other numbers. The route ordering
+    IS the result of B.2.1 and must be stated."""
+    import build as B
+    lines = []
+    real = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        out = B.derive_tightest_hour(_synthetic_store())
+    finally:
+        B.log = real
+    joined = " | ".join(lines)
+    for r in ("air_source", "ground_source", "geothermal_network"):
+        assert r in joined
+        assert f"headroom" in joined
+    assert "routes that fit" in joined
+    assert "FITS" in joined or "EXCEEDS THE BLOCK" in joined
+    # and the heat-versus-power comparison is printed, not just stored
+    assert "heat system is" in joined
+    assert out["heat_vs_block_ratio"] == round(
+        out["useful_heat_mw"] / out["block_mw"], 2)
+
+
+def test_a_route_that_exceeds_the_block_is_named_as_such():
+    """A negative headroom must read as EXCEEDS, and a route list that
+    empties must say NONE rather than printing an empty string."""
+    import build as B
+    real_block = B.GRID_BLOCK_MW
+    lines = []
+    real_log = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    B.GRID_BLOCK_MW = 100          # nothing can fit
+    try:
+        B.derive_tightest_hour(_synthetic_store())
+    finally:
+        B.GRID_BLOCK_MW = real_block
+        B.log = real_log
+    joined = " | ".join(lines)
+    assert "EXCEEDS THE BLOCK" in joined
+    assert "routes that fit: NONE" in joined
 
 
 if __name__ == "__main__":
