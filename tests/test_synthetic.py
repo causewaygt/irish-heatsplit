@@ -2212,6 +2212,61 @@ def test_nothing_measures_the_history_by_len_of_the_container():
     assert len(B.expand_history(packed)) == len(hist)
 
 
+def test_unbuildable_weeks_name_themselves():
+    """A silent `continue` makes a short record look like a smaller
+    number rather than an error. Every decline must land in the skip
+    list with a reason - except a week outside the window, which is
+    not a failure."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    days = sorted(feeds["hdd"]["hdd_island"])
+    w_end = days[-8]
+
+    # a week that builds records nothing
+    skips = []
+    assert B.week_inputs(feeds, w_end, skips) is not None
+    assert skips == []
+
+    # outside the window: declines silently, by design
+    skips = []
+    assert B.week_inputs(feeds, "2020-01-05", skips) is None
+    assert skips == []
+
+    # no ROI bulletin at or before the week: named
+    stripped = {**feeds, "oil_bulletin": {
+        **feeds["oil_bulletin"],
+        "roi_heating_gasoil_eur_per_1000l": {}}}
+    skips = []
+    assert B.week_inputs(stripped, w_end, skips) is None
+    assert len(skips) == 1 and skips[0][0] == w_end
+    assert "ROI oil" in skips[0][1]
+
+    # and the signature stays back-compatible
+    assert B.week_inputs(feeds, w_end) is not None
+
+
+def test_skip_report_groups_by_reason_and_counts_the_attempt():
+    """The report has to make a short record impossible to misread:
+    how many were skipped, out of how many attempted, why, and over
+    what span."""
+    import build as B
+    lines = []
+    real = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        B.report_skips([], 52)
+        B.report_skips([("2025-09-06", "reason A"),
+                        ("2025-09-13", "reason A"),
+                        ("2026-01-03", "reason B")], 49)
+    finally:
+        B.log = real
+    assert "52 weeks built, none skipped" in lines[0]
+    assert "3 week(s) skipped of 52 attempted" in lines[1]
+    joined = " | ".join(lines[2:])
+    assert "2 week(s) [2025-09-06..2025-09-13] - reason A" in joined
+    assert "1 week(s) [2026-01-03] - reason B" in joined
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
