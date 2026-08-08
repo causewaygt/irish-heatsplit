@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.29.0"
+PIPELINE_VERSION = "4.30.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -1288,6 +1288,49 @@ def _parse_history_longtable(rows) -> dict:
     return series
 
 
+def semopx_local_hour(stamp):
+    """
+    SEMOpx delivery stamp -> Irish local-clock hour key.
+
+    The CSV publishes ISO UTC. Every other series in the hourly store
+    is keyed on Irish local clock - EirGrid stamps its rows that way
+    and temp_ai is fetched with timezone=Europe/Dublin for exactly
+    this reason. A UTC-keyed price would sit an hour out of step with
+    demand from late March to late October, and B.2.3 asks what price
+    applied in ONE hour, so the join has to land.
+
+    Conversion is done without a tz database: Irish summer time runs
+    from the last Sunday in March to the last Sunday in October, both
+    switching at 01:00 UTC. Returns None on anything unparseable.
+    """
+    m = re.match(r"(20\d\d)-(\d\d)-(\d\d)T(\d\d)", str(stamp))
+    if not m:
+        return None
+    y, mo, d, h = (int(g) for g in m.groups())
+    try:
+        t = dt.datetime(y, mo, d, h)
+    except ValueError:
+        return None
+
+    def last_sunday(year, month):
+        day = 31
+        while True:
+            try:
+                c = dt.date(year, month, day)
+            except ValueError:
+                day -= 1
+                continue
+            if c.weekday() == 6:
+                return c
+            day -= 1
+
+    start = dt.datetime.combine(last_sunday(y, 3), dt.time(1))
+    end = dt.datetime.combine(last_sunday(y, 10), dt.time(1))
+    if start <= t < end:
+        t += dt.timedelta(hours=1)
+    return t.strftime("%Y-%m-%dT%H")
+
+
 def parse_semopx_csv(text: str) -> dict:
     """
     SEMOpx MarketResult CSV, format confirmed live (14 Jul 2026):
@@ -1342,9 +1385,10 @@ def parse_semopx_csv(text: str) -> dict:
                     currency, []).extend(nums)
                 ts = stamps.get((market, currency)) or []
                 for t, v in zip(ts, nums):
-                    if re.match(r"20\d\d-\d\d-\d\dT", t):
+                    k = semopx_local_hour(t)
+                    if k:
                         series.setdefault(market, {}).setdefault(
-                            currency, {})[t[:13]] = v
+                            currency, {})[k] = v
                 expect_series = False
     return {"fx_eur_gbp": fx, "day": day, "auction": auction,
             "markets": markets, "series": series}
@@ -1890,6 +1934,20 @@ def feed_gni_live():
     return out, recency_status(latest, 3)
 
 
+def semopx_trade_day(item):
+    """Trade day from a SEMOpx resource name, e.g.
+    MarketResult_SEM-DA_PWR-MRC-D+1_20260806100000_... -> 2026-08-06.
+
+    The first probe sliced this positionally and cut mid-timestamp,
+    which turned every day tag into nonsense and made the verdict line
+    say the opposite of what the data showed. Match the field, do not
+    count characters into it."""
+    m = re.search(r"_(20\d{6})\d{6}_", str((item or {}).get("ResourceName")
+                                            or item or ""))
+    return f"{m.group(1)[:4]}-{m.group(1)[4:6]}-{m.group(1)[6:]}" \
+        if m else None
+
+
 def semopx_history_probe():
     """
     Can a historic SEMOpx trade day be resolved? Log-only.
@@ -1922,17 +1980,75 @@ def semopx_history_probe():
             items = http_get(base, params=params).json().get("items", [])
             da = [it for it in items
                   if re.search(r"_SEM-DA_", str(it.get("ResourceName") or ""))]
-            days = sorted({str(it.get("ResourceName") or "")[-30:-16]
-                           for it in da})
+            days = sorted(x for x in (semopx_trade_day(it) for it in da) if x)
             log(f"semopx_probe: {label} -> {len(items)} items, "
-                f"{len(da)} DA, day tags {days[:2]}"
-                f"{'..' + days[-1] if len(days) > 2 else ''} "
-                f"[{'REACHES BACK' if days and days[0][:8] <= want.replace('-', '')[:8] else 'recent window only'}]")
+                f"{len(da)} DA, days "
+                f"{days[0] if days else '-'}..{days[-1] if days else '-'} "
+                f"[{'REACHES ' + days[0] if days and days[0] <= want else 'recent window only'}]")
         except Exception as e:
             log(f"semopx_probe: {label} -> {e.__class__.__name__}")
     log(f"semopx_probe: target was {want} (120 days back); if nothing "
         "reaches it, price_ai fills forward and B.2.3 waits or moves "
         "to an hour the store has priced")
+
+
+SEMOPX_BACKFILL_PAGES = 6      # listing pages walked per run
+SEMOPX_BACKFILL_DAYS = 12      # documents fetched per run
+
+
+def semopx_backfill(prev_hourly, base, want_from):
+    """
+    Walk the SEMOpx listing backwards and fetch trade days the store
+    has not priced. Bounded per run - the same converging-walk pattern
+    the hourly chunks and the temperature archive already use, rather
+    than 400 requests in one build.
+
+    Paging is the route, not a date filter: the probe showed `Date`
+    returns nothing while a deep DESC page reaches months back and an
+    unsorted listing returns the oldest documents in the archive. So
+    the archive holds the days; they just have to be walked to.
+    """
+    have_days = {k[:10] for k in prev_hourly}
+    added, seen, fetched = {}, set(), 0
+    for page in range(1, SEMOPX_BACKFILL_PAGES + 1):
+        if fetched >= SEMOPX_BACKFILL_DAYS:
+            break
+        try:
+            items = http_get(base, params={
+                "DPuG_ID": "EA-001", "page_size": 100, "page": page,
+                "sort_by": "Date", "order_by": "DESC"}).json().get("items", [])
+        except Exception as e:
+            log(f"semopx: backfill page {page} {e.__class__.__name__}")
+            break
+        if not items:
+            break
+        for it in items:
+            name = str(it.get("ResourceName") or "")
+            if "_SEM-DA_" not in name:
+                continue
+            day = semopx_trade_day(it)
+            if not day or day in seen or day in have_days or day < want_from:
+                continue
+            seen.add(day)
+            if fetched >= SEMOPX_BACKFILL_DAYS:
+                break
+            try:
+                doc = parse_semopx_csv(
+                    http_get(f"https://reports.semopx.com/documents/{name}").text)
+            except Exception as e:
+                log(f"semopx: backfill {day} {e.__class__.__name__}")
+                continue
+            fresh = {}
+            for cur in (doc.get("series") or {}).values():
+                for k, v in (cur.get("EUR") or {}).items():
+                    fresh.setdefault(k, []).append(v)
+            for k, vals in fresh.items():
+                added[k] = round(statistics.mean(vals), 2)
+            fetched += 1
+            time.sleep(0.3)
+    log(f"semopx: backfill walked {min(page, SEMOPX_BACKFILL_PAGES)} page(s), "
+        f"fetched {fetched} trade day(s), +{len(added)} priced hours")
+    return added
 
 
 def feed_semopx():
@@ -1992,6 +2108,13 @@ def feed_semopx():
             fresh.setdefault(k, []).append(v)
     for k, vals in fresh.items():
         hourly[k] = round(statistics.mean(vals), 2)
+    # Bounded walk backwards. Soft: the daily document above is the
+    # feed's job, this is opportunistic depth for B.2.3.
+    try:
+        floor = (today_utc() - dt.timedelta(days=HOURLY_MONTHS * 31)).isoformat()
+        hourly.update(semopx_backfill(hourly, base, floor))
+    except Exception as e:
+        log(f"semopx: backfill skipped ({e.__class__.__name__})")
     out = {
         "dam_hourly_eur_mwh": trim_series(hourly),
         "dam_hourly_added": len(fresh),
