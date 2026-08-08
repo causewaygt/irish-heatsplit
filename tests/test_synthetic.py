@@ -2309,6 +2309,68 @@ def test_carbon_depth_probe_retries_before_calling_a_month_empty():
     assert any("verdict" in l for l in depth)
 
 
+def test_nondom_steps_by_semester_and_holds_at_the_last_published():
+    """Services rates now move with the semester the week falls in.
+    Three semesters are published; weeks before the first clamp to it,
+    weeks after the last hold at it - the REMM lag, not a claim that
+    prices stopped moving."""
+    import build as B
+    sem = {"2024-S2": 0.8386, "2025-S1": 0.8412, "2025-S2": 0.87073}
+    early, k0 = B.nondom_for("2023-01-05", sem)
+    s24, _ = B.nondom_for("2024-11-02", sem)
+    s25a, _ = B.nondom_for("2025-03-01", sem)
+    s25b, k2 = B.nondom_for("2025-09-06", sem)
+    tail, k3 = B.nondom_for("2026-08-08", sem)
+    assert k0 == "2024-S2" and k2 == "2025-S2" and k3 == "2025-S2"
+    assert early == s24 and tail == s25b
+    # the semesters are genuinely different - holding one flat across
+    # two years was the thing this replaces
+    assert s24["gbp"]["gas"] != s25b["gbp"]["gas"]
+    assert abs(s24["gbp"]["gas"] / s25b["gbp"]["gas"] - 1) > 0.05
+    # NI gas falls across the three, Ireland's rises past NI
+    assert s24["gbp"]["gas"] > s25a["gbp"]["gas"] > s25b["gbp"]["gas"]
+
+
+def test_each_semester_converts_at_its_own_exchange_rate():
+    """UREGNI sterlings Eurostat's euro at the semester average, so
+    recovering the euro figure needs THAT semester's rate - not the
+    week's, and not one rate for all of them."""
+    import build as B
+    flat = {"2024-S2": 0.87, "2025-S1": 0.87, "2025-S2": 0.87}
+    real = {"2024-S2": 0.8386, "2025-S1": 0.8412, "2025-S2": 0.87073}
+    a, _ = B.nondom_for("2024-11-02", flat)
+    b, _ = B.nondom_for("2024-11-02", real)
+    assert a["eur"]["electricity"] != b["eur"]["electricity"]
+    assert abs(b["eur"]["electricity"] - 23.727 / 100 / 0.8386) < 5e-4
+    # sterling is published directly and must not move with the rate
+    assert a["gbp"] == b["gbp"]
+
+
+def test_week_carries_its_own_non_domestic_rates():
+    """A historic week must price its services share at its own
+    semester. Before this, every week used today's figures."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    days = sorted(feeds["hdd"]["hdd_island"])
+    ctx = B.week_inputs(feeds, days[-8])
+    assert ctx and "nondom" in ctx
+    assert set(ctx["nondom"]) == {"eur", "gbp"}
+    # and derive_hero prefers it over the live anchors
+    a = B.ANCHORS
+    assert B._nondom(a, {"nondom": ctx["nondom"]}) == ctx["nondom"]
+    assert B._nondom(a, {})["eur"] == a["nondom_eur_per_kwh"]
+
+
+def test_semester_of_assigns_by_week_ending():
+    """A week straddling 30 June or 31 December lands wholly in the
+    semester it ends in - the agreed convention, two weeks a year."""
+    import build as B
+    assert B.semester_of("2025-06-29") == "2025-S1"
+    assert B.semester_of("2025-07-06") == "2025-S2"
+    assert B.semester_of("2025-12-28") == "2025-S2"
+    assert B.semester_of("2026-01-04") == "2026-S1"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
