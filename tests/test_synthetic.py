@@ -804,20 +804,23 @@ def test_build_history_freezes_all_but_two():
 
 
 def test_week_inputs_and_tariff_resolver():
+    from build import ie_eur as B_ie_eur
     feeds = _history_fixture_feeds()
     days = sorted(feeds["hdd"]["hdd_island"])
     w_end = days[-8]
     ctx = week_inputs(feeds, w_end)
     assert ctx and abs(ctx["ni_oil_ppl"] - 790.0 / 9.0) < 0.05
     assert ctx["fx"] == 0.851
-    assert tariffs_for("2026-07-01")["eur"]["electricity"] == 0.4028
+    assert tariffs_for("2026-07-01")["eur"]["electricity"] == \
+        B_ie_eur("domestic_electricity", "2026-07-01")
     # four periods now: the backfill row, then pre-April, April-June
     # and July onward. NI values are the 8 Aug 2026 rebuild - all-in
     # at the Regulator's consumption basis, gas weighted across both
     # regulated suppliers - so they are NOT the old unit-only figures.
     assert tariffs_for("2026-03-15")["gbp"]["gas"] == 0.0809
     assert tariffs_for("2026-05-01")["gbp"]["gas"] == 0.0739
-    assert tariffs_for("2026-05-01")["eur"]["electricity"] == 0.373
+    assert tariffs_for("2026-05-01")["eur"]["electricity"] == \
+        B_ie_eur("domestic_electricity", "2026-05-01")
     assert tariffs_for("2026-06-30")["gbp"]["electricity"] == 0.3216
     assert tariffs_for("2025-09-01")["gbp"]["gas"] == 0.0884
     # a week before any CCNI data cannot be built
@@ -1975,17 +1978,19 @@ def test_non_domestic_rates_are_services_scaled_not_industrial():
     quietly reverts toward the industrial figures should fail here."""
     import build as B
     a = B.ANCHORS
-    assert a["nondom_gbp_per_kwh"]["electricity"] == 0.235
-    assert a["nondom_gbp_per_kwh"]["gas"] == 0.0867
-    assert a["nondom_eur_per_kwh"]["electricity"] == 0.284
-    assert a["nondom_eur_per_kwh"]["gas"] == 0.102
+    assert a["nondom_gbp_per_kwh"]["electricity"] == 0.2381
+    assert a["nondom_gbp_per_kwh"]["gas"] == 0.080
+    # euro side is derived from the published sterling figure and the
+    # fetched semester rate, so it is pinned in sterling terms
+    assert B.IE_PUBLISHED_P_PER_KWH["nondom_electricity"] == 22.68
+    assert B.IE_PUBLISHED_P_PER_KWH["nondom_gas"] == 9.3
     # never back down to the large/very large band...
-    assert a["nondom_gbp_per_kwh"]["electricity"] > 0.169
-    assert a["nondom_gbp_per_kwh"]["gas"] > 0.0582
+    assert a["nondom_gbp_per_kwh"]["electricity"] > 0.178
+    assert a["nondom_gbp_per_kwh"]["gas"] > 0.055
     # ...nor drift up to the very-small band alone, which was the
     # first cut of this anchor and priced every office as if it used
     # under 20 MWh a year
-    assert a["nondom_gbp_per_kwh"]["electricity"] < 0.285
+    assert a["nondom_gbp_per_kwh"]["electricity"] < 0.286
 
 
 def test_electricity_services_anchor_is_the_weighted_band_ladder():
@@ -1993,16 +1998,17 @@ def test_electricity_services_anchor_is_the_weighted_band_ladder():
     band prices and NI I&C consumption, excluding only Large + Very
     Large. If someone re-picks a single band this fails."""
     import build as B
-    cons = {"vs": 303.8, "s": 351.6 + 1202.6, "sm": 762.7, "m": 1245.8}
-    ni = {"vs": 28.5, "s": 26.1, "sm": 22.8, "m": 19.6}
-    ie = {"vs": 31.4, "s": 26.9, "sm": 22.0, "m": 19.3}
+    # S2 2025 bands and UREGNI's own published consumption shares
+    cons = {"vs": 5.1, "s": 32.9, "sm": 19.1, "m": 26.8}
+    ni = {"vs": 28.6, "s": 26.3, "sm": 23.3, "m": 20.2}
+    ie = {"vs": 26.2, "s": 25.4, "sm": 22.2, "m": 19.0}
     w = sum(cons.values())
     want_ni = sum(cons[k] * ni[k] for k in cons) / w / 100
-    want_ie = sum(cons[k] * ie[k] for k in cons) / w / 100 / 0.84
+    want_ie = sum(cons[k] * ie[k] for k in cons) / w
     assert abs(B.ANCHORS["nondom_gbp_per_kwh"]["electricity"]
                - want_ni) < 5e-4, want_ni
-    assert abs(B.ANCHORS["nondom_eur_per_kwh"]["electricity"]
-               - want_ie) < 5e-4, want_ie
+    assert abs(B.IE_PUBLISHED_P_PER_KWH["nondom_electricity"]
+               - want_ie) < 0.05, want_ie
 
 
 def test_services_rates_sit_below_domestic_but_not_far_below():
@@ -2020,26 +2026,69 @@ def test_services_rates_sit_below_domestic_but_not_far_below():
 
 
 def test_both_jurisdictions_price_domestic_all_in():
-    """The point of the 8 Aug rebuild: NI and ROI domestic rates are
-    now the same KIND of quantity - an all-in effective rate at a
-    stated consumption, VAT and standing charges included - so the two
-    bills are comparable at component level rather than only in total.
-
-    The tell is that neither can be a bare unit rate any more. A unit
-    rate without a standing charge sits materially below the all-in
-    figure, so pinning the published band levels catches a silent
-    revert to the old basis."""
+    """NI and ROI domestic are the same KIND of quantity - an all-in
+    effective rate at a stated consumption, VAT and standing charges
+    included - so the bills compare at component level."""
     import build as B
-    # ROI: Eurostat band prices, S2 2024, converted at 0.84
     pre = B.tariffs_for("2025-09-01")["eur"]
-    assert abs(pre["electricity"] - 31.33146586666666 / 0.84 / 100) < 5e-4
-    assert abs(pre["gas"] - 11.296435899999999 / 0.84 / 100) < 5e-4
-    # ...stepped by the announced Electric Ireland move, not re-anchored
+    assert abs(pre["electricity"]
+               - 35.2 / 100 / B.IE_FX["rate"]) < 5e-4
+    assert abs(pre["gas"] - 11.3 / 100 / B.IE_FX["rate"]) < 5e-4
     jul = B.tariffs_for("2026-07-01")["eur"]
     assert abs(jul["electricity"] / pre["electricity"] - 1.08) < 0.002
     assert abs(jul["gas"] / pre["gas"] - 1.077) < 0.002
-    # NI unchanged by this: still the regulated all-in bills
     assert B.tariffs_for("2025-09-01")["gbp"]["electricity"] == 0.3091
+
+
+def test_irish_anchors_use_a_credit_free_semester():
+    """The Irish domestic electricity series carries government
+    credits as negative taxes - 31.3 p/kWh in S2 2024, 27.5 in S1
+    2025, 35.2 in S2 2025, a 28% jump caused by a credit ending. This
+    site prices the real cost, so the anchor must be the clean
+    semester. Pinning it stops a future edit reaching for the lower,
+    subsidised figure because it looks more favourable."""
+    import build as B
+    assert B.IE_SEMESTER == "2025-S2"
+    assert B.IE_PUBLISHED_P_PER_KWH["domestic_electricity"] == 35.2
+    assert B.IE_PUBLISHED_P_PER_KWH["domestic_electricity"] > 31.4
+
+
+def test_semester_means_drop_part_semesters():
+    """A part-semester mean is indistinguishable from a whole one and
+    would silently mis-scale every Irish anchor, so short semesters
+    are dropped rather than averaged thin."""
+    import build as B
+    whole = {}
+    d = dt.date(2025, 7, 1)
+    while d <= dt.date(2025, 12, 31):
+        if d.weekday() < 5:
+            whole[d.isoformat()] = 0.87
+        d += dt.timedelta(days=1)
+    out = B.semester_means(whole)
+    assert out == {"2025-S2": 0.87}
+    thin = dict(list(whole.items())[:40])
+    assert B.semester_means(thin) == {}
+
+
+def test_fx_falls_back_loudly_and_scales_every_irish_anchor():
+    """The rate scales the whole ROI side. A missing semester must
+    land on the stated fallback, and a present one must actually be
+    used - including by the non-domestic anchors."""
+    import build as B
+    before = dict(B.IE_FX)
+    try:
+        B.apply_ie_fx({"ecb_fx": {"eur_gbp_semester": {}}})
+        assert B.IE_FX["rate"] == B.IE_FX_FALLBACK
+        assert "UNVERIFIED" in B.IE_FX["source"]
+        B.apply_ie_fx({"ecb_fx": {"eur_gbp_semester": {B.IE_SEMESTER: 0.9}}})
+        assert B.IE_FX["rate"] == 0.9
+        assert abs(B.ANCHORS["nondom_eur_per_kwh"]["electricity"]
+                   - 22.68 / 100 / 0.9) < 5e-4
+        assert abs(B.tariffs_for("2025-09-01")["eur"]["electricity"]
+                   - 35.2 / 100 / 0.9) < 5e-4
+    finally:
+        B.IE_FX.update(before)
+        B.apply_ie_fx({})
 
 
 def test_domestic_sits_above_non_domestic_at_a_COMMON_vintage():
@@ -2061,19 +2110,15 @@ def test_domestic_sits_above_non_domestic_at_a_COMMON_vintage():
     applying regulated domestic steps to unregulated business
     contracts would be a dagger on a dagger. It closes when REMM
     publishes newer semesters."""
-    ni_dom_s2_2024_incl_vat = 9.878854331326348
-    ni_dom_s2_2024_excl_vat = ni_dom_s2_2024_incl_vat / 1.05
-    ni_nondom_s2_2024 = 8.66536086825675
-    assert ni_nondom_s2_2024 < ni_dom_s2_2024_excl_vat
-
-    ie_dom_s2_2024_incl_vat = 11.296435899999999
-    ie_nondom_s2_2024 = 8.579253099999999
-    assert ie_nondom_s2_2024 < ie_dom_s2_2024_incl_vat
-
-    ni_dom_e = 30.097494947977584
-    assert 28.5 < ni_dom_e            # above the very small I&C band
-    ie_dom_e = 31.33146586666666
-    assert 31.4 > ie_nondom_s2_2024
+    # S2 2025: NI domestic gas 8.6 incl VAT, 8.19 excl, against 8.0
+    # non-domestic - correct order, where the shipped anchors invert
+    # only because domestic is stepped to 2026 and 2025 was dearer.
+    assert 8.0 < 8.6 / 1.05
+    # Ireland, same semester: 11.3 domestic against 9.3 non-domestic
+    assert 9.3 < 11.3
+    # and electricity, both jurisdictions
+    assert 22.68 < 35.2
+    assert 23.81 < 30.6
 
 
 def test_electricity_ordering_holds_on_the_shipped_anchors():
