@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.18.0"
+PIPELINE_VERSION = "4.19.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -84,7 +84,28 @@ SERIES_KEEP_DAYS = 1150
 # verified from this date (Power NI +4% and Firmus -7.86% both
 # effective 1 Oct 2025; Electric Ireland electricity frozen through
 # the winter, gas -4% from Sep 2025).
-HISTORY_START = "2025-10-01"
+# 8 Aug 2026: extended BACK eight weeks to complete a year on record.
+# Why this date is reachable and 1 Oct 2025 was the previous floor:
+#  - ROI needs no new anchor at all. Electric Ireland held prices from
+#    Oct 2022 to 1 Jul 2026, and SEAI/Eurostat semester S2 2025 runs
+#    1 Jul - 31 Dec 2025, so Aug-Sep 2025 is inside the same period
+#    the Oct 2025 row already describes.
+#  - NI needs one prior row, and both regulated suppliers publish it:
+#    SSE's maximum average price was set on 1 Apr 2024 and unchanged
+#    until 1 Oct 2025; Power NI's tariff ran from 1 Dec 2024.
+#  - Grid carbon for these weeks is NOT in the daily EirGrid feed
+#    (50-day retention). It is taken from the hourly store, whose
+#    floor advances daily - see daily_ci_from_hourly().
+HISTORY_START = "2025-08-06"
+# The date from which the record has been observed as it happened.
+# Weeks before it are reconstructed from published tariffs and the
+# hourly store, and are counted and labelled separately - the 52-live
+# -weeks milestone is not reached by backfilling.
+LIVE_FROM = "2025-10-01"
+# Weeks retained. Was 60, which a 52-week record plus forward growth
+# would have hit inside two months - silently dropping the weeks
+# backfilled here. 120 leaves room for the 24-month view.
+HISTORY_MAX = 120
 # History schema (splits handover, 1 Aug 2026). Bump triggers a
 # one-time restatement: stored weeks recompute through derive_hero
 # with their STORED per-entry inputs (ef_electricity injected, oil
@@ -122,7 +143,9 @@ HISTORY_SCHEMA = 5
 #   4 - 7 Aug 2026: heat-pump stock split out of the electricity line
 #       so the bars can show heat-pump electricity and the ambient heat
 #       it harvests, on census anchors
-ANCHOR_EPOCH = 4
+# 5 (8 Aug 2026): NI tariff basis rebuilt (see TARIFF_HISTORY) and
+# the back-look floor moved to 2025-08-06. Every stored week reprices.
+ANCHOR_EPOCH = 5
 # The heat/cold split fields carried by both the island entry and,
 # from history schema 5, each jurisdiction sub-block.
 JUR_SPLIT_KEYS = ("heat_gwh", "cold_gwh",
@@ -587,22 +610,80 @@ WHY_HEAT = {
 # series does not carry). Backfilled weeks freeze at first computation:
 # a wrong early row is permanent, so rows are added only once verified
 # against SEAI/CSO/CRU archives. Single verified period at porting.
-# Verified against announcements, 27 Jul 2026: Utility Regulator NI
-# (Power NI elec +6.2% and Firmus Ten Towns gas +15.65% both eff
-# 1 Jul 2026; Firmus -10.1% eff Apr 2026) and Electric Ireland
-# (elec +8%, gas +7.7% eff 1 Jul 2026 - first change since Oct 2022,
-# prices held through the window's start). Pre-July rows are
-# back-derived from the announced percentages against the July rates,
-# so carry ~+/-1% derivation uncertainty (announced changes are
-# bill-basis where unit-rate basis was unavailable) - dagger.
+# NI TARIFF BASIS - rebuilt 8 Aug 2026. Read this before changing a
+# number.
+#
+# WHAT CHANGED. The NI rows were previously a percentage chain off a
+# single supplier - Firmus Energy (Ten Towns) - with the standing
+# charge stripped out to leave a bare unit rate. Two problems. Firmus
+# regulates about 75,756 customers while SSE Airtricity Gas Supply
+# covers roughly 195,000 in Greater Belfast plus 3,200 in the West, so
+# the smaller market was setting the NI gas bill. And the two
+# suppliers are not structurally comparable: SSE's domestic tariff is
+# banded with NO standing charge (its two published unit rates alone
+# reproduce the typical bill exactly), while Firmus charges a unit
+# rate plus a standing charge. Stripping "the standing charge" from
+# one and not the other imports a tariff structure as a price.
+#
+# THE BASIS NOW. Effective all-in pence per kWh at the Utility
+# Regulator's own stated consumption - 12,000 kWh for gas, 3,200 kWh
+# for electricity - taken from the published annual bills, INCLUDING
+# 5% VAT, and weighted across suppliers by regulated customer count
+# (SSE 0.7235 / Firmus 0.2765). All-in rather than unit-only is also
+# the right aggregate: the national bill is households x (standing +
+# unit x consumption), and average NI domestic consumption sits near
+# the Regulator's basis.
+#
+# EFFECT. NI gas rises about 12% for Oct 2025 and 14% for Apr 2026
+# against the old rows, roughly half from restoring the standing
+# charge and half from weighting in the larger and dearer supplier.
+# NI electricity rises about 5%. These are corrections, not new
+# estimates - but they move the NI headline, so revert here first if
+# an NI figure looks wrong after this release.
+#
+# SOURCES. UREGNI tariff review briefing papers. SSE maximum average
+# price 246.78 p/therm (eff 1 Apr 2024, unchanged to 30 Sep 2025) ->
+# 225.87 (1 Oct 2025, -8.47%) -> 207.59 (1 Apr 2026, -8.10%), not
+# reviewed in Jul 2026 - Annex 1 of each paper carries the series back
+# to Apr 2015 if the record is ever extended further. Firmus bills
+# GBP1,014 -> 934 (-7.86%, 1 Oct 2025) -> 840 (-10.1%, 1 Apr 2026) ->
+# 972 (+15.7%, 1 Jul 2026); the three announced GBP steps reproduce
+# those percentages to 0.04pp, which is the check that the chain is
+# sound. Power NI GBP989 -> 1,029 (+4%, 1 Oct 2025) -> 1,093 (+6.2%,
+# 1 Jul 2026), no change in Apr 2026.
+#
+# ROI is unchanged and on a DIFFERENT basis - standard unit rate incl
+# 9% VAT, no standing charge - because ROI standing charges are not
+# verified from a regulator (the market is deregulated; SEAI sources
+# its prices from the EU price collection, six-monthly). Putting the
+# two jurisdictions on one basis is an open item; until then the NI
+# and ROI bills are not like-for-like at the component level, though
+# each is internally consistent. Electric Ireland held prices from
+# Oct 2022 to 1 Jul 2026 (+8% electricity, +7.7% gas), which is why
+# the backfill row repeats the Oct 2025 euro figures unchanged.
+#
+# VAT CONVENTION (applies to both jurisdictions and to the UK sibling)
+# Domestic rates INCLUDE VAT - 5% NI, 9% ROI. Non-domestic rates
+# EXCLUDE it, because businesses recover input VAT and it is not a
+# cost to them. That is Eurostat level 3 for households and level 2
+# for non-households.
+#
+# CLAMP WARNING. tariffs_for() resolves any date before the first row
+# to that row. If HISTORY_START is ever moved behind 2025-08-06,
+# extend this table backwards from the published series FIRST or those
+# weeks will be priced at a tariff that did not exist yet.
 TARIFF_HISTORY = [
     # (from_date, {eur: {electricity, gas}, gbp: {electricity, gas}})
+    # gbp: all-in incl 5% VAT at the UREGNI consumption basis, gas
+    # weighted SSE/Firmus by customers; eur: unit rate incl 9% VAT.
+    ("2025-08-06", {"eur": {"electricity": 0.333, "gas": 0.107},
+                    "gbp": {"electricity": 0.3091, "gas": 0.0884}}),
     ("2025-10-01", {"eur": {"electricity": 0.333, "gas": 0.107},
-                    "gbp": {"electricity": 0.306, "gas": 0.0722}}),
+                    "gbp": {"electricity": 0.3216, "gas": 0.0809}}),
     ("2026-04-01", {"eur": {"electricity": 0.333, "gas": 0.107},
-                    "gbp": {"electricity": 0.306, "gas": 0.0649}}),
+                    "gbp": {"electricity": 0.3216, "gas": 0.0739}}),
     ("2026-07-01", {"eur": {"electricity": 0.36, "gas": 0.115},
-                    "gbp": {"electricity": 0.325, "gas": 0.075}}),
+                    "gbp": {"electricity": 0.3416, "gas": 0.0770}}),
 ]
 
 
@@ -2435,6 +2516,11 @@ def week_inputs(feeds, w_end):
             "fx": round(fx, 5), "ef_electricity": ef,
             "ef_source": ("weekly grid CI" if ef else "anchor"),
             "ni_oil_source": ni_src,
+            # Reconstructed weeks are priced from published tariffs and
+            # the hourly store rather than observed as they happened.
+            # They are perfectly good weeks; they are just not LIVE
+            # ones, and the milestone counts live.
+            "live": w_end >= LIVE_FROM,
             "tariffs": tariffs_for(w_end)}
 
 
@@ -2583,14 +2669,13 @@ def build_history(feeds, anchors=None):
                         # is recomputed from the entry's own stored
                         # inputs.
                         e["fuels"] = fuel_sub(h2)
-                        e["ni"] = jur_sub(h2["ni"])
-                        e["roi"] = jur_sub(h2["roi"])
                         # NOT setdefault: these keys already exist
                         # from earlier schemas, so a defaulting write
                         # silently skipped the per-fuel addition.
                         # A schema migration refreshes the block.
                         e["ni"] = jur_sub(h2["ni"])
                         e["roi"] = jur_sub(h2["roi"])
+                        e["live"] = w_end >= LIVE_FROM
                     else:
                         log(f"history: {w_end} unrecomputable - "
                             f"kept at prior schema (caption degrades)")
@@ -2643,10 +2728,11 @@ def build_history(feeds, anchors=None):
             "fx_eur_gbp": ctx["fx"],
             "fuels": fuel_sub(h),
             "ni_oil_source": ctx["ni_oil_source"],
+            "live": ctx["live"],
             "ni": jur_sub(h["ni"]),
             "roi": jur_sub(h["roi"]),
         })
-    return out[-60:]
+    return out[-HISTORY_MAX:]
 
 
 def derive_hero(feeds, anchors=None, week_ctx=None):
@@ -3136,7 +3222,23 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                   "degree days. Bills are sector-blended: services gas and "
                   "electricity, and all cooling, price at non-domestic "
                   "rates (dagger, pending Eurostat band prices); oil "
-                  "prices identically across sectors. Cooling is the "
+                  "prices identically across sectors. VAT convention: "
+                  "domestic rates include VAT (5% NI, 9% ROI), "
+                  "non-domestic rates exclude it, because businesses "
+                  "recover input VAT - Eurostat level 3 and level 2 "
+                  "respectively. NI gas and electricity are all-in "
+                  "rates at the Utility Regulator's own consumption "
+                  "basis, gas weighted across SSE Airtricity (Greater "
+                  "Belfast and West) and Firmus (Ten Towns) by "
+                  "regulated customer count; ROI is a standard unit "
+                  "rate without standing charges, so the two "
+                  "jurisdictions are internally consistent but not "
+                  "like-for-like at component level (open item). The "
+                  "NI non-domestic rates are the GB QEP-anchored "
+                  "estimates, and NI network costs - about 40% of a "
+                  "regulated gas bill - are set under different price "
+                  "controls, so the services side of the NI bill is a "
+                  "placeholder (dagger). Cooling is the "
                   "cold-economy "
                   "census (dagger loads beside the CSO data-centre "
                   "anchor), flat across the year with the comfort share "
@@ -3640,6 +3742,30 @@ def expand_hourly(doc):
     return out
 
 
+def daily_ci_from_hourly(store, min_hours=20):
+    """
+    Daily mean grid carbon intensity from the hourly store.
+
+    The daily EirGrid feed retains 50 days. The backfilled weeks are
+    ten months old, so their carbon can only come from the hourly
+    store's co2_ai series - and that store keeps 13 months, so its
+    floor advances a day every day. Once a week is built and frozen
+    its ef_electricity is stored and reused on restatement, so this is
+    a one-time capture: after these weeks are in the record, the store
+    rolling past them costs nothing.
+
+    Returns {date: g/kWh}. Days with fewer than min_hours observations
+    are dropped rather than averaged thin.
+    """
+    ser = (expand_hourly(store) or {}).get("co2_ai") or {}
+    acc = {}
+    for k, v in ser.items():
+        acc.setdefault(k[:10], []).append(v)
+    out = {d: round(sum(vs) / len(vs), 1)
+           for d, vs in acc.items() if len(vs) >= min_hours}
+    return out
+
+
 def build_hourly_store(previous):
     """Walk back in ~28-day chunks until the window is covered, then
     keep only the most recent chunk (plus a 2-day revision re-fetch)
@@ -3872,9 +3998,39 @@ def main():
     hg = derive_heat_gap(feeds)
     if hg:
         derived["heat_gap"] = hg
+    # Carbon for the backfilled weeks. The daily feed keeps 50 days;
+    # anything older comes from the hourly store, which is read here
+    # BEFORE history so week_context can see it. Daily values win
+    # where both exist - the store is the fallback, not the source.
+    try:
+        prev_store = (json.loads(HOURLY_PATH.read_text())
+                      if HOURLY_PATH.exists() else {})
+        hci = daily_ci_from_hourly(prev_store)
+        if hci:
+            eg = feeds.setdefault("eirgrid", {})
+            ci = eg.setdefault("co2_intensity_g_per_kwh", {})
+            added = sum(1 for d, v in hci.items() if ci.setdefault(d, v) is v)
+            log(f"carbon: {len(hci)} daily means available from the "
+                f"hourly store, {added} filled gaps in the daily feed "
+                f"(span {min(hci)}..{max(hci)})")
+    except Exception as exc:
+        log(f"carbon: hourly-store fallback unavailable "
+            f"({exc.__class__.__name__}) - backfilled weeks will use "
+            "the anchor EF")
     derived["history"] = build_history(feeds)
     derived["history_schema"] = HISTORY_SCHEMA
     derived["anchor_epoch"] = ANCHOR_EPOCH
+    # Two counters, deliberately. Weeks on record includes the weeks
+    # reconstructed behind LIVE_FROM; weeks live counts only those
+    # observed as they happened. The 52-live-weeks milestone is the
+    # second number and is not reached by backfilling.
+    _h = derived["history"] or []
+    derived["weeks_on_record"] = len(_h)
+    derived["weeks_live"] = sum(1 for e in _h if e.get("live"))
+    derived["live_from"] = LIVE_FROM
+    log(f"history: {derived['weeks_on_record']} weeks on record, "
+        f"{derived['weeks_live']} live (from {LIVE_FROM}); "
+        f"schema {HISTORY_SCHEMA}, anchor epoch {ANCHOR_EPOCH}")
     gw = sorted(((feeds.get("gni_live") or {}).get("ndm_gwh")
                  or {}))
     derived["gas_window"] = {"from": gw[0], "to": gw[-1],
