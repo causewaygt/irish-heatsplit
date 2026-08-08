@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.17.0"
+PIPELINE_VERSION = "4.18.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -98,7 +98,14 @@ HISTORY_START = "2025-10-01"
 # weeks with jurisdiction blocks predating the per-fuel addition -
 # so the windowed energy bars worked all-island but fell back to the
 # live week for NI and ROI.
-HISTORY_SCHEMA = 4
+# 5 (7 Aug 2026): the per-jurisdiction sub-blocks gain the heat/cold
+# splits the island entry has carried since schema 2. Without them
+# every windowed view under the NI or ROI toggle failed the front
+# end's split guard, so the 4w/12w/12m cards and what-if silently
+# dropped their "(heat ... cooling ... saves ...)" breakdowns while
+# all-island showed them - a jurisdiction-only gap that looked like a
+# copy bug and was a missing field.
+HISTORY_SCHEMA = 5
 # Anchor epoch. Bump whenever a change to ANCHORS alters what a past
 # week WOULD have computed - as distinct from HISTORY_SCHEMA, which
 # tracks new FIELDS. A schema bump adds fields and leaves stored
@@ -116,6 +123,12 @@ HISTORY_SCHEMA = 4
 #       so the bars can show heat-pump electricity and the ambient heat
 #       it harvests, on census anchors
 ANCHOR_EPOCH = 4
+# The heat/cold split fields carried by both the island entry and,
+# from history schema 5, each jurisdiction sub-block.
+JUR_SPLIT_KEYS = ("heat_gwh", "cold_gwh",
+                  "bill_heat_eur_m", "bill_cold_eur_m",
+                  "bill_heat_gbp_m", "bill_cold_gbp_m",
+                  "emissions_heat_kt", "emissions_cold_kt")
 UA = {"User-Agent": "ioi-heatsplit/0.5 (contact@causewaygt.com)"}
 TIMEOUT = 90
 RETRIES = 3
@@ -2447,6 +2460,7 @@ def build_history(feeds, anchors=None):
         return out
 
     def jur_sub(b):
+        # (JUR_SPLIT_KEYS is module-level so the tests can name it)
         return {
             "purchased_gwh": b["combined"]["purchased_gwh"],
             "served_gwh": b["combined"]["served_gwh"],
@@ -2462,6 +2476,14 @@ def build_history(feeds, anchors=None):
             "wf_bill_gbp_m": b["what_if_combined"]["bill_gbp_m"],
             "wf_emissions_kt":
                 b["what_if_combined"]["emissions_kt_co2"],
+            # schema 5: the same heat/cold splits the island entry
+            # carries, so a jurisdiction window can break its cards
+            # down instead of falling back to a bare total. Sterling
+            # AND euro, because the NI view prices in sterling and
+            # must not convert components in the browser.
+            **{k: b["combined"][k] for k in JUR_SPLIT_KEYS},
+            **{"wf_" + k: b["what_if_combined"][k]
+               for k in JUR_SPLIT_KEYS},
         }
 
     prev = list((PREVIOUS_DERIVED or {}).get("history") or [])
