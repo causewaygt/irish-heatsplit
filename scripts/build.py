@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.20.0"
+PIPELINE_VERSION = "4.21.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -293,53 +293,62 @@ ANCHORS = {
         "roi": {"gas": 0.60, "electricity": 0.55},
         "ni": {"gas": 0.55, "electricity": 0.55},
     },
-    # NON-DOMESTIC RATES - rebuilt 8 Aug 2026 from the Utility
-    # Regulator's Retail Energy Market Monitoring, semester 2 2024
-    # (2024 AREMM, published 10 Sep 2025).
+    # NON-DOMESTIC RATES - Utility Regulator Retail Energy Market
+    # Monitoring, semester 2 2024 (2024 AREMM data publication).
     #
-    # WHAT WAS WRONG. Both jurisdictions were carrying LARGE-USER
-    # prices. The NI pair (24.0p / 5.5p) was the GB QEP manufacturing
-    # average lifted verbatim from the UK sibling - wrong jurisdiction
-    # AND wrong sector. The ROI pair was the same shape. But this
-    # site's non-domestic scope is SERVICES BUILDINGS - offices,
-    # retail, hospitality, public estate - not industry, and services
-    # sit at the small end of the distribution where prices are near
-    # domestic, not at the industrial end where they are half that.
-    # NI I&C electricity ran 28.5 p/kWh for very small connections
-    # against 16.9 p/kWh for large and very large; NI I&C gas 8.7
-    # against 5.8. We had been pricing offices at smelter rates.
+    # WHAT WAS WRONG. Both jurisdictions carried LARGE-USER prices.
+    # The NI pair (24.0p / 5.5p) was the GB QEP manufacturing average
+    # lifted verbatim from the UK sibling - wrong jurisdiction AND
+    # wrong sector. This site's non-domestic scope is SERVICES
+    # BUILDINGS - offices, retail, hospitality, public estate - which
+    # sit at the small end of the distribution where prices run near
+    # domestic, not at the industrial end where they are little more
+    # than half that. We had been pricing offices at smelter rates.
+    #
+    # ELECTRICITY - consumption-weighted across the published bands,
+    # excluding only Large + Very Large. That top band is seventeen NI
+    # connections and 683 GWh of unambiguously heavy industry and data
+    # centres; every band below it is where services buildings live.
+    # Weighting is by NI I&C consumption (AREMM Table 4), applied to
+    # both jurisdictions because Ireland's band consumption split is
+    # not published in the same table - a dagger, but the two price
+    # ladders are close enough that the weighting choice moves the
+    # answer far less than the band choice did.
+    #   band (MWh/yr)      NI p/kWh   IE p/kWh   NI GWh
+    #   very small <20        28.5       31.4      304
+    #   small 20-500          26.1       26.9    1,554
+    #   small/med 500-2k      22.8       22.0      763
+    #   medium 2k-20k         19.6       19.3    1,246
+    #   large+VL >20k         16.9       17.4      683   <- excluded
+    #   weighted (services)   23.5       23.8    3,866
+    # Ireland converted back to euro at 0.84, the semester average -
+    # UREGNI converts Eurostat's euro figures to sterling for the
+    # comparison, so this recovers the original.
+    #
+    # GAS - band I1 (<278,000 kWh/yr), which is where services
+    # buildings overwhelmingly sit. NOT consumption-weighted, because
+    # the REMM price bands (I1/I2/I3&I4) do not map onto the network
+    # EUC bands the consumption split is published in, and NI I&C gas
+    # consumption is ~68% daily-metered heavy industry which would
+    # drag a weighted figure to an industrial number. I1 for
+    # reference: NI 8.67, Ireland 8.58; I2 7.55 / 7.76; I3&I4 5.82 /
+    # 3.23. Dagger on the band choice.
     #
     # THE BASIS. UREGNI derives these the way Eurostat does - volume
-    # sold and revenue submitted per size band, revenue over volume,
+    # sold and revenue submitted per size band, revenue over volume -
     # so standing charges are INCLUDED by construction. That makes
     # them like-for-like with the SEAI/Eurostat semester prices on the
     # ROI side, which is what closes the cross-jurisdiction basis gap
     # for the services share. I&C figures include CCL and EXCLUDE VAT,
     # which is the convention this site already applies to services.
     #
-    # BAND CHOICE (dagger). Anchored on the very small band (<20 MWh
-    # electricity, <73,200 kWh gas). By CONNECTIONS that band is 71%
-    # of I&C electricity and 86% of I&C gas - but by CONSUMPTION it is
-    # only about 7%, and consumption is what this site prices. The
-    # honest position is that services buildings straddle the very
-    # small and small bands, this is the top of that range, and the
-    # figure is therefore an UPPER anchor for services. Closing it
-    # needs the small and medium band NI prices, which are in the
-    # AREMM's Excel data download rather than its text.
-    #
-    # ROI figures are the Ireland comparators in the same tables
-    # (31.4 p/kWh electricity, 8.6 p/kWh gas, very small, S2 2024),
-    # converted back to euro at the semester average 0.84 EUR/GBP -
-    # UREGNI converts Eurostat's euro figures to sterling for the
-    # comparison, so this recovers the original.
-    #
-    # VINTAGE. These are held at S2 2024, the latest published
-    # semester, and do NOT move week to week. REMM lags about nine
-    # months. Level from the semester series and timing from tariff
+    # VINTAGE. Held at S2 2024, the latest published semester, and
+    # they do NOT move week to week. REMM lags about nine months.
+    # Level from the semester series and timing from tariff
     # announcements is the intended design; until that is built the
     # services share of every week is priced at a 2024 semester.
-    "nondom_eur_per_kwh": {"electricity": 0.374, "gas": 0.102},
-    "nondom_gbp_per_kwh": {"electricity": 0.285, "gas": 0.087},
+    "nondom_eur_per_kwh": {"electricity": 0.284, "gas": 0.102},
+    "nondom_gbp_per_kwh": {"electricity": 0.235, "gas": 0.0867},
     "retail_eur_per_kwh": {"gas": 0.115, "electricity": 0.36},
     "retail_gbp_per_kwh": {"gas": 0.075, "electricity": 0.325},
     # The cold economy - island cooling loads, electricity basis.
