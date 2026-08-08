@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.25.0"
+PIPELINE_VERSION = "4.26.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -150,7 +150,10 @@ HISTORY_SCHEMA = 5
 # 7 (8 Aug 2026): Irish anchors moved to semester 2 2025 (credit-free,
 # see IE_PUBLISHED_P_PER_KWH) and the euro conversion moved from a
 # hard-coded rate to the ECB semester mean computed from the feed.
-ANCHOR_EPOCH = 7
+# 8 (8 Aug 2026): non-domestic rates step by semester instead of being
+# held at one, so the services share of each week is priced at the
+# semester that week falls in. Every stored week reprices.
+ANCHOR_EPOCH = 8
 # The heat/cold split fields carried by both the island entry and,
 # from history schema 5, each jurisdiction sub-block.
 JUR_SPLIT_KEYS = ("heat_gwh", "cold_gwh",
@@ -180,6 +183,81 @@ JUR_SPLIT_KEYS = ("heat_gwh", "cold_gwh",
 # It is now the ECB semester mean, computed from the daily reference
 # rates this pipeline already retains and logged on every run.
 IE_SEMESTER = "2025-S2"
+
+# ------------------------------------------------- non-domestic by semester
+# Published REMM band prices, pence per kWh, incl CCL excl VAT.
+# Electricity is consumption-weighted across every band BELOW Large +
+# Very Large, using each semester's own published consumption shares -
+# services buildings are not the industrial tail, and the shares move
+# enough between semesters (very small 6.1 -> 6.9 -> 5.1% of I&C GWh)
+# to be worth taking per semester rather than once. Gas is band I1,
+# where services buildings sit; the REMM price bands do not map onto
+# the network bands the gas consumption split is published in.
+#
+# WHY THIS STEPS AND DOMESTIC DOES NOT. There are no regulated
+# non-domestic announcements to give finer timing, so the semester IS
+# the resolution. Domestic keeps dated steps because the regulator and
+# the incumbents publish them.
+#
+# CONVERSION. Each Irish figure converts at the ECB mean for ITS OWN
+# semester - UREGNI sterlings Eurostat's euro at that semester's
+# average, so that is the rate that recovers the original. Not the
+# week's semester: the figure belongs to the semester it was published
+# for, whichever week is being priced.
+#
+# TAIL. REMM lags about nine months, so weeks past the last published
+# semester hold at it rather than extrapolating - flagged, not guessed.
+#
+# Sources: 2024 AREMM (S2 2024), Q3 2025 QREMM (S1 2025), Q1 2026
+# QREMM (S2 2025). Domestic credits do not contaminate these: the
+# Irish credits were an electricity-only, household-only measure.
+NONDOM_SEMESTERS = {
+    #             NI elec  NI gas   IE elec  IE gas
+    "2024-S2": (23.457,   8.665,   23.727,  8.579),
+    "2025-S1": (22.706,   8.576,   23.221,  8.280),
+    "2025-S2": (23.808,   7.995,   22.692,  9.345),
+}
+
+
+def _nondom(a, week_ctx):
+    """The week's own non-domestic rates if it carries them, else the
+    live anchors. Historic weeks carry them so the services share is
+    priced at the semester the week falls in, not at today's."""
+    nd = (week_ctx or {}).get("nondom")
+    return nd if nd else {"eur": a["nondom_eur_per_kwh"],
+                          "gbp": a["nondom_gbp_per_kwh"]}
+
+
+def semester_of(date_iso):
+    """Which semester a week belongs to, by WEEK ENDING. A week
+    straddling 30 June or 31 December lands wholly in the semester it
+    ends in - two weeks a year, disclosed rather than split."""
+    return f"{date_iso[:4]}-S{1 if int(date_iso[5:7]) <= 6 else 2}"
+
+
+def nondom_for(date_iso, fx_by_semester=None):
+    """
+    Non-domestic rates in force for a week: NI in sterling, ROI in
+    euro, converted at each published figure's OWN semester rate.
+
+    Returns (rates, semester_used). Weeks before the first published
+    semester clamp to it; weeks after the last hold at it, which is
+    the REMM lag rather than a claim that prices stopped moving.
+    """
+    keys = sorted(NONDOM_SEMESTERS)
+    want = semester_of(date_iso)
+    use = keys[0] if want < keys[0] else (keys[-1] if want > keys[-1]
+                                          else want)
+    if use not in NONDOM_SEMESTERS:
+        use = max(k for k in keys if k <= want)
+    ni_e, ni_g, ie_e, ie_g = NONDOM_SEMESTERS[use]
+    rate = (fx_by_semester or {}).get(use) or IE_FX["rate"]
+    return {
+        "gbp": {"electricity": round(ni_e / 100, 4),
+                "gas": round(ni_g / 100, 4)},
+        "eur": {"electricity": round(ie_e / 100 / rate, 4),
+                "gas": round(ie_g / 100 / rate, 4)},
+    }, use
 # Used ONLY if the semester mean cannot be computed. Logged as
 # unverified when it fires, because a silent fallback here would move
 # the whole ROI side without saying so.
@@ -891,13 +969,14 @@ def apply_ie_fx(feeds):
                      source="fallback (UNVERIFIED)")
         log(f"fx: WARNING {IE_SEMESTER} semester mean unavailable - "
             f"every Irish anchor is on the {IE_FX_FALLBACK} fallback")
-    ANCHORS["nondom_eur_per_kwh"] = {
-        "electricity": ie_eur("nondom_electricity"),
-        "gas": ie_eur("nondom_gas"),
-    }
+    nd, used = nondom_for(today_utc().isoformat(), sem)
+    ANCHORS["nondom_eur_per_kwh"] = nd["eur"]
+    ANCHORS["nondom_gbp_per_kwh"] = nd["gbp"]
     log(f"fx: EUR/GBP {IE_FX['rate']} ({IE_FX['source']}); "
-        f"ROI domestic {tariffs_for(HISTORY_START)['eur']}, "
-        f"non-domestic {ANCHORS['nondom_eur_per_kwh']}")
+        f"ROI domestic {tariffs_for(HISTORY_START)['eur']}")
+    log(f"nondom: live week on semester {used} "
+        f"(latest published; REMM lags ~9 months) - "
+        f"NI {nd['gbp']}, ROI {nd['eur']}")
     return IE_FX["rate"]
 
 
@@ -2848,6 +2927,8 @@ def week_inputs(feeds, w_end, skips=None):
             # They are perfectly good weeks; they are just not LIVE
             # ones, and the milestone counts live.
             "live": w_end >= LIVE_FROM,
+            "nondom": nondom_for(w_end, ((feeds.get("ecb_fx") or {})
+                                         .get("eur_gbp_semester")))[0],
             "tariffs": tariffs_for(w_end)}
 
 
@@ -3252,8 +3333,8 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                              else a["retail_gbp_per_kwh"]))
                 price = table.get(fuel, table["gas"])
                 if fuel in ("gas", "electricity"):
-                    nd = (a["nondom_eur_per_kwh"] if cur == "eur"
-                          else a["nondom_gbp_per_kwh"])[fuel]
+                    nd = _nondom(a, W)["eur" if cur == "eur"
+                                        else "gbp"][fuel]
                     ds = a["dom_share"][jur][fuel]
                     price = ds * price + (1 - ds) * nd
             inp_t += inp
@@ -3277,8 +3358,8 @@ def derive_hero(feeds, anchors=None, week_ctx=None):
                     or (a["retail_eur_per_kwh"]["electricity"]
                         if cur == "eur"
                         else a["retail_gbp_per_kwh"]["electricity"]))
-        nondom_elec = (a["nondom_eur_per_kwh"] if cur == "eur"
-                       else a["nondom_gbp_per_kwh"])["electricity"]
+        nondom_elec = _nondom(a, W)["eur" if cur == "eur"
+                                    else "gbp"]["electricity"]
         # cooling is wholly non-domestic (UK convention)
         elec_price = nondom_elec
         # what-if heat-pump electricity blends at the domestic share of
