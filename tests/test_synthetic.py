@@ -810,14 +810,14 @@ def test_week_inputs_and_tariff_resolver():
     ctx = week_inputs(feeds, w_end)
     assert ctx and abs(ctx["ni_oil_ppl"] - 790.0 / 9.0) < 0.05
     assert ctx["fx"] == 0.851
-    assert tariffs_for("2026-07-01")["eur"]["electricity"] == 0.36
+    assert tariffs_for("2026-07-01")["eur"]["electricity"] == 0.4028
     # four periods now: the backfill row, then pre-April, April-June
     # and July onward. NI values are the 8 Aug 2026 rebuild - all-in
     # at the Regulator's consumption basis, gas weighted across both
     # regulated suppliers - so they are NOT the old unit-only figures.
     assert tariffs_for("2026-03-15")["gbp"]["gas"] == 0.0809
     assert tariffs_for("2026-05-01")["gbp"]["gas"] == 0.0739
-    assert tariffs_for("2026-05-01")["eur"]["electricity"] == 0.333
+    assert tariffs_for("2026-05-01")["eur"]["electricity"] == 0.373
     assert tariffs_for("2026-06-30")["gbp"]["electricity"] == 0.3216
     assert tariffs_for("2025-09-01")["gbp"]["gas"] == 0.0884
     # a week before any CCNI data cannot be built
@@ -2017,6 +2017,75 @@ def test_services_rates_sit_below_domestic_but_not_far_below():
         for fuel in ("electricity", "gas"):
             ratio = a[nd][fuel] / a[dom][fuel]
             assert 0.6 <= ratio <= 1.3, (cur, fuel, round(ratio, 3))
+
+
+def test_both_jurisdictions_price_domestic_all_in():
+    """The point of the 8 Aug rebuild: NI and ROI domestic rates are
+    now the same KIND of quantity - an all-in effective rate at a
+    stated consumption, VAT and standing charges included - so the two
+    bills are comparable at component level rather than only in total.
+
+    The tell is that neither can be a bare unit rate any more. A unit
+    rate without a standing charge sits materially below the all-in
+    figure, so pinning the published band levels catches a silent
+    revert to the old basis."""
+    import build as B
+    # ROI: Eurostat band prices, S2 2024, converted at 0.84
+    pre = B.tariffs_for("2025-09-01")["eur"]
+    assert abs(pre["electricity"] - 31.33146586666666 / 0.84 / 100) < 5e-4
+    assert abs(pre["gas"] - 11.296435899999999 / 0.84 / 100) < 5e-4
+    # ...stepped by the announced Electric Ireland move, not re-anchored
+    jul = B.tariffs_for("2026-07-01")["eur"]
+    assert abs(jul["electricity"] / pre["electricity"] - 1.08) < 0.002
+    assert abs(jul["gas"] / pre["gas"] - 1.077) < 0.002
+    # NI unchanged by this: still the regulated all-in bills
+    assert B.tariffs_for("2025-09-01")["gbp"]["electricity"] == 0.3091
+
+
+def test_domestic_sits_above_non_domestic_at_a_COMMON_vintage():
+    """Services rates exclude VAT and buy in bulk, so at the same
+    moment and the same tax basis they must sit below domestic.
+
+    This is asserted on the S2 2024 band figures rather than on the
+    shipped anchors, and that distinction matters. The shipped
+    non-domestic anchors ARE S2 2024, but the shipped domestic ones
+    are stepped through to 2026, and NI gas fell about 15% over that
+    span. So NI non-domestic gas (8.67p, 2024) now prints above NI
+    domestic gas (7.70p, Jul 2026) - not because small business gas
+    is cheaper than household gas, but because the two anchors are
+    eighteen months apart. At a common vintage the ordering is right:
+    domestic 9.88p incl VAT is 9.41p excl, against 8.67p
+    non-domestic.
+
+    The vintage gap is disclosed rather than escalated away, because
+    applying regulated domestic steps to unregulated business
+    contracts would be a dagger on a dagger. It closes when REMM
+    publishes newer semesters."""
+    ni_dom_s2_2024_incl_vat = 9.878854331326348
+    ni_dom_s2_2024_excl_vat = ni_dom_s2_2024_incl_vat / 1.05
+    ni_nondom_s2_2024 = 8.66536086825675
+    assert ni_nondom_s2_2024 < ni_dom_s2_2024_excl_vat
+
+    ie_dom_s2_2024_incl_vat = 11.296435899999999
+    ie_nondom_s2_2024 = 8.579253099999999
+    assert ie_nondom_s2_2024 < ie_dom_s2_2024_incl_vat
+
+    ni_dom_e = 30.097494947977584
+    assert 28.5 < ni_dom_e            # above the very small I&C band
+    ie_dom_e = 31.33146586666666
+    assert 31.4 > ie_nondom_s2_2024
+
+
+def test_electricity_ordering_holds_on_the_shipped_anchors():
+    """Electricity has no comparable vintage problem - NI domestic
+    rose since 2024 rather than falling - so the ordering must hold on
+    the live anchors, in both jurisdictions and both tariff periods."""
+    import build as B
+    a = B.ANCHORS
+    for d in ("2025-09-01", "2026-08-01"):
+        t = B.tariffs_for(d)
+        assert a["nondom_eur_per_kwh"]["electricity"] < t["eur"]["electricity"]
+        assert a["nondom_gbp_per_kwh"]["electricity"] < t["gbp"]["electricity"]
 
 
 if __name__ == "__main__":
