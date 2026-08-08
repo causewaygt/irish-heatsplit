@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.24.1 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.24.2 / site 4.8.0.
 
 ## The premise
 
@@ -241,6 +241,14 @@ than escalated away, because applying regulated domestic steps to
 unregulated business contracts would compound one estimate with
 another. It closes when REMM publishes newer semesters.
 
+**Weeks that cannot be built say so.** A week the pipeline cannot
+price is dropped, and a dropped week used to leave no trace – the
+record simply came out shorter, which reads as a smaller number rather
+than an error. Every decline now carries a reason, and the build logs
+them grouped by cause with a count against the number attempted and the
+span affected. A week outside the retention window is the only silent
+decline, because that one is by design.
+
 **The history block is written columnar.** Each key appears once
 instead of once per week, with the ni/roi/fuels sub-blocks recursed
 into – at 52 weeks the entries are wide and shallow, so the repeated
@@ -346,7 +354,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 114 tests, no network
+python3 tests/test_synthetic.py   # 116 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
