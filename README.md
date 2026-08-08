@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.22.0 / site 4.7.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.23.0 / site 4.7.0.
 
 ## The premise
 
@@ -205,7 +205,7 @@ the standing charge stripped out – Firmus alone was setting the NI gas
 bill, and the two suppliers are not structurally comparable, since
 SSE's domestic tariff is banded with no standing charge while Firmus
 charges a unit rate plus one. ROI domestic is now the same KIND of quantity: the
-Eurostat band price for semester 2 2024 – total revenue over volume,
+Eurostat band price for semester 2 2025 – total revenue over volume,
 so standing charges are included by construction – stepped by the
 Electric Ireland announcements, which held from October 2022 to 1 July
 2026. Both jurisdictions are therefore all-in effective rates at a
@@ -240,6 +240,26 @@ a common vintage the ordering is right – and it is disclosed rather
 than escalated away, because applying regulated domestic steps to
 unregulated business contracts would compound one estimate with
 another. It closes when REMM publishes newer semesters.
+
+**Irish anchors: credit-free, and converted at a fetched rate.** The
+Irish domestic electricity series carries government credits as
+negative taxes – €1,500 of them since 2022, the last €125 in
+January/February 2025 – which is why Ireland reads 31.3 p/kWh in
+semester 2 2024, 27.5 in semester 1 2025 and 35.2 in semester 2 2025.
+That 28% jump is a credit ending, not a price moving. This site prices
+the real cost of heat, so the credit-bearing semesters are unusable and
+semester 2 2025, the first clean one, is the anchor – which is also the
+semester the back-look starts in.
+
+The Utility Regulator publishes Ireland in sterling, having converted
+Eurostat's euro at the semester average, so recovering the euro figure
+needs that same average. It scales every Irish anchor on the site, and
+it is now computed from the ECB daily reference rates this pipeline
+already retains rather than assumed – the full history back to 1999
+comes down with the deep backfill, semesters with fewer than 110
+observations are dropped rather than averaged thin, and the rate in use
+is logged on every run. A documented fallback fires only if the mean
+cannot be computed, and says so loudly.
 
 **Provenance.** Sourced figures cite their publisher. Judgement figures
 carry a dagger (†) and are current Causeway Energies estimates –
@@ -315,7 +335,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 106 tests, no network
+python3 tests/test_synthetic.py   # 109 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
