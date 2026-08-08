@@ -2371,10 +2371,10 @@ def test_semester_of_assigns_by_week_ending():
     assert B.semester_of("2026-01-04") == "2026-S1"
 
 
-def _synthetic_store(hours=9384, start=(2025, 7, 14)):
+def _synthetic_store(hours=9384, start=(2025, 7, 14), renewables=True):
     import math
     t0 = dt.datetime(*start)
-    temps, dem = {}, {}
+    temps, dem, wind, solar = {}, {}, {}, {}
     for i in range(hours):
         h = t0 + dt.timedelta(hours=i)
         k = h.strftime("%Y-%m-%dT%H")
@@ -2384,7 +2384,14 @@ def _synthetic_store(hours=9384, start=(2025, 7, 14)):
         temps[k] = round(T, 2)
         dem[k] = round(3500 + 900 * max(0.0, 15.5 - T) / 10
                        + 400 * math.sin(2 * math.pi * (h.hour - 9) / 24), 1)
-    return {"schema": 2, "series": {"temp_ai": temps, "demand_ai": dem}}
+        wind[k] = round(900 + 700 * math.sin(2 * math.pi * i / 71), 1)
+        solar[k] = round(max(0.0, 600 * math.sin(
+            math.pi * (h.hour - 6) / 12)), 1)
+    ser = {"temp_ai": temps, "demand_ai": dem}
+    if renewables:
+        ser["wind_ai"] = wind
+        ser["solar_ai"] = solar
+    return {"schema": 2, "series": ser}
 
 
 def test_tightest_hour_lands_in_winter_and_nets_the_resistive_share():
@@ -2405,13 +2412,14 @@ def test_tightest_hour_lands_in_winter_and_nets_the_resistive_share():
     assert add["air_source"] < out["useful_heat_mw"]
     assert out["total_with_air_source_mw"] == \
         out["observed_mw"] + add["air_source"]
-    assert out["headroom_mw"] == out["block_mw"] - \
-        out["total_with_air_source_mw"]
-    # headroom is reported for EVERY route, not just air
+    # headroom is measured against the BREATHING ceiling - de-rated
+    # block plus the wind and solar actually generated - not the bare
+    # block, which is what makes it comparable with the UK sibling.
     hr = out["headroom_by_route_mw"]
     assert set(hr) == set(add)
+    assert out["ceiling_mw"] >= out["block_mw"]
     for r in add:
-        assert hr[r] == out["block_mw"] - out["observed_mw"] - add[r]
+        assert hr[r] == out["ceiling_mw"] - out["observed_mw"] - add[r]
     assert hr["geothermal_network"] > hr["ground_source"] > hr["air_source"]
     assert out["routes_that_fit"] == [r for r in add if hr[r] >= 0]
 
@@ -2501,7 +2509,7 @@ def test_route_ordering_is_reported_not_left_to_subtraction():
         assert r in joined
         assert f"headroom" in joined
     assert "routes that fit" in joined
-    assert "FITS" in joined or "EXCEEDS THE BLOCK" in joined
+    assert "FITS" in joined or "EXCEEDS THE CEILING" in joined
     # and the heat-versus-power comparison is printed, not just stored
     assert "heat system is" in joined
     assert out["heat_vs_block_ratio"] == round(
@@ -2523,7 +2531,7 @@ def test_a_route_that_exceeds_the_block_is_named_as_such():
         B.GRID_BLOCK_MW = real_block
         B.log = real_log
     joined = " | ".join(lines)
-    assert "EXCEEDS THE BLOCK" in joined
+    assert "EXCEEDS THE CEILING" in joined
     assert "routes that fit: NONE" in joined
 
 
@@ -2659,6 +2667,40 @@ def test_semopx_backfill_is_bounded_and_skips_days_already_priced():
     assert calls["doc"] == B.SEMOPX_BACKFILL_DAYS
     assert calls["list"] <= B.SEMOPX_BACKFILL_PAGES
     assert out
+
+
+def test_share_that_fits_is_solved_not_assumed():
+    """The UK sibling asks how far heat can be electrified before the
+    winter peak fills the fleet, rather than fixing a share. Fixing
+    one forces a choice between the site's own 20% what-if and a 100%
+    ceiling that appears nowhere else, and the answer swings entirely
+    on which is picked. Netting is linear in the share, so the solved
+    figure must equal headroom / added-at-100% exactly."""
+    import build as B
+    out = B.derive_tightest_hour(_synthetic_store())
+    sh = out["share_that_fits_pct"]
+    assert set(sh) == {"air_source", "ground_source", "geothermal_network"}
+    assert sh["geothermal_network"] > sh["ground_source"] > sh["air_source"]
+    for r, hr in out["share_binding_hour"].items():
+        assert hr and hr[5:7] in ("10", "11", "12", "01", "02"), (r, hr)
+
+
+def test_ceiling_breathes_with_wind_and_solar():
+    """The UK ceiling is the de-rated fleet PLUS the wind and solar
+    actually generated, so the Irish figure is not comparable until it
+    is too. A still, dark hour must therefore give a LOWER ceiling
+    than a windy one, and dropping the series must fall back to the
+    bare block rather than crashing."""
+    import build as B
+    with_re = B.derive_tightest_hour(_synthetic_store())
+    without = B.derive_tightest_hour(_synthetic_store(renewables=False))
+    assert with_re["ceiling_mw"] > B.GRID_BLOCK_MW
+    assert with_re["wind_solar_mw"] > 0
+    assert without["ceiling_mw"] == B.GRID_BLOCK_MW
+    assert without["wind_solar_mw"] == 0
+    # more headroom with renewables in the ceiling, so more heat fits
+    assert (with_re["share_that_fits_pct"]["air_source"]
+            > without["share_that_fits_pct"]["air_source"])
 
 
 if __name__ == "__main__":
