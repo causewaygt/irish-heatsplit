@@ -864,32 +864,24 @@ def test_blend_degenerate_settings_reproduce_domestic_pricing():
 
 def test_blend_direction_lowers_bills():
     """Real shares price services gas/electricity and all cooling at
-    non-domestic rates, so the total bill must fall.
+    non-domestic rates, which sit below domestic - bills must fall,
+    and the cooling bill must fall hardest in relative terms.
 
-    REVISED 8 Aug 2026. This test used to assert that the COOLING
-    bill also falls, on the reasoning that non-domestic sits below
-    domestic. That held only while the non-domestic anchors were
-    large-user prices. On the REMM band basis ROI non-domestic
-    electricity (37.4 c/kWh, revenue over volume, standing charges
-    included, VAT excluded) sits marginally ABOVE the ROI domestic
-    anchor (36 c/kWh, unit rate, no standing charge, VAT included) -
-    and cooling prices entirely at non-domestic rates, so the cooling
-    bill rises.
-
-    That crossover is not an error in either number; it is the
-    domestic-side basis mismatch, which is a live open item. The test
-    now pins what is defensible - the gas-driven total falls - and
-    watches the electricity crossover so it stays small. If the two
-    ever diverge by more than a tenth, one of the anchors has moved
-    onto a basis the other is not on."""
+    History, because this assertion has moved twice in one day. It
+    held under the original industrial anchors for the wrong reason,
+    broke when they were first replaced with the very-small band
+    alone (ROI non-domestic 37.4 c/kWh briefly sat ABOVE the 36 c
+    domestic anchor), and holds again now the bands are
+    consumption-weighted to a services scope. If it breaks a third
+    time, check the BAND CHOICE before touching the assertion."""
     feeds = _hero_fixture_feeds()
-    from build import ANCHORS
     degen = derive_hero(feeds, _degenerate_blend_anchors())
     real = derive_hero(feeds)
     assert real["bill_eur_m"] < degen["bill_eur_m"]
-    nd = ANCHORS["nondom_eur_per_kwh"]["electricity"]
-    dom = ANCHORS["retail_eur_per_kwh"]["electricity"]
-    assert abs(nd / dom - 1) < 0.10, (nd, dom)
+    assert real["cooling"]["bill_eur_m"] < degen["cooling"]["bill_eur_m"]
+    rel_cool = real["cooling"]["bill_eur_m"] / degen["cooling"]["bill_eur_m"]
+    rel_heat = real["bill_eur_m"] / degen["bill_eur_m"]
+    assert rel_cool < rel_heat
     # what-if electricity priced between non-domestic and domestic
     assert real["what_if_combined"]["bill_eur_m"] \
         < degen["what_if_combined"]["bill_eur_m"]
@@ -1983,13 +1975,34 @@ def test_non_domestic_rates_are_services_scaled_not_industrial():
     quietly reverts toward the industrial figures should fail here."""
     import build as B
     a = B.ANCHORS
-    assert a["nondom_gbp_per_kwh"]["electricity"] == 0.285
-    assert a["nondom_gbp_per_kwh"]["gas"] == 0.087
-    assert a["nondom_eur_per_kwh"]["electricity"] == 0.374
+    assert a["nondom_gbp_per_kwh"]["electricity"] == 0.235
+    assert a["nondom_gbp_per_kwh"]["gas"] == 0.0867
+    assert a["nondom_eur_per_kwh"]["electricity"] == 0.284
     assert a["nondom_eur_per_kwh"]["gas"] == 0.102
-    # never back down to the large/very large band
+    # never back down to the large/very large band...
     assert a["nondom_gbp_per_kwh"]["electricity"] > 0.169
-    assert a["nondom_gbp_per_kwh"]["gas"] > 0.058
+    assert a["nondom_gbp_per_kwh"]["gas"] > 0.0582
+    # ...nor drift up to the very-small band alone, which was the
+    # first cut of this anchor and priced every office as if it used
+    # under 20 MWh a year
+    assert a["nondom_gbp_per_kwh"]["electricity"] < 0.285
+
+
+def test_electricity_services_anchor_is_the_weighted_band_ladder():
+    """Recompute the NI electricity anchor from the published S2 2024
+    band prices and NI I&C consumption, excluding only Large + Very
+    Large. If someone re-picks a single band this fails."""
+    import build as B
+    cons = {"vs": 303.8, "s": 351.6 + 1202.6, "sm": 762.7, "m": 1245.8}
+    ni = {"vs": 28.5, "s": 26.1, "sm": 22.8, "m": 19.6}
+    ie = {"vs": 31.4, "s": 26.9, "sm": 22.0, "m": 19.3}
+    w = sum(cons.values())
+    want_ni = sum(cons[k] * ni[k] for k in cons) / w / 100
+    want_ie = sum(cons[k] * ie[k] for k in cons) / w / 100 / 0.84
+    assert abs(B.ANCHORS["nondom_gbp_per_kwh"]["electricity"]
+               - want_ni) < 5e-4, want_ni
+    assert abs(B.ANCHORS["nondom_eur_per_kwh"]["electricity"]
+               - want_ie) < 5e-4, want_ie
 
 
 def test_services_rates_sit_below_domestic_but_not_far_below():
