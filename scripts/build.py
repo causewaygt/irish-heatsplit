@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.24.1"
+PIPELINE_VERSION = "4.24.2"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -2691,12 +2691,51 @@ def ni_bridge_margin(feeds):
     return round(sum(diffs) / len(diffs), 2)
 
 
-def week_inputs(feeds, w_end):
+def report_skips(skips, built):
+    """
+    Say which weeks were dropped and why, grouped by reason.
+
+    A silent `continue` is the worst failure mode this pipeline has:
+    the record simply comes out shorter, which reads as a smaller
+    number rather than an error, and there is nothing in the log to
+    contradict it. Sixteen weeks quietly missing from a 104-week
+    extension would look exactly like a 88-week extension.
+    """
+    if not skips:
+        log(f"history: {built} weeks built, none skipped")
+        return
+    by_reason = {}
+    for w, r in skips:
+        by_reason.setdefault(r, []).append(w)
+    log(f"history: WARNING {len(skips)} week(s) skipped of "
+        f"{built + len(skips)} attempted")
+    for r, ws in sorted(by_reason.items()):
+        ws = sorted(ws)
+        span = ws[0] if len(ws) == 1 else f"{ws[0]}..{ws[-1]}"
+        log(f"history:   {len(ws)} week(s) [{span}] - {r}")
+
+
+def week_inputs(feeds, w_end, skips=None):
+    """
+    Per-week prices, fx, carbon and tariffs, or None if the week
+    cannot be priced.
+
+    `skips` is an optional list this appends (week, reason) to. It
+    exists because returning None silently makes a short back-look
+    look like a smaller number rather than an error - a week that
+    cannot be built simply is not there, and nothing says so. The
+    only silent decline is a week outside the window by design.
+    """
     """Per-week pricing context for a calendar week ending w_end (Sun):
     NI oil (CCNI 900L weekly mean, p/L), ROI oil (bulletin week), fx
     (weekly mean of daily ECB), electricity EF (weekly CI mean or
     anchor), tariffs (period resolver). Returns None if a required
     input is absent - the week is not built."""
+    def _skip(reason):
+        if skips is not None:
+            skips.append((w_end, reason))
+        return None
+
     w_start = (dt.date.fromisoformat(w_end)
                - dt.timedelta(days=6)).isoformat()
     days = [(dt.date.fromisoformat(w_start) + dt.timedelta(days=i))
@@ -2717,7 +2756,11 @@ def week_inputs(feeds, w_end):
         e_days = [d for d in sorted(ext) if d <= w_end]
         f_vals = [fxs[d] for d in days if d in fxs]
         if m is None or not e_days or not f_vals:
-            return None
+            return _skip(
+                "NI oil: no CCNI reading and the bulletin bridge could "
+                "not be built" + (" (no overlap margin)" if m is None else "")
+                + ("" if e_days else " (no ex-tax bulletin week)")
+                + ("" if f_vals else " (no FX for the week)"))
         fx_w = sum(f_vals) / len(f_vals)
         ni_vals = [ext[e_days[-1]] / 1000.0 * fx_w * 100.0 * 1.05 + m]
         ni_src = "bridged (bulletin ex-tax + calibrated margin, dagger)"
@@ -2725,7 +2768,7 @@ def week_inputs(feeds, w_end):
             .get("roi_heating_gasoil_eur_per_1000l") or {})
     b_days = [d for d in sorted(bull) if d <= w_end]
     if not b_days:
-        return None
+        return _skip("ROI oil: no EU bulletin week at or before this date")
     fxs = ((feeds.get("ecb_fx") or {}).get("eur_gbp_daily") or {})
     fx_vals = [fxs[d] for d in days if d in fxs]
     fx = (sum(fx_vals) / len(fx_vals)) if fx_vals \
@@ -2867,6 +2910,7 @@ def build_history(feeds, anchors=None):
                for k in JUR_SPLIT_KEYS},
         }
 
+    skips = []
     prev = list(expand_history((PREVIOUS_DERIVED or {})
                                .get("history") or []))
     prev_schema = int((PREVIOUS_DERIVED or {})
@@ -2980,12 +3024,14 @@ def build_history(feeds, anchors=None):
                         f"kept at prior schema (caption degrades)")
             out.append(e)
             continue
-        ctx = week_inputs(feeds, w_end)
+        ctx = week_inputs(feeds, w_end, skips)
         if ctx is None:
             continue
         h = derive_hero(feeds, anchors, week_ctx={"week_ending": w_end,
                                                   **ctx})
         if h is None:
+            skips.append((w_end, "derive_hero declined - check the HDD "
+                                 "series has 200+ days"))
             continue
         C, WFC = h["combined"], h["what_if_combined"]
         out.append({
@@ -3028,6 +3074,7 @@ def build_history(feeds, anchors=None):
             "ni": jur_sub(h["ni"]),
             "roi": jur_sub(h["roi"]),
         })
+    report_skips(skips, len(out))
     return out[-HISTORY_MAX:]
 
 
