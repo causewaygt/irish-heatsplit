@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 4.6.6
+<!-- IRISH HEAT SPLIT - SITE_VERSION 4.7.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -767,6 +767,8 @@ function drawTrends(HIST, win, scope){
 
 function heroCards(h, HIST){
   HIST=HIST||[];
+  // Weeks reconstructed behind LIVE_FROM rather than observed.
+  const BACKFILLED=HIST.filter(e=>e.live===false).length;
   const FUELS=[
     ['oil','Oil',CLR.amber],
     ['gas','Gas','#2F8F8C'],
@@ -891,7 +893,9 @@ function heroCards(h, HIST){
     const w='this '+(WNAME[WIN]||'week');
     const ts=el('trendspan');
     if(ts) ts.textContent='\u00b7 '+(WSPAN[WIN]||'')+' \u00b7 '+
-      HIST.length+' wks on record \u00b7 what-if in green';
+      HIST.length+' wks on record'+
+      (BACKFILLED>0?' ('+(HIST.length-BACKFILLED)+' live)':'')+
+      ' \u00b7 what-if in green';
     const h1=el('h1Win'); if(h1) h1.textContent=w;
     // strapWin was retired with the 4.6.1 strap rewrite; the guard
     // stays so the setter survives either copy.
@@ -976,7 +980,14 @@ function heroCards(h, HIST){
     const wv = sumN>0 ? windowed(sumN, state) : null;
     if(wv){
       const es=wv.entries;
-      const cap=(wv.n<sumN?' ('+wv.n+' live wks)':'');
+      // 'live' was safe while every stored week was observed as it
+      // happened. Since the back-look was extended behind LIVE_FROM
+      // some weeks are reconstructed, so the caption states weeks and
+      // flags reconstruction separately rather than calling a
+      // backfilled week live.
+      const nLive=HIST.filter(e=>e.live!==false).length;
+      const back=HIST.length-nLive;
+      const cap=(wv.n<sumN?' ('+wv.n+' wks)':'');
       const lbl='over the last '+WLBL[WIN]+cap;
       const S=wv.split;
       const cards2=[
@@ -1561,7 +1572,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 4.6.6 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 4.7.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
