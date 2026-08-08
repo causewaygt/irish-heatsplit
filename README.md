@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.20.0 / site 4.7.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.21.0 / site 4.7.0.
 
 ## The premise
 
@@ -213,11 +213,16 @@ Energy Market Monitoring semester bands (S2 2024), which are derived
 Eurostat-style as revenue over volume and therefore include standing
 charges – so the services share IS like-for-like across the border.
 They replace large-user prices: NI was carrying the GB manufacturing
-average, which priced offices at industrial rates. NI I&C electricity
-runs 28.5 p/kWh for very small connections against 16.9 for large and
-very large; gas 8.7 against 5.8. Services buildings straddle the very
-small and small bands, so the anchor is the top of that range and is
-flagged as an upper bound. Non-domestic rates are held at the latest
+average, which priced offices at industrial rates. Electricity is
+consumption-weighted across the published bands, excluding only Large
+and Very Large – seventeen NI connections and 683 GWh of heavy
+industry and data centres. The ladder runs 28.5 p/kWh for very small
+connections down to 16.9 for large and very large; the services-scoped
+weighting lands at 23.5 p/kWh for NI and 23.8 for Ireland. Gas is band
+I1 (under 278,000 kWh a year), where services buildings overwhelmingly
+sit, rather than weighted – the REMM price bands do not map onto the
+network bands the consumption split is published in, and NI I&C gas is
+about two-thirds daily-metered heavy industry. Non-domestic rates are held at the latest
 published semester and do not move weekly – REMM lags about nine
 months, and level-from-semesters with timing-from-announcements is the
 intended design, not yet built.
@@ -296,7 +301,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 102 tests, no network
+python3 tests/test_synthetic.py   # 103 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
