@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.30.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.31.0 / site 4.8.0.
 
 ## The premise
 
@@ -349,7 +349,21 @@ headline is chosen after the numbers are seen rather than before.
 is shaped hourly from the store's own degree hours – hot water flat,
 space heat degree-shaped – put through a Carnot-fraction COP at each
 hour's actual air temperature, netted of the resistive heating already
-inside observed demand, and added to observed all-island demand. Headroom is
+inside observed demand, and added to observed all-island demand. The question it answers is the UK sibling's: **how far can heat be
+electrified inside the fleet that already exists**, solved per route
+rather than assumed. Fixing a share instead would force a choice
+between this site's own 20% what-if and a 100% ceiling that appears
+nowhere else, and the answer swings entirely on which is picked; the
+netting is linear in the share, so solving is exact.
+
+The ceiling **breathes with the weather** – the de-rated dispatchable
+block plus the wind and solar actually generated in that hour – because
+the hour that binds is cold and still and dark, and a flat block would
+either credit wind that was not blowing or ignore wind that was. It is
+also how the UK ceiling is defined, and the two figures are not
+comparable otherwise.
+
+Headroom is
 reported for every route, not just one, because which routes fit under
 the block IS the result – leaving it to be subtracted from three other
 numbers was the first thing the live run exposed. The same line states
@@ -424,7 +438,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 133 tests, no network
+python3 tests/test_synthetic.py   # 135 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
