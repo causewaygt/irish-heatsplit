@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.28.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.28.1 / site 4.8.0.
 
 ## The premise
 
@@ -349,7 +349,14 @@ headline is chosen after the numbers are seen rather than before.
 is shaped hourly from the store's own degree hours – hot water flat,
 space heat degree-shaped – put through a Carnot-fraction COP at each
 hour's actual air temperature, netted of the resistive heating already
-inside observed demand, and added to observed all-island demand. The
+inside observed demand, and added to observed all-island demand. Headroom is
+reported for every route, not just one, because which routes fit under
+the block IS the result – leaving it to be subtracted from three other
+numbers was the first thing the live run exposed. The same line states
+the island's useful heat in that hour against the electrical block,
+which is the comparison the whole phase exists to make.
+
+The
 binding hour is reported against the de-rated dispatchable block
 (~8,595 MW†, of which ~1,490 MW is run-hour-limited) with the observed
 all-island peak of 7,502 MW on 8 January 2025 as the sanity rail. The
@@ -397,7 +404,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 126 tests, no network
+python3 tests/test_synthetic.py   # 128 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
