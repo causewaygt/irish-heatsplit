@@ -2586,6 +2586,81 @@ def test_price_layer_gates_separately_and_cannot_withdraw_the_others():
     assert store["price_ready"] is False      # one hour is not 95%
 
 
+def test_semopx_prices_land_on_the_irish_clock():
+    """The CSV publishes UTC; every other store series is Irish local
+    clock. A UTC-keyed price sits an hour out of step with demand from
+    late March to late October, and B.2.3 asks what price applied in
+    ONE hour - the join has to land. This is the same hazard caught
+    for temp_ai and reintroduced two hours later."""
+    import build as B
+    # winter: no shift
+    assert B.semopx_local_hour("2026-01-05T18:00:00Z") == "2026-01-05T18"
+    # summer: +1, and it rolls the date
+    assert B.semopx_local_hour("2026-08-06T23:00:00Z") == "2026-08-07T00"
+    # transitions, both at 01:00 UTC on the last Sunday
+    assert B.semopx_local_hour("2026-03-29T00:00:00Z") == "2026-03-29T00"
+    assert B.semopx_local_hour("2026-03-29T02:00:00Z") == "2026-03-29T03"
+    assert B.semopx_local_hour("2026-10-25T02:00:00Z") == "2026-10-25T02"
+    assert B.semopx_local_hour("nonsense") is None
+    # and the parser emits local keys, not UTC ones
+    csv = ("Auction;SEM-DA\nMarket;ROI-DA\nIndex prices;30;EUR\n"
+           "2026-08-06T23:00:00Z\n99,5\n")
+    assert list(B.parse_semopx_csv(csv)["series"]["ROI-DA"]["EUR"]) \
+        == ["2026-08-07T00"]
+
+
+def test_semopx_trade_day_matches_the_field_not_a_character_count():
+    """The first probe sliced the resource name positionally, cut
+    through the timestamp, and made its own verdict line say the
+    opposite of what the data showed."""
+    import build as B
+    n = "MarketResult_SEM-DA_PWR-MRC-D+1_20260806100000_20260806105502.csv"
+    assert B.semopx_trade_day({"ResourceName": n}) == "2026-08-06"
+    assert B.semopx_trade_day({"ResourceName": "rubbish"}) is None
+    assert B.semopx_trade_day(None) is None
+
+
+def test_semopx_backfill_is_bounded_and_skips_days_already_priced():
+    """Paging is the route to history, but 400 requests in one build
+    is not. The walk is bounded per run and must not refetch a day the
+    store already holds."""
+    import build as B
+    calls = {"list": 0, "doc": 0}
+
+    class R:
+        def __init__(self, payload=None, text=""):
+            self._p, self.text = payload, text
+
+        def json(self):
+            return self._p
+
+    def fake_get(url, **kw):
+        if "static-reports" in url:
+            calls["list"] += 1
+            page = (kw.get("params") or {}).get("page", 1)
+            items = []
+            for i in range(100):
+                d = dt.date(2026, 8, 8) - dt.timedelta(days=(page - 1) * 100 + i)
+                items.append({"ResourceName":
+                              f"MarketResult_SEM-DA_PWR-MRC-D+1_"
+                              f"{d.strftime('%Y%m%d')}100000_x.csv"})
+            return R(payload={"items": items})
+        calls["doc"] += 1
+        return R(text=("Auction;SEM-DA\nMarket;ROI-DA\n"
+                       "Index prices;30;EUR\n2026-01-05T18:00:00Z\n120,0\n"))
+
+    real_get, real_sleep = B.http_get, B.time.sleep
+    B.http_get, B.time.sleep = fake_get, lambda *a, **k: None
+    try:
+        have = {"2026-08-08T00": 1.0, "2026-08-07T00": 1.0}
+        out = B.semopx_backfill(have, "https://x/static-reports", "2025-08-01")
+    finally:
+        B.http_get, B.time.sleep = real_get, real_sleep
+    assert calls["doc"] == B.SEMOPX_BACKFILL_DAYS
+    assert calls["list"] <= B.SEMOPX_BACKFILL_PAGES
+    assert out
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
