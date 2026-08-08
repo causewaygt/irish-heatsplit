@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.30.0"
+PIPELINE_VERSION = "4.31.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -4084,14 +4084,49 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
               for j in ("ni", "roi"))
     res_share = (res / tot) if tot else 0.0
 
+    wind = ser.get("wind_ai") or {}
+    solar = ser.get("solar_ai") or {}
+
+    def ceiling_at(key):
+        """The fleet that is actually there in that hour.
+
+        De-rated dispatchable capacity PLUS the wind and solar the
+        island actually generated - the ceiling breathes with the
+        weather, because the hour that binds is cold AND still AND
+        dark, and a flat block would credit wind that was not blowing
+        or ignore wind that was. This is also what makes the figure
+        comparable with the UK sibling, whose ceiling is defined the
+        same way.
+        """
+        return GRID_BLOCK_MW + (wind.get(key) or 0.0) + (solar.get(key) or 0.0)
+
+    # --- how far can heat be electrified before the fleet fills?
+    # Solving for the SHARE is the right question, and the one the UK
+    # sibling asks. Fixing a share instead forces a choice between the
+    # site's own 20% what-if and a 100% ceiling that appears nowhere
+    # else, and the answer swings entirely on which is picked. The
+    # netting is linear in the share - displaced resistive scales with
+    # it - so share = headroom / added-at-100%, exactly.
+    routes = ("air_source", "ground_source", "geothermal_network")
+    best = {r: None for r in routes}
     rows = []
     for k in hours:
         q = heat[k]
         displaced = q * res_share            # already drawn as MW today
-        ashp = q / cop_at(temps.get(k, 5.0))
-        gshp = q / GSHP_SPF
-        net = q / GEO_NETWORK_SCOP
-        rows.append((demand[k] + ashp - displaced, k, q, ashp, gshp, net))
+        full = {"air_source": q / cop_at(temps.get(k, 5.0)) - displaced,
+                "ground_source": q / GSHP_SPF - displaced,
+                "geothermal_network": q / GEO_NETWORK_SCOP - displaced}
+        head = ceiling_at(k) - demand[k]
+        for r in routes:
+            if full[r] <= 0:
+                continue
+            share = max(0.0, head / full[r])
+            if best[r] is None or share < best[r][0]:
+                best[r] = (share, k)
+        rows.append((demand[k] + full["air_source"], k, q,
+                     full["air_source"] + displaced,
+                     full["ground_source"] + displaced,
+                     full["geothermal_network"] + displaced))
     worst = max(rows)
     total_mw, k, q, ashp, gshp, net = worst
     added = {"air_source": round(ashp - q * res_share),
@@ -4103,7 +4138,11 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
     # hand from three other numbers. The route ordering IS the
     # finding; it should not need subtracting.
     totals = {r: round(demand[k]) + v for r, v in added.items()}
-    headroom = {r: GRID_BLOCK_MW - t for r, t in totals.items()}
+    ceil_k = round(ceiling_at(k))
+    headroom = {r: ceil_k - t for r, t in totals.items()}
+    fits_share = {r: (round(100 * best[r][0], 1) if best[r] else None)
+                  for r in routes}
+    fits_hour = {r: (best[r][1] if best[r] else None) for r in routes}
     fits = [r for r, h in headroom.items() if h >= 0]
     out = {
         "hour": k, "observed_mw": round(demand[k]),
@@ -4120,7 +4159,11 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
                 "network": GEO_NETWORK_SCOP},
         "total_with_air_source_mw": round(total_mw),
         "block_mw": GRID_BLOCK_MW,
-        "headroom_mw": round(GRID_BLOCK_MW - total_mw),
+        "ceiling_mw": ceil_k,
+        "wind_solar_mw": round(ceil_k - GRID_BLOCK_MW),
+        "share_that_fits_pct": fits_share,
+        "share_binding_hour": fits_hour,
+        "headroom_mw": headroom["air_source"],
         "observed_peak_mw": OBSERVED_PEAK_MW,
         "hours_considered": len(hours),
         "basis": ("Hourly useful heat from temp_ai degree hours (hot "
@@ -4131,14 +4174,22 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
                   "all-island demand. Block is the de-rated "
                   "dispatchable capacity (dagger); no panel drawn."),
     }
-    log(f"B.2.1 tightest hour: {k} at {out['air_c']} C - observed "
-        f"{out['observed_mw']} MW against a {GRID_BLOCK_MW} MW "
-        f"de-rated block")
+    log(f"B.2.1 how far can heat be electrified inside today's fleet? "
+        f"(ceiling = {GRID_BLOCK_MW} MW de-rated block + the wind and "
+        f"solar actually generated)")
+    for r in routes:
+        pct, hr = fits_share[r], fits_hour[r]
+        log(f"B.2.1   {r:<19} {pct:>6}% of island heat fits "
+            f"[binds {hr}]"
+            + ("  - ALL OF IT, with room over" if pct and pct >= 100 else ""))
+    log(f"B.2.1 tightest hour for added load: {k} at {out['air_c']} C - "
+        f"observed {out['observed_mw']} MW, ceiling {ceil_k} MW "
+        f"({out['wind_solar_mw']} MW of it wind and solar)")
     for r in ("air_source", "ground_source", "geothermal_network"):
         h = headroom[r]
-        log(f"B.2.1   {r:<19} +{added[r]:>5} MW -> {totals[r]:>6} MW, "
-            f"headroom {h:+6} MW  "
-            f"[{'FITS' if h >= 0 else 'EXCEEDS THE BLOCK'}]")
+        log(f"B.2.1   at 100%: {r:<19} +{added[r]:>5} MW -> "
+            f"{totals[r]:>6} MW, headroom {h:+6} MW  "
+            f"[{'FITS' if h >= 0 else 'EXCEEDS THE CEILING'}]")
     log(f"B.2.1   routes that fit: "
         f"{', '.join(fits) if fits else 'NONE'}")
     log(f"B.2.1   useful heat in that hour {out['useful_heat_mw']} MWth "
