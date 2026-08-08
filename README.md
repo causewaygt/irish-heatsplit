@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.23.0 / site 4.7.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.24.0 / site 4.8.0.
 
 ## The premise
 
@@ -241,6 +241,17 @@ than escalated away, because applying regulated domestic steps to
 unregulated business contracts would compound one estimate with
 another. It closes when REMM publishes newer semesters.
 
+**The history block is written columnar.** Each key appears once
+instead of once per week, with the ni/roi/fuels sub-blocks recursed
+into – at 52 weeks the entries are wide and shallow, so the repeated
+key strings outweigh the numbers they label, and the encoding takes the
+block to about a third of its size. Wire format and content schema are
+deliberately orthogonal: re-encoding is not a restatement and does not
+trigger one. Both readers accept the columnar form and a plain list,
+because `index.html` publishes the moment Pages deploys while
+`data.json` only changes at the next 04:17 build, so for up to a day
+each side is reading the other's previous shape.
+
 **Irish anchors: credit-free, and converted at a fetched rate.** The
 Irish domestic electricity series carries government credits as
 negative taxes – €1,500 of them since 2022, the last €125 in
@@ -335,7 +346,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 109 tests, no network
+python3 tests/test_synthetic.py   # 113 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
