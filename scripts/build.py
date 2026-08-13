@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.31.0"
+PIPELINE_VERSION = "4.32.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -1288,50 +1288,42 @@ def _parse_history_longtable(rows) -> dict:
     return series
 
 
-def semopx_local_hour(stamp):
+def semopx_hour_keys(stamps, trade_day):
     """
-    SEMOpx delivery stamp -> Irish local-clock hour key.
+    Delivery stamps -> Irish local-clock hour keys, ANCHORED on the
+    trade day rather than converted by an assumed timezone.
 
-    The CSV publishes ISO UTC. Every other series in the hourly store
-    is keyed on Irish local clock - EirGrid stamps its rows that way
-    and temp_ai is fetched with timezone=Europe/Dublin for exactly
-    this reason. A UTC-keyed price would sit an hour out of step with
-    demand from late March to late October, and B.2.3 asks what price
-    applied in ONE hour, so the join has to land.
+    Two guesses have now been wrong. The stamps carry a Z suffix, so
+    the first pass treated them as UTC and added an hour in summer;
+    the span still came out one hour below local midnight, which
+    pointed at CET - and a third guess would have been a third
+    coin-toss. The document does not need decoding: a trade day runs
+    00:00 to 23:00 local by definition, and the resource name states
+    which day it is. So the offset is measured from the document -
+    first stamp against local midnight - and applied to the rest.
 
-    Conversion is done without a tz database: Irish summer time runs
-    from the last Sunday in March to the last Sunday in October, both
-    switching at 01:00 UTC. Returns None on anything unparseable.
+    Returns [] if the trade day is unknown or nothing parses, so a
+    document that cannot be anchored contributes nothing rather than
+    contributing something misaligned.
     """
-    m = re.match(r"(20\d\d)-(\d\d)-(\d\d)T(\d\d)", str(stamp))
-    if not m:
-        return None
-    y, mo, d, h = (int(g) for g in m.groups())
+    parsed = []
+    for t in stamps:
+        m = re.match(r"(20\d\d)-(\d\d)-(\d\d)T(\d\d)", str(t))
+        parsed.append(dt.datetime(*(int(g) for g in m.groups()))
+                      if m else None)
+    real = [x for x in parsed if x]
+    if not real or not trade_day:
+        return []
     try:
-        t = dt.datetime(y, mo, d, h)
+        anchor = dt.datetime.strptime(trade_day, "%Y-%m-%d")
     except ValueError:
-        return None
-
-    def last_sunday(year, month):
-        day = 31
-        while True:
-            try:
-                c = dt.date(year, month, day)
-            except ValueError:
-                day -= 1
-                continue
-            if c.weekday() == 6:
-                return c
-            day -= 1
-
-    start = dt.datetime.combine(last_sunday(y, 3), dt.time(1))
-    end = dt.datetime.combine(last_sunday(y, 10), dt.time(1))
-    if start <= t < end:
-        t += dt.timedelta(hours=1)
-    return t.strftime("%Y-%m-%dT%H")
+        return []
+    offset = anchor - min(real)
+    return [(x + offset).strftime("%Y-%m-%dT%H") if x else None
+            for x in parsed]
 
 
-def parse_semopx_csv(text: str) -> dict:
+def parse_semopx_csv(text: str, trade_day: str = None) -> dict:
     """
     SEMOpx MarketResult CSV, format confirmed live (14 Jul 2026):
     semicolon-delimited, decimal commas, sections -
@@ -1384,8 +1376,8 @@ def parse_semopx_csv(text: str) -> dict:
                 markets.setdefault(market, {}).setdefault(
                     currency, []).extend(nums)
                 ts = stamps.get((market, currency)) or []
-                for t, v in zip(ts, nums):
-                    k = semopx_local_hour(t)
+                for k, v in zip(semopx_hour_keys(ts, trade_day or day),
+                                nums):
                     if k:
                         series.setdefault(market, {}).setdefault(
                             currency, {})[k] = v
@@ -1948,6 +1940,96 @@ def semopx_trade_day(item):
         if m else None
 
 
+def semo_dispatch_probe():
+    """
+    Where does per-UNIT downward dispatch live, and how far back? Log
+    only. Nothing is stored, nothing is parsed into the payload.
+
+    WHY THIS IS URGENT AND THE FEED IS NOT. Fintan Devenney (Montel)
+    confirmed on 9 Aug 2026 that per-unit dispatch-down volumes are
+    published on SEMO and that building against SEMO's reports would
+    be fine for live data - but that SEMO does NOT retain the full
+    history, which is why Montel serve their own store back to 2018.
+    So the series exists only from the day capture starts. Every day
+    without a feed is a day that cannot be recovered later, which
+    makes finding the report the most time-critical thing in B.2.2
+    even though the panel itself does not depend on it.
+
+    WHAT THE ANSWER HAS TO CONTAIN before a parser is worth writing:
+      - which report ID carries per-unit volumes (SEMO publishes
+        dozens; the naming is not self-describing)
+      - the retention window, since that sets how often the feed must
+        run to lose nothing
+      - the resolution (half-hourly imbalance periods, most likely)
+      - what identifies a unit. This is the one that shapes the
+        register: SEMO will name resource codes, not wind farms, so
+        the map needs code -> farm -> coordinates -> capacity and
+        only the first hop comes from here.
+
+    Two families are tried because SEMO runs two: the BM/balancing
+    reporting on the main site, and the semopx static-report API this
+    pipeline already uses for prices. Candidates are listed, not
+    chosen - a guessed report ID is how the first semopx probe wasted
+    a day on 400s.
+    """
+    hits = []
+
+    # --- family 1: the static-report listing this pipeline knows
+    base = "https://reports.semopx.com/api/v1/documents/static-reports"
+    for label, params in (
+            ("semopx listing, unfiltered", {"page_size": 50}),
+            ("semopx listing, dispatch text", {"page_size": 50,
+                                               "search_text": "dispatch"}),
+    ):
+        try:
+            items = http_get(base, params=params).json().get("items", [])
+            ids = sorted({str(it.get("DPuG_ID") or "?") for it in items})
+            names = [str(it.get("ResourceName") or "")[:60]
+                     for it in items[:3]]
+            log(f"semo_probe: {label} -> {len(items)} items, "
+                f"report IDs {ids[:12]}")
+            for n in names:
+                log(f"semo_probe:     e.g. {n}")
+            hits.append((label, len(items)))
+        except Exception as e:
+            log(f"semo_probe: {label} -> {e.__class__.__name__}")
+
+    # --- family 2: the SEMO market-data API. Report IDs are listed
+    # rather than assumed; whichever returns is the evidence.
+    semo = "https://reports.sem-o.com/api/v1/documents/static-reports"
+    for label, params in (
+            ("sem-o listing, unfiltered", {"page_size": 50}),
+            ("sem-o listing, page 2", {"page_size": 50, "page": 2}),
+    ):
+        try:
+            items = http_get(semo, params=params).json().get("items", [])
+            ids = sorted({str(it.get("DPuG_ID") or "?") for it in items})
+            log(f"semo_probe: {label} -> {len(items)} items, "
+                f"report IDs {ids[:12]}")
+            for it in items[:3]:
+                log(f"semo_probe:     e.g. "
+                    f"{str(it.get('ResourceName') or '')[:60]}")
+            hits.append((label, len(items)))
+        except Exception as e:
+            log(f"semo_probe: {label} -> {e.__class__.__name__}")
+
+    if not any(n for _, n in hits):
+        log("semo_probe: nothing answered - both API families are "
+            "either moved or need headers. Next step is a browser "
+            "session against reports.sem-o.com to read the report "
+            "catalogue by hand, NOT another round of guessed IDs")
+    else:
+        log("semo_probe: report IDs above are the catalogue. Look for "
+            "the balancing-market dispatch or unit-level availability "
+            "report; the feed is written against whichever one names "
+            "resource codes and half-hourly periods, and NOT before "
+            "that is confirmed from these logs")
+    log("semo_probe: reminder - SEMO does not retain full history, so "
+        "the captured series starts the day the feed ships. The B.2.2 "
+        "panel does not wait on it: the annual regional report and "
+        "EirGrid's 30-minute jurisdiction series are already published")
+
+
 def semopx_history_probe():
     """
     Can a historic SEMOpx trade day be resolved? Log-only.
@@ -2034,7 +2116,8 @@ def semopx_backfill(prev_hourly, base, want_from):
                 break
             try:
                 doc = parse_semopx_csv(
-                    http_get(f"https://reports.semopx.com/documents/{name}").text)
+                    http_get(f"https://reports.semopx.com/documents/{name}").text,
+                    trade_day=day)
             except Exception as e:
                 log(f"semopx: backfill {day} {e.__class__.__name__}")
                 continue
@@ -2085,7 +2168,8 @@ def feed_semopx():
     resource = chosen.get("ResourceName") or chosen.get("_id")
     log("semopx: resolved", resource)
     body = http_get(f"https://reports.semopx.com/documents/{resource}")
-    parsed = parse_semopx_csv(body.text)
+    parsed = parse_semopx_csv(body.text,
+                              trade_day=semopx_trade_day(chosen))
 
     if not parsed["markets"]:
         log("semopx: CSV parse empty - first 800 chars:", body.text[:800])
@@ -4205,7 +4289,7 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
         f"would mean the shaping picked a mild hour")
     if min(headroom.values()) < 0:
         log("B.2.1   NOTE headroom is negative - a full electrification "
-            "of heat exceeds the de-rated block in this hour. That is a "
+            "of heat exceeds the ceiling in this hour. That is a "
             "scenario result, not a forecast: nothing here phases the "
             "conversion or counts storage, diversity or demand response.")
     return out
@@ -5047,6 +5131,10 @@ def main():
             semopx_history_probe()
         except Exception as exc:
             log(f"semopx_probe: failed ({exc.__class__.__name__})")
+        try:
+            semo_dispatch_probe()
+        except Exception as exc:
+            log(f"semo_probe: failed ({exc.__class__.__name__})")
         store = build_hourly_store(prev_hourly, feeds)
         # B.2.1 runs on the store we just wrote, log-only. Soft: a
         # failure here must never touch the weekly tracker.
