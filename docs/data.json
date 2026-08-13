@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-08-13T19:46:19+00:00",
+ "built_utc": "2026-08-13T20:51:45+00:00",
  "derived": {
   "anchor_epoch": 8,
   "cool": {
@@ -36,6 +36,1386 @@
   },
   "heat_cost_series": [
    {
+    "dhw_share": 0.191,
+    "roi": {
+     "ashp": 15.86,
+     "dhw_share": 0.191,
+     "gas_boiler": 16.0,
+     "gshp": 13.54,
+     "network": 8.77,
+     "oil_boiler": 14.82
+    },
+    "roi_ex_tax": {
+     "ashp": 14.55,
+     "dhw_share": 0.191,
+     "gas_boiler": 13.26,
+     "gshp": 12.43,
+     "network": 8.05,
+     "oil_boiler": 10.96
+    },
+    "week_ending": "2024-04-15"
+   },
+   {
+    "dhw_share": 0.16,
+    "roi": {
+     "ashp": 15.55,
+     "dhw_share": 0.16,
+     "gas_boiler": 15.88,
+     "gshp": 13.37,
+     "network": 8.66,
+     "oil_boiler": 14.3
+    },
+    "roi_ex_tax": {
+     "ashp": 14.27,
+     "dhw_share": 0.16,
+     "gas_boiler": 13.16,
+     "gshp": 12.26,
+     "network": 7.95,
+     "oil_boiler": 10.48
+    },
+    "week_ending": "2024-04-22"
+   },
+   {
+    "dhw_share": 0.149,
+    "roi": {
+     "ashp": 15.45,
+     "dhw_share": 0.149,
+     "gas_boiler": 15.84,
+     "gshp": 13.31,
+     "network": 8.62,
+     "oil_boiler": 14.1
+    },
+    "roi_ex_tax": {
+     "ashp": 14.17,
+     "dhw_share": 0.149,
+     "gas_boiler": 13.13,
+     "gshp": 12.21,
+     "network": 7.91,
+     "oil_boiler": 10.31
+    },
+    "week_ending": "2024-04-29"
+   },
+   {
+    "dhw_share": 0.226,
+    "roi": {
+     "ashp": 16.2,
+     "dhw_share": 0.226,
+     "gas_boiler": 16.13,
+     "gshp": 13.74,
+     "network": 8.9,
+     "oil_boiler": 15.01
+    },
+    "roi_ex_tax": {
+     "ashp": 14.86,
+     "dhw_share": 0.226,
+     "gas_boiler": 13.37,
+     "gshp": 12.6,
+     "network": 8.16,
+     "oil_boiler": 11.14
+    },
+    "week_ending": "2024-05-06"
+   },
+   {
+    "dhw_share": 0.39,
+    "roi": {
+     "ashp": 17.8,
+     "dhw_share": 0.39,
+     "gas_boiler": 16.76,
+     "gshp": 14.65,
+     "network": 9.49,
+     "oil_boiler": 16.95
+    },
+    "roi_ex_tax": {
+     "ashp": 16.33,
+     "dhw_share": 0.39,
+     "gas_boiler": 13.89,
+     "gshp": 13.44,
+     "network": 8.7,
+     "oil_boiler": 12.66
+    },
+    "week_ending": "2024-05-13"
+   },
+   {
+    "dhw_share": 0.463,
+    "roi": {
+     "ashp": 18.52,
+     "dhw_share": 0.463,
+     "gas_boiler": 17.04,
+     "gshp": 15.06,
+     "network": 9.75,
+     "oil_boiler": 17.89
+    },
+    "roi_ex_tax": {
+     "ashp": 16.99,
+     "dhw_share": 0.463,
+     "gas_boiler": 14.12,
+     "gshp": 13.81,
+     "network": 8.95,
+     "oil_boiler": 13.51
+    },
+    "week_ending": "2024-05-20"
+   },
+   {
+    "dhw_share": 0.296,
+    "roi": {
+     "ashp": 16.89,
+     "dhw_share": 0.296,
+     "gas_boiler": 16.4,
+     "gshp": 14.13,
+     "network": 9.15,
+     "oil_boiler": 15.69
+    },
+    "roi_ex_tax": {
+     "ashp": 15.5,
+     "dhw_share": 0.296,
+     "gas_boiler": 13.6,
+     "gshp": 12.96,
+     "network": 8.4,
+     "oil_boiler": 11.51
+    },
+    "week_ending": "2024-05-27"
+   },
+   {
+    "dhw_share": 0.425,
+    "roi": {
+     "ashp": 18.15,
+     "dhw_share": 0.425,
+     "gas_boiler": 16.89,
+     "gshp": 14.85,
+     "network": 9.62,
+     "oil_boiler": 17.24
+    },
+    "roi_ex_tax": {
+     "ashp": 16.65,
+     "dhw_share": 0.425,
+     "gas_boiler": 14.0,
+     "gshp": 13.62,
+     "network": 8.82,
+     "oil_boiler": 12.92
+    },
+    "week_ending": "2024-06-03"
+   },
+   {
+    "dhw_share": 0.265,
+    "roi": {
+     "ashp": 16.58,
+     "dhw_share": 0.265,
+     "gas_boiler": 16.28,
+     "gshp": 13.95,
+     "network": 9.04,
+     "oil_boiler": 15.08
+    },
+    "roi_ex_tax": {
+     "ashp": 15.22,
+     "dhw_share": 0.265,
+     "gas_boiler": 13.5,
+     "gshp": 12.8,
+     "network": 8.29,
+     "oil_boiler": 10.97
+    },
+    "week_ending": "2024-06-10"
+   },
+   {
+    "dhw_share": 0.3,
+    "roi": {
+     "ashp": 16.93,
+     "dhw_share": 0.3,
+     "gas_boiler": 16.42,
+     "gshp": 14.15,
+     "network": 9.17,
+     "oil_boiler": 15.58
+    },
+    "roi_ex_tax": {
+     "ashp": 15.53,
+     "dhw_share": 0.3,
+     "gas_boiler": 13.61,
+     "gshp": 12.98,
+     "network": 8.41,
+     "oil_boiler": 11.42
+    },
+    "week_ending": "2024-06-17"
+   },
+   {
+    "dhw_share": 0.537,
+    "roi": {
+     "ashp": 19.25,
+     "dhw_share": 0.537,
+     "gas_boiler": 17.32,
+     "gshp": 15.47,
+     "network": 10.02,
+     "oil_boiler": 18.8
+    },
+    "roi_ex_tax": {
+     "ashp": 17.66,
+     "dhw_share": 0.537,
+     "gas_boiler": 14.36,
+     "gshp": 14.19,
+     "network": 9.19,
+     "oil_boiler": 14.34
+    },
+    "week_ending": "2024-06-24"
+   },
+   {
+    "dhw_share": 0.537,
+    "roi": {
+     "ashp": 19.25,
+     "dhw_share": 0.537,
+     "gas_boiler": 17.32,
+     "gshp": 15.47,
+     "network": 10.02,
+     "oil_boiler": 18.89
+    },
+    "roi_ex_tax": {
+     "ashp": 17.66,
+     "dhw_share": 0.537,
+     "gas_boiler": 14.36,
+     "gshp": 14.19,
+     "network": 9.19,
+     "oil_boiler": 14.42
+    },
+    "week_ending": "2024-07-01"
+   },
+   {
+    "dhw_share": 0.356,
+    "roi": {
+     "ashp": 17.48,
+     "dhw_share": 0.356,
+     "gas_boiler": 16.63,
+     "gshp": 14.46,
+     "network": 9.37,
+     "oil_boiler": 16.69
+    },
+    "roi_ex_tax": {
+     "ashp": 16.03,
+     "dhw_share": 0.356,
+     "gas_boiler": 13.79,
+     "gshp": 13.27,
+     "network": 8.59,
+     "oil_boiler": 12.42
+    },
+    "week_ending": "2024-07-08"
+   },
+   {
+    "dhw_share": 0.511,
+    "roi": {
+     "ashp": 19.0,
+     "dhw_share": 0.511,
+     "gas_boiler": 17.22,
+     "gshp": 15.33,
+     "network": 9.93,
+     "oil_boiler": 18.61
+    },
+    "roi_ex_tax": {
+     "ashp": 17.43,
+     "dhw_share": 0.511,
+     "gas_boiler": 14.28,
+     "gshp": 14.06,
+     "network": 9.11,
+     "oil_boiler": 14.16
+    },
+    "week_ending": "2024-07-15"
+   },
+   {
+    "dhw_share": 0.87,
+    "roi": {
+     "ashp": 22.51,
+     "dhw_share": 0.87,
+     "gas_boiler": 18.59,
+     "gshp": 17.32,
+     "network": 11.22,
+     "oil_boiler": 23.04
+    },
+    "roi_ex_tax": {
+     "ashp": 20.65,
+     "dhw_share": 0.87,
+     "gas_boiler": 15.41,
+     "gshp": 15.89,
+     "network": 10.29,
+     "oil_boiler": 18.18
+    },
+    "week_ending": "2024-07-22"
+   },
+   {
+    "dhw_share": 0.913,
+    "roi": {
+     "ashp": 22.93,
+     "dhw_share": 0.913,
+     "gas_boiler": 18.75,
+     "gshp": 17.56,
+     "network": 11.37,
+     "oil_boiler": 23.57
+    },
+    "roi_ex_tax": {
+     "ashp": 21.03,
+     "dhw_share": 0.913,
+     "gas_boiler": 15.55,
+     "gshp": 16.11,
+     "network": 10.43,
+     "oil_boiler": 18.67
+    },
+    "week_ending": "2024-07-29"
+   },
+   {
+    "dhw_share": 0.902,
+    "roi": {
+     "ashp": 22.83,
+     "dhw_share": 0.902,
+     "gas_boiler": 18.72,
+     "gshp": 17.51,
+     "network": 11.33,
+     "oil_boiler": 23.57
+    },
+    "roi_ex_tax": {
+     "ashp": 20.94,
+     "dhw_share": 0.902,
+     "gas_boiler": 15.52,
+     "gshp": 16.06,
+     "network": 10.4,
+     "oil_boiler": 18.67
+    },
+    "week_ending": "2024-08-05"
+   },
+   {
+    "dhw_share": 0.968,
+    "roi": {
+     "ashp": 23.47,
+     "dhw_share": 0.968,
+     "gas_boiler": 18.97,
+     "gshp": 17.87,
+     "network": 11.57,
+     "oil_boiler": 24.14
+    },
+    "roi_ex_tax": {
+     "ashp": 21.53,
+     "dhw_share": 0.968,
+     "gas_boiler": 15.72,
+     "gshp": 16.4,
+     "network": 10.61,
+     "oil_boiler": 19.01
+    },
+    "week_ending": "2024-08-12"
+   },
+   {
+    "dhw_share": 0.809,
+    "roi": {
+     "ashp": 21.91,
+     "dhw_share": 0.809,
+     "gas_boiler": 18.36,
+     "gshp": 16.98,
+     "network": 11.0,
+     "oil_boiler": 22.11
+    },
+    "roi_ex_tax": {
+     "ashp": 20.1,
+     "dhw_share": 0.809,
+     "gas_boiler": 15.22,
+     "gshp": 15.58,
+     "network": 10.09,
+     "oil_boiler": 17.16
+    },
+    "week_ending": "2024-08-19"
+   },
+   {
+    "dhw_share": 0.521,
+    "roi": {
+     "ashp": 19.09,
+     "dhw_share": 0.521,
+     "gas_boiler": 17.26,
+     "gshp": 15.38,
+     "network": 9.96,
+     "oil_boiler": 18.2
+    },
+    "roi_ex_tax": {
+     "ashp": 17.52,
+     "dhw_share": 0.521,
+     "gas_boiler": 14.31,
+     "gshp": 14.11,
+     "network": 9.14,
+     "oil_boiler": 13.62
+    },
+    "week_ending": "2024-08-26"
+   },
+   {
+    "dhw_share": 0.639,
+    "roi": {
+     "ashp": 20.24,
+     "dhw_share": 0.639,
+     "gas_boiler": 17.71,
+     "gshp": 16.04,
+     "network": 10.38,
+     "oil_boiler": 19.47
+    },
+    "roi_ex_tax": {
+     "ashp": 18.57,
+     "dhw_share": 0.639,
+     "gas_boiler": 14.68,
+     "gshp": 14.71,
+     "network": 9.53,
+     "oil_boiler": 14.78
+    },
+    "week_ending": "2024-09-02"
+   },
+   {
+    "dhw_share": 0.511,
+    "roi": {
+     "ashp": 19.0,
+     "dhw_share": 0.511,
+     "gas_boiler": 17.22,
+     "gshp": 15.33,
+     "network": 9.93,
+     "oil_boiler": 17.76
+    },
+    "roi_ex_tax": {
+     "ashp": 17.43,
+     "dhw_share": 0.511,
+     "gas_boiler": 14.28,
+     "gshp": 14.06,
+     "network": 9.11,
+     "oil_boiler": 13.24
+    },
+    "week_ending": "2024-09-09"
+   },
+   {
+    "dhw_share": 0.323,
+    "roi": {
+     "ashp": 17.15,
+     "dhw_share": 0.323,
+     "gas_boiler": 16.5,
+     "gshp": 14.28,
+     "network": 9.25,
+     "oil_boiler": 15.1
+    },
+    "roi_ex_tax": {
+     "ashp": 15.73,
+     "dhw_share": 0.323,
+     "gas_boiler": 13.68,
+     "gshp": 13.1,
+     "network": 8.48,
+     "oil_boiler": 10.82
+    },
+    "week_ending": "2024-09-16"
+   },
+   {
+    "dhw_share": 0.512,
+    "roi": {
+     "ashp": 19.0,
+     "dhw_share": 0.512,
+     "gas_boiler": 17.23,
+     "gshp": 15.33,
+     "network": 9.93,
+     "oil_boiler": 17.45
+    },
+    "roi_ex_tax": {
+     "ashp": 17.44,
+     "dhw_share": 0.512,
+     "gas_boiler": 14.28,
+     "gshp": 14.07,
+     "network": 9.11,
+     "oil_boiler": 12.96
+    },
+    "week_ending": "2024-09-23"
+   },
+   {
+    "dhw_share": 0.229,
+    "roi": {
+     "ashp": 16.24,
+     "dhw_share": 0.229,
+     "gas_boiler": 16.15,
+     "gshp": 13.76,
+     "network": 8.91,
+     "oil_boiler": 13.95
+    },
+    "roi_ex_tax": {
+     "ashp": 14.9,
+     "dhw_share": 0.229,
+     "gas_boiler": 13.39,
+     "gshp": 12.62,
+     "network": 8.18,
+     "oil_boiler": 9.78
+    },
+    "week_ending": "2024-09-30"
+   },
+   {
+    "dhw_share": 0.353,
+    "roi": {
+     "ashp": 17.45,
+     "dhw_share": 0.353,
+     "gas_boiler": 16.62,
+     "gshp": 14.44,
+     "network": 9.36,
+     "oil_boiler": 16.06
+    },
+    "roi_ex_tax": {
+     "ashp": 16.01,
+     "dhw_share": 0.353,
+     "gas_boiler": 13.78,
+     "gshp": 13.25,
+     "network": 8.58,
+     "oil_boiler": 11.68
+    },
+    "week_ending": "2024-10-07"
+   },
+   {
+    "dhw_share": 0.186,
+    "roi": {
+     "ashp": 15.81,
+     "dhw_share": 0.186,
+     "gas_boiler": 15.98,
+     "gshp": 13.52,
+     "network": 8.76,
+     "oil_boiler": 14.06
+    },
+    "roi_ex_tax": {
+     "ashp": 14.51,
+     "dhw_share": 0.186,
+     "gas_boiler": 13.25,
+     "gshp": 12.4,
+     "network": 8.03,
+     "oil_boiler": 9.86
+    },
+    "week_ending": "2024-10-14"
+   },
+   {
+    "dhw_share": 0.343,
+    "roi": {
+     "ashp": 17.34,
+     "dhw_share": 0.343,
+     "gas_boiler": 16.58,
+     "gshp": 14.39,
+     "network": 9.32,
+     "oil_boiler": 15.86
+    },
+    "roi_ex_tax": {
+     "ashp": 15.91,
+     "dhw_share": 0.343,
+     "gas_boiler": 13.74,
+     "gshp": 13.2,
+     "network": 8.55,
+     "oil_boiler": 11.51
+    },
+    "week_ending": "2024-10-21"
+   },
+   {
+    "dhw_share": 0.284,
+    "roi": {
+     "ashp": 16.77,
+     "dhw_share": 0.284,
+     "gas_boiler": 16.35,
+     "gshp": 14.06,
+     "network": 9.11,
+     "oil_boiler": 14.92
+    },
+    "roi_ex_tax": {
+     "ashp": 15.38,
+     "dhw_share": 0.284,
+     "gas_boiler": 13.56,
+     "gshp": 12.9,
+     "network": 8.36,
+     "oil_boiler": 10.65
+    },
+    "week_ending": "2024-10-28"
+   },
+   {
+    "dhw_share": 0.268,
+    "roi": {
+     "ashp": 16.62,
+     "dhw_share": 0.268,
+     "gas_boiler": 16.29,
+     "gshp": 13.97,
+     "network": 9.05,
+     "oil_boiler": 14.66
+    },
+    "roi_ex_tax": {
+     "ashp": 15.24,
+     "dhw_share": 0.268,
+     "gas_boiler": 13.51,
+     "gshp": 12.82,
+     "network": 8.3,
+     "oil_boiler": 10.42
+    },
+    "week_ending": "2024-11-04"
+   },
+   {
+    "dhw_share": 0.275,
+    "roi": {
+     "ashp": 16.68,
+     "dhw_share": 0.275,
+     "gas_boiler": 16.32,
+     "gshp": 14.01,
+     "network": 9.08,
+     "oil_boiler": 14.83
+    },
+    "roi_ex_tax": {
+     "ashp": 15.31,
+     "dhw_share": 0.275,
+     "gas_boiler": 13.53,
+     "gshp": 12.85,
+     "network": 8.33,
+     "oil_boiler": 10.58
+    },
+    "week_ending": "2024-11-11"
+   },
+   {
+    "dhw_share": 0.171,
+    "roi": {
+     "ashp": 15.66,
+     "dhw_share": 0.171,
+     "gas_boiler": 15.92,
+     "gshp": 13.43,
+     "network": 8.7,
+     "oil_boiler": 13.59
+    },
+    "roi_ex_tax": {
+     "ashp": 14.37,
+     "dhw_share": 0.171,
+     "gas_boiler": 13.2,
+     "gshp": 12.32,
+     "network": 7.98,
+     "oil_boiler": 9.45
+    },
+    "week_ending": "2024-11-18"
+   },
+   {
+    "dhw_share": 0.125,
+    "roi": {
+     "ashp": 15.22,
+     "dhw_share": 0.125,
+     "gas_boiler": 15.75,
+     "gshp": 13.18,
+     "network": 8.54,
+     "oil_boiler": 13.21
+    },
+    "roi_ex_tax": {
+     "ashp": 13.96,
+     "dhw_share": 0.125,
+     "gas_boiler": 13.06,
+     "gshp": 12.09,
+     "network": 7.83,
+     "oil_boiler": 9.09
+    },
+    "week_ending": "2024-11-25"
+   },
+   {
+    "dhw_share": 0.156,
+    "roi": {
+     "ashp": 15.51,
+     "dhw_share": 0.156,
+     "gas_boiler": 15.87,
+     "gshp": 13.35,
+     "network": 8.65,
+     "oil_boiler": 13.55
+    },
+    "roi_ex_tax": {
+     "ashp": 14.23,
+     "dhw_share": 0.156,
+     "gas_boiler": 13.15,
+     "gshp": 12.24,
+     "network": 7.93,
+     "oil_boiler": 9.4
+    },
+    "week_ending": "2024-12-02"
+   },
+   {
+    "dhw_share": 0.143,
+    "roi": {
+     "ashp": 15.39,
+     "dhw_share": 0.143,
+     "gas_boiler": 15.82,
+     "gshp": 13.28,
+     "network": 8.6,
+     "oil_boiler": 13.33
+    },
+    "roi_ex_tax": {
+     "ashp": 14.12,
+     "dhw_share": 0.143,
+     "gas_boiler": 13.11,
+     "gshp": 12.18,
+     "network": 7.89,
+     "oil_boiler": 9.21
+    },
+    "week_ending": "2024-12-09"
+   },
+   {
+    "dhw_share": 0.134,
+    "roi": {
+     "ashp": 15.3,
+     "dhw_share": 0.134,
+     "gas_boiler": 15.78,
+     "gshp": 13.22,
+     "network": 8.57,
+     "oil_boiler": 13.28
+    },
+    "roi_ex_tax": {
+     "ashp": 14.04,
+     "dhw_share": 0.134,
+     "gas_boiler": 13.08,
+     "gshp": 12.13,
+     "network": 7.86,
+     "oil_boiler": 9.16
+    },
+    "week_ending": "2024-12-16"
+   },
+   {
+    "dhw_share": 0.158,
+    "roi": {
+     "ashp": 15.54,
+     "dhw_share": 0.158,
+     "gas_boiler": 15.88,
+     "gshp": 13.36,
+     "network": 8.66,
+     "oil_boiler": 13.73
+    },
+    "roi_ex_tax": {
+     "ashp": 14.26,
+     "dhw_share": 0.158,
+     "gas_boiler": 13.16,
+     "gshp": 12.26,
+     "network": 7.94,
+     "oil_boiler": 9.57
+    },
+    "week_ending": "2024-12-23"
+   },
+   {
+    "dhw_share": 0.196,
+    "roi": {
+     "ashp": 15.91,
+     "dhw_share": 0.196,
+     "gas_boiler": 16.02,
+     "gshp": 13.57,
+     "network": 8.79,
+     "oil_boiler": 14.21
+    },
+    "roi_ex_tax": {
+     "ashp": 14.6,
+     "dhw_share": 0.196,
+     "gas_boiler": 13.28,
+     "gshp": 12.45,
+     "network": 8.07,
+     "oil_boiler": 10.0
+    },
+    "week_ending": "2024-12-30"
+   },
+   {
+    "dhw_share": 0.108,
+    "roi": {
+     "ashp": 15.04,
+     "dhw_share": 0.108,
+     "gas_boiler": 15.68,
+     "gshp": 13.08,
+     "network": 8.47,
+     "oil_boiler": 13.34
+    },
+    "roi_ex_tax": {
+     "ashp": 13.8,
+     "dhw_share": 0.108,
+     "gas_boiler": 13.0,
+     "gshp": 12.0,
+     "network": 7.77,
+     "oil_boiler": 9.21
+    },
+    "week_ending": "2025-01-06"
+   },
+   {
+    "dhw_share": 0.109,
+    "roi": {
+     "ashp": 15.05,
+     "dhw_share": 0.109,
+     "gas_boiler": 15.69,
+     "gshp": 13.08,
+     "network": 8.48,
+     "oil_boiler": 13.51
+    },
+    "roi_ex_tax": {
+     "ashp": 13.81,
+     "dhw_share": 0.109,
+     "gas_boiler": 13.0,
+     "gshp": 12.0,
+     "network": 7.78,
+     "oil_boiler": 9.35
+    },
+    "week_ending": "2025-01-13"
+   },
+   {
+    "dhw_share": 0.167,
+    "roi": {
+     "ashp": 15.62,
+     "dhw_share": 0.167,
+     "gas_boiler": 15.91,
+     "gshp": 13.41,
+     "network": 8.69,
+     "oil_boiler": 14.28
+    },
+    "roi_ex_tax": {
+     "ashp": 14.33,
+     "dhw_share": 0.167,
+     "gas_boiler": 13.19,
+     "gshp": 12.3,
+     "network": 7.97,
+     "oil_boiler": 10.05
+    },
+    "week_ending": "2025-01-20"
+   },
+   {
+    "dhw_share": 0.122,
+    "roi": {
+     "ashp": 15.19,
+     "dhw_share": 0.122,
+     "gas_boiler": 15.74,
+     "gshp": 13.16,
+     "network": 8.53,
+     "oil_boiler": 13.72
+    },
+    "roi_ex_tax": {
+     "ashp": 13.93,
+     "dhw_share": 0.122,
+     "gas_boiler": 13.05,
+     "gshp": 12.07,
+     "network": 7.82,
+     "oil_boiler": 9.54
+    },
+    "week_ending": "2025-01-27"
+   },
+   {
+    "dhw_share": 0.136,
+    "roi": {
+     "ashp": 15.32,
+     "dhw_share": 0.136,
+     "gas_boiler": 15.79,
+     "gshp": 13.23,
+     "network": 8.57,
+     "oil_boiler": 13.81
+    },
+    "roi_ex_tax": {
+     "ashp": 14.05,
+     "dhw_share": 0.136,
+     "gas_boiler": 13.09,
+     "gshp": 12.14,
+     "network": 7.87,
+     "oil_boiler": 9.63
+    },
+    "week_ending": "2025-02-03"
+   },
+   {
+    "dhw_share": 0.123,
+    "roi": {
+     "ashp": 15.19,
+     "dhw_share": 0.123,
+     "gas_boiler": 15.74,
+     "gshp": 13.16,
+     "network": 8.53,
+     "oil_boiler": 13.63
+    },
+    "roi_ex_tax": {
+     "ashp": 13.94,
+     "dhw_share": 0.123,
+     "gas_boiler": 13.05,
+     "gshp": 12.08,
+     "network": 7.82,
+     "oil_boiler": 9.46
+    },
+    "week_ending": "2025-02-10"
+   },
+   {
+    "dhw_share": 0.134,
+    "roi": {
+     "ashp": 15.3,
+     "dhw_share": 0.134,
+     "gas_boiler": 15.78,
+     "gshp": 13.22,
+     "network": 8.57,
+     "oil_boiler": 13.84
+    },
+    "roi_ex_tax": {
+     "ashp": 14.03,
+     "dhw_share": 0.134,
+     "gas_boiler": 13.08,
+     "gshp": 12.13,
+     "network": 7.86,
+     "oil_boiler": 9.66
+    },
+    "week_ending": "2025-02-17"
+   },
+   {
+    "dhw_share": 0.195,
+    "roi": {
+     "ashp": 15.9,
+     "dhw_share": 0.195,
+     "gas_boiler": 16.02,
+     "gshp": 13.57,
+     "network": 8.79,
+     "oil_boiler": 14.63
+    },
+    "roi_ex_tax": {
+     "ashp": 14.59,
+     "dhw_share": 0.195,
+     "gas_boiler": 13.28,
+     "gshp": 12.45,
+     "network": 8.06,
+     "oil_boiler": 10.37
+    },
+    "week_ending": "2025-02-24"
+   },
+   {
+    "dhw_share": 0.137,
+    "roi": {
+     "ashp": 15.33,
+     "dhw_share": 0.137,
+     "gas_boiler": 15.79,
+     "gshp": 13.24,
+     "network": 8.58,
+     "oil_boiler": 13.79
+    },
+    "roi_ex_tax": {
+     "ashp": 14.06,
+     "dhw_share": 0.137,
+     "gas_boiler": 13.09,
+     "gshp": 12.15,
+     "network": 7.87,
+     "oil_boiler": 9.61
+    },
+    "week_ending": "2025-03-03"
+   },
+   {
+    "dhw_share": 0.186,
+    "roi": {
+     "ashp": 15.81,
+     "dhw_share": 0.186,
+     "gas_boiler": 15.98,
+     "gshp": 13.52,
+     "network": 8.76,
+     "oil_boiler": 14.17
+    },
+    "roi_ex_tax": {
+     "ashp": 14.51,
+     "dhw_share": 0.186,
+     "gas_boiler": 13.25,
+     "gshp": 12.4,
+     "network": 8.03,
+     "oil_boiler": 9.96
+    },
+    "week_ending": "2025-03-10"
+   },
+   {
+    "dhw_share": 0.13,
+    "roi": {
+     "ashp": 15.27,
+     "dhw_share": 0.13,
+     "gas_boiler": 15.77,
+     "gshp": 13.2,
+     "network": 8.56,
+     "oil_boiler": 13.36
+    },
+    "roi_ex_tax": {
+     "ashp": 14.01,
+     "dhw_share": 0.13,
+     "gas_boiler": 13.07,
+     "gshp": 12.11,
+     "network": 7.85,
+     "oil_boiler": 9.23
+    },
+    "week_ending": "2025-03-17"
+   },
+   {
+    "dhw_share": 0.171,
+    "roi": {
+     "ashp": 15.67,
+     "dhw_share": 0.171,
+     "gas_boiler": 15.92,
+     "gshp": 13.43,
+     "network": 8.7,
+     "oil_boiler": 13.89
+    },
+    "roi_ex_tax": {
+     "ashp": 14.37,
+     "dhw_share": 0.171,
+     "gas_boiler": 13.2,
+     "gshp": 12.32,
+     "network": 7.98,
+     "oil_boiler": 9.71
+    },
+    "week_ending": "2025-03-24"
+   },
+   {
+    "dhw_share": 0.203,
+    "roi": {
+     "ashp": 15.98,
+     "dhw_share": 0.203,
+     "gas_boiler": 16.05,
+     "gshp": 13.61,
+     "network": 8.82,
+     "oil_boiler": 14.32
+    },
+    "roi_ex_tax": {
+     "ashp": 14.66,
+     "dhw_share": 0.203,
+     "gas_boiler": 13.3,
+     "gshp": 12.49,
+     "network": 8.09,
+     "oil_boiler": 10.1
+    },
+    "week_ending": "2025-03-31"
+   },
+   {
+    "dhw_share": 0.208,
+    "roi": {
+     "ashp": 16.02,
+     "dhw_share": 0.208,
+     "gas_boiler": 16.06,
+     "gshp": 13.63,
+     "network": 8.83,
+     "oil_boiler": 14.3
+    },
+    "roi_ex_tax": {
+     "ashp": 14.7,
+     "dhw_share": 0.208,
+     "gas_boiler": 13.32,
+     "gshp": 12.51,
+     "network": 8.1,
+     "oil_boiler": 10.08
+    },
+    "week_ending": "2025-04-07"
+   },
+   {
+    "dhw_share": 0.198,
+    "roi": {
+     "ashp": 15.93,
+     "dhw_share": 0.198,
+     "gas_boiler": 16.03,
+     "gshp": 13.58,
+     "network": 8.8,
+     "oil_boiler": 14.06
+    },
+    "roi_ex_tax": {
+     "ashp": 14.61,
+     "dhw_share": 0.198,
+     "gas_boiler": 13.28,
+     "gshp": 12.46,
+     "network": 8.07,
+     "oil_boiler": 9.87
+    },
+    "week_ending": "2025-04-14"
+   },
+   {
+    "dhw_share": 0.174,
+    "roi": {
+     "ashp": 15.69,
+     "dhw_share": 0.174,
+     "gas_boiler": 15.94,
+     "gshp": 13.45,
+     "network": 8.71,
+     "oil_boiler": 13.31
+    },
+    "roi_ex_tax": {
+     "ashp": 14.4,
+     "dhw_share": 0.174,
+     "gas_boiler": 13.21,
+     "gshp": 12.34,
+     "network": 7.99,
+     "oil_boiler": 9.2
+    },
+    "week_ending": "2025-04-21"
+   },
+   {
+    "dhw_share": 0.263,
+    "roi": {
+     "ashp": 16.56,
+     "dhw_share": 0.263,
+     "gas_boiler": 16.27,
+     "gshp": 13.94,
+     "network": 9.03,
+     "oil_boiler": 14.36
+    },
+    "roi_ex_tax": {
+     "ashp": 15.19,
+     "dhw_share": 0.263,
+     "gas_boiler": 13.49,
+     "gshp": 12.79,
+     "network": 8.29,
+     "oil_boiler": 10.15
+    },
+    "week_ending": "2025-04-28"
+   },
+   {
+    "dhw_share": 0.272,
+    "roi": {
+     "ashp": 16.65,
+     "dhw_share": 0.272,
+     "gas_boiler": 16.31,
+     "gshp": 13.99,
+     "network": 9.07,
+     "oil_boiler": 14.5
+    },
+    "roi_ex_tax": {
+     "ashp": 15.28,
+     "dhw_share": 0.272,
+     "gas_boiler": 13.52,
+     "gshp": 12.84,
+     "network": 8.32,
+     "oil_boiler": 10.28
+    },
+    "week_ending": "2025-05-05"
+   },
+   {
+    "dhw_share": 0.277,
+    "roi": {
+     "ashp": 16.7,
+     "dhw_share": 0.277,
+     "gas_boiler": 16.33,
+     "gshp": 14.02,
+     "network": 9.08,
+     "oil_boiler": 14.58
+    },
+    "roi_ex_tax": {
+     "ashp": 15.33,
+     "dhw_share": 0.277,
+     "gas_boiler": 13.54,
+     "gshp": 12.86,
+     "network": 8.33,
+     "oil_boiler": 10.35
+    },
+    "week_ending": "2025-05-12"
+   },
+   {
+    "dhw_share": 0.518,
+    "roi": {
+     "ashp": 19.07,
+     "dhw_share": 0.518,
+     "gas_boiler": 17.25,
+     "gshp": 15.37,
+     "network": 9.95,
+     "oil_boiler": 17.61
+    },
+    "roi_ex_tax": {
+     "ashp": 17.49,
+     "dhw_share": 0.518,
+     "gas_boiler": 14.3,
+     "gshp": 14.1,
+     "network": 9.13,
+     "oil_boiler": 13.1
+    },
+    "week_ending": "2025-05-19"
+   },
+   {
+    "dhw_share": 0.391,
+    "roi": {
+     "ashp": 17.82,
+     "dhw_share": 0.391,
+     "gas_boiler": 16.76,
+     "gshp": 14.66,
+     "network": 9.49,
+     "oil_boiler": 16.01
+    },
+    "roi_ex_tax": {
+     "ashp": 16.35,
+     "dhw_share": 0.391,
+     "gas_boiler": 13.9,
+     "gshp": 13.45,
+     "network": 8.71,
+     "oil_boiler": 11.65
+    },
+    "week_ending": "2025-05-26"
+   },
+   {
+    "dhw_share": 0.454,
+    "roi": {
+     "ashp": 18.44,
+     "dhw_share": 0.454,
+     "gas_boiler": 17.0,
+     "gshp": 15.01,
+     "network": 9.72,
+     "oil_boiler": 16.79
+    },
+    "roi_ex_tax": {
+     "ashp": 16.92,
+     "dhw_share": 0.454,
+     "gas_boiler": 14.1,
+     "gshp": 13.77,
+     "network": 8.92,
+     "oil_boiler": 12.36
+    },
+    "week_ending": "2025-06-02"
+   },
+   {
+    "dhw_share": 0.279,
+    "roi": {
+     "ashp": 16.73,
+     "dhw_share": 0.279,
+     "gas_boiler": 16.34,
+     "gshp": 14.03,
+     "network": 9.09,
+     "oil_boiler": 14.59
+    },
+    "roi_ex_tax": {
+     "ashp": 15.34,
+     "dhw_share": 0.279,
+     "gas_boiler": 13.54,
+     "gshp": 12.88,
+     "network": 8.34,
+     "oil_boiler": 10.36
+    },
+    "week_ending": "2025-06-09"
+   },
+   {
+    "dhw_share": 0.653,
+    "roi": {
+     "ashp": 20.38,
+     "dhw_share": 0.653,
+     "gas_boiler": 17.76,
+     "gshp": 16.12,
+     "network": 10.44,
+     "oil_boiler": 19.53
+    },
+    "roi_ex_tax": {
+     "ashp": 18.7,
+     "dhw_share": 0.653,
+     "gas_boiler": 14.73,
+     "gshp": 14.79,
+     "network": 9.57,
+     "oil_boiler": 14.84
+    },
+    "week_ending": "2025-06-16"
+   },
+   {
+    "dhw_share": 0.892,
+    "roi": {
+     "ashp": 22.72,
+     "dhw_share": 0.892,
+     "gas_boiler": 18.68,
+     "gshp": 17.45,
+     "network": 11.3,
+     "oil_boiler": 23.08
+    },
+    "roi_ex_tax": {
+     "ashp": 20.85,
+     "dhw_share": 0.892,
+     "gas_boiler": 15.48,
+     "gshp": 16.01,
+     "network": 10.36,
+     "oil_boiler": 18.05
+    },
+    "week_ending": "2025-06-23"
+   },
+   {
+    "dhw_share": 0.978,
+    "roi": {
+     "ashp": 23.57,
+     "dhw_share": 0.978,
+     "gas_boiler": 19.0,
+     "gshp": 17.93,
+     "network": 11.61,
+     "oil_boiler": 24.43
+    },
+    "roi_ex_tax": {
+     "ashp": 21.62,
+     "dhw_share": 0.978,
+     "gas_boiler": 15.75,
+     "gshp": 16.45,
+     "network": 10.65,
+     "oil_boiler": 19.26
+    },
+    "week_ending": "2025-06-30"
+   },
+   {
+    "dhw_share": 0.688,
+    "roi": {
+     "ashp": 20.73,
+     "dhw_share": 0.688,
+     "gas_boiler": 17.9,
+     "gshp": 16.31,
+     "network": 10.56,
+     "oil_boiler": 20.54
+    },
+    "roi_ex_tax": {
+     "ashp": 19.02,
+     "dhw_share": 0.688,
+     "gas_boiler": 14.84,
+     "gshp": 14.97,
+     "network": 9.69,
+     "oil_boiler": 15.74
+    },
+    "week_ending": "2025-07-07"
+   },
+   {
+    "dhw_share": 1.0,
+    "roi": {
+     "ashp": 23.78,
+     "dhw_share": 1.0,
+     "gas_boiler": 19.09,
+     "gshp": 18.05,
+     "network": 11.68,
+     "oil_boiler": 24.31
+    },
+    "roi_ex_tax": {
+     "ashp": 21.82,
+     "dhw_share": 1.0,
+     "gas_boiler": 15.82,
+     "gshp": 16.56,
+     "network": 10.72,
+     "oil_boiler": 19.17
+    },
+    "week_ending": "2025-07-14"
+   },
+   {
+    "dhw_share": 0.982,
+    "roi": {
+     "ashp": 23.6,
+     "dhw_share": 0.982,
+     "gas_boiler": 19.02,
+     "gshp": 17.95,
+     "network": 11.62,
+     "oil_boiler": 23.9
+    },
+    "roi_ex_tax": {
+     "ashp": 21.65,
+     "dhw_share": 0.982,
+     "gas_boiler": 15.77,
+     "gshp": 16.47,
+     "network": 10.66,
+     "oil_boiler": 18.8
+    },
+    "week_ending": "2025-07-21"
+   },
+   {
+    "dhw_share": 1.0,
+    "roi": {
+     "ashp": 23.78,
+     "dhw_share": 1.0,
+     "gas_boiler": 19.09,
+     "gshp": 18.05,
+     "network": 11.68,
+     "oil_boiler": 24.15
+    },
+    "roi_ex_tax": {
+     "ashp": 21.82,
+     "dhw_share": 1.0,
+     "gas_boiler": 15.82,
+     "gshp": 16.56,
+     "network": 10.72,
+     "oil_boiler": 19.02
+    },
+    "week_ending": "2025-07-28"
+   },
+   {
+    "dhw_share": 0.934,
+    "roi": {
+     "ashp": 23.14,
+     "dhw_share": 0.934,
+     "gas_boiler": 18.84,
+     "gshp": 17.68,
+     "network": 11.45,
+     "oil_boiler": 23.32
+    },
+    "roi_ex_tax": {
+     "ashp": 21.23,
+     "dhw_share": 0.934,
+     "gas_boiler": 15.62,
+     "gshp": 16.22,
+     "network": 10.5,
+     "oil_boiler": 18.27
+    },
+    "week_ending": "2025-08-04"
+   },
+   {
     "dhw_share": 0.921,
     "roi": {
      "ashp": 23.01,
@@ -44,6 +1424,14 @@
      "gshp": 17.61,
      "network": 11.4,
      "oil_boiler": 22.95
+    },
+    "roi_ex_tax": {
+     "ashp": 21.11,
+     "dhw_share": 0.921,
+     "gas_boiler": 15.57,
+     "gshp": 16.15,
+     "network": 10.46,
+     "oil_boiler": 17.94
     },
     "week_ending": "2025-08-11"
    },
@@ -57,6 +1445,14 @@
      "network": 11.68,
      "oil_boiler": 23.73
     },
+    "roi_ex_tax": {
+     "ashp": 21.82,
+     "dhw_share": 1.0,
+     "gas_boiler": 15.82,
+     "gshp": 16.56,
+     "network": 10.72,
+     "oil_boiler": 18.66
+    },
     "week_ending": "2025-08-18"
    },
    {
@@ -68,6 +1464,14 @@
      "gshp": 17.63,
      "network": 11.42,
      "oil_boiler": 22.65
+    },
+    "roi_ex_tax": {
+     "ashp": 21.15,
+     "dhw_share": 0.926,
+     "gas_boiler": 15.59,
+     "gshp": 16.18,
+     "network": 10.47,
+     "oil_boiler": 17.68
     },
     "week_ending": "2025-08-25"
    },
@@ -81,6 +1485,14 @@
      "network": 10.51,
      "oil_boiler": 19.49
     },
+    "roi_ex_tax": {
+     "ashp": 18.88,
+     "dhw_share": 0.673,
+     "gas_boiler": 14.79,
+     "gshp": 14.89,
+     "network": 9.64,
+     "oil_boiler": 14.81
+    },
     "week_ending": "2025-09-01"
    },
    {
@@ -92,6 +1504,14 @@
      "gshp": 15.35,
      "network": 9.94,
      "oil_boiler": 17.72
+    },
+    "roi_ex_tax": {
+     "ashp": 17.46,
+     "dhw_share": 0.515,
+     "gas_boiler": 14.29,
+     "gshp": 14.08,
+     "network": 9.12,
+     "oil_boiler": 13.2
     },
     "week_ending": "2025-09-08"
    },
@@ -105,6 +1525,14 @@
      "network": 9.29,
      "oil_boiler": 15.37
     },
+    "roi_ex_tax": {
+     "ashp": 15.84,
+     "dhw_share": 0.334,
+     "gas_boiler": 13.72,
+     "gshp": 13.16,
+     "network": 8.52,
+     "oil_boiler": 11.07
+    },
     "week_ending": "2025-09-15"
    },
    {
@@ -116,6 +1544,14 @@
      "gshp": 14.37,
      "network": 9.31,
      "oil_boiler": 15.4
+    },
+    "roi_ex_tax": {
+     "ashp": 15.88,
+     "dhw_share": 0.339,
+     "gas_boiler": 13.73,
+     "gshp": 13.18,
+     "network": 8.54,
+     "oil_boiler": 11.1
     },
     "week_ending": "2025-09-22"
    },
@@ -129,6 +1565,14 @@
      "network": 9.03,
      "oil_boiler": 14.55
     },
+    "roi_ex_tax": {
+     "ashp": 15.18,
+     "dhw_share": 0.261,
+     "gas_boiler": 13.49,
+     "gshp": 12.78,
+     "network": 8.28,
+     "oil_boiler": 10.33
+    },
     "week_ending": "2025-09-29"
    },
    {
@@ -140,6 +1584,14 @@
      "gshp": 14.81,
      "network": 9.59,
      "oil_boiler": 16.51
+    },
+    "roi_ex_tax": {
+     "ashp": 16.6,
+     "dhw_share": 0.419,
+     "gas_boiler": 13.99,
+     "gshp": 13.59,
+     "network": 8.8,
+     "oil_boiler": 12.1
     },
     "week_ending": "2025-10-06"
    },
@@ -153,6 +1605,14 @@
      "network": 8.94,
      "oil_boiler": 14.2
     },
+    "roi_ex_tax": {
+     "ashp": 14.98,
+     "dhw_share": 0.239,
+     "gas_boiler": 13.41,
+     "gshp": 12.67,
+     "network": 8.21,
+     "oil_boiler": 10.01
+    },
     "week_ending": "2025-10-13"
    },
    {
@@ -164,6 +1624,14 @@
      "gshp": 14.05,
      "network": 9.1,
      "oil_boiler": 14.59
+    },
+    "roi_ex_tax": {
+     "ashp": 15.37,
+     "dhw_share": 0.283,
+     "gas_boiler": 13.55,
+     "gshp": 12.89,
+     "network": 8.35,
+     "oil_boiler": 10.36
     },
     "week_ending": "2025-10-20"
    },
@@ -177,6 +1645,14 @@
      "network": 8.74,
      "oil_boiler": 13.63
     },
+    "roi_ex_tax": {
+     "ashp": 14.46,
+     "dhw_share": 0.18,
+     "gas_boiler": 13.23,
+     "gshp": 12.37,
+     "network": 8.01,
+     "oil_boiler": 9.48
+    },
     "week_ending": "2025-10-27"
    },
    {
@@ -188,6 +1664,14 @@
      "gshp": 13.64,
      "network": 8.83,
      "oil_boiler": 14.05
+    },
+    "roi_ex_tax": {
+     "ashp": 14.7,
+     "dhw_share": 0.208,
+     "gas_boiler": 13.32,
+     "gshp": 12.51,
+     "network": 8.1,
+     "oil_boiler": 9.87
     },
     "week_ending": "2025-11-03"
    },
@@ -201,6 +1685,14 @@
      "network": 9.07,
      "oil_boiler": 14.92
     },
+    "roi_ex_tax": {
+     "ashp": 15.3,
+     "dhw_share": 0.274,
+     "gas_boiler": 13.53,
+     "gshp": 12.85,
+     "network": 8.32,
+     "oil_boiler": 10.66
+    },
     "week_ending": "2025-11-10"
    },
    {
@@ -212,6 +1704,14 @@
      "gshp": 13.48,
      "network": 8.74,
      "oil_boiler": 13.82
+    },
+    "roi_ex_tax": {
+     "ashp": 14.46,
+     "dhw_share": 0.18,
+     "gas_boiler": 13.23,
+     "gshp": 12.37,
+     "network": 8.01,
+     "oil_boiler": 9.65
     },
     "week_ending": "2025-11-17"
    },
@@ -225,6 +1725,14 @@
      "network": 8.5,
      "oil_boiler": 13.36
     },
+    "roi_ex_tax": {
+     "ashp": 13.87,
+     "dhw_share": 0.116,
+     "gas_boiler": 13.03,
+     "gshp": 12.04,
+     "network": 7.8,
+     "oil_boiler": 9.23
+    },
     "week_ending": "2025-11-24"
    },
    {
@@ -236,6 +1744,14 @@
      "gshp": 13.3,
      "network": 8.62,
      "oil_boiler": 13.35
+    },
+    "roi_ex_tax": {
+     "ashp": 14.16,
+     "dhw_share": 0.148,
+     "gas_boiler": 13.13,
+     "gshp": 12.2,
+     "network": 7.91,
+     "oil_boiler": 9.22
     },
     "week_ending": "2025-12-01"
    },
@@ -249,6 +1765,14 @@
      "network": 8.62,
      "oil_boiler": 13.14
     },
+    "roi_ex_tax": {
+     "ashp": 14.16,
+     "dhw_share": 0.148,
+     "gas_boiler": 13.13,
+     "gshp": 12.2,
+     "network": 7.91,
+     "oil_boiler": 9.05
+    },
     "week_ending": "2025-12-08"
    },
    {
@@ -260,6 +1784,14 @@
      "gshp": 13.46,
      "network": 8.72,
      "oil_boiler": 13.36
+    },
+    "roi_ex_tax": {
+     "ashp": 14.43,
+     "dhw_share": 0.177,
+     "gas_boiler": 13.22,
+     "gshp": 12.35,
+     "network": 8.0,
+     "oil_boiler": 9.25
     },
     "week_ending": "2025-12-15"
    },
@@ -273,6 +1805,14 @@
      "network": 8.61,
      "oil_boiler": 12.96
     },
+    "roi_ex_tax": {
+     "ashp": 14.15,
+     "dhw_share": 0.147,
+     "gas_boiler": 13.12,
+     "gshp": 12.2,
+     "network": 7.9,
+     "oil_boiler": 8.88
+    },
     "week_ending": "2025-12-22"
    },
    {
@@ -284,6 +1824,14 @@
      "gshp": 13.19,
      "network": 8.54,
      "oil_boiler": 12.62
+    },
+    "roi_ex_tax": {
+     "ashp": 13.98,
+     "dhw_share": 0.127,
+     "gas_boiler": 13.06,
+     "gshp": 12.1,
+     "network": 7.84,
+     "oil_boiler": 8.58
     },
     "week_ending": "2025-12-29"
    },
@@ -297,6 +1845,14 @@
      "network": 8.43,
      "oil_boiler": 12.27
     },
+    "roi_ex_tax": {
+     "ashp": 13.69,
+     "dhw_share": 0.095,
+     "gas_boiler": 12.96,
+     "gshp": 11.94,
+     "network": 7.73,
+     "oil_boiler": 8.26
+    },
     "week_ending": "2026-01-05"
    },
    {
@@ -308,6 +1864,14 @@
      "gshp": 13.12,
      "network": 8.5,
      "oil_boiler": 12.49
+    },
+    "roi_ex_tax": {
+     "ashp": 13.87,
+     "dhw_share": 0.115,
+     "gas_boiler": 13.02,
+     "gshp": 12.04,
+     "network": 7.8,
+     "oil_boiler": 8.46
     },
     "week_ending": "2026-01-12"
    },
@@ -321,6 +1885,14 @@
      "network": 8.52,
      "oil_boiler": 12.57
     },
+    "roi_ex_tax": {
+     "ashp": 13.91,
+     "dhw_share": 0.12,
+     "gas_boiler": 13.04,
+     "gshp": 12.06,
+     "network": 7.81,
+     "oil_boiler": 8.54
+    },
     "week_ending": "2026-01-19"
    },
    {
@@ -332,6 +1904,14 @@
      "gshp": 13.22,
      "network": 8.57,
      "oil_boiler": 12.88
+    },
+    "roi_ex_tax": {
+     "ashp": 14.03,
+     "dhw_share": 0.133,
+     "gas_boiler": 13.08,
+     "gshp": 12.13,
+     "network": 7.86,
+     "oil_boiler": 8.81
     },
     "week_ending": "2026-01-26"
    },
@@ -345,6 +1925,14 @@
      "network": 8.56,
      "oil_boiler": 12.9
     },
+    "roi_ex_tax": {
+     "ashp": 14.02,
+     "dhw_share": 0.132,
+     "gas_boiler": 13.08,
+     "gshp": 12.13,
+     "network": 7.86,
+     "oil_boiler": 8.83
+    },
     "week_ending": "2026-02-02"
    },
    {
@@ -356,6 +1944,14 @@
      "gshp": 13.22,
      "network": 8.57,
      "oil_boiler": 12.79
+    },
+    "roi_ex_tax": {
+     "ashp": 14.04,
+     "dhw_share": 0.134,
+     "gas_boiler": 13.08,
+     "gshp": 12.13,
+     "network": 7.86,
+     "oil_boiler": 8.73
     },
     "week_ending": "2026-02-09"
    },
@@ -369,6 +1965,14 @@
      "network": 8.53,
      "oil_boiler": 12.72
     },
+    "roi_ex_tax": {
+     "ashp": 13.95,
+     "dhw_share": 0.124,
+     "gas_boiler": 13.05,
+     "gshp": 12.08,
+     "network": 7.83,
+     "oil_boiler": 8.67
+    },
     "week_ending": "2026-02-16"
    },
    {
@@ -380,6 +1984,14 @@
      "gshp": 13.32,
      "network": 8.63,
      "oil_boiler": 13.27
+    },
+    "roi_ex_tax": {
+     "ashp": 14.2,
+     "dhw_share": 0.151,
+     "gas_boiler": 13.14,
+     "gshp": 12.22,
+     "network": 7.92,
+     "oil_boiler": 9.16
     },
     "week_ending": "2026-02-23"
    },
@@ -393,6 +2005,14 @@
      "network": 6.93,
      "oil_boiler": 9.98
     },
+    "ni_ex_tax": {
+     "ashp": 12.04,
+     "dhw_share": 0.173,
+     "gas_boiler": 9.46,
+     "gshp": 10.18,
+     "network": 6.6,
+     "oil_boiler": 9.51
+    },
     "roi": {
      "ashp": 15.68,
      "dhw_share": 0.173,
@@ -400,6 +2020,14 @@
      "gshp": 13.44,
      "network": 8.71,
      "oil_boiler": 16.68
+    },
+    "roi_ex_tax": {
+     "ashp": 14.39,
+     "dhw_share": 0.173,
+     "gas_boiler": 13.21,
+     "gshp": 12.33,
+     "network": 7.99,
+     "oil_boiler": 12.17
     },
     "week_ending": "2026-03-02"
    },
@@ -413,6 +2041,14 @@
      "network": 6.83,
      "oil_boiler": 14.04
     },
+    "ni_ex_tax": {
+     "ashp": 11.8,
+     "dhw_share": 0.141,
+     "gas_boiler": 9.38,
+     "gshp": 10.05,
+     "network": 6.51,
+     "oil_boiler": 13.37
+    },
     "roi": {
      "ashp": 15.37,
      "dhw_share": 0.141,
@@ -420,6 +2056,14 @@
      "gshp": 13.26,
      "network": 8.59,
      "oil_boiler": 20.14
+    },
+    "roi_ex_tax": {
+     "ashp": 14.1,
+     "dhw_share": 0.141,
+     "gas_boiler": 13.1,
+     "gshp": 12.17,
+     "network": 7.88,
+     "oil_boiler": 15.21
     },
     "week_ending": "2026-03-09"
    },
@@ -433,6 +2077,14 @@
      "network": 6.85,
      "oil_boiler": 15.17
     },
+    "ni_ex_tax": {
+     "ashp": 11.84,
+     "dhw_share": 0.146,
+     "gas_boiler": 9.39,
+     "gshp": 10.07,
+     "network": 6.52,
+     "oil_boiler": 14.44
+    },
     "roi": {
      "ashp": 15.42,
      "dhw_share": 0.146,
@@ -440,6 +2092,14 @@
      "gshp": 13.29,
      "network": 8.61,
      "oil_boiler": 18.82
+    },
+    "roi_ex_tax": {
+     "ashp": 14.14,
+     "dhw_share": 0.146,
+     "gas_boiler": 13.12,
+     "gshp": 12.19,
+     "network": 7.9,
+     "oil_boiler": 14.05
     },
     "week_ending": "2026-03-16"
    },
@@ -453,6 +2113,14 @@
      "network": 6.93,
      "oil_boiler": 15.48
     },
+    "ni_ex_tax": {
+     "ashp": 12.05,
+     "dhw_share": 0.176,
+     "gas_boiler": 9.46,
+     "gshp": 10.19,
+     "network": 6.6,
+     "oil_boiler": 14.74
+    },
     "roi": {
      "ashp": 15.71,
      "dhw_share": 0.176,
@@ -460,6 +2128,14 @@
      "gshp": 13.46,
      "network": 8.72,
      "oil_boiler": 19.65
+    },
+    "roi_ex_tax": {
+     "ashp": 14.41,
+     "dhw_share": 0.176,
+     "gas_boiler": 13.21,
+     "gshp": 12.35,
+     "network": 8.0,
+     "oil_boiler": 14.79
     },
     "week_ending": "2026-03-23"
    },
@@ -473,6 +2149,14 @@
      "network": 6.87,
      "oil_boiler": 15.08
     },
+    "ni_ex_tax": {
+     "ashp": 11.88,
+     "dhw_share": 0.151,
+     "gas_boiler": 9.41,
+     "gshp": 10.09,
+     "network": 6.54,
+     "oil_boiler": 14.36
+    },
     "roi": {
      "ashp": 15.47,
      "dhw_share": 0.151,
@@ -480,6 +2164,14 @@
      "gshp": 13.32,
      "network": 8.63,
      "oil_boiler": 19.6
+    },
+    "roi_ex_tax": {
+     "ashp": 14.19,
+     "dhw_share": 0.151,
+     "gas_boiler": 13.14,
+     "gshp": 12.22,
+     "network": 7.92,
+     "oil_boiler": 14.81
     },
     "week_ending": "2026-03-30"
    },
@@ -493,6 +2185,14 @@
      "network": 6.91,
      "oil_boiler": 15.67
     },
+    "ni_ex_tax": {
+     "ashp": 11.98,
+     "dhw_share": 0.166,
+     "gas_boiler": 8.62,
+     "gshp": 10.15,
+     "network": 6.58,
+     "oil_boiler": 14.93
+    },
     "roi": {
      "ashp": 15.61,
      "dhw_share": 0.166,
@@ -500,6 +2200,14 @@
      "gshp": 13.4,
      "network": 8.68,
      "oil_boiler": 21.12
+    },
+    "roi_ex_tax": {
+     "ashp": 14.32,
+     "dhw_share": 0.166,
+     "gas_boiler": 13.18,
+     "gshp": 12.3,
+     "network": 7.97,
+     "oil_boiler": 16.16
     },
     "week_ending": "2026-04-06"
    },
@@ -513,6 +2221,14 @@
      "network": 6.91,
      "oil_boiler": 15.87
     },
+    "ni_ex_tax": {
+     "ashp": 11.99,
+     "dhw_share": 0.166,
+     "gas_boiler": 8.62,
+     "gshp": 10.15,
+     "network": 6.58,
+     "oil_boiler": 15.11
+    },
     "roi": {
      "ashp": 15.62,
      "dhw_share": 0.166,
@@ -520,6 +2236,14 @@
      "gshp": 13.4,
      "network": 8.68,
      "oil_boiler": 21.05
+    },
+    "roi_ex_tax": {
+     "ashp": 14.33,
+     "dhw_share": 0.166,
+     "gas_boiler": 13.18,
+     "gshp": 12.3,
+     "network": 7.97,
+     "oil_boiler": 16.09
     },
     "week_ending": "2026-04-13"
    },
@@ -533,6 +2257,14 @@
      "network": 6.99,
      "oil_boiler": 15.26
     },
+    "ni_ex_tax": {
+     "ashp": 12.2,
+     "dhw_share": 0.195,
+     "gas_boiler": 8.68,
+     "gshp": 10.28,
+     "network": 6.66,
+     "oil_boiler": 14.54
+    },
     "roi": {
      "ashp": 15.9,
      "dhw_share": 0.195,
@@ -540,6 +2272,14 @@
      "gshp": 13.57,
      "network": 8.79,
      "oil_boiler": 18.7
+    },
+    "roi_ex_tax": {
+     "ashp": 14.59,
+     "dhw_share": 0.195,
+     "gas_boiler": 13.28,
+     "gshp": 12.45,
+     "network": 8.06,
+     "oil_boiler": 14.03
     },
     "week_ending": "2026-04-20"
    },
@@ -553,6 +2293,14 @@
      "network": 7.09,
      "oil_boiler": 14.64
     },
+    "ni_ex_tax": {
+     "ashp": 12.46,
+     "dhw_share": 0.231,
+     "gas_boiler": 8.76,
+     "gshp": 10.43,
+     "network": 6.76,
+     "oil_boiler": 13.95
+    },
     "roi": {
      "ashp": 16.26,
      "dhw_share": 0.231,
@@ -560,6 +2308,14 @@
      "gshp": 13.77,
      "network": 8.92,
      "oil_boiler": 18.84
+    },
+    "roi_ex_tax": {
+     "ashp": 14.91,
+     "dhw_share": 0.231,
+     "gas_boiler": 13.39,
+     "gshp": 12.63,
+     "network": 8.18,
+     "oil_boiler": 14.17
     },
     "week_ending": "2026-04-27"
    },
@@ -573,6 +2329,14 @@
      "network": 7.21,
      "oil_boiler": 14.95
     },
+    "ni_ex_tax": {
+     "ashp": 12.74,
+     "dhw_share": 0.271,
+     "gas_boiler": 8.84,
+     "gshp": 10.6,
+     "network": 6.86,
+     "oil_boiler": 14.24
+    },
     "roi": {
      "ashp": 16.64,
      "dhw_share": 0.271,
@@ -580,6 +2344,14 @@
      "gshp": 13.99,
      "network": 9.06,
      "oil_boiler": 20.25
+    },
+    "roi_ex_tax": {
+     "ashp": 15.27,
+     "dhw_share": 0.271,
+     "gas_boiler": 13.52,
+     "gshp": 12.83,
+     "network": 8.31,
+     "oil_boiler": 15.42
     },
     "week_ending": "2026-05-04"
    },
@@ -593,6 +2365,14 @@
      "network": 7.01,
      "oil_boiler": 13.93
     },
+    "ni_ex_tax": {
+     "ashp": 12.24,
+     "dhw_share": 0.202,
+     "gas_boiler": 8.7,
+     "gshp": 10.3,
+     "network": 6.68,
+     "oil_boiler": 13.27
+    },
     "roi": {
      "ashp": 15.96,
      "dhw_share": 0.202,
@@ -600,6 +2380,14 @@
      "gshp": 13.6,
      "network": 8.81,
      "oil_boiler": 19.57
+    },
+    "roi_ex_tax": {
+     "ashp": 14.65,
+     "dhw_share": 0.202,
+     "gas_boiler": 13.3,
+     "gshp": 12.48,
+     "network": 8.08,
+     "oil_boiler": 14.79
     },
     "week_ending": "2026-05-11"
    },
@@ -613,6 +2401,14 @@
      "network": 7.0,
      "oil_boiler": 13.09
     },
+    "ni_ex_tax": {
+     "ashp": 12.22,
+     "dhw_share": 0.198,
+     "gas_boiler": 8.69,
+     "gshp": 10.29,
+     "network": 6.67,
+     "oil_boiler": 12.46
+    },
     "roi": {
      "ashp": 15.93,
      "dhw_share": 0.198,
@@ -620,6 +2416,14 @@
      "gshp": 13.58,
      "network": 8.8,
      "oil_boiler": 18.55
+    },
+    "roi_ex_tax": {
+     "ashp": 14.62,
+     "dhw_share": 0.198,
+     "gas_boiler": 13.29,
+     "gshp": 12.46,
+     "network": 8.07,
+     "oil_boiler": 13.9
     },
     "week_ending": "2026-05-18"
    },
@@ -633,6 +2437,14 @@
      "network": 8.06,
      "oil_boiler": 16.62
     },
+    "ni_ex_tax": {
+     "ashp": 14.89,
+     "dhw_share": 0.568,
+     "gas_boiler": 9.46,
+     "gshp": 11.85,
+     "network": 7.67,
+     "oil_boiler": 15.83
+    },
     "roi": {
      "ashp": 19.55,
      "dhw_share": 0.568,
@@ -640,6 +2452,14 @@
      "gshp": 15.64,
      "network": 10.13,
      "oil_boiler": 23.09
+    },
+    "roi_ex_tax": {
+     "ashp": 17.94,
+     "dhw_share": 0.568,
+     "gas_boiler": 14.46,
+     "gshp": 14.35,
+     "network": 9.29,
+     "oil_boiler": 18.03
     },
     "week_ending": "2026-05-25"
    },
@@ -653,6 +2473,14 @@
      "network": 9.26,
      "oil_boiler": 20.39
     },
+    "ni_ex_tax": {
+     "ashp": 17.93,
+     "dhw_share": 0.988,
+     "gas_boiler": 10.33,
+     "gshp": 13.62,
+     "network": 8.82,
+     "oil_boiler": 19.42
+    },
     "roi": {
      "ashp": 23.67,
      "dhw_share": 0.988,
@@ -660,6 +2488,14 @@
      "gshp": 17.98,
      "network": 11.64,
      "oil_boiler": 28.4
+    },
+    "roi_ex_tax": {
+     "ashp": 21.71,
+     "dhw_share": 0.988,
+     "gas_boiler": 15.79,
+     "gshp": 16.5,
+     "network": 10.68,
+     "oil_boiler": 22.84
     },
     "week_ending": "2026-06-01"
    },
@@ -673,6 +2509,14 @@
      "network": 7.43,
      "oil_boiler": 13.41
     },
+    "ni_ex_tax": {
+     "ashp": 13.3,
+     "dhw_share": 0.348,
+     "gas_boiler": 9.0,
+     "gshp": 10.92,
+     "network": 7.07,
+     "oil_boiler": 12.77
+    },
     "roi": {
      "ashp": 17.39,
      "dhw_share": 0.348,
@@ -680,6 +2524,14 @@
      "gshp": 14.42,
      "network": 9.34,
      "oil_boiler": 19.9
+    },
+    "roi_ex_tax": {
+     "ashp": 15.96,
+     "dhw_share": 0.348,
+     "gas_boiler": 13.76,
+     "gshp": 13.23,
+     "network": 8.57,
+     "oil_boiler": 15.14
     },
     "week_ending": "2026-06-08"
    },
@@ -693,6 +2545,14 @@
      "network": 7.55,
      "oil_boiler": 13.55
     },
+    "ni_ex_tax": {
+     "ashp": 13.6,
+     "dhw_share": 0.39,
+     "gas_boiler": 9.09,
+     "gshp": 11.1,
+     "network": 7.19,
+     "oil_boiler": 12.9
+    },
     "roi": {
      "ashp": 17.8,
      "dhw_share": 0.39,
@@ -700,6 +2560,14 @@
      "gshp": 14.65,
      "network": 9.49,
      "oil_boiler": 20.0
+    },
+    "roi_ex_tax": {
+     "ashp": 16.33,
+     "dhw_share": 0.39,
+     "gas_boiler": 13.89,
+     "gshp": 13.44,
+     "network": 8.7,
+     "oil_boiler": 15.24
     },
     "week_ending": "2026-06-15"
    },
@@ -713,6 +2581,14 @@
      "network": 9.15,
      "oil_boiler": 18.31
     },
+    "ni_ex_tax": {
+     "ashp": 17.66,
+     "dhw_share": 0.951,
+     "gas_boiler": 10.25,
+     "gshp": 13.47,
+     "network": 8.72,
+     "oil_boiler": 17.44
+    },
     "roi": {
      "ashp": 23.3,
      "dhw_share": 0.951,
@@ -720,6 +2596,14 @@
      "gshp": 17.78,
      "network": 11.51,
      "oil_boiler": 26.61
+    },
+    "roi_ex_tax": {
+     "ashp": 21.38,
+     "dhw_share": 0.951,
+     "gas_boiler": 15.67,
+     "gshp": 16.31,
+     "network": 10.56,
+     "oil_boiler": 21.25
     },
     "week_ending": "2026-06-22"
    },
@@ -733,6 +2617,14 @@
      "network": 9.2,
      "oil_boiler": 17.82
     },
+    "ni_ex_tax": {
+     "ashp": 17.78,
+     "dhw_share": 0.967,
+     "gas_boiler": 10.28,
+     "gshp": 13.53,
+     "network": 8.76,
+     "oil_boiler": 16.97
+    },
     "roi": {
      "ashp": 23.46,
      "dhw_share": 0.967,
@@ -740,6 +2632,14 @@
      "gshp": 17.86,
      "network": 11.57,
      "oil_boiler": 26.4
+    },
+    "roi_ex_tax": {
+     "ashp": 21.52,
+     "dhw_share": 0.967,
+     "gas_boiler": 15.72,
+     "gshp": 16.39,
+     "network": 10.61,
+     "oil_boiler": 21.07
     },
     "week_ending": "2026-06-29"
    },
@@ -753,6 +2653,14 @@
      "network": 9.85,
      "oil_boiler": 18.56
     },
+    "ni_ex_tax": {
+     "ashp": 19.08,
+     "dhw_share": 0.992,
+     "gas_boiler": 10.77,
+     "gshp": 14.49,
+     "network": 9.38,
+     "oil_boiler": 17.68
+    },
     "roi": {
      "ashp": 25.6,
      "dhw_share": 0.992,
@@ -760,6 +2668,14 @@
      "gshp": 19.44,
      "network": 12.59,
      "oil_boiler": 27.15
+    },
+    "roi_ex_tax": {
+     "ashp": 23.48,
+     "dhw_share": 0.992,
+     "gas_boiler": 17.15,
+     "gshp": 17.84,
+     "network": 11.55,
+     "oil_boiler": 21.77
     },
     "week_ending": "2026-07-06"
    },
@@ -773,6 +2689,14 @@
      "network": 9.87,
      "oil_boiler": 19.25
     },
+    "ni_ex_tax": {
+     "ashp": 19.14,
+     "dhw_share": 1.0,
+     "gas_boiler": 10.78,
+     "gshp": 14.52,
+     "network": 9.4,
+     "oil_boiler": 18.33
+    },
     "roi": {
      "ashp": 25.68,
      "dhw_share": 1.0,
@@ -780,6 +2704,14 @@
      "gshp": 19.49,
      "network": 12.62,
      "oil_boiler": 26.79
+    },
+    "roi_ex_tax": {
+     "ashp": 23.56,
+     "dhw_share": 1.0,
+     "gas_boiler": 17.17,
+     "gshp": 17.88,
+     "network": 11.58,
+     "oil_boiler": 21.46
     },
     "week_ending": "2026-07-13"
    },
@@ -793,6 +2725,14 @@
      "network": 9.87,
      "oil_boiler": 20.94
     },
+    "ni_ex_tax": {
+     "ashp": 19.14,
+     "dhw_share": 1.0,
+     "gas_boiler": 10.78,
+     "gshp": 14.52,
+     "network": 9.4,
+     "oil_boiler": 19.95
+    },
     "roi": {
      "ashp": 25.68,
      "dhw_share": 1.0,
@@ -800,6 +2740,14 @@
      "gshp": 19.49,
      "network": 12.62,
      "oil_boiler": 28.63
+    },
+    "roi_ex_tax": {
+     "ashp": 23.56,
+     "dhw_share": 1.0,
+     "gas_boiler": 17.17,
+     "gshp": 17.88,
+     "network": 11.58,
+     "oil_boiler": 23.08
     },
     "week_ending": "2026-07-20"
    },
@@ -813,6 +2761,14 @@
      "network": 9.87,
      "oil_boiler": 21.19
     },
+    "ni_ex_tax": {
+     "ashp": 19.14,
+     "dhw_share": 1.0,
+     "gas_boiler": 10.78,
+     "gshp": 14.52,
+     "network": 9.4,
+     "oil_boiler": 20.19
+    },
     "roi": {
      "ashp": 25.68,
      "dhw_share": 1.0,
@@ -820,6 +2776,14 @@
      "gshp": 19.49,
      "network": 12.62,
      "oil_boiler": 29.39
+    },
+    "roi_ex_tax": {
+     "ashp": 23.56,
+     "dhw_share": 1.0,
+     "gas_boiler": 17.17,
+     "gshp": 17.88,
+     "network": 11.58,
+     "oil_boiler": 23.75
     },
     "week_ending": "2026-07-27"
    },
@@ -833,6 +2797,14 @@
      "network": 9.64,
      "oil_boiler": 20.62
     },
+    "ni_ex_tax": {
+     "ashp": 18.54,
+     "dhw_share": 0.923,
+     "gas_boiler": 10.62,
+     "gshp": 14.18,
+     "network": 9.18,
+     "oil_boiler": 19.64
+    },
     "roi": {
      "ashp": 24.86,
      "dhw_share": 0.923,
@@ -840,6 +2812,14 @@
      "gshp": 19.03,
      "network": 12.32,
      "oil_boiler": 28.77
+    },
+    "roi_ex_tax": {
+     "ashp": 22.81,
+     "dhw_share": 0.923,
+     "gas_boiler": 16.91,
+     "gshp": 17.45,
+     "network": 11.3,
+     "oil_boiler": 23.17
     },
     "week_ending": "2026-08-03"
    },
@@ -853,6 +2833,14 @@
      "network": 9.28,
      "oil_boiler": 18.97
     },
+    "ni_ex_tax": {
+     "ashp": 17.63,
+     "dhw_share": 0.804,
+     "gas_boiler": 10.36,
+     "gshp": 13.64,
+     "network": 8.83,
+     "oil_boiler": 18.07
+    },
     "roi": {
      "ashp": 23.61,
      "dhw_share": 0.804,
@@ -860,6 +2848,14 @@
      "gshp": 18.31,
      "network": 11.86,
      "oil_boiler": 27.06
+    },
+    "roi_ex_tax": {
+     "ashp": 21.66,
+     "dhw_share": 0.804,
+     "gas_boiler": 16.5,
+     "gshp": 16.8,
+     "network": 10.88,
+     "oil_boiler": 21.62
     },
     "week_ending": "2026-08-10"
    }
@@ -8913,7 +10909,7 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-08-13T19:45:31+00:00",
+   "fetched_utc": "2026-08-13T20:50:56+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -9596,7 +11592,7 @@
     "2025-S2": 0.87073,
     "2026-S1": 0.8672
    },
-   "fetched_utc": "2026-08-13T19:44:55+00:00",
+   "fetched_utc": "2026-08-13T20:50:17+00:00",
    "gbp_eur": 1.16973,
    "latest_day": "2026-08-13",
    "rate_date": "2026-08-13",
@@ -10000,7 +11996,7 @@
     "2026-08-10": 231.4,
     "2026-08-11": 203.9,
     "2026-08-12": 204.9,
-    "2026-08-13": 215.6
+    "2026-08-13": 215.4
    },
    "demand_gwh_daily": {
     "island": {
@@ -10059,7 +12055,7 @@
      "2026-08-10": 107.38,
      "2026-08-11": 109.2,
      "2026-08-12": 114.17,
-     "2026-08-13": 116.85
+     "2026-08-13": 117.47
     },
     "ni": {
      "2026-06-19": 19.11,
@@ -10117,7 +12113,7 @@
      "2026-08-10": 18.69,
      "2026-08-11": 18.45,
      "2026-08-12": 19.32,
-     "2026-08-13": 19.92
+     "2026-08-13": 20.04
     },
     "roi": {
      "2026-06-19": 93.91,
@@ -10175,10 +12171,10 @@
      "2026-08-10": 88.69,
      "2026-08-11": 90.75,
      "2026-08-12": 94.85,
-     "2026-08-13": 96.93
+     "2026-08-13": 97.43
     }
    },
-   "fetched_utc": "2026-08-13T19:44:51+00:00",
+   "fetched_utc": "2026-08-13T20:50:09+00:00",
    "latest_day": "2026-08-13",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
@@ -10189,13 +12185,13 @@
     "18mo": "HISTORIC CARBON RETURNED",
     "24mo": "HISTORIC CARBON RETURNED"
    },
-   "fetched_utc": "2026-08-13T19:46:19+00:00",
+   "fetched_utc": "2026-08-13T20:51:45+00:00",
    "latest_day": "2026-08-13",
    "source": "EirGrid Smart Grid Dashboard (probe, round 3)",
    "status": "ok"
   },
   "entsog_probe": {
-   "fetched_utc": "2026-08-13T19:45:48+00:00",
+   "fetched_utc": "2026-08-13T20:51:17+00:00",
    "greater_belfast_gwh_daily": {
     "2026-07-20": 4.22306,
     "2026-07-21": 4.827287,
@@ -10221,7 +12217,7 @@
     "2026-08-10": 5.168749,
     "2026-08-11": 4.892431,
     "2026-08-12": 4.547768,
-    "2026-08-13": 2.301205
+    "2026-08-13": 3.332805
    },
    "ie_points": [
     "ITP-00090",
@@ -10254,7 +12250,8 @@
     "2026-08-08": 105.9606,
     "2026-08-09": 118.5258,
     "2026-08-10": 158.7522,
-    "2026-08-11": 144.4665
+    "2026-08-11": 144.4665,
+    "2026-08-12": 155.0337
    },
    "moffat_ie_gwh_daily": {
     "2026-07-20": 136.4,
@@ -10343,11 +12340,11 @@
     "2026-08-10": 38.738611,
     "2026-08-11": 34.370833,
     "2026-08-12": 42.255556,
-    "2026-08-13": 18.796111
+    "2026-08-13": 29.178889
    }
   },
   "gb_oil": {
-   "fetched_utc": "2026-08-13T19:45:32+00:00",
+   "fetched_utc": "2026-08-13T20:50:57+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -13309,7 +15306,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-08-13T19:44:56+00:00",
+   "fetched_utc": "2026-08-13T20:50:18+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -25141,7 +27138,7 @@
     "2026-08-11": 7.017,
     "2026-08-12": 6.74
    },
-   "fetched_utc": "2026-08-13T19:45:31+00:00",
+   "fetched_utc": "2026-08-13T20:50:55+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-08-12",
    "ndm_gwh": {
@@ -25666,7 +27663,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-08-13T19:44:54+00:00",
+   "fetched_utc": "2026-08-13T20:50:16+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -29225,7 +31222,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-08-13T19:45:17+00:00",
+   "fetched_utc": "2026-08-13T20:50:43+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -29568,7 +31565,7 @@
    "status": "ok"
   },
   "sem_mix": {
-   "fetched_utc": "2026-08-13T19:45:49+00:00",
+   "fetched_utc": "2026-08-13T20:51:20+00:00",
    "indigenous_share_daily": {
     "2026-06-25": 47.93,
     "2026-06-26": 46.75,
@@ -29630,6 +31627,293 @@
    "dam_avg_gbp_mwh": 146.77,
    "dam_hourly_added": 24,
    "dam_hourly_eur_mwh": {
+    "2026-03-27T00": 104.3,
+    "2026-03-27T01": 93.91,
+    "2026-03-27T02": 82.72,
+    "2026-03-27T03": 68.19,
+    "2026-03-27T04": 61.89,
+    "2026-03-27T05": 55.04,
+    "2026-03-27T06": 57.79,
+    "2026-03-27T07": 62.0,
+    "2026-03-27T08": 58.0,
+    "2026-03-27T09": 42.01,
+    "2026-03-27T10": 21.57,
+    "2026-03-27T11": 11.0,
+    "2026-03-27T12": 9.97,
+    "2026-03-27T13": 8.6,
+    "2026-03-27T14": 11.56,
+    "2026-03-27T15": 14.68,
+    "2026-03-27T16": 39.88,
+    "2026-03-27T17": 107.8,
+    "2026-03-27T18": 155.94,
+    "2026-03-27T19": 191.15,
+    "2026-03-27T20": 189.7,
+    "2026-03-27T21": 170.2,
+    "2026-03-27T22": 155.4,
+    "2026-03-27T23": 135.1,
+    "2026-03-28T00": 139.82,
+    "2026-03-28T01": 123.6,
+    "2026-03-28T02": 107.2,
+    "2026-03-28T03": 101.0,
+    "2026-03-28T04": 91.36,
+    "2026-03-28T05": 76.0,
+    "2026-03-28T06": 73.91,
+    "2026-03-28T07": 59.08,
+    "2026-03-28T08": 49.94,
+    "2026-03-28T09": 28.4,
+    "2026-03-28T10": 7.24,
+    "2026-03-28T11": 2.0,
+    "2026-03-28T12": 1.02,
+    "2026-03-28T13": 0.0,
+    "2026-03-28T14": 0.0,
+    "2026-03-28T15": 0.1,
+    "2026-03-28T16": 21.31,
+    "2026-03-28T17": 66.0,
+    "2026-03-28T18": 100.04,
+    "2026-03-28T19": 100.0,
+    "2026-03-28T20": 86.0,
+    "2026-03-28T21": 73.03,
+    "2026-03-28T22": 40.0,
+    "2026-03-29T00": 15.0,
+    "2026-03-29T01": 6.02,
+    "2026-03-29T02": 8.02,
+    "2026-03-29T03": 6.92,
+    "2026-03-29T04": 7.4,
+    "2026-03-29T05": 15.2,
+    "2026-03-29T06": 44.9,
+    "2026-03-29T07": 112.0,
+    "2026-03-29T08": 178.6,
+    "2026-03-29T09": 189.53,
+    "2026-03-29T10": 178.6,
+    "2026-03-29T11": 131.57,
+    "2026-03-29T12": 100.32,
+    "2026-03-29T13": 117.03,
+    "2026-03-29T14": 117.57,
+    "2026-03-29T15": 130.57,
+    "2026-03-29T16": 134.5,
+    "2026-03-29T17": 130.57,
+    "2026-03-29T18": 181.0,
+    "2026-03-29T19": 170.2,
+    "2026-03-29T20": 166.36,
+    "2026-03-29T21": 168.0,
+    "2026-03-29T22": 153.03,
+    "2026-03-29T23": 131.78,
+    "2026-03-30T00": 125.0,
+    "2026-03-30T01": 123.0,
+    "2026-03-30T02": 120.46,
+    "2026-03-30T03": 124.78,
+    "2026-03-30T04": 124.78,
+    "2026-03-30T05": 123.22,
+    "2026-03-30T06": 137.7,
+    "2026-03-30T07": 151.0,
+    "2026-03-30T08": 186.5,
+    "2026-03-30T09": 183.85,
+    "2026-03-30T10": 173.26,
+    "2026-03-30T11": 145.33,
+    "2026-03-30T12": 127.83,
+    "2026-03-30T13": 118.5,
+    "2026-03-30T14": 118.5,
+    "2026-03-30T15": 118.5,
+    "2026-03-30T16": 118.5,
+    "2026-03-30T17": 138.42,
+    "2026-03-30T18": 165.58,
+    "2026-03-30T19": 195.0,
+    "2026-03-30T20": 198.08,
+    "2026-03-30T21": 199.24,
+    "2026-03-30T22": 163.0,
+    "2026-03-30T23": 142.59,
+    "2026-03-31T00": 154.26,
+    "2026-03-31T01": 140.0,
+    "2026-03-31T02": 131.81,
+    "2026-03-31T03": 128.0,
+    "2026-03-31T04": 122.27,
+    "2026-03-31T05": 119.8,
+    "2026-03-31T06": 131.56,
+    "2026-03-31T07": 158.68,
+    "2026-03-31T08": 190.25,
+    "2026-03-31T09": 175.0,
+    "2026-03-31T10": 145.06,
+    "2026-03-31T11": 130.9,
+    "2026-03-31T12": 118.39,
+    "2026-03-31T13": 116.0,
+    "2026-03-31T14": 112.0,
+    "2026-03-31T15": 109.2,
+    "2026-03-31T16": 111.35,
+    "2026-03-31T17": 125.75,
+    "2026-03-31T18": 138.17,
+    "2026-03-31T19": 165.9,
+    "2026-03-31T20": 174.07,
+    "2026-03-31T21": 208.0,
+    "2026-03-31T22": 200.21,
+    "2026-03-31T23": 162.02,
+    "2026-04-01T00": 151.2,
+    "2026-04-01T01": 150.23,
+    "2026-04-01T02": 143.32,
+    "2026-04-01T03": 151.2,
+    "2026-04-01T04": 148.01,
+    "2026-04-01T05": 149.97,
+    "2026-04-01T06": 161.87,
+    "2026-04-01T07": 216.55,
+    "2026-04-01T08": 244.8,
+    "2026-04-01T09": 212.46,
+    "2026-04-01T10": 165.88,
+    "2026-04-01T11": 129.0,
+    "2026-04-01T12": 115.0,
+    "2026-04-01T13": 111.59,
+    "2026-04-01T14": 108.06,
+    "2026-04-01T15": 104.0,
+    "2026-04-01T16": 102.31,
+    "2026-04-01T17": 113.33,
+    "2026-04-01T18": 131.47,
+    "2026-04-01T19": 146.64,
+    "2026-04-01T20": 143.2,
+    "2026-04-01T21": 132.57,
+    "2026-04-01T22": 120.8,
+    "2026-04-01T23": 103.1,
+    "2026-04-02T00": 105.0,
+    "2026-04-02T01": 97.0,
+    "2026-04-02T02": 88.88,
+    "2026-04-02T03": 86.03,
+    "2026-04-02T04": 82.89,
+    "2026-04-02T05": 89.86,
+    "2026-04-02T06": 96.66,
+    "2026-04-02T07": 117.84,
+    "2026-04-02T08": 141.85,
+    "2026-04-02T09": 158.64,
+    "2026-04-02T10": 144.06,
+    "2026-04-02T11": 109.64,
+    "2026-04-02T12": 96.59,
+    "2026-04-02T13": 67.14,
+    "2026-04-02T14": 54.27,
+    "2026-04-02T15": 43.13,
+    "2026-04-02T16": 51.0,
+    "2026-04-02T17": 73.31,
+    "2026-04-02T18": 110.17,
+    "2026-04-02T19": 131.16,
+    "2026-04-02T20": 196.0,
+    "2026-04-02T21": 193.34,
+    "2026-04-02T22": 215.8,
+    "2026-04-02T23": 193.0,
+    "2026-04-03T00": 196.37,
+    "2026-04-03T01": 194.9,
+    "2026-04-03T02": 185.0,
+    "2026-04-03T03": 195.9,
+    "2026-04-03T04": 185.0,
+    "2026-04-03T05": 145.0,
+    "2026-04-03T06": 125.9,
+    "2026-04-03T07": 153.66,
+    "2026-04-03T08": 172.17,
+    "2026-04-03T09": 147.0,
+    "2026-04-03T10": 138.17,
+    "2026-04-03T11": 120.67,
+    "2026-04-03T12": 95.18,
+    "2026-04-03T13": 45.0,
+    "2026-04-03T14": 1.0,
+    "2026-04-03T15": 0.73,
+    "2026-04-03T16": 1.0,
+    "2026-04-03T17": 10.0,
+    "2026-04-03T18": 42.01,
+    "2026-04-03T19": 53.12,
+    "2026-04-03T20": 70.0,
+    "2026-04-03T21": 79.8,
+    "2026-04-03T22": 69.39,
+    "2026-04-03T23": 41.0,
+    "2026-04-04T00": 56.0,
+    "2026-04-04T01": 57.35,
+    "2026-04-04T02": 54.36,
+    "2026-04-04T03": 52.0,
+    "2026-04-04T04": 38.42,
+    "2026-04-04T05": 31.72,
+    "2026-04-04T06": 10.9,
+    "2026-04-04T07": 25.0,
+    "2026-04-04T08": 35.0,
+    "2026-04-04T09": 25.0,
+    "2026-04-04T10": 9.99,
+    "2026-04-04T11": 0.0,
+    "2026-04-04T12": 0.0,
+    "2026-04-04T13": 0.0,
+    "2026-04-04T14": 0.0,
+    "2026-04-04T15": 0.0,
+    "2026-04-04T16": 25.0,
+    "2026-04-04T17": 76.08,
+    "2026-04-04T18": 170.62,
+    "2026-04-04T19": 288.0,
+    "2026-04-04T20": 259.0,
+    "2026-04-04T21": 288.0,
+    "2026-04-04T22": 245.0,
+    "2026-04-04T23": 169.94,
+    "2026-04-05T00": 187.4,
+    "2026-04-05T01": 211.0,
+    "2026-04-05T02": 175.34,
+    "2026-04-05T03": 132.0,
+    "2026-04-05T04": 120.95,
+    "2026-04-05T05": 124.07,
+    "2026-04-05T06": 121.0,
+    "2026-04-05T07": 129.35,
+    "2026-04-05T08": 140.62,
+    "2026-04-05T09": 139.0,
+    "2026-04-05T10": 125.0,
+    "2026-04-05T11": 88.26,
+    "2026-04-05T12": 68.0,
+    "2026-04-05T13": 55.74,
+    "2026-04-05T14": 53.56,
+    "2026-04-05T15": 43.58,
+    "2026-04-05T16": 51.0,
+    "2026-04-05T17": 75.0,
+    "2026-04-05T18": 106.0,
+    "2026-04-05T19": 149.0,
+    "2026-04-05T20": 153.04,
+    "2026-04-05T21": 143.88,
+    "2026-04-05T22": 131.0,
+    "2026-04-05T23": 110.66,
+    "2026-04-06T00": 105.45,
+    "2026-04-06T01": 104.03,
+    "2026-04-06T02": 106.84,
+    "2026-04-06T03": 108.74,
+    "2026-04-06T04": 108.0,
+    "2026-04-06T05": 109.31,
+    "2026-04-06T06": 122.07,
+    "2026-04-06T07": 142.8,
+    "2026-04-06T08": 152.72,
+    "2026-04-06T09": 137.82,
+    "2026-04-06T10": 114.05,
+    "2026-04-06T11": 104.0,
+    "2026-04-06T12": 100.66,
+    "2026-04-06T13": 106.2,
+    "2026-04-06T14": 107.56,
+    "2026-04-06T15": 107.9,
+    "2026-04-06T16": 111.55,
+    "2026-04-06T17": 140.75,
+    "2026-04-06T18": 175.2,
+    "2026-04-06T19": 216.0,
+    "2026-04-06T20": 228.54,
+    "2026-04-06T21": 255.0,
+    "2026-04-06T22": 214.33,
+    "2026-04-06T23": 166.27,
+    "2026-04-07T00": 156.61,
+    "2026-04-07T01": 151.34,
+    "2026-04-07T02": 148.83,
+    "2026-04-07T03": 162.3,
+    "2026-04-07T04": 167.2,
+    "2026-04-07T05": 170.0,
+    "2026-04-07T06": 182.88,
+    "2026-04-07T07": 217.4,
+    "2026-04-07T08": 262.29,
+    "2026-04-07T09": 265.39,
+    "2026-04-07T10": 257.94,
+    "2026-04-07T11": 188.7,
+    "2026-04-07T12": 200.0,
+    "2026-04-07T13": 169.35,
+    "2026-04-07T14": 134.94,
+    "2026-04-07T15": 130.48,
+    "2026-04-07T16": 127.6,
+    "2026-04-07T17": 139.7,
+    "2026-04-07T18": 163.32,
+    "2026-04-07T19": 202.4,
+    "2026-04-07T20": 193.77,
+    "2026-04-07T21": 166.83,
+    "2026-04-07T22": 141.03,
+    "2026-04-07T23": 124.62,
     "2026-04-08T00": 112.99,
     "2026-04-08T01": 105.94,
     "2026-04-08T02": 104.06,
@@ -32655,7 +34939,7 @@
     "2026-08-12T21": 243.0,
     "2026-08-12T22": 232.95
    },
-   "fetched_utc": "2026-08-13T19:45:14+00:00",
+   "fetched_utc": "2026-08-13T20:50:37+00:00",
    "latest_day": "2026-08-11",
    "markets": {
     "NI-DA": {
@@ -32863,7 +35147,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "4.34.0",
+ "pipeline_version": "4.35.0",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
