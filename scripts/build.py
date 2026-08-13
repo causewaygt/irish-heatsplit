@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "5.0.0"
+PIPELINE_VERSION = "5.0.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -917,10 +917,13 @@ WHY_HEAT = {
 # cost to them. That is Eurostat level 3 for households and level 2
 # for non-households.
 #
-# CLAMP WARNING. tariffs_for() resolves any date before the first row
-# to that row. If HISTORY_START is ever moved behind 2025-08-06,
-# extend this table backwards from the published series FIRST or those
-# weeks will be priced at a tariff that did not exist yet.
+# NO CLAMP. tariffs_for() REFUSES any date before the first row rather
+# than resolving it to that row. The clamp was live and wrong: once
+# the price panel's floor came off it reached April 2024, and 68 weeks
+# were quietly priced with August-2025 tariffs. Extending this table
+# backwards is what restores them - UREGNI briefing papers carry dated
+# annexes (SSE Airtricity to 2008, firmus to 2015) and SEAI publishes
+# ROI cent/kWh to 2008 Q1.
 TARIFF_HISTORY = [
     # (from_date, {eur: {electricity, gas}, gbp: {electricity, gas}})
     # BOTH are now all-in effective rates at a stated consumption,
@@ -949,6 +952,17 @@ def tariffs_for(date_iso):
     by about 4%, between the semester I first guessed and the one the
     anchors actually belong to.
     """
+    if date_iso < TARIFF_HISTORY[0][0]:
+        # REFUSE, do not clamp. The price panel reached back to April
+        # 2024 the moment its floor came off, and 68 of those weeks
+        # were being priced with August-2025 gas and electricity
+        # tariffs - in both jurisdictions, silently, exactly the fault
+        # just fixed for carbon. A missing figure is visible; a wrong
+        # one is not. Extending TARIFF_HISTORY backwards is what
+        # restores those weeks: UREGNI's briefing papers carry dated
+        # annexes (SSE Airtricity to 2008, firmus to 2015) and SEAI
+        # publishes ROI cent/kWh to 2008 Q1.
+        return None
     row = TARIFF_HISTORY[0][1]
     for frm, rates in TARIFF_HISTORY:
         if date_iso >= frm:
@@ -3185,6 +3199,14 @@ def week_inputs(feeds, w_end, skips=None):
     (weekly mean of daily ECB), electricity EF (weekly CI mean or
     anchor), tariffs (period resolver). Returns None if a required
     input is absent - the week is not built."""
+    tar = tariffs_for(w_end)
+    if tar is None:
+        if skips is not None:
+            skips.append((w_end, "before the tariff table starts "
+                                 f"({TARIFF_HISTORY[0][0]}) - extend "
+                                 "TARIFF_HISTORY to price it"))
+        return None
+
     def _skip(reason):
         if skips is not None:
             skips.append((w_end, reason))
@@ -3246,7 +3268,7 @@ def week_inputs(feeds, w_end, skips=None):
             "live": w_end >= LIVE_FROM,
             "nondom": nondom_for(w_end, ((feeds.get("ecb_fx") or {})
                                          .get("eur_gbp_semester")))[0],
-            "tariffs": tariffs_for(w_end)}
+            "tariffs": tar}
 
 
 # Wire format for the history block. Content is HISTORY_SCHEMA; this
@@ -4735,6 +4757,7 @@ def derive_heat_cost_series(feeds, anchors=None):
             "roi": (derive_ashp_spf(hddf.get("hdd_roi") or {}, a)
                     or {"spf": 2.8})["spf"]}
     kwh_l = a["kerosene_kwh_per_litre"]
+    unpriced = 0
     # NOT floored at HISTORY_START. That is the back-look's floor,
     # chosen because four tariff anchors are verified from 1 Oct 2025;
     # this panel is a different artefact and its real limit is how far
@@ -4751,6 +4774,9 @@ def derive_heat_cost_series(feeds, anchors=None):
         if share is None:
             continue
         t = tariffs_for(w_end)
+        if t is None:
+            unpriced += 1
+            continue
         row = {"week_ending": w_end, "dhw_share": round(share, 3)}
         # ROI, both bases. Oil ex-tax comes from the bulletin's own
         # without-taxes line where it exists - a published series
@@ -4824,6 +4850,11 @@ def derive_heat_cost_series(feeds, anchors=None):
         log(f"heat cost: NI oil tax wedge {wedge} per useful kWh - VAT "
             f"{int(VAT['ni']['oil'] * 100)}% only, nil excise, no "
             f"carbon price")
+    if unpriced:
+        log(f"heat cost: {unpriced} week(s) NOT priced - before the "
+            f"tariff table starts ({TARIFF_HISTORY[0][0]}). Extending "
+            "TARIFF_HISTORY backwards is what restores them; clamping "
+            "would price them at today's tariffs and say nothing")
     log(f"heat cost: {len(out)} weeks priced "
         f"({sum(1 for r in out if 'ni' in r)} with NI), "
         f"{out[0]['week_ending']}..{out[-1]['week_ending']}; "
