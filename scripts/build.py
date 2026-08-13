@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.32.0"
+PIPELINE_VERSION = "4.33.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -1990,7 +1990,7 @@ def semo_dispatch_probe():
                 f"report IDs {ids[:12]}")
             for n in names:
                 log(f"semo_probe:     e.g. {n}")
-            hits.append((label, len(items)))
+            hits.append((label, len(items), ids))
         except Exception as e:
             log(f"semo_probe: {label} -> {e.__class__.__name__}")
 
@@ -2009,21 +2009,31 @@ def semo_dispatch_probe():
             for it in items[:3]:
                 log(f"semo_probe:     e.g. "
                     f"{str(it.get('ResourceName') or '')[:60]}")
-            hits.append((label, len(items)))
+            hits.append((label, len(items), ids))
         except Exception as e:
             log(f"semo_probe: {label} -> {e.__class__.__name__}")
 
-    if not any(n for _, n in hits):
-        log("semo_probe: nothing answered - both API families are "
-            "either moved or need headers. Next step is a browser "
-            "session against reports.sem-o.com to read the report "
-            "catalogue by hand, NOT another round of guessed IDs")
+    # A response is not an answer. The first live run (13 Aug 2026)
+    # returned 50 items from every trial - all one report ID, all
+    # IDC_Statistic documents from 2019 - and the probe congratulated
+    # itself on finding "the catalogue". This endpoint lists
+    # DOCUMENTS, ascending by date, not report types, and search_text
+    # is ignored. So the test is whether more than one report ID came
+    # back, not whether rows did.
+    ids = sorted({i for _, _, got in hits for i in got})
+    if len(ids) > 1:
+        log(f"semo_probe: {len(ids)} report IDs seen {ids[:12]} - "
+            "look for balancing-market dispatch or unit-level "
+            "availability, and write the feed against whichever names "
+            "resource codes and half-hourly periods")
     else:
-        log("semo_probe: report IDs above are the catalogue. Look for "
-            "the balancing-market dispatch or unit-level availability "
-            "report; the feed is written against whichever one names "
-            "resource codes and half-hourly periods, and NOT before "
-            "that is confirmed from these logs")
+        log(f"semo_probe: INCONCLUSIVE - every trial returned the same "
+            f"{'single report ' + ids[0] if ids else 'nothing'}, so "
+            "this endpoint lists documents rather than report types "
+            "and cannot enumerate the catalogue. STOP PROBING: read "
+            "the report catalogue by hand at sem-o.com/market-data, "
+            "then write the feed against the ID found. Two rounds of "
+            "guessing have produced two wrong answers")
     log("semo_probe: reminder - SEMO does not retain full history, so "
         "the captured series starts the day the feed ships. The B.2.2 "
         "panel does not wait on it: the annual regional report and "
@@ -2410,6 +2420,15 @@ def feed_ccni_oil():
 # depends on it - the pattern that adopted the EirGrid CO2 series.
 # Candidates from Paul Deane's source list, 27 Jul 2026.
 
+# The ENTSOG probe is log-only and its finding is analysed
+# fortnightly, but it polled six points every run - 4.5 of a 7-minute
+# build on 13 Aug 2026, and 5.5 on a bad day. Its own retention is 25
+# days, so a twice-weekly poll loses nothing, and the standing NI-exit
+# finding it exists to witness moves at the pace of a monthly gas
+# balance rather than a daily one.
+ENTSOG_POLL_WEEKDAYS = (0, 3)      # Monday and Thursday
+
+
 def feed_entsog_probe():
     """ENTSOG Transparency Platform - GB<->IE / GB<->GB(NI)
     interconnection points. Goal: observe Moffat / SNIP physical flows
@@ -2419,6 +2438,23 @@ def feed_entsog_probe():
     # operatorpointdirections by tSOCountry / adjacentCountry, list
     # Ireland-facing points, then sample one day of Physical Flow.
     out = {"source": "ENTSOG Transparency Platform (probe, round 3)"}
+    # Twice weekly. On other days the retained series is returned
+    # untouched, so the feed still reports and nothing downstream
+    # notices - it simply does not spend four minutes re-measuring a
+    # standing finding.
+    if today_utc().weekday() not in ENTSOG_POLL_WEEKDAYS:
+        keep = {k: prev_series("entsog_probe", k)
+                for k in (PREVIOUS_FEEDS.get("entsog_probe") or {})
+                if k.endswith("_gwh_daily")}
+        prev_latest = ((PREVIOUS_FEEDS.get("entsog_probe") or {})
+                       .get("latest_day"))
+        if keep:
+            out.update(keep)
+            out["latest_day"] = prev_latest
+            log(f"entsog_probe: skipped - polls "
+                f"{'/'.join(dt.date(2026, 1, 5 + d).strftime('%a') for d in ENTSOG_POLL_WEEKDAYS)}"
+                f", {len(keep)} series retained, latest {prev_latest}")
+            return out, "lagging"
     pts = {}
     for q in ("tSOCountry=IE", "adjacentCountry=IE"):
         try:
@@ -4622,7 +4658,16 @@ def fetch_hourly_temp(previous, floor_key, end_day):
         span_start = start.strftime("%Y-%m-%dT00")
         span_end = e.strftime("%Y-%m-%dT23")
         covered = sum(1 for k in have if span_start <= k <= span_end)
-        expect = HOURLY_TEMP_CHUNK_DAYS * 24
+        # Expect only the part of the chunk AT OR ABOVE the retention
+        # floor. The oldest chunk always straddles it - roughly a
+        # quarter of its hours are discarded on write - so measured
+        # against the whole chunk its coverage could never reach the
+        # skip threshold, and it was re-fetched on every run forever
+        # for a month of data already held.
+        expect = sum(1 for h in range(HOURLY_TEMP_CHUNK_DAYS * 24)
+                     if (start + dt.timedelta(hours=h)
+                         ).strftime("%Y-%m-%dT%H") >= floor_key)
+        expect = max(expect, 1)
         # Newest chunk always re-fetched (ERA5 revises); older chunks
         # skipped only once nearly whole, so gaps converge over runs
         # rather than becoming permanent.
@@ -4819,8 +4864,13 @@ def build_hourly_store(previous, feeds_now=None):
             if not got:
                 log(f"hourly: {name} chunk to {e.isoformat()} "
                     f"EMPTY after 2 attempts - gap left for next run")
+            # count what is NEW to the store, not what came back -
+            # the newest chunk is deliberately re-fetched every run,
+            # so len(got) double-counts an overlap the store already
+            # holds and makes the run line meaningless as a measure
+            # of progress.
+            added += len(set(got) - set(have))
             have.update(got)
-            added += len(got)
             time.sleep(0.4)            # throttle: ~56 chunk requests
                                        # per cold build trips limits
         before = len(prior.get(name) or {})
@@ -4884,7 +4934,12 @@ def build_hourly_store(previous, feeds_now=None):
     counts = {k: len(v) for k, v in series.items()}
     spans = {k: (min(v), max(v)) for k, v in series.items() if v}
     ref = spans.get("demand_ai")
-    log(f"hourly: {added} hour-values fetched this run; "
+    # NEW hour-values, not "fetched". The EirGrid walk counted every
+    # hour it received including re-fetched overlaps, while temp
+    # counted only hours it did not already hold - two meanings in one
+    # number, and the line read short on the day temp brought in 9,384
+    # hours. Both sides now report new-to-the-store.
+    log(f"hourly: {added} new hour-values this run; "
         + ", ".join(f"{k} {n}h" for k, n in counts.items())
         + (f"; span {ref[0]} .. {ref[1]}" if ref else ""))
     # completeness against the covered span (>=95% expected)
@@ -4913,10 +4968,19 @@ def build_hourly_store(previous, feeds_now=None):
             sp = spans.get(k)
             log(f"hourly: {k} span "
                 + (f"{sp[0]} .. {sp[1]}" if sp else "empty"))
-            pct = 100.0 * n / max(expect, 1)
+            # Clamped at 100. temp_ai legitimately holds hours past
+            # the grid window (whole local days, and a forecast tail),
+            # so it scored 100.1% for a week - which reads as a bug
+            # signal in a field whose whole job is to flag bugs. The
+            # surplus is reported separately rather than inflating a
+            # percentage that cannot exceed whole.
+            pct = min(100.0, 100.0 * n / max(expect, 1))
             per_series[k] = round(pct, 1)
+            extra = n - expect
             log(f"hourly: {k} completeness {pct:.1f}% of {expect}h "
-                + ("- OK" if pct >= 95 else "- BELOW GATE"))
+                + ("- OK" if pct >= 95 else "- BELOW GATE")
+                + (f" (+{extra}h beyond the grid window)"
+                   if extra > 0 else ""))
         # the store is usable when the load/generation trio is whole;
         # carbon is an overlay and gates itself in the panel
         core = ("demand_ai", "wind_ai", "solar_ai")
