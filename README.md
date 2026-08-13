@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.35.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.0.0 / site 5.0.0.
 
 ## The premise
 
@@ -55,8 +55,11 @@ and prices the alternative. The data gap is the story.
   basis with the ambient balance counted indigenous. In July the
   island's cooling bill outweighs its heat bill roughly 3:1 – the
   summer inversion the tracker displays rather than omits.
-- **The invisible majority** – delivered building heat split into
-  unmetered (oil, peat, other), gas and electric.
+- **What heat costs to make** – five routes priced weekly per useful
+  kWh, retail or ex-tax, sitting under the energy bars. It replaced the
+  invisible-majority bar: the point that most of the island's heat is
+  unmetered is now made where it belongs, in the method fold on the
+  panel that depends on it.
 - **The oil ticker** – NI kerosene daily (Consumer Council survey), ROI
   weekly (EU Oil Bulletin, backfilled from the Commission's price-history
   workbook), both per litre on FX-locked twin axes; dashed pre-tax lines
@@ -395,6 +398,15 @@ Ireland's carbon increase on non-propellant fuels normally lands on
 dated table rather than a constant and the discontinuity sits inside
 the record.
 
+**Carbon and VAT are dated tables, not constants.** Removing the floor
+took the panel to 122 weeks and April 2024 on its first run, which is
+before the carbon table began – 55 weeks were being charged €63.50 a
+tonne when the rate was €56.00 or less, silently. The table now covers
+the whole Finance Act 2020 trajectory and refuses anything earlier
+rather than clamping, so a missing figure is visible where a wrong one
+was not. VAT is dated too: ROI gas and electricity stepped from 13.5%
+to 9% on 1 May 2022, and kerosene never got the cut.
+
 **The series is not floored at the back-look's start.** That floor
 exists because four tariff anchors are verified from 1 October 2025;
 this panel is a different artefact, and its limit is how far the
@@ -534,7 +546,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 148 tests, no network
+python3 tests/test_synthetic.py   # 151 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
