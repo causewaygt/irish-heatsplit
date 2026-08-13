@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.32.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.33.0 / site 4.8.0.
 
 ## The premise
 
@@ -416,6 +416,14 @@ converging over runs in the same pattern the hourly chunks and the
 temperature archive already use, rather than four hundred requests in
 one build.
 
+**The SEMO probe came back inconclusive, and now says so.** Its first
+live run returned the same 50 documents from every trial – one report
+ID, all from 2019 – because that endpoint lists documents ascending by
+date rather than report types, and its text filter is ignored. The
+probe announced it had found the catalogue anyway. It now tests for
+more than one report ID and, failing that, says to read the catalogue
+by hand rather than inviting a third round of guesses.
+
 **B.2.2's per-farm layer has a probe.** Per-unit downward dispatch is
 published on SEMO, but SEMO does not retain the full history – so the
 series exists only from the day capture starts, and every day without
@@ -458,7 +466,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 137 tests, no network
+python3 tests/test_synthetic.py   # 140 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
