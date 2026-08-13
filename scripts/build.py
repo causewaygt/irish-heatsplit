@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.35.0"
+PIPELINE_VERSION = "5.0.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -4524,21 +4524,73 @@ def derive_cool(feeds, anchors=None):
 # October, when the charge moves from EUR 63.50 to EUR 71.00 a tonne.
 # That is a discontinuity in the middle of the record, so it is a
 # dated table rather than a constant.
-CARBON_STEPS = [
-    # (from_date, EUR/t CO2, kerosene c/L, gas c/kWh)
-    ("2025-05-01", 63.50, 16.081, 1.148),
-    ("2026-10-14", 71.00, 17.980, 1.284),
+# The carbon component scales linearly with the charge per tonne, so
+# the whole table derives from one anchored pair: at EUR 63.50/t
+# Revenue publishes 16.081 c/L on kerosene and EUR 11.48/MWh GCV =
+# 1.148 c/kWh on gas. Checked against the published prior rate - at
+# EUR 56.00/t the gas figure comes out 1.012 against Revenue's 1.013,
+# which is rounding, not a different method.
+#
+# WHY IT REACHES BACK TO 2020. Removing the back-look floor took the
+# price panel to 122 weeks and 2024-04-15 on its first run, and the
+# HDD record keeps growing. A table starting in 2025 would have
+# clamped 55 of those weeks to a rate that did not exist yet - the
+# 2024-25 charge was EUR 56.00, not EUR 63.50 - and done it silently.
+# So the table covers the whole Finance Act 2020 trajectory, and
+# anything earlier than its first row is REFUSED rather than clamped.
+_CARBON_PER_TONNE = [
+    ("2020-05-01", 26.00), ("2021-05-01", 33.50), ("2022-05-01", 41.00),
+    ("2023-05-01", 48.50), ("2024-05-01", 56.00), ("2025-05-01", 63.50),
+    # Normally 1 May; for 2026 the non-propellant step was postponed
+    # to 14 October, so this row is the exception that proves the rule.
+    ("2026-10-14", 71.00), ("2027-05-01", 78.50), ("2028-05-01", 86.00),
+    ("2029-05-01", 93.50), ("2030-05-01", 100.00),
 ]
+CARBON_STEPS = [(d, r, round(16.081 * r / 63.50, 3),
+                 round(1.148 * r / 63.50, 4)) for d, r in _CARBON_PER_TONNE]
+
+# ROI gas and electricity were cut from 13.5% to 9% on 1 May 2022 as a
+# cost-of-living measure, extended to 31 Dec 2030. Kerosene never got
+# the cut and stays at 13.5% - which is why the tax wedge on oil is
+# heavier than on gas inside the same jurisdiction. NI is a flat 5%
+# throughout.
+VAT_STEPS = {
+    "roi": {"oil": [("2000-01-01", 0.135)],
+            "gas": [("2000-01-01", 0.135), ("2022-05-01", 0.09)],
+            "electricity": [("2000-01-01", 0.135), ("2022-05-01", 0.09)]},
+    "ni": {f: [("2000-01-01", 0.05)]
+           for f in ("oil", "gas", "electricity")},
+}
+
+
+def vat_for(jur, fuel, date_iso):
+    """The VAT rate in force on a date. A constant would have been
+    wrong the moment the panel reached back past 1 May 2022."""
+    rate = VAT_STEPS[jur][fuel][0][1]
+    for frm, r in VAT_STEPS[jur][fuel]:
+        if date_iso >= frm:
+            rate = r
+    return rate
+
+
 VAT = {"roi": {"oil": 0.135, "gas": 0.09, "electricity": 0.09},
        "ni": {"oil": 0.05, "gas": 0.05, "electricity": 0.05}}
 NORA_LEVY_C_PER_L = 2.0
 
 
 def carbon_for(date_iso):
-    """The carbon component in force on a date. Clamps to the first
-    row below the table, which is correct for the record as it stands
-    but would need extending before the panel reaches back past
-    May 2025."""
+    """
+    The carbon component in force on a date, or None before the table
+    starts.
+
+    None rather than a clamp, deliberately. Clamping is how 55 weeks
+    got priced at a rate that had not been legislated yet, and it left
+    no trace - the row simply looked like the others. A refusal
+    propagates to a missing ex-tax figure, which the panel can grey
+    out and a reader can see.
+    """
+    if date_iso < CARBON_STEPS[0][0]:
+        return None
     row = CARBON_STEPS[0]
     for r in CARBON_STEPS:
         if date_iso >= r[0]:
@@ -4556,14 +4608,13 @@ def ex_tax(retail, jur, fuel, date_iso, kwh_per_litre=None):
     the strip would go negative, which would mean a wrong rate rather
     than a cheap fuel.
     """
-    v = VAT[jur][fuel]
-    net = retail / (1 + v)
-    if jur == "roi":
+    net = retail / (1 + vat_for(jur, fuel, date_iso))
+    if jur == "roi" and fuel in ("oil", "gas"):
         c = carbon_for(date_iso)
-        if fuel == "oil":
-            net -= c["kerosene_c_per_l"] + NORA_LEVY_C_PER_L
-        elif fuel == "gas":
-            net -= c["gas_c_per_kwh"]
+        if c is None:
+            return None          # before the table: refuse, don't guess
+        net -= (c["kerosene_c_per_l"] + NORA_LEVY_C_PER_L
+                if fuel == "oil" else c["gas_c_per_kwh"])
     return round(net, 4) if net > 0 else None
 
 
