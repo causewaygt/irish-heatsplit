@@ -2849,6 +2849,85 @@ def test_entsog_probe_polls_twice_a_week_and_retains_between():
         B.PREVIOUS_FEEDS = real_prev
 
 
+def test_every_route_costs_more_on_hot_water_than_on_space_heat():
+    """The reason the panel splits modes at all. A July week is almost
+    all hot water, and every route performs worse on it - so pricing
+    summer at an annual efficiency would flatter heat pumps AND
+    flatter the boiler at exactly the point where the lines converge."""
+    import build as B
+    p = {"oil_per_kwh": 10.0, "gas_per_kwh": 13.0, "elec_per_kwh": 40.4}
+    winter = B.route_cost_useful(p, 2.43, 0.0)
+    summer = B.route_cost_useful(p, 2.43, 1.0)
+    for r in ("oil_boiler", "gas_boiler", "ashp", "gshp", "network"):
+        assert summer[r] > winter[r], (r, winter[r], summer[r])
+    # and the ordering is not preserved: the routes do not degrade
+    # equally, which is the finding rather than a rounding artefact
+    assert (summer["oil_boiler"] / winter["oil_boiler"]
+            > summer["network"] / winter["network"])
+
+
+def test_oil_immersion_leakage_raises_the_summer_oil_cost():
+    """Oil households commonly switch to the cylinder immersion in
+    summer rather than fire a boiler at sub-40% for a small load. At
+    COP 1 on domestic electricity that is DEARER than the inefficient
+    boiler, so the leakage must push the oil line UP, not down."""
+    import build as B
+    p = {"oil_per_kwh": 10.0, "gas_per_kwh": 13.0, "elec_per_kwh": 40.4}
+    real = B.OIL_IMMERSION_DHW_SHARE
+    try:
+        B.OIL_IMMERSION_DHW_SHARE = 0.0
+        none_ = B.route_cost_useful(p, 2.43, 1.0)["oil_boiler"]
+        B.OIL_IMMERSION_DHW_SHARE = 0.30
+        some = B.route_cost_useful(p, 2.43, 1.0)["oil_boiler"]
+    finally:
+        B.OIL_IMMERSION_DHW_SHARE = real
+    assert some > none_, (none_, some)
+    # boiler-only summer oil is the input price over the DHW efficiency
+    assert abs(none_ - 10.0 / B.DHW_MODE["oil_boiler"]) < 0.02
+
+
+def test_dhw_mode_figures_are_the_published_ones():
+    """These are the most challengeable numbers on the panel, so they
+    are pinned to their sources: MCS 031 Issue 4.0 cut the ASHP hot
+    water default to 1.70; GSHP is the MCS HPSPE 2.24; the network
+    figure is derived at the SAME lift ratio as GSHP because both are
+    ground-coupled with a constant source; and BRE put oil boilers in
+    water-only mode under 40% gross, which is the floor rather than
+    the estimate."""
+    import build as B
+    assert B.DHW_MODE["ashp"] == 1.70
+    assert B.DHW_MODE["gshp"] == 2.24
+    assert B.DHW_MODE["network"] == round(5.00 * 2.24 / 3.24, 2)
+    assert B.DHW_MODE_FLOOR_OIL == 0.40
+    assert B.DHW_MODE["oil_boiler"] > B.DHW_MODE_FLOOR_OIL
+    # every route is worse on hot water than on space heat
+    assert B.DHW_MODE["oil_boiler"] < B.ANCHORS["efficiency"]["oil"]
+    assert B.DHW_MODE["gas_boiler"] < B.ANCHORS["efficiency"]["gas"]
+    assert B.DHW_MODE["gshp"] < B.GSHP_SPF
+    assert B.DHW_MODE["network"] < B.GEO_NETWORK_SCOP
+
+
+def test_dhw_share_goes_to_one_in_a_week_with_no_heating_degree_days():
+    """A July week has essentially no space-heat demand, so its
+    delivered heat is hot water and the share must approach 1. A cold
+    week must be dominated by space heat. If this ever reads flat
+    across the year the shaping is broken, not the weather."""
+    import build as B
+    # two years, so a January week has a full trailing year behind it
+    hdd, day = {}, dt.date(2024, 8, 20)
+    for i in range(800):
+        d = (day + dt.timedelta(days=i))
+        # winter-heavy synthetic year, and a genuinely zero July week
+        hdd[d.isoformat()] = 0.0 if d.month in (6, 7, 8) else 8.0
+    hot = B.week_dhw_share(hdd, "2026-07-15")
+    cold = B.week_dhw_share(hdd, "2026-01-14")
+    assert hot is not None and cold is not None
+    assert hot > 0.95, hot
+    assert cold < 0.25, cold
+    # too little history to know the trailing year: decline, not guess
+    assert B.week_dhw_share({"2026-07-15": 0.0}, "2026-07-15") is None
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
