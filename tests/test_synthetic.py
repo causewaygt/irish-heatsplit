@@ -2709,43 +2709,56 @@ def test_ceiling_breathes_with_wind_and_solar():
             > without["share_that_fits_pct"]["air_source"])
 
 
-def test_semo_dispatch_probe_lists_rather_than_guesses():
-    """B.2.2's per-farm layer needs a SEMO report that has not been
-    identified yet. The probe must LIST the catalogue and log it, not
-    guess a report ID - a guessed ID is how the first semopx probe
-    spent a day on 400s. It is also log-only: nothing it finds may
-    reach the payload until a parser is written against these logs."""
+def test_semo_probe_calls_one_report_id_inconclusive_not_a_catalogue():
+    """The first live run returned 50 items from every trial - all one
+    report ID, all 2019 documents - and the probe announced it had
+    found the catalogue. A response is not an answer. The endpoint
+    lists DOCUMENTS ascending by date, not report types, so the test
+    is whether more than one report ID came back."""
     import build as B
-    lines, calls = [], []
+    lines = []
 
     class R:
         @staticmethod
         def json():
-            return {"items": [
-                {"DPuG_ID": "BM-086", "ResourceName": "PUB_DailyMW_x.csv"},
-                {"DPuG_ID": "EA-001", "ResourceName": "MarketResult_y.csv"},
-            ]}
-
-    def fake_get(url, **kw):
-        calls.append(url)
-        return R
+            return {"items": [{"DPuG_ID": "EA-009",
+                               "ResourceName": "IDC_Statistic_2019.csv"}]}
 
     real_get, real_log = B.http_get, B.log
-    B.http_get = fake_get
+    B.http_get = lambda url, **kw: R
     B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
     try:
-        out = B.semo_dispatch_probe()
+        B.semo_dispatch_probe()
     finally:
         B.http_get, B.log = real_get, real_log
-    assert out is None                      # log-only, stores nothing
     joined = " | ".join(lines)
-    assert "BM-086" in joined and "EA-001" in joined
-    # both API families are tried, so a move in either is visible
-    assert any("semopx.com" in c for c in calls)
-    assert any("sem-o.com" in c for c in calls)
-    # and the retention warning always prints, because it is the
-    # reason the feed is urgent
-    assert "does not retain full history" in joined
+    assert "INCONCLUSIVE" in joined
+    assert "STOP PROBING" in joined
+    assert "catalogue" not in joined.split("INCONCLUSIVE")[0].split("|")[-1]
+
+
+def test_semo_probe_reports_a_real_catalogue_when_it_finds_one():
+    """More than one report ID is the signal that the listing actually
+    enumerated report types."""
+    import build as B
+    lines = []
+
+    class R:
+        @staticmethod
+        def json():
+            return {"items": [{"DPuG_ID": "BM-086", "ResourceName": "a.csv"},
+                              {"DPuG_ID": "EA-001", "ResourceName": "b.csv"}]}
+
+    real_get, real_log = B.http_get, B.log
+    B.http_get = lambda url, **kw: R
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        B.semo_dispatch_probe()
+    finally:
+        B.http_get, B.log = real_get, real_log
+    joined = " | ".join(lines)
+    assert "report IDs seen" in joined
+    assert "INCONCLUSIVE" not in joined
 
 
 def test_semo_dispatch_probe_says_what_to_do_when_nothing_answers():
@@ -2765,8 +2778,75 @@ def test_semo_dispatch_probe_says_what_to_do_when_nothing_answers():
     finally:
         B.http_get, B.log = real_get, real_log
     joined = " | ".join(lines)
-    assert "nothing answered" in joined
-    assert "NOT another round of guessed IDs" in joined
+    # total failure and a one-report listing now converge on the same
+    # verdict, which is right: neither enumerated the catalogue
+    assert "INCONCLUSIVE" in joined
+    assert "STOP PROBING" in joined
+    assert "read the report catalogue by hand" in joined
+
+
+def test_completeness_is_clamped_at_whole():
+    """temp_ai holds whole local days plus a forecast tail, so it ran
+    past the grid window and scored 100.1% for a week - in a field
+    whose entire job is to flag bugs, since a series cannot be more
+    than complete. The surplus is reported separately instead."""
+    import build as B
+
+    def fake_chunk(chart, region, areas, end_day):
+        base = end_day - dt.timedelta(days=27)
+        out = {}
+        for d in range(28):
+            day = base + dt.timedelta(days=d)
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 1000.0
+        return out
+
+    def over_temp(prev, floor, end):
+        out, day = {}, dt.datetime.strptime(floor, "%Y-%m-%dT%H").date()
+        while day <= end + dt.timedelta(days=2):      # deliberately past
+            for h in range(24):
+                out[day.strftime("%Y-%m-%dT") + f"{h:02d}"] = 5.0
+            day += dt.timedelta(days=1)
+        return out
+
+    real, real_t, real_s = B.fetch_hourly_chunk, B.fetch_hourly_temp, B.time.sleep
+    B.fetch_hourly_chunk, B.fetch_hourly_temp = fake_chunk, over_temp
+    B.time.sleep = lambda *_: None
+    lines = []
+    real_log = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        store = B.build_hourly_store({})
+    finally:
+        B.fetch_hourly_chunk, B.fetch_hourly_temp = real, real_t
+        B.time.sleep, B.log = real_s, real_log
+    assert store["completeness_pct"]["temp_ai"] == 100.0
+    assert all(v <= 100.0 for v in store["completeness_pct"].values())
+    assert "beyond the grid window" in " | ".join(lines)
+
+
+def test_entsog_probe_polls_twice_a_week_and_retains_between():
+    """Log-only, analysed fortnightly, and it was taking 4.5 of a
+    7-minute build. On a non-poll day it must return the retained
+    series rather than re-measuring, and must still report."""
+    import build as B
+    assert B.ENTSOG_POLL_WEEKDAYS == (0, 3)
+    called = []
+    real_get, real_today, real_prev = B.http_get, B.today_utc, B.PREVIOUS_FEEDS
+    B.http_get = lambda *a, **k: called.append(1)
+    B.PREVIOUS_FEEDS = {"entsog_probe": {
+        "moffat_gwh_daily": {"2026-08-10": 144.0},
+        "latest_day": "2026-08-10"}}
+    try:
+        B.today_utc = lambda: dt.date(2026, 8, 11)      # Tuesday
+        out, status = B.feed_entsog_probe()
+        assert not called, "polled on a non-poll day"
+        assert out["latest_day"] == "2026-08-10"
+        assert out["moffat_gwh_daily"] == {"2026-08-10": 144.0}
+        assert status == "lagging"
+    finally:
+        B.http_get, B.today_utc = real_get, real_today
+        B.PREVIOUS_FEEDS = real_prev
 
 
 if __name__ == "__main__":
