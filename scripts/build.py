@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.33.0"
+PIPELINE_VERSION = "4.34.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -4459,6 +4459,201 @@ def derive_cool(feeds, anchors=None):
     }
 
 
+# ------------------------------------------------- DHW vs space mode
+# Every route performs WORSE on hot water than on space heating, and
+# the site's own anchors say a July week is almost all hot water: hot
+# water is a flat 22.4% of annual input while space heat is 77.6%
+# HDD-shaped, so the space term collapses in summer and DHW is nearly
+# all that is left. Pricing the summer half at an annual efficiency
+# would flatter the heat pumps and flatter the boiler at exactly the
+# point where the lines converge - which is where the argument is won
+# or lost. So each route carries a PAIR.
+#
+#   oil boiler   space 0.85 / DHW 0.55 (dagger). BRE STP09/B01 on
+#                oil boilers in water-heating-only mode: "very low hot
+#                water efficiency (under 40% gross)". 0.55 is the
+#                middle of a defensible 0.45-0.65 band for a stock
+#                that is part condensing; 0.40 is the floor, not the
+#                estimate. This is the most challengeable number on
+#                the panel and it moves the summer oil line most.
+#   gas boiler   space 0.87 / DHW 0.68. BRE STP09/B07 DHW test rigs
+#                measured 64.6-71.6% against 85-90% at full load.
+#   ashp         space from the Carnot engine at that day's air
+#                temperature; DHW 1.70 - the MCS 031 Issue 4.0 default
+#                (18 Mar 2025), cut from 1.75 in line with SAP 10.2.
+#   gshp         space 3.24 / DHW 2.24 - Energy Systems Catapult
+#                in-situ for space, MCS HPSPE default for DHW.
+#   network      space 5.00 / DHW derived at the SAME ratio as GSHP
+#                (2.24/3.24 = 0.691), because both are ground-coupled
+#                with a constant source: the DHW penalty is the flow
+#                temperature lift alone, not a source-side collapse.
+#
+# NOT SPLIT: EoH did not meter DHW separately, so there is no field
+# DHW SPF - the heat-pump DHW figures are MCS design defaults. Said
+# plainly rather than dressed as measurement.
+DHW_MODE = {
+    "oil_boiler": 0.55,        # dagger, BRE floor 0.40
+    "gas_boiler": 0.68,
+    "ashp": 1.70,
+    "gshp": 2.24,
+    "network": round(5.00 * 2.24 / 3.24, 2),
+}
+DHW_MODE_FLOOR_OIL = 0.40      # BRE "under 40% gross", the low bound
+
+# What fraction of oil-home hot water is actually made by an ELECTRIC
+# IMMERSION rather than the boiler. Oil households commonly switch in
+# summer rather than fire a boiler at sub-40% for a small load, and
+# the cylinder immersion is near-universal in Irish homes. The
+# evidence is consistent but qualitative - no metered Irish or NI
+# study of summer immersion use exists - so this is a dagger, and it
+# is exposed rather than buried because it is the largest unquantified
+# term in the oil line. At COP 1 on domestic electricity the immersion
+# is DEARER than the inefficient boiler, which is why the oil line
+# rises in summer rather than falling.
+OIL_IMMERSION_DHW_SHARE = 0.30   # dagger
+
+
+def route_cost_useful(prices, ashp_spf, dhw_share, anchors=None):
+    """
+    Cost per useful kWh by route, in native minor units, with hot
+    water and space heat priced in their own modes and blended at the
+    week's own DHW share.
+
+    prices: {"oil_per_kwh", "gas_per_kwh", "elec_per_kwh"} in minor
+    units per kWh of INPUT. dhw_share: 0-1, the fraction of delivered
+    heat that is hot water this week. Pure, unit tested.
+    """
+    a = anchors or ANCHORS
+    w = min(1.0, max(0.0, dhw_share))
+    oil, gas, elec = (prices["oil_per_kwh"], prices["gas_per_kwh"],
+                      prices["elec_per_kwh"])
+
+    def blend(space_perf, dhw_perf, price):
+        return (1 - w) * price / space_perf + w * price / dhw_perf
+
+    # Oil hot water is part boiler, part immersion - and the immersion
+    # runs on electricity at COP 1, so the leakage RAISES the cost
+    # rather than lowering it.
+    oil_dhw = ((1 - OIL_IMMERSION_DHW_SHARE) * oil / DHW_MODE["oil_boiler"]
+               + OIL_IMMERSION_DHW_SHARE * elec / 1.0)
+    return {
+        "oil_boiler": round((1 - w) * oil / a["efficiency"]["oil"]
+                            + w * oil_dhw, 2),
+        "gas_boiler": round(blend(a["efficiency"]["gas"],
+                                  DHW_MODE["gas_boiler"], gas), 2),
+        "ashp": round(blend(ashp_spf, DHW_MODE["ashp"], elec), 2),
+        "gshp": round(blend(GSHP_SPF, DHW_MODE["gshp"], elec), 2),
+        "network": round(blend(GEO_NETWORK_SCOP, DHW_MODE["network"],
+                               elec), 2),
+        "dhw_share": round(w, 3),
+    }
+
+
+def week_dhw_share(hdd_daily, w_end, anchors=None):
+    """
+    What fraction of a week's delivered heat is hot water.
+
+    The site's own shaping, one step further: hot water is flat across
+    the year, space heat follows the week's share of the trailing
+    year's heating degree days. So the DHW share is high in July and
+    low in January, and it is computed rather than assumed.
+    """
+    a = anchors or ANCHORS
+    days = sorted(d for d in hdd_daily if d <= w_end)
+    if len(days) < 300:
+        return None
+    wk = [d for d in days if d > (dt.date.fromisoformat(w_end)
+                                  - dt.timedelta(days=7)).isoformat()]
+    year = days[-365:]
+    hdd_wk = sum(hdd_daily[d] for d in wk)
+    hdd_yr = sum(hdd_daily[d] for d in year)
+    if hdd_yr <= 0 or len(wk) < 5:
+        return None
+    dhw = (1 - a["space_heat_fraction"]) / 52.0
+    space = a["space_heat_fraction"] * hdd_wk / hdd_yr
+    tot = dhw + space
+    return (dhw / tot) if tot > 0 else None
+
+
+def derive_heat_cost_series(feeds, anchors=None):
+    """
+    Weekly cost of a useful kWh by route, back over the oil record -
+    the Irish equivalent of the UK sibling's "what heat costs to
+    make", with OIL as the main series because the island is the most
+    oil-heated corner of western Europe.
+
+    Built from the FEEDS rather than the stored weeks: the oil
+    bulletin holds a thousand Ireland weeks to 2005 and CCNI is daily
+    since Feb 2026, so the price history reaches far deeper than the
+    back-look does. Each week is priced at its own DHW share, so
+    summer weeks are priced as hot water and winter weeks as space
+    heat - the whole point, because the routes do not degrade equally
+    when the load turns to hot water.
+    """
+    a = anchors or ANCHORS
+    hddf = feeds.get("hdd") or {}
+    hdd_i = hddf.get("hdd_island") or {}
+    if len(hdd_i) < 300:
+        return None
+    bull = ((feeds.get("oil_bulletin") or {})
+            .get("roi_heating_gasoil_eur_per_1000l") or {})
+    ccni = (((feeds.get("ccni_oil") or {}).get("series_gbp") or {})
+            .get("daily", {}).get("900l") or {})
+    if not bull:
+        return None
+    ashp = {"ni": (derive_ashp_spf(hddf.get("hdd_ni") or {}, a)
+                   or {"spf": 2.8})["spf"],
+            "roi": (derive_ashp_spf(hddf.get("hdd_roi") or {}, a)
+                    or {"spf": 2.8})["spf"]}
+    kwh_l = a["kerosene_kwh_per_litre"]
+    floor = max(HISTORY_START, min(hdd_i))
+    out = []
+    for w_end in sorted(bull):
+        if w_end < floor:
+            continue
+        share = week_dhw_share(hdd_i, w_end, a)
+        if share is None:
+            continue
+        t = tariffs_for(w_end)
+        row = {"week_ending": w_end, "dhw_share": round(share, 3)}
+        row["roi"] = route_cost_useful(
+            {"oil_per_kwh": bull[w_end] / 10.0 / kwh_l,
+             "gas_per_kwh": t["eur"]["gas"] * 100,
+             "elec_per_kwh": t["eur"]["electricity"] * 100},
+            ashp["roi"], share, a)
+        # NI only where the CCNI survey actually covers the week; the
+        # bulletin bridge belongs to the back-look, not here, and a
+        # bridged price in a cost-of-heat chart would be an estimate
+        # wearing a measurement's clothes.
+        wk = [d for d in ccni
+              if (dt.date.fromisoformat(w_end)
+                  - dt.timedelta(days=6)).isoformat() <= d <= w_end]
+        if wk:
+            ppl = statistics.mean(ccni[d] for d in wk) * 100 / 900
+            row["ni"] = route_cost_useful(
+                {"oil_per_kwh": ppl / kwh_l,
+                 "gas_per_kwh": t["gbp"]["gas"] * 100,
+                 "elec_per_kwh": t["gbp"]["electricity"] * 100},
+                ashp["ni"], share, a)
+        out.append(row)
+    if not out:
+        return None
+    last = out[-1]
+    for j in ("roi", "ni"):
+        if j in last:
+            r = last[j]
+            log(f"heat cost ({j} {last['week_ending']}, DHW share "
+                f"{last['dhw_share']}): oil {r['oil_boiler']} / gas "
+                f"{r['gas_boiler']} / ashp {r['ashp']} / gshp "
+                f"{r['gshp']} / network {r['network']} per useful kWh")
+    log(f"heat cost: {len(out)} weeks priced "
+        f"({sum(1 for r in out if 'ni' in r)} with NI), "
+        f"{out[0]['week_ending']}..{out[-1]['week_ending']}; "
+        f"oil DHW {DHW_MODE['oil_boiler']} dagger, immersion share "
+        f"{OIL_IMMERSION_DHW_SHARE} dagger")
+    return out
+
+
 def derive_heat_gap(feeds, anchors=None):
     """
     Cost of useful heat by route, per jurisdiction, standard tariffs -
@@ -5126,6 +5321,16 @@ def main():
     derived["weeks_on_record"] = len(_h)
     derived["weeks_live"] = sum(1 for e in _h if e.get("live"))
     derived["live_from"] = LIVE_FROM
+    # Priced before compaction, while the history is still a list of
+    # week objects - the columnar form is a wire format, not a
+    # working one.
+    try:
+        hcs = derive_heat_cost_series(feeds)
+        if hcs:
+            derived["heat_cost_series"] = hcs
+    except Exception as exc:
+        log(f"heat cost: failed ({exc.__class__.__name__}) - "
+            "the weekly tracker is unaffected")
     _flat = len(json.dumps(_h, separators=(",", ":")))
     derived["history"] = compact_history(_h)
     derived["history_encoding"] = HISTORY_ENCODING
