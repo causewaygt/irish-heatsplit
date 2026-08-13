@@ -2928,6 +2928,74 @@ def test_dhw_share_goes_to_one_in_a_week_with_no_heating_degree_days():
     assert B.week_dhw_share({"2026-07-15": 0.0}, "2026-07-15") is None
 
 
+def test_ex_tax_strips_vat_first_then_carbon():
+    """VAT is the OUTERMOST layer in both jurisdictions - it is
+    charged on the carbon-tax-inclusive price - so the order is
+    retail/(1+vat) THEN subtract carbon. Reversing it understates the
+    wedge. Pinned against the worked examples from the statutory
+    sources."""
+    import build as B
+    # ROI kerosene 128.0 c/L incl 13.5% VAT, carbon 16.081, NORA 2.0
+    assert abs(B.ex_tax(128.0, "roi", "oil", "2026-08-10") - 94.69) < 0.02
+    # ROI gas 13.00 c/kWh incl 9% VAT, NGCT 1.148
+    assert abs(B.ex_tax(13.00, "roi", "gas", "2026-08-10") - 10.78) < 0.01
+    # NI: VAT only, nothing else to strip
+    assert abs(B.ex_tax(8.098, "ni", "gas", "2026-08-10") - 7.712) < 0.01
+    assert abs(B.ex_tax(86.46, "ni", "oil", "2026-08-10")
+               - 86.46 / 1.05) < 0.001
+    # order matters: stripping carbon first would leave a different,
+    # larger number
+    wrong = (128.0 - 16.081 - 2.0) / 1.135
+    assert abs(B.ex_tax(128.0, "roi", "oil", "2026-08-10") - wrong) > 2.0
+
+
+def test_carbon_step_lands_on_14_october_not_1_may():
+    """Ireland's carbon increase on non-propellant fuels normally
+    lands on 1 May; for 2026 it was postponed to 14 October. That is a
+    discontinuity in the middle of the record, so assuming the usual
+    date would misprice five months of it."""
+    import build as B
+    before = B.carbon_for("2026-05-02")
+    after = B.carbon_for("2026-10-20")
+    assert before["eur_per_tonne"] == 63.50
+    assert after["eur_per_tonne"] == 71.00
+    assert B.carbon_for("2026-10-13")["eur_per_tonne"] == 63.50
+    assert after["kerosene_c_per_l"] > before["kerosene_c_per_l"]
+    assert after["gas_c_per_kwh"] > before["gas_c_per_kwh"]
+
+
+def test_the_border_gap_is_a_tax_wedge_not_a_market_gap():
+    """The finding the toggle exists to show: ROI oil costs about a
+    third more than NI at retail, but the ex-tax product-plus-
+    distribution figures converge. If this ever fails, either a rate
+    is wrong or something real has changed in the market."""
+    import build as B
+    roi_ex = B.ex_tax(128.0, "roi", "oil", "2026-08-10")
+    ni_ex = B.ex_tax(86.46, "ni", "oil", "2026-08-10") / 0.87
+    assert abs(roi_ex / ni_ex - 1) < 0.05, (roi_ex, ni_ex)
+    # while retail is far apart
+    assert 128.0 / (86.46 / 0.87) > 1.25
+
+
+def test_cost_series_is_not_floored_at_the_back_look_start():
+    """The panel is not the back-look. Its floor is how far the
+    weather record reaches, because every week needs a trailing year
+    of degree days behind it - not the date four tariff anchors were
+    verified from."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    rows = B.derive_heat_cost_series(feeds)
+    assert rows
+    hdd_floor = min(feeds["hdd"]["hdd_island"])
+    assert rows[0]["week_ending"] >= hdd_floor
+    # both bases present on every row that has a jurisdiction
+    for r in rows:
+        for j in ("roi", "ni"):
+            if j in r:
+                assert j + "_ex_tax" in r, (r["week_ending"], j)
+                assert r[j + "_ex_tax"]["oil_boiler"] < r[j]["oil_boiler"]
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
