@@ -2546,10 +2546,12 @@ def test_semopx_parser_keeps_the_delivery_hours():
            "Index prices;30;EUR\n"
            "2026-01-05T17:00:00Z;2026-01-05T18:00:00Z\n"
            "118,42;243,17\n")
-    p = B.parse_semopx_csv(csv)
+    p = B.parse_semopx_csv(csv, trade_day="2026-01-05")
     assert p["day"] == "2026-01-05"
-    assert p["series"]["ROI-DA"]["EUR"] == {"2026-01-05T17": 118.42,
-                                            "2026-01-05T18": 243.17}
+    # anchored on the trade day: the first period IS midnight local,
+    # whatever the stamps carry
+    assert p["series"]["ROI-DA"]["EUR"] == {"2026-01-05T00": 118.42,
+                                            "2026-01-05T01": 243.17}
     # the daily mean still works - nothing regressed
     assert p["markets"]["ROI-DA"]["EUR"] == [118.42, 243.17]
 
@@ -2594,27 +2596,31 @@ def test_price_layer_gates_separately_and_cannot_withdraw_the_others():
     assert store["price_ready"] is False      # one hour is not 95%
 
 
-def test_semopx_prices_land_on_the_irish_clock():
-    """The CSV publishes UTC; every other store series is Irish local
-    clock. A UTC-keyed price sits an hour out of step with demand from
-    late March to late October, and B.2.3 asks what price applied in
-    ONE hour - the join has to land. This is the same hazard caught
-    for temp_ai and reintroduced two hours later."""
+def test_semopx_hours_are_anchored_on_the_trade_day():
+    """Two timezone guesses were wrong - UTC, then CET - and each cost
+    a run to disprove. The document does not need decoding: a trade
+    day runs 00:00 to 23:00 local by definition and the resource name
+    says which day it is, so the offset is measured rather than
+    assumed. Whatever the stamps carry, a full document must land on
+    T00..T23 of its own trade day."""
     import build as B
-    # winter: no shift
-    assert B.semopx_local_hour("2026-01-05T18:00:00Z") == "2026-01-05T18"
-    # summer: +1, and it rolls the date
-    assert B.semopx_local_hour("2026-08-06T23:00:00Z") == "2026-08-07T00"
-    # transitions, both at 01:00 UTC on the last Sunday
-    assert B.semopx_local_hour("2026-03-29T00:00:00Z") == "2026-03-29T00"
-    assert B.semopx_local_hour("2026-03-29T02:00:00Z") == "2026-03-29T03"
-    assert B.semopx_local_hour("2026-10-25T02:00:00Z") == "2026-10-25T02"
-    assert B.semopx_local_hour("nonsense") is None
-    # and the parser emits local keys, not UTC ones
+    for shift in (-2, -1, 0, 1, 2):
+        stamps, base = [], dt.datetime(2026, 8, 6) + dt.timedelta(hours=shift)
+        for h in range(24):
+            stamps.append((base + dt.timedelta(hours=h)).isoformat() + "Z")
+        keys = B.semopx_hour_keys(stamps, "2026-08-06")
+        assert keys[0] == "2026-08-06T00", (shift, keys[0])
+        assert keys[-1] == "2026-08-06T23", (shift, keys[-1])
+    # unanchorable input contributes nothing rather than something wrong
+    assert B.semopx_hour_keys(["2026-08-06T00:00:00Z"], None) == []
+    assert B.semopx_hour_keys([], "2026-08-06") == []
+    assert B.semopx_hour_keys(["rubbish"], "2026-08-06") == []
+    # and end to end through the parser
     csv = ("Auction;SEM-DA\nMarket;ROI-DA\nIndex prices;30;EUR\n"
-           "2026-08-06T23:00:00Z\n99,5\n")
-    assert list(B.parse_semopx_csv(csv)["series"]["ROI-DA"]["EUR"]) \
-        == ["2026-08-07T00"]
+           "2026-08-05T22:00:00Z;2026-08-05T23:00:00Z\n90,0;91,0\n")
+    out = B.parse_semopx_csv(csv, trade_day="2026-08-06")
+    assert sorted(out["series"]["ROI-DA"]["EUR"]) == ["2026-08-06T00",
+                                                     "2026-08-06T01"]
 
 
 def test_semopx_trade_day_matches_the_field_not_a_character_count():
@@ -2701,6 +2707,66 @@ def test_ceiling_breathes_with_wind_and_solar():
     # more headroom with renewables in the ceiling, so more heat fits
     assert (with_re["share_that_fits_pct"]["air_source"]
             > without["share_that_fits_pct"]["air_source"])
+
+
+def test_semo_dispatch_probe_lists_rather_than_guesses():
+    """B.2.2's per-farm layer needs a SEMO report that has not been
+    identified yet. The probe must LIST the catalogue and log it, not
+    guess a report ID - a guessed ID is how the first semopx probe
+    spent a day on 400s. It is also log-only: nothing it finds may
+    reach the payload until a parser is written against these logs."""
+    import build as B
+    lines, calls = [], []
+
+    class R:
+        @staticmethod
+        def json():
+            return {"items": [
+                {"DPuG_ID": "BM-086", "ResourceName": "PUB_DailyMW_x.csv"},
+                {"DPuG_ID": "EA-001", "ResourceName": "MarketResult_y.csv"},
+            ]}
+
+    def fake_get(url, **kw):
+        calls.append(url)
+        return R
+
+    real_get, real_log = B.http_get, B.log
+    B.http_get = fake_get
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        out = B.semo_dispatch_probe()
+    finally:
+        B.http_get, B.log = real_get, real_log
+    assert out is None                      # log-only, stores nothing
+    joined = " | ".join(lines)
+    assert "BM-086" in joined and "EA-001" in joined
+    # both API families are tried, so a move in either is visible
+    assert any("semopx.com" in c for c in calls)
+    assert any("sem-o.com" in c for c in calls)
+    # and the retention warning always prints, because it is the
+    # reason the feed is urgent
+    assert "does not retain full history" in joined
+
+
+def test_semo_dispatch_probe_says_what_to_do_when_nothing_answers():
+    """A silent probe is worse than none. If both families fail it
+    must say so and name the next step - read the catalogue by hand -
+    rather than inviting another round of guessed IDs."""
+    import build as B
+    lines = []
+
+    def boom(url, **kw):
+        raise RuntimeError("moved")
+
+    real_get, real_log = B.http_get, B.log
+    B.http_get, B.log = boom, lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        B.semo_dispatch_probe()
+    finally:
+        B.http_get, B.log = real_get, real_log
+    joined = " | ".join(lines)
+    assert "nothing answered" in joined
+    assert "NOT another round of guessed IDs" in joined
 
 
 if __name__ == "__main__":
