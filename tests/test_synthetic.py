@@ -2996,6 +2996,50 @@ def test_cost_series_is_not_floored_at_the_back_look_start():
                 assert r[j + "_ex_tax"]["oil_boiler"] < r[j]["oil_boiler"]
 
 
+def test_carbon_table_refuses_dates_before_it_starts():
+    """The first run with the floor removed priced 122 weeks back to
+    April 2024 - and 55 of them sat before the old table began, so
+    they were silently charged EUR 63.50 a tonne when the rate was
+    EUR 56.00 or less. Clamping left no trace. Now the table covers
+    the whole trajectory and anything earlier is refused."""
+    import build as B
+    assert B.carbon_for("2024-04-20")["eur_per_tonne"] == 48.50
+    assert B.carbon_for("2024-06-01")["eur_per_tonne"] == 56.00
+    assert B.carbon_for("2025-06-01")["eur_per_tonne"] == 63.50
+    # the 2026 step is October, not May
+    assert B.carbon_for("2026-08-10")["eur_per_tonne"] == 63.50
+    assert B.carbon_for("2026-10-20")["eur_per_tonne"] == 71.00
+    # before the table: refuse, and let the refusal propagate
+    assert B.carbon_for("2019-01-01") is None
+    assert B.ex_tax(100.0, "roi", "oil", "2019-01-01") is None
+    # NI has no carbon component, so it still prices
+    assert B.ex_tax(100.0, "ni", "oil", "2019-01-01") is not None
+
+
+def test_carbon_rates_scale_from_the_published_anchor():
+    """The table derives linearly from one published pair, so it is
+    checkable against Revenue's separately published prior rate: at
+    EUR 56.00 a tonne the gas figure must come out at 1.013 c/kWh."""
+    import build as B
+    assert abs(B.carbon_for("2024-06-01")["gas_c_per_kwh"] - 1.013) < 0.002
+    assert abs(B.carbon_for("2025-06-01")["gas_c_per_kwh"] - 1.148) < 0.001
+    assert abs(B.carbon_for("2025-06-01")["kerosene_c_per_l"]
+               - 16.081) < 0.001
+
+
+def test_roi_vat_on_gas_stepped_down_in_may_2022():
+    """A VAT constant would have been wrong the moment the panel
+    reached back past 1 May 2022, when gas and electricity were cut
+    from 13.5% to 9%. Kerosene never got the cut - which is why the
+    oil wedge is heavier than the gas wedge inside ROI."""
+    import build as B
+    assert B.vat_for("roi", "gas", "2021-06-01") == 0.135
+    assert B.vat_for("roi", "gas", "2023-06-01") == 0.09
+    assert B.vat_for("roi", "electricity", "2023-06-01") == 0.09
+    assert B.vat_for("roi", "oil", "2023-06-01") == 0.135
+    assert B.vat_for("ni", "gas", "2021-06-01") == 0.05
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
