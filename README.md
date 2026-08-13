@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.31.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.32.0 / site 4.8.0.
 
 ## The premise
 
@@ -398,10 +398,14 @@ parser was reading the CSV's delivery-timestamp row and discarding it,
 keeping only a daily mean; the stamps are now retained, because B.2.3
 asks what price applied in one hour.
 
-Prices are keyed on the **Irish local clock**, not the UTC the CSV
-publishes, because every other series in the store is – a UTC key would
-sit an hour out of step with demand from late March to late October,
-and B.2.3 asks what price applied in one hour.
+Prices are keyed on the **Irish local clock**, because every other
+series in the store is and B.2.3 asks what price applied in one hour.
+The offset is measured, not assumed: a trade day runs 00:00 to 23:00
+local by definition and the resource name states which day it is, so
+the shift is taken from the document's own first period. Two timezone
+guesses – UTC, then CET – were each wrong and each cost a run to
+disprove; anchoring needs no guess at all, and a document that cannot
+be anchored contributes nothing rather than something misaligned.
 
 History comes by **paging, not filtering**. The probe found that a
 `Date` parameter returns nothing while a deep descending page reaches
@@ -411,6 +415,22 @@ backfill is bounded per run – six listing pages, twelve trade days –
 converging over runs in the same pattern the hourly chunks and the
 temperature archive already use, rather than four hundred requests in
 one build.
+
+**B.2.2's per-farm layer has a probe.** Per-unit downward dispatch is
+published on SEMO, but SEMO does not retain the full history – so the
+series exists only from the day capture starts, and every day without
+a feed is a day that cannot be recovered. `semo_dispatch_probe()` lists
+the report catalogue on both API families and logs it, rather than
+guessing a report ID; the feed is written against those logs, once it
+is clear which report names resource codes and half-hourly periods.
+
+The panel does not wait on it. The annual regional report and
+EirGrid's 30-minute jurisdiction series are already published, so
+B.2.2 can be built on those now and the per-farm map becomes a later
+upgrade once the captured series has a winter in it. Two limitations
+travel with any per-farm work: the volumes do not separate constraint
+from curtailment, and the generator coordinates are not public, so a
+unit-code-to-farm-to-location register has to be built separately.
 
 **B.2.2 (dispatch-down absorption) is not built.** B.2.2 needs its dispatch-down basis settled first – the
 2,139 GWh spilled in 2025 is an annual figure and there is no hourly
@@ -438,7 +458,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 135 tests, no network
+python3 tests/test_synthetic.py   # 137 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
