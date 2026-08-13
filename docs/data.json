@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-08-12T05:48:17+00:00",
+ "built_utc": "2026-08-13T05:50:19+00:00",
  "derived": {
   "anchor_epoch": 8,
   "cool": {
@@ -36,7 +36,7 @@
   },
   "heat_gap": {
    "basis": "Standard tariffs, July 2026 pass (Power NI/UR review, ROI standard 24h rates) - dagger; time-of-use and night tariffs materially lower for heat-pump households. Oil prices live. ASHP SPF is modelled from each jurisdiction's HDD-weighted climate (Carnot-fraction, defrost derate, DHW share - all dagger), calibrated to GB field-trial medians. Kerosene 10.35 kWh/L; boiler efficiencies 82%/85% dagger. Challenge and input welcome at contact@causewaygt.com",
-   "fx_eur_gbp": 0.85483,
+   "fx_eur_gbp": 0.85358,
    "geo_spf": 4.0,
    "ni": {
     "ashp": 11.44,
@@ -54,7 +54,7 @@
     "inputs": {
      "electricity_per_kwh": 0.325,
      "gas_per_kwh": 0.075,
-     "oil_per_litre": 86.24
+     "oil_per_litre": 86.27
     },
     "oil_boiler": 10.16
    },
@@ -68,15 +68,15 @@
     },
     "ashp_spf": 2.89,
     "breakeven_spf_vs_gas": 2.66,
-    "breakeven_spf_vs_oil": 2.24,
+    "breakeven_spf_vs_oil": 2.25,
     "gas_boiler": 13.53,
     "geothermal_spf40": 9.0,
     "inputs": {
      "electricity_per_kwh": 0.36,
      "gas_per_kwh": 0.115,
-     "oil_per_litre": 136.09
+     "oil_per_litre": 135.53
     },
-    "oil_boiler": 16.04
+    "oil_boiler": 15.97
    }
   },
   "hero": {
@@ -208,98 +208,98 @@
     "year": 2024
    },
    "basis": "Scaffold estimator (dagger throughout) - annual anchors shaped by each jurisdiction's weekly HDD; SEAI 2024, DfE/NISRA, Causeway estimates. Oil, the island's majority heating fuel, is modelled from annual anchors, not metered - its weekly estimates carry a materially wider band than gas. Hot water is carried as a flat 22.4% of annual (SEAI National Heat Study, Aug 2026 re-anchoring); space heat follows the week's degree days. Bills are sector-blended: services gas and electricity, and all cooling, price at non-domestic rates (dagger, pending Eurostat band prices); oil prices identically across sectors. VAT convention: domestic rates include VAT (5% NI, 9% ROI), non-domestic rates exclude it, because businesses recover input VAT - Eurostat level 3 and level 2 respectively. NI gas and electricity are all-in rates at the Utility Regulator's own consumption basis, gas weighted across SSE Airtricity (Greater Belfast and West) and Firmus (Ten Towns) by regulated customer count; ROI is a standard unit rate without standing charges, so the two jurisdictions are internally consistent but not like-for-like at component level (open item). The Domestic rates in BOTH jurisdictions are all-in effective rates at a stated consumption, including VAT and standing charges - NI from the Utility Regulator's regulated bills, ROI from the Eurostat band price (S2 2024) stepped by the supplier announcements. The residual difference is scope rather than basis: NI is incumbent-weighted regulated, ROI a market-wide average including discounts, and the two do not bias in one direction (dagger). Cooling is the cold-economy census (dagger loads beside the CSO data-centre anchor), flat across the year with the comfort share following live overheating degree-hours once a season exists - a cold-economy scope, wider than comfort-only national cooling lines and not one-to-one comparable with them; the data-centre line counts cooling electricity (~14% of the fleet's draw, SEAI), not the whole draw, and delivered cooling uses the SEAI National Heat Study's useful-to-final ratios. Electricity emissions use the live all-island grid intensity when available. Challenge and input welcome at contact@causewaygt.com",
-   "bill_eur_m": 28.1,
-   "bill_gbp_m": 24.1,
+   "bill_eur_m": 26.2,
+   "bill_gbp_m": 22.4,
    "by_fuel": {
     "ambient": {
      "in_gwh": 0.0,
-     "useful_gwh": 3.2
+     "useful_gwh": 3.0
     },
     "electricity": {
-     "in_gwh": 15.8,
-     "useful_gwh": 15.8
+     "in_gwh": 14.7,
+     "useful_gwh": 14.7
     },
     "gas": {
-     "in_gwh": 55.6,
-     "useful_gwh": 47.2
+     "in_gwh": 51.7,
+     "useful_gwh": 43.9
     },
     "heatpump": {
-     "in_gwh": 1.7,
-     "useful_gwh": 1.7
+     "in_gwh": 1.6,
+     "useful_gwh": 1.6
     },
     "oil": {
-     "in_gwh": 127.8,
-     "useful_gwh": 104.7
+     "in_gwh": 118.6,
+     "useful_gwh": 97.3
     },
     "other": {
-     "in_gwh": 8.3,
-     "useful_gwh": 5.8
+     "in_gwh": 7.7,
+     "useful_gwh": 5.5
     },
     "peat": {
-     "in_gwh": 9.8,
-     "useful_gwh": 5.9
+     "in_gwh": 9.2,
+     "useful_gwh": 5.5
     }
    },
    "combined": {
     "bill_cold_eur_m": 31.7,
-    "bill_cold_gbp_m": 27.2,
-    "bill_eur_m": 59.8,
-    "bill_gbp_m": 51.3,
-    "bill_heat_eur_m": 28.1,
-    "bill_heat_gbp_m": 24.1,
+    "bill_cold_gbp_m": 27.1,
+    "bill_eur_m": 57.9,
+    "bill_gbp_m": 49.5,
+    "bill_heat_eur_m": 26.2,
+    "bill_heat_gbp_m": 22.4,
     "cold_gwh": 120.3,
-    "emissions_cold_kt": 24.1,
-    "emissions_heat_kt": 51.6,
-    "emissions_kt_co2": 75.7,
-    "heat_gwh": 219.0,
-    "indigenous_share_pct": 54.7,
-    "purchased_gwh": 339.2,
-    "served_gwh": 509.4
+    "emissions_cold_kt": 24.0,
+    "emissions_heat_kt": 47.9,
+    "emissions_kt_co2": 72.0,
+    "heat_gwh": 203.5,
+    "indigenous_share_pct": 55.9,
+    "purchased_gwh": 323.7,
+    "served_gwh": 496.4
    },
    "cooling": {
     "bill_eur_m": 31.7,
-    "bill_gbp_m": 27.2,
+    "bill_gbp_m": 27.1,
     "comfort_shaped_by_odh": false,
     "elec_gwh": 120.3,
-    "emissions_kt_co2": 24.1,
+    "emissions_kt_co2": 24.0,
     "served_gwh": 325.0
    },
-   "ef_electricity_g_per_kwh": 200.5,
+   "ef_electricity_g_per_kwh": 200.0,
    "ef_electricity_source": "live grid intensity, 14-day mean",
    "elec_indigenous_source": "anchor (SEAI RES-E / DfE)",
-   "emissions_kt_co2": 51.6,
-   "hdd_week": 1.4,
+   "emissions_kt_co2": 47.9,
+   "hdd_week": 0.6,
    "hdd_year": 1785.2,
-   "heat_delivered_gwh": 184.4,
-   "heat_purchased_gwh": 219.0,
+   "heat_delivered_gwh": 171.4,
+   "heat_purchased_gwh": 203.5,
    "indigenous_share_pct": 12.8,
    "ni": {
-    "bill_eur_m": 8.3,
-    "bill_gbp_m": 7.1,
+    "bill_eur_m": 7.6,
+    "bill_gbp_m": 6.5,
     "by_fuel": {
      "ambient": {
       "in_gwh": 0.0,
       "useful_gwh": 0.1
      },
      "electricity": {
-      "in_gwh": 5.8,
-      "useful_gwh": 5.8
+      "in_gwh": 5.3,
+      "useful_gwh": 5.3
      },
      "gas": {
-      "in_gwh": 19.0,
-      "useful_gwh": 16.1
+      "in_gwh": 17.2,
+      "useful_gwh": 14.6
      },
      "heatpump": {
       "in_gwh": 0.0,
       "useful_gwh": 0.0
      },
      "oil": {
-      "in_gwh": 45.3,
-      "useful_gwh": 37.1
+      "in_gwh": 41.0,
+      "useful_gwh": 33.7
      },
      "other": {
-      "in_gwh": 2.9,
-      "useful_gwh": 2.0
+      "in_gwh": 2.6,
+      "useful_gwh": 1.9
      },
      "peat": {
       "in_gwh": 0.0,
@@ -309,18 +309,18 @@
     "combined": {
      "bill_cold_eur_m": 6.4,
      "bill_cold_gbp_m": 5.5,
-     "bill_eur_m": 14.7,
-     "bill_gbp_m": 12.6,
-     "bill_heat_eur_m": 8.3,
-     "bill_heat_gbp_m": 7.1,
+     "bill_eur_m": 14.0,
+     "bill_gbp_m": 12.0,
+     "bill_heat_eur_m": 7.6,
+     "bill_heat_gbp_m": 6.5,
      "cold_gwh": 23.1,
      "emissions_cold_kt": 4.6,
-     "emissions_heat_kt": 17.0,
-     "emissions_kt_co2": 21.6,
-     "heat_gwh": 73.0,
-     "indigenous_share_pct": 36.5,
-     "purchased_gwh": 96.0,
-     "served_gwh": 109.0
+     "emissions_heat_kt": 15.4,
+     "emissions_kt_co2": 20.0,
+     "heat_gwh": 66.2,
+     "indigenous_share_pct": 38.1,
+     "purchased_gwh": 89.2,
+     "served_gwh": 103.3
     },
     "cooling": {
      "bill_eur_m": 6.4,
@@ -331,40 +331,40 @@
      "served_gwh": 47.8,
      "service_factor": 2.07
     },
-    "emissions_kt_co2": 17.0,
-    "hdd_week": 3.4,
+    "emissions_kt_co2": 15.4,
+    "hdd_week": 2.0,
     "hdd_year": 2016.3,
-    "heat_delivered_gwh": 61.2,
-    "heat_purchased_gwh": 73.0,
+    "heat_delivered_gwh": 55.5,
+    "heat_purchased_gwh": 66.2,
     "indigenous_share_pct": 7.4,
     "peak_week": {
      "hdd": 99.0,
      "heat_purchased_gwh": 551.3,
      "week_ending": "2026-01-09"
     },
-    "week_ending": "2026-08-12",
+    "week_ending": "2026-08-13",
     "what_if_20pct_geothermal": {
-     "bill_eur_m": 7.8,
-     "bill_gbp_m": 6.6,
-     "emissions_kt_co2": 14.2,
+     "bill_eur_m": 7.0,
+     "bill_gbp_m": 6.0,
+     "emissions_kt_co2": 12.9,
      "geothermal_spf": 4.0,
-     "heat_purchased_gwh": 61.4,
+     "heat_purchased_gwh": 55.7,
      "indigenous_share_pct": 23.2
     },
     "what_if_combined": {
      "bill_cold_eur_m": 5.5,
      "bill_cold_gbp_m": 4.7,
-     "bill_eur_m": 13.3,
-     "bill_gbp_m": 11.3,
-     "bill_heat_eur_m": 7.8,
-     "bill_heat_gbp_m": 6.6,
+     "bill_eur_m": 12.5,
+     "bill_gbp_m": 10.7,
+     "bill_heat_eur_m": 7.0,
+     "bill_heat_gbp_m": 6.0,
      "cold_gwh": 19.8,
      "emissions_cold_kt": 4.0,
-     "emissions_heat_kt": 14.2,
-     "emissions_kt_co2": 18.2,
-     "heat_gwh": 61.4,
-     "indigenous_share_pct": 47.0,
-     "purchased_gwh": 81.2
+     "emissions_heat_kt": 12.9,
+     "emissions_kt_co2": 16.9,
+     "heat_gwh": 55.7,
+     "indigenous_share_pct": 48.3,
+     "purchased_gwh": 75.5
     }
    },
    "peak_week": {
@@ -372,122 +372,122 @@
     "week_ending": "2026-01-09"
    },
    "roi": {
-    "bill_eur_m": 19.8,
-    "bill_gbp_m": 17.0,
+    "bill_eur_m": 18.6,
+    "bill_gbp_m": 15.9,
     "by_fuel": {
      "ambient": {
       "in_gwh": 0.0,
-      "useful_gwh": 3.1
+      "useful_gwh": 2.9
      },
      "electricity": {
-      "in_gwh": 10.0,
-      "useful_gwh": 10.0
+      "in_gwh": 9.4,
+      "useful_gwh": 9.4
      },
      "gas": {
-      "in_gwh": 36.6,
-      "useful_gwh": 31.1
+      "in_gwh": 34.5,
+      "useful_gwh": 29.3
      },
      "heatpump": {
-      "in_gwh": 1.7,
-      "useful_gwh": 1.7
+      "in_gwh": 1.6,
+      "useful_gwh": 1.6
      },
      "oil": {
-      "in_gwh": 82.5,
-      "useful_gwh": 67.6
+      "in_gwh": 77.6,
+      "useful_gwh": 63.6
      },
      "other": {
-      "in_gwh": 5.4,
-      "useful_gwh": 3.8
+      "in_gwh": 5.1,
+      "useful_gwh": 3.6
      },
      "peat": {
-      "in_gwh": 9.8,
-      "useful_gwh": 5.9
+      "in_gwh": 9.2,
+      "useful_gwh": 5.5
      }
     },
     "combined": {
      "bill_cold_eur_m": 25.3,
-     "bill_cold_gbp_m": 21.7,
-     "bill_eur_m": 45.1,
-     "bill_gbp_m": 38.7,
-     "bill_heat_eur_m": 19.8,
-     "bill_heat_gbp_m": 17.0,
+     "bill_cold_gbp_m": 21.6,
+     "bill_eur_m": 43.9,
+     "bill_gbp_m": 37.5,
+     "bill_heat_eur_m": 18.6,
+     "bill_heat_gbp_m": 15.9,
      "cold_gwh": 97.2,
-     "emissions_cold_kt": 19.5,
-     "emissions_heat_kt": 34.6,
-     "emissions_kt_co2": 54.1,
-     "heat_gwh": 146.0,
-     "indigenous_share_pct": 59.7,
-     "purchased_gwh": 243.2,
-     "served_gwh": 400.4
+     "emissions_cold_kt": 19.4,
+     "emissions_heat_kt": 32.5,
+     "emissions_kt_co2": 52.0,
+     "heat_gwh": 137.3,
+     "indigenous_share_pct": 60.6,
+     "purchased_gwh": 234.5,
+     "served_gwh": 393.1
     },
     "cooling": {
      "bill_eur_m": 25.3,
-     "bill_gbp_m": 21.7,
+     "bill_gbp_m": 21.6,
      "comfort_shaped_by_odh": false,
      "elec_gwh": 97.2,
-     "emissions_kt_co2": 19.5,
+     "emissions_kt_co2": 19.4,
      "served_gwh": 277.2,
      "service_factor": 2.85
     },
-    "emissions_kt_co2": 34.6,
-    "hdd_week": 0.9,
+    "emissions_kt_co2": 32.5,
+    "hdd_week": 0.3,
     "hdd_year": 1707.4,
-    "heat_delivered_gwh": 123.2,
-    "heat_purchased_gwh": 146.0,
+    "heat_delivered_gwh": 115.9,
+    "heat_purchased_gwh": 137.3,
     "indigenous_share_pct": 15.4,
     "peak_week": {
      "hdd": 93.5,
      "heat_purchased_gwh": 1442.1,
      "week_ending": "2026-01-06"
     },
-    "week_ending": "2026-08-12",
+    "week_ending": "2026-08-13",
     "what_if_20pct_geothermal": {
-     "bill_eur_m": 17.9,
-     "bill_gbp_m": 15.3,
-     "emissions_kt_co2": 28.9,
+     "bill_eur_m": 16.8,
+     "bill_gbp_m": 14.4,
+     "emissions_kt_co2": 27.2,
      "geothermal_spf": 4.0,
-     "heat_purchased_gwh": 123.0,
+     "heat_purchased_gwh": 115.6,
      "indigenous_share_pct": 29.4
     },
     "what_if_combined": {
      "bill_cold_eur_m": 21.8,
      "bill_cold_gbp_m": 18.6,
-     "bill_eur_m": 39.7,
-     "bill_gbp_m": 33.9,
-     "bill_heat_eur_m": 17.9,
-     "bill_heat_gbp_m": 15.3,
+     "bill_eur_m": 38.6,
+     "bill_gbp_m": 33.0,
+     "bill_heat_eur_m": 16.8,
+     "bill_heat_gbp_m": 14.4,
      "cold_gwh": 83.6,
-     "emissions_cold_kt": 16.8,
-     "emissions_heat_kt": 28.9,
-     "emissions_kt_co2": 45.7,
-     "heat_gwh": 123.0,
-     "indigenous_share_pct": 66.0,
-     "purchased_gwh": 206.6
+     "emissions_cold_kt": 16.7,
+     "emissions_heat_kt": 27.2,
+     "emissions_kt_co2": 43.9,
+     "heat_gwh": 115.6,
+     "indigenous_share_pct": 66.7,
+     "purchased_gwh": 199.2
     }
    },
-   "week_ending": "2026-08-12",
+   "week_ending": "2026-08-13",
    "what_if_20pct_geothermal": {
-    "bill_eur_m": 25.7,
-    "bill_gbp_m": 21.9,
-    "emissions_kt_co2": 43.1,
+    "bill_eur_m": 23.8,
+    "bill_gbp_m": 20.4,
+    "emissions_kt_co2": 40.1,
     "geothermal_spf": 4.0,
-    "heat_purchased_gwh": 184.4,
-    "indigenous_share_pct": 27.3
+    "heat_purchased_gwh": 171.3,
+    "indigenous_share_pct": 27.4
    },
    "what_if_combined": {
     "bill_cold_eur_m": 27.3,
     "bill_cold_gbp_m": 23.3,
-    "bill_eur_m": 53.0,
-    "bill_gbp_m": 45.2,
-    "bill_heat_eur_m": 25.7,
-    "bill_heat_gbp_m": 21.9,
+    "bill_eur_m": 51.1,
+    "bill_gbp_m": 43.7,
+    "bill_heat_eur_m": 23.8,
+    "bill_heat_gbp_m": 20.4,
     "cold_gwh": 103.4,
-    "emissions_cold_kt": 20.8,
-    "emissions_heat_kt": 43.1,
-    "emissions_kt_co2": 63.9,
-    "heat_gwh": 184.4,
-    "indigenous_share_pct": 61.9,
-    "purchased_gwh": 287.8
+    "emissions_cold_kt": 20.7,
+    "emissions_heat_kt": 40.1,
+    "emissions_kt_co2": 60.8,
+    "heat_gwh": 171.3,
+    "indigenous_share_pct": 62.9,
+    "purchased_gwh": 274.7
    }
   },
   "history": {
@@ -8038,9 +8038,9 @@
   "history_schema": 5,
   "live_from": "2025-10-01",
   "roi_space_heat_regression": {
-   "baseload_gwh_per_day": 16.68,
+   "baseload_gwh_per_day": 16.69,
    "method": "within-month centred OLS (within-class centring)",
-   "n_days": 927,
+   "n_days": 926,
    "naive_slope_gwh_per_hdd": 4.031,
    "r2_within_month": 0.646,
    "residual_se_gwh_per_day": 3.51,
@@ -8083,11 +8083,11 @@
  ],
  "feeds": {
   "ccni_oil": {
-   "fetched_utc": "2026-08-12T05:47:27+00:00",
+   "fetched_utc": "2026-08-13T05:49:39+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
-   "latest_day": "2026-08-11",
+   "latest_day": "2026-08-12",
    "series_conflicts_this_run": 0,
    "series_gbp": {
     "daily": {
@@ -8203,7 +8203,8 @@
       "2026-08-06": 272.96,
       "2026-08-07": 270.75,
       "2026-08-10": 269.97,
-      "2026-08-11": 269.65
+      "2026-08-11": 269.65,
+      "2026-08-12": 269.83
      },
      "500l": {
       "2026-02-26": 307.38,
@@ -8317,7 +8318,8 @@
       "2026-08-06": 443.72,
       "2026-08-07": 441.04,
       "2026-08-10": 439.16,
-      "2026-08-11": 438.11
+      "2026-08-11": 438.11,
+      "2026-08-12": 438.4
      },
      "900l": {
       "2026-02-26": 536.72,
@@ -8431,7 +8433,8 @@
       "2026-08-06": 787.36,
       "2026-08-07": 782.82,
       "2026-08-10": 778.23,
-      "2026-08-11": 776.16
+      "2026-08-11": 776.16,
+      "2026-08-12": 776.4
      }
     }
    },
@@ -8439,7 +8442,7 @@
    "status": "ok"
   },
   "ecb_fx": {
-   "eur_gbp": 0.85483,
+   "eur_gbp": 0.85358,
    "eur_gbp_daily": {
     "2025-08-06": 0.8717,
     "2025-08-07": 0.8673,
@@ -8699,7 +8702,8 @@
     "2026-08-06": 0.85705,
     "2026-08-07": 0.85765,
     "2026-08-10": 0.85565,
-    "2026-08-11": 0.85483
+    "2026-08-11": 0.85483,
+    "2026-08-12": 0.85358
    },
    "eur_gbp_semester": {
     "1999-S1": 0.67208,
@@ -8758,10 +8762,10 @@
     "2025-S2": 0.87073,
     "2026-S1": 0.8672
    },
-   "fetched_utc": "2026-08-12T05:46:56+00:00",
-   "gbp_eur": 1.16982,
-   "latest_day": "2026-08-11",
-   "rate_date": "2026-08-11",
+   "fetched_utc": "2026-08-13T05:49:05+00:00",
+   "gbp_eur": 1.17154,
+   "latest_day": "2026-08-12",
+   "rate_date": "2026-08-12",
    "source": "ECB euro foreign exchange reference rates (daily)",
    "status": "ok"
   },
@@ -9160,7 +9164,8 @@
     "2026-08-08": 176.6,
     "2026-08-09": 183.6,
     "2026-08-10": 231.4,
-    "2026-08-11": 203.9
+    "2026-08-11": 203.9,
+    "2026-08-12": 204.9
    },
    "demand_gwh_daily": {
     "island": {
@@ -9217,7 +9222,8 @@
      "2026-08-08": 100.88,
      "2026-08-09": 100.65,
      "2026-08-10": 107.38,
-     "2026-08-11": 109.2
+     "2026-08-11": 109.2,
+     "2026-08-12": 114.17
     },
     "ni": {
      "2026-06-19": 19.11,
@@ -9273,7 +9279,8 @@
      "2026-08-08": 16.19,
      "2026-08-09": 16.38,
      "2026-08-10": 18.69,
-     "2026-08-11": 18.45
+     "2026-08-11": 18.45,
+     "2026-08-12": 19.32
     },
     "roi": {
      "2026-06-19": 93.91,
@@ -9329,27 +9336,28 @@
      "2026-08-08": 84.68,
      "2026-08-09": 84.27,
      "2026-08-10": 88.69,
-     "2026-08-11": 90.75
+     "2026-08-11": 90.75,
+     "2026-08-12": 94.85
     }
    },
-   "fetched_utc": "2026-08-12T05:46:52+00:00",
-   "latest_day": "2026-08-11",
+   "fetched_utc": "2026-08-13T05:48:56+00:00",
+   "latest_day": "2026-08-12",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "eirgrid_probe": {
    "carbon_depth": {
     "12mo": "HISTORIC CARBON RETURNED",
-    "18mo": "EMPTY on 2 attempts - treat as unavailable",
+    "18mo": "HISTORIC CARBON RETURNED",
     "24mo": "HISTORIC CARBON RETURNED"
    },
-   "fetched_utc": "2026-08-12T05:48:17+00:00",
-   "latest_day": "2026-08-12",
+   "fetched_utc": "2026-08-13T05:50:19+00:00",
+   "latest_day": "2026-08-13",
    "source": "EirGrid Smart Grid Dashboard (probe, round 3)",
    "status": "ok"
   },
   "entsog_probe": {
-   "fetched_utc": "2026-08-12T05:47:46+00:00",
+   "fetched_utc": "2026-08-13T05:49:56+00:00",
    "greater_belfast_gwh_daily": {
     "2026-07-20": 4.22306,
     "2026-07-21": 4.827287,
@@ -9374,7 +9382,8 @@
     "2026-08-09": 4.672706,
     "2026-08-10": 5.168749,
     "2026-08-11": 4.892431,
-    "2026-08-12": 0.147808
+    "2026-08-12": 4.547768,
+    "2026-08-13": 0.149772
    },
    "ie_points": [
     "ITP-00090",
@@ -9383,7 +9392,7 @@
     "UGS-00007",
     "VTP-00005"
    ],
-   "latest_day": "2026-08-12",
+   "latest_day": "2026-08-13",
    "moffat_combined_gwh_daily": {
     "2026-07-20": 136.2636,
     "2026-07-21": 145.2546,
@@ -9406,7 +9415,8 @@
     "2026-08-07": 132.0567,
     "2026-08-08": 105.9606,
     "2026-08-09": 118.5258,
-    "2026-08-10": 158.7522
+    "2026-08-10": 158.7522,
+    "2026-08-11": 144.4665
    },
    "moffat_ie_gwh_daily": {
     "2026-07-20": 136.4,
@@ -9430,7 +9440,8 @@
     "2026-08-07": 132.188889,
     "2026-08-08": 106.066667,
     "2026-08-09": 118.644444,
-    "2026-08-10": 158.897778
+    "2026-08-10": 158.911111,
+    "2026-08-11": 144.586667
    },
    "ni_candidate_points": [
     "DIS-00015",
@@ -9463,7 +9474,8 @@
     "2026-08-07": 0.0,
     "2026-08-08": 0.0,
     "2026-08-09": 0.0,
-    "2026-08-10": 0.880278
+    "2026-08-10": 0.880278,
+    "2026-08-11": 0.0
    },
    "status": "ok",
    "twynholm_snip_gwh_daily": {
@@ -9490,11 +9502,12 @@
     "2026-08-09": 30.234722,
     "2026-08-10": 38.738611,
     "2026-08-11": 34.370833,
-    "2026-08-12": 1.674444
+    "2026-08-12": 42.255556,
+    "2026-08-13": 1.961667
    }
   },
   "gb_oil": {
-   "fetched_utc": "2026-08-12T05:47:27+00:00",
+   "fetched_utc": "2026-08-13T05:49:39+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -9524,9 +9537,10 @@
     "2026-08-09": 89.04,
     "2026-08-10": 89.02,
     "2026-08-11": 92.24,
-    "2026-08-12": 92.35
+    "2026-08-12": 92.35,
+    "2026-08-13": 92.39
    },
-   "latest_day": "2026-08-12",
+   "latest_day": "2026-08-13",
    "source": "BoilerJuice UK daily average (lowest quote per postcode district, incl 5% VAT)",
    "status": "ok"
   },
@@ -12455,7 +12469,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-08-12T05:46:57+00:00",
+   "fetched_utc": "2026-08-13T05:49:06+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -24285,7 +24299,7 @@
     "2026-08-09": 5.45,
     "2026-08-10": 6.873
    },
-   "fetched_utc": "2026-08-12T05:47:27+00:00",
+   "fetched_utc": "2026-08-13T05:49:38+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-08-10",
    "ndm_gwh": {
@@ -24802,13 +24816,12 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-08-12T05:46:54+00:00",
+   "fetched_utc": "2026-08-13T05:49:04+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
    "forecast_tail": true,
    "hdd_island": {
-    "2023-06-19": 0.0,
     "2023-06-20": 0.0,
     "2023-06-21": 0.0,
     "2023-06-22": 0.0,
@@ -25958,10 +25971,10 @@
     "2026-08-09": 0.0,
     "2026-08-10": 0.61,
     "2026-08-11": 0.0,
-    "2026-08-12": 0.0
+    "2026-08-12": 0.0,
+    "2026-08-13": 0.0
    },
    "hdd_ni": {
-    "2023-06-19": 0.0,
     "2023-06-20": 0.0,
     "2023-06-21": 0.0,
     "2023-06-22": 0.0,
@@ -27111,10 +27124,10 @@
     "2026-08-09": 0.43,
     "2026-08-10": 1.39,
     "2026-08-11": 0.0,
-    "2026-08-12": 0.0
+    "2026-08-12": 0.0,
+    "2026-08-13": 0.0
    },
    "hdd_roi": {
-    "2023-06-19": 0.0,
     "2023-06-20": 0.0,
     "2023-06-21": 0.0,
     "2023-06-22": 0.0,
@@ -28264,9 +28277,10 @@
     "2026-08-09": 0.0,
     "2026-08-10": 0.33,
     "2026-08-11": 0.0,
-    "2026-08-12": 0.0
+    "2026-08-12": 0.0,
+    "2026-08-13": 0.0
    },
-   "latest_day": "2026-08-12",
+   "latest_day": "2026-08-13",
    "odh26_island": {
     "2026-05-19": 0.0,
     "2026-05-20": 0.0,
@@ -28353,22 +28367,22 @@
     "2026-08-09": 0.0,
     "2026-08-10": 0.0,
     "2026-08-11": 0.0,
-    "2026-08-12": 0.0
+    "2026-08-12": 0.14,
+    "2026-08-13": 0.0
    },
    "source": "ERA5 via Open-Meteo, population-weighted HDD",
    "status": "ok",
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-08-12T05:47:16+00:00",
+   "fetched_utc": "2026-08-13T05:49:27+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
-   "latest_day": "2026-08-03",
-   "latest_value": 1360.95,
-   "latest_value_ex_tax": 986.01,
+   "latest_day": "2026-08-10",
+   "latest_value": 1355.35,
+   "latest_value_ex_tax": 981.08,
    "roi_heating_gasoil_eur_per_1000l": {
-    "2023-06-19": 885.7,
     "2023-06-26": 891.35,
     "2023-07-03": 875.75,
     "2023-07-10": 893.85,
@@ -28531,10 +28545,10 @@
     "2026-07-13": 1113.25,
     "2026-07-20": 1262.95,
     "2026-07-27": 1324.5,
-    "2026-08-03": 1360.95
+    "2026-08-03": 1360.95,
+    "2026-08-10": 1355.35
    },
    "roi_heating_gasoil_eur_per_1000l_ex_tax": {
-    "2023-06-19": 620.07,
     "2023-06-26": 625.05,
     "2023-07-03": 611.31,
     "2023-07-10": 627.25,
@@ -28697,13 +28711,14 @@
     "2026-07-13": 767.78,
     "2026-07-20": 899.67,
     "2026-07-27": 953.9,
-    "2026-08-03": 986.01
+    "2026-08-03": 986.01,
+    "2026-08-10": 981.08
    },
    "source": "European Commission Weekly Oil Bulletin - prices with and without taxes",
    "status": "ok"
   },
   "sem_mix": {
-   "fetched_utc": "2026-08-12T05:47:48+00:00",
+   "fetched_utc": "2026-08-13T05:49:57+00:00",
    "indigenous_share_daily": {
     "2026-06-25": 47.93,
     "2026-06-26": 46.75,
@@ -28741,18 +28756,318 @@
     "2026-07-28": 50.9,
     "2026-07-29": 20.45,
     "2026-07-30": 29.99,
-    "2026-07-31": 32.81
+    "2026-07-31": 32.81,
+    "2026-08-01": 14.82,
+    "2026-08-02": 22.54,
+    "2026-08-03": 41.72,
+    "2026-08-04": 37.08,
+    "2026-08-05": 55.21,
+    "2026-08-06": 22.59,
+    "2026-08-07": 32.17,
+    "2026-08-08": 33.38,
+    "2026-08-09": 33.72,
+    "2026-08-10": 15.04,
+    "2026-08-11": 38.74,
+    "2026-08-12": 29.26
    },
-   "latest_day": "2026-07-31",
+   "latest_day": "2026-08-12",
    "source": "energy-charts.info public_power IE - SEM all-island, half-hourly",
-   "status": "lagging"
+   "status": "ok"
   },
   "semopx": {
    "auction": "SEM-DA",
-   "dam_avg_eur_mwh": 150.73,
-   "dam_avg_gbp_mwh": 129.07,
+   "dam_avg_eur_mwh": 171.81,
+   "dam_avg_gbp_mwh": 146.77,
    "dam_hourly_added": 24,
    "dam_hourly_eur_mwh": {
+    "2026-05-14T23": 134.96,
+    "2026-05-15T00": 132.48,
+    "2026-05-15T01": 129.26,
+    "2026-05-15T02": 131.41,
+    "2026-05-15T03": 125.74,
+    "2026-05-15T04": 125.9,
+    "2026-05-15T05": 126.36,
+    "2026-05-15T06": 150.17,
+    "2026-05-15T07": 185.0,
+    "2026-05-15T08": 173.23,
+    "2026-05-15T09": 140.0,
+    "2026-05-15T10": 119.56,
+    "2026-05-15T11": 115.0,
+    "2026-05-15T12": 114.74,
+    "2026-05-15T13": 113.42,
+    "2026-05-15T14": 112.59,
+    "2026-05-15T15": 115.0,
+    "2026-05-15T16": 140.35,
+    "2026-05-15T17": 171.15,
+    "2026-05-15T18": 203.01,
+    "2026-05-15T19": 214.42,
+    "2026-05-15T20": 205.02,
+    "2026-05-15T21": 226.81,
+    "2026-05-15T22": 219.0,
+    "2026-05-15T23": 196.0,
+    "2026-05-16T00": 169.6,
+    "2026-05-16T01": 152.78,
+    "2026-05-16T02": 164.0,
+    "2026-05-16T03": 145.0,
+    "2026-05-16T04": 137.47,
+    "2026-05-16T05": 129.31,
+    "2026-05-16T06": 145.0,
+    "2026-05-16T07": 173.92,
+    "2026-05-16T08": 190.0,
+    "2026-05-16T09": 186.75,
+    "2026-05-16T10": 138.68,
+    "2026-05-16T11": 136.08,
+    "2026-05-16T12": 133.0,
+    "2026-05-16T13": 129.42,
+    "2026-05-16T14": 125.13,
+    "2026-05-16T15": 124.07,
+    "2026-05-16T16": 126.03,
+    "2026-05-16T17": 134.32,
+    "2026-05-16T18": 144.07,
+    "2026-05-16T19": 146.95,
+    "2026-05-16T20": 146.32,
+    "2026-05-16T21": 140.4,
+    "2026-05-16T22": 129.32,
+    "2026-05-16T23": 136.89,
+    "2026-05-17T00": 131.0,
+    "2026-05-17T01": 126.23,
+    "2026-05-17T02": 124.22,
+    "2026-05-17T03": 121.77,
+    "2026-05-17T04": 118.27,
+    "2026-05-17T05": 114.67,
+    "2026-05-17T06": 114.8,
+    "2026-05-17T07": 115.26,
+    "2026-05-17T08": 115.26,
+    "2026-05-17T09": 110.76,
+    "2026-05-17T10": 110.0,
+    "2026-05-17T11": 110.0,
+    "2026-05-17T12": 111.0,
+    "2026-05-17T13": 108.35,
+    "2026-05-17T14": 112.06,
+    "2026-05-17T15": 117.52,
+    "2026-05-17T16": 132.46,
+    "2026-05-17T17": 150.56,
+    "2026-05-17T18": 170.23,
+    "2026-05-17T19": 185.58,
+    "2026-05-17T20": 203.9,
+    "2026-05-17T21": 224.29,
+    "2026-05-17T22": 226.73,
+    "2026-05-17T23": 144.0,
+    "2026-05-18T00": 149.85,
+    "2026-05-18T01": 143.92,
+    "2026-05-18T02": 149.85,
+    "2026-05-18T03": 148.0,
+    "2026-05-18T04": 151.64,
+    "2026-05-18T05": 155.62,
+    "2026-05-18T06": 200.09,
+    "2026-05-18T07": 255.0,
+    "2026-05-18T08": 243.24,
+    "2026-05-18T09": 231.7,
+    "2026-05-18T10": 188.51,
+    "2026-05-18T11": 172.0,
+    "2026-05-18T12": 152.5,
+    "2026-05-18T13": 134.11,
+    "2026-05-18T14": 125.77,
+    "2026-05-18T15": 121.51,
+    "2026-05-18T16": 129.85,
+    "2026-05-18T17": 144.39,
+    "2026-05-18T18": 161.0,
+    "2026-05-18T19": 162.18,
+    "2026-05-18T20": 156.05,
+    "2026-05-18T21": 144.0,
+    "2026-05-18T22": 128.0,
+    "2026-05-18T23": 126.0,
+    "2026-05-19T00": 122.74,
+    "2026-05-19T01": 117.48,
+    "2026-05-19T02": 110.58,
+    "2026-05-19T03": 100.01,
+    "2026-05-19T04": 95.02,
+    "2026-05-19T05": 95.0,
+    "2026-05-19T06": 120.0,
+    "2026-05-19T07": 140.73,
+    "2026-05-19T08": 135.58,
+    "2026-05-19T09": 121.0,
+    "2026-05-19T10": 110.0,
+    "2026-05-19T11": 97.48,
+    "2026-05-19T12": 95.67,
+    "2026-05-19T13": 90.65,
+    "2026-05-19T14": 90.63,
+    "2026-05-19T15": 97.23,
+    "2026-05-19T16": 117.0,
+    "2026-05-19T17": 137.99,
+    "2026-05-19T18": 150.01,
+    "2026-05-19T19": 160.01,
+    "2026-05-19T20": 154.9,
+    "2026-05-19T21": 154.26,
+    "2026-05-19T22": 130.56,
+    "2026-05-19T23": 114.97,
+    "2026-05-20T00": 110.01,
+    "2026-05-20T01": 105.25,
+    "2026-05-20T02": 105.25,
+    "2026-05-20T03": 101.0,
+    "2026-05-20T04": 102.4,
+    "2026-05-20T05": 111.0,
+    "2026-05-20T06": 134.01,
+    "2026-05-20T07": 148.95,
+    "2026-05-20T08": 143.33,
+    "2026-05-20T09": 129.68,
+    "2026-05-20T10": 114.81,
+    "2026-05-20T11": 113.0,
+    "2026-05-20T12": 107.23,
+    "2026-05-20T13": 100.0,
+    "2026-05-20T14": 100.42,
+    "2026-05-20T15": 105.25,
+    "2026-05-20T16": 122.9,
+    "2026-05-20T17": 155.9,
+    "2026-05-20T18": 163.0,
+    "2026-05-20T19": 172.5,
+    "2026-05-20T20": 180.63,
+    "2026-05-20T21": 175.0,
+    "2026-05-20T22": 150.6,
+    "2026-05-20T23": 139.08,
+    "2026-05-21T00": 127.0,
+    "2026-05-21T01": 121.52,
+    "2026-05-21T02": 121.22,
+    "2026-05-21T03": 121.11,
+    "2026-05-21T04": 126.91,
+    "2026-05-21T05": 129.57,
+    "2026-05-21T06": 138.71,
+    "2026-05-21T07": 150.78,
+    "2026-05-21T08": 152.0,
+    "2026-05-21T09": 144.69,
+    "2026-05-21T10": 134.24,
+    "2026-05-21T11": 129.7,
+    "2026-05-21T12": 123.03,
+    "2026-05-21T13": 121.14,
+    "2026-05-21T14": 121.63,
+    "2026-05-21T15": 119.0,
+    "2026-05-21T16": 129.0,
+    "2026-05-21T17": 137.0,
+    "2026-05-21T18": 156.0,
+    "2026-05-21T19": 163.03,
+    "2026-05-21T20": 163.94,
+    "2026-05-21T21": 163.02,
+    "2026-05-21T22": 143.07,
+    "2026-05-21T23": 135.34,
+    "2026-05-22T00": 128.0,
+    "2026-05-22T01": 127.0,
+    "2026-05-22T02": 124.73,
+    "2026-05-22T03": 121.64,
+    "2026-05-22T04": 121.66,
+    "2026-05-22T05": 126.01,
+    "2026-05-22T06": 142.01,
+    "2026-05-22T07": 151.0,
+    "2026-05-22T08": 148.02,
+    "2026-05-22T09": 128.0,
+    "2026-05-22T10": 121.6,
+    "2026-05-22T11": 123.33,
+    "2026-05-22T12": 116.78,
+    "2026-05-22T13": 110.13,
+    "2026-05-22T14": 110.13,
+    "2026-05-22T15": 116.98,
+    "2026-05-22T16": 129.62,
+    "2026-05-22T17": 142.1,
+    "2026-05-22T18": 157.0,
+    "2026-05-22T19": 164.8,
+    "2026-05-22T20": 164.99,
+    "2026-05-22T21": 167.87,
+    "2026-05-22T22": 154.04,
+    "2026-05-22T23": 135.0,
+    "2026-05-23T00": 129.0,
+    "2026-05-23T01": 124.8,
+    "2026-05-23T02": 125.4,
+    "2026-05-23T03": 123.08,
+    "2026-05-23T04": 121.14,
+    "2026-05-23T05": 119.06,
+    "2026-05-23T06": 122.0,
+    "2026-05-23T07": 128.0,
+    "2026-05-23T08": 127.35,
+    "2026-05-23T09": 120.66,
+    "2026-05-23T10": 112.6,
+    "2026-05-23T11": 97.47,
+    "2026-05-23T12": 86.63,
+    "2026-05-23T13": 78.0,
+    "2026-05-23T14": 78.15,
+    "2026-05-23T15": 86.15,
+    "2026-05-23T16": 106.43,
+    "2026-05-23T17": 126.15,
+    "2026-05-23T18": 144.15,
+    "2026-05-23T19": 162.01,
+    "2026-05-23T20": 172.0,
+    "2026-05-23T21": 168.78,
+    "2026-05-23T22": 158.35,
+    "2026-05-23T23": 142.83,
+    "2026-05-24T00": 140.0,
+    "2026-05-24T01": 131.15,
+    "2026-05-24T02": 130.0,
+    "2026-05-24T03": 126.0,
+    "2026-05-24T04": 125.0,
+    "2026-05-24T05": 124.02,
+    "2026-05-24T06": 126.43,
+    "2026-05-24T07": 135.0,
+    "2026-05-24T08": 135.65,
+    "2026-05-24T09": 142.51,
+    "2026-05-24T10": 127.02,
+    "2026-05-24T11": 115.8,
+    "2026-05-24T12": 110.85,
+    "2026-05-24T13": 110.0,
+    "2026-05-24T14": 111.39,
+    "2026-05-24T15": 113.12,
+    "2026-05-24T16": 131.74,
+    "2026-05-24T17": 141.0,
+    "2026-05-24T18": 161.2,
+    "2026-05-24T19": 211.81,
+    "2026-05-24T20": 223.05,
+    "2026-05-24T21": 228.48,
+    "2026-05-24T22": 214.45,
+    "2026-05-24T23": 145.1,
+    "2026-05-25T00": 134.6,
+    "2026-05-25T01": 127.59,
+    "2026-05-25T02": 131.73,
+    "2026-05-25T03": 128.03,
+    "2026-05-25T04": 125.24,
+    "2026-05-25T05": 124.01,
+    "2026-05-25T06": 161.06,
+    "2026-05-25T07": 202.81,
+    "2026-05-25T08": 184.54,
+    "2026-05-25T09": 144.83,
+    "2026-05-25T10": 125.84,
+    "2026-05-25T11": 121.2,
+    "2026-05-25T12": 117.99,
+    "2026-05-25T13": 116.6,
+    "2026-05-25T14": 116.99,
+    "2026-05-25T15": 123.0,
+    "2026-05-25T16": 132.0,
+    "2026-05-25T17": 181.42,
+    "2026-05-25T18": 223.0,
+    "2026-05-25T19": 206.47,
+    "2026-05-25T20": 207.02,
+    "2026-05-25T21": 206.47,
+    "2026-05-25T22": 172.0,
+    "2026-05-25T23": 172.1,
+    "2026-05-26T00": 143.92,
+    "2026-05-26T01": 128.0,
+    "2026-05-26T02": 128.0,
+    "2026-05-26T03": 132.08,
+    "2026-05-26T04": 132.22,
+    "2026-05-26T05": 136.39,
+    "2026-05-26T06": 180.0,
+    "2026-05-26T07": 212.05,
+    "2026-05-26T08": 184.0,
+    "2026-05-26T09": 156.89,
+    "2026-05-26T10": 137.0,
+    "2026-05-26T11": 130.0,
+    "2026-05-26T12": 125.18,
+    "2026-05-26T13": 119.0,
+    "2026-05-26T14": 122.19,
+    "2026-05-26T15": 122.59,
+    "2026-05-26T16": 131.62,
+    "2026-05-26T17": 160.0,
+    "2026-05-26T18": 184.6,
+    "2026-05-26T19": 180.01,
+    "2026-05-26T20": 179.98,
+    "2026-05-26T21": 163.01,
+    "2026-05-26T22": 138.97,
     "2026-05-26T23": 163.6,
     "2026-05-27T00": 137.33,
     "2026-05-27T01": 126.16,
@@ -30600,23 +30915,47 @@
     "2026-08-11T19": 190.64,
     "2026-08-11T20": 188.0,
     "2026-08-11T21": 182.4,
-    "2026-08-11T22": 158.1
+    "2026-08-11T22": 158.1,
+    "2026-08-11T23": 154.89,
+    "2026-08-12T00": 150.3,
+    "2026-08-12T01": 142.23,
+    "2026-08-12T02": 142.02,
+    "2026-08-12T03": 141.17,
+    "2026-08-12T04": 146.97,
+    "2026-08-12T05": 159.25,
+    "2026-08-12T06": 169.98,
+    "2026-08-12T07": 178.64,
+    "2026-08-12T08": 165.9,
+    "2026-08-12T09": 147.09,
+    "2026-08-12T10": 133.56,
+    "2026-08-12T11": 129.88,
+    "2026-08-12T12": 128.56,
+    "2026-08-12T13": 132.0,
+    "2026-08-12T14": 131.11,
+    "2026-08-12T15": 128.56,
+    "2026-08-12T16": 163.3,
+    "2026-08-12T17": 201.0,
+    "2026-08-12T18": 270.88,
+    "2026-08-12T19": 265.0,
+    "2026-08-12T20": 262.1,
+    "2026-08-12T21": 243.0,
+    "2026-08-12T22": 232.95
    },
-   "fetched_utc": "2026-08-12T05:47:12+00:00",
-   "latest_day": "2026-08-10",
+   "fetched_utc": "2026-08-13T05:49:24+00:00",
+   "latest_day": "2026-08-11",
    "markets": {
     "NI-DA": {
-     "EUR": 150.73,
-     "GBP": 129.07
+     "EUR": 171.81,
+     "GBP": 146.77
     },
     "ROI-DA": {
-     "EUR": 150.73
+     "EUR": 171.81
     }
    },
-   "sem_fx_eur_gbp": 0.85631101,
+   "sem_fx_eur_gbp": 0.85426277,
    "source": "SEMOpx day-ahead market results - dual currency (EUR/GBP), incl. SEM trading-day FX rate",
    "status": "ok",
-   "trade_day": "2026-08-10"
+   "trade_day": "2026-08-11"
   }
  },
  "geo": {
