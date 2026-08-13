@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.34.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.35.0 / site 4.8.0.
 
 ## The premise
 
@@ -373,6 +373,34 @@ consistent but qualitative – no metered Irish or NI study of summer
 immersion use exists – so the share is exposed as a parameter rather
 than buried, at 30%†.
 
+**Retail and ex-tax, with the wedge derived rather than left to the
+browser.** Deliberately *ex-tax*, not *wholesale*: the EU bulletin's
+without-taxes line is product, distribution and margin, not a wholesale
+quote, and the same is true of a unit rate with its tax stripped. VAT
+comes off first in both jurisdictions, because it is charged on the
+carbon-tax-inclusive price; the carbon component comes off after.
+
+The two sides of the border are not symmetrical. ROI kerosene carries a
+carbon component (16.081 c/litre at €63.50 a tonne), the NORA levy at
+2 c/litre and VAT at 13.5%; ROI gas carries the Natural Gas Carbon Tax
+at 1.148 c/kWh and VAT at 9%. NI kerosene is fully duty-rebated with no
+carbon price, and NI gas and electricity carry no carbon price and no
+Climate Change Levy on domestic use – so NI ex-tax is retail over 1.05,
+exactly rather than approximately. The result is that two oil lines
+sitting about a third apart at retail converge to within a few percent
+ex-tax: the border in heating cost is a policy wedge, not a market one.
+
+Ireland's carbon increase on non-propellant fuels normally lands on
+1 May; for 2026 it was postponed to **14 October**, so the rate is a
+dated table rather than a constant and the discontinuity sits inside
+the record.
+
+**The series is not floored at the back-look's start.** That floor
+exists because four tariff anchors are verified from 1 October 2025;
+this panel is a different artefact, and its limit is how far the
+weather record reaches, since every week needs a trailing year of
+degree days behind it to know its own hot-water share.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -506,7 +534,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 144 tests, no network
+python3 tests/test_synthetic.py   # 148 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
