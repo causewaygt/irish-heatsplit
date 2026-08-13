@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 4.33.0 / site 4.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 4.34.0 / site 4.8.0.
 
 ## The premise
 
@@ -340,6 +340,46 @@ absorption panels. Holding temperature rather than degree hours means
 hourly HDD, ODH₂₆ and the Carnot source temperature all derive from
 one retained series.
 
+## What heat costs to make
+
+The Irish equivalent of the UK sibling's cost-of-delivered-heat panel,
+with **oil as the main series** because the island is the most
+oil-heated corner of western Europe. Five routes – oil boiler, gas
+boiler, air-source, ground-source, geothermal network – priced weekly
+in native minor units per useful kWh. Pipeline side only so far; the
+panel itself is not drawn.
+
+**Each week is priced at its own hot-water share, and every route is
+priced in the mode that week actually demands.** Hot water is flat
+across the year while space heat follows the week's share of the
+trailing year's degree days, so a July week is almost all hot water –
+and every route performs worse on hot water than on space heat. Oil
+boilers cycling for a small summer load fall furthest: BRE put them
+under 40% gross in water-only mode against ~85% annual. Heat pumps
+degrade too, to the MCS defaults of 1.70 (air source, MCS 031 Issue
+4.0) and 2.24 (ground source) against annual figures of 2.80 and 3.24.
+The geothermal network figure is derived at the same lift ratio as
+ground source, because both are ground-coupled with a constant source
+and the hot-water penalty is flow temperature alone. Pricing the summer
+at an annual efficiency would flatter the heat pumps and flatter the
+boiler at exactly the point where the lines converge.
+
+**Oil hot water is part boiler, part immersion, and the split is a
+dagger.** Oil households commonly switch to the cylinder immersion in
+summer rather than fire a boiler at sub-40% for a small load. At COP 1
+on domestic electricity that is dearer than the inefficient boiler, so
+the leakage pushes the oil line up rather than down. The evidence is
+consistent but qualitative – no metered Irish or NI study of summer
+immersion use exists – so the share is exposed as a parameter rather
+than buried, at 30%†.
+
+Two things this does not claim. The heat-pump hot-water figures are MCS
+design defaults, not field measurements: the Electrification of Heat
+trial did not meter hot water separately, so no field hot-water SPF
+exists. And the oil price is the EU bulletin's heating gas oil line
+read as a kerosene level – a different product, 35-second against
+28-second – which remains a stated Causeway judgement.
+
 ## Phase B.2 – the grid layer
 
 Three computations run and logged **before any panel is drawn**, so the
@@ -466,7 +506,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 140 tests, no network
+python3 tests/test_synthetic.py   # 144 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
