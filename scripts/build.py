@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "4.34.0"
+PIPELINE_VERSION = "4.35.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -3220,6 +3220,8 @@ def week_inputs(feeds, w_end, skips=None):
         ni_src = "bridged (bulletin ex-tax + calibrated margin, dagger)"
     bull = ((feeds.get("oil_bulletin") or {})
             .get("roi_heating_gasoil_eur_per_1000l") or {})
+    bull_nt = ((feeds.get("oil_bulletin") or {})
+               .get("roi_heating_gasoil_eur_per_1000l_ex_tax") or {})
     b_days = [d for d in sorted(bull) if d <= w_end]
     if not b_days:
         return _skip("ROI oil: no EU bulletin week at or before this date")
@@ -4491,6 +4493,80 @@ def derive_cool(feeds, anchors=None):
 # NOT SPLIT: EoH did not meter DHW separately, so there is no field
 # DHW SPF - the heat-pump DHW figures are MCS design defaults. Said
 # plainly rather than dressed as measurement.
+# ------------------------------------------------- statutory wedges
+# What has to be stripped to get from a retail price to an EX-TAX one
+# - product plus network plus margin. Deliberately NOT called
+# "wholesale": the EU bulletin's ex-tax oil line is product,
+# distribution and margin, not a wholesale quote, and the same is true
+# of a gas or electricity unit rate with its tax removed. Calling it
+# wholesale would overclaim.
+#
+# ORDER OF OPERATIONS. VAT is the OUTERMOST layer in both
+# jurisdictions - it is charged on the carbon-tax-inclusive price. So
+# ex-VAT = retail / (1 + vat), THEN subtract the carbon component.
+# Reversing that would understate the wedge.
+#
+# ROI, from Revenue: kerosene carries no non-carbon excise, a carbon
+# component of EUR 160.81 per 1,000 L (16.081 c/L at EUR 63.50/t CO2),
+# the NORA levy at 2 c/L, and VAT at 13.5%. Natural gas carries NGCT
+# at EUR 11.48/MWh GCV = 1.148 c/kWh and VAT at 9%. Electricity
+# carries VAT at 9% and a per-customer PSO levy that is NOT per kWh,
+# so it is out of scope for a unit-rate strip and noted rather than
+# subtracted.
+#
+# NI: kerosene is fully duty-rebated to nil with no carbon price; gas
+# and electricity carry no carbon price and no Climate Change Levy
+# (domestic use is excluded). VAT is 5% on all three. So ex-tax is
+# simply retail / 1.05 - exact, not estimated.
+#
+# THE STEP THAT IS COMING. Ireland's carbon increase on non-propellant
+# fuels normally lands on 1 May; for 2026 it was postponed to 14
+# October, when the charge moves from EUR 63.50 to EUR 71.00 a tonne.
+# That is a discontinuity in the middle of the record, so it is a
+# dated table rather than a constant.
+CARBON_STEPS = [
+    # (from_date, EUR/t CO2, kerosene c/L, gas c/kWh)
+    ("2025-05-01", 63.50, 16.081, 1.148),
+    ("2026-10-14", 71.00, 17.980, 1.284),
+]
+VAT = {"roi": {"oil": 0.135, "gas": 0.09, "electricity": 0.09},
+       "ni": {"oil": 0.05, "gas": 0.05, "electricity": 0.05}}
+NORA_LEVY_C_PER_L = 2.0
+
+
+def carbon_for(date_iso):
+    """The carbon component in force on a date. Clamps to the first
+    row below the table, which is correct for the record as it stands
+    but would need extending before the panel reaches back past
+    May 2025."""
+    row = CARBON_STEPS[0]
+    for r in CARBON_STEPS:
+        if date_iso >= r[0]:
+            row = r
+    return {"eur_per_tonne": row[1], "kerosene_c_per_l": row[2],
+            "gas_c_per_kwh": row[3]}
+
+
+def ex_tax(retail, jur, fuel, date_iso, kwh_per_litre=None):
+    """
+    Retail -> ex-tax, in the same units in. VAT first, then carbon.
+
+    For oil, `retail` is per litre and the carbon and NORA components
+    are per litre. For gas and electricity, per kWh. Returns None if
+    the strip would go negative, which would mean a wrong rate rather
+    than a cheap fuel.
+    """
+    v = VAT[jur][fuel]
+    net = retail / (1 + v)
+    if jur == "roi":
+        c = carbon_for(date_iso)
+        if fuel == "oil":
+            net -= c["kerosene_c_per_l"] + NORA_LEVY_C_PER_L
+        elif fuel == "gas":
+            net -= c["gas_c_per_kwh"]
+    return round(net, 4) if net > 0 else None
+
+
 DHW_MODE = {
     "oil_boiler": 0.55,        # dagger, BRE floor 0.40
     "gas_boiler": 0.68,
@@ -4597,6 +4673,8 @@ def derive_heat_cost_series(feeds, anchors=None):
         return None
     bull = ((feeds.get("oil_bulletin") or {})
             .get("roi_heating_gasoil_eur_per_1000l") or {})
+    bull_nt = ((feeds.get("oil_bulletin") or {})
+               .get("roi_heating_gasoil_eur_per_1000l_ex_tax") or {})
     ccni = (((feeds.get("ccni_oil") or {}).get("series_gbp") or {})
             .get("daily", {}).get("900l") or {})
     if not bull:
@@ -4606,7 +4684,14 @@ def derive_heat_cost_series(feeds, anchors=None):
             "roi": (derive_ashp_spf(hddf.get("hdd_roi") or {}, a)
                     or {"spf": 2.8})["spf"]}
     kwh_l = a["kerosene_kwh_per_litre"]
-    floor = max(HISTORY_START, min(hdd_i))
+    # NOT floored at HISTORY_START. That is the back-look's floor,
+    # chosen because four tariff anchors are verified from 1 Oct 2025;
+    # this panel is a different artefact and its real limit is how far
+    # the weather record reaches, since the DHW share needs a trailing
+    # year of degree days behind every week. The oil bulletin holds a
+    # thousand Ireland weeks to 2005, so the HDD retention is what
+    # binds - and that is what the 24- and 60-month views need.
+    floor = min(hdd_i)
     out = []
     for w_end in sorted(bull):
         if w_end < floor:
@@ -4616,11 +4701,26 @@ def derive_heat_cost_series(feeds, anchors=None):
             continue
         t = tariffs_for(w_end)
         row = {"week_ending": w_end, "dhw_share": round(share, 3)}
+        # ROI, both bases. Oil ex-tax comes from the bulletin's own
+        # without-taxes line where it exists - a published series
+        # beats a computed strip - and falls back to the strip only
+        # when that week is missing from it.
+        oil_c_l = bull[w_end] / 10.0
+        oil_ex = (bull_nt[w_end] / 10.0 if w_end in bull_nt
+                  else ex_tax(oil_c_l, "roi", "oil", w_end))
+        gas_ex = ex_tax(t["eur"]["gas"] * 100, "roi", "gas", w_end)
+        elec_ex = ex_tax(t["eur"]["electricity"] * 100, "roi",
+                         "electricity", w_end)
         row["roi"] = route_cost_useful(
-            {"oil_per_kwh": bull[w_end] / 10.0 / kwh_l,
+            {"oil_per_kwh": oil_c_l / kwh_l,
              "gas_per_kwh": t["eur"]["gas"] * 100,
              "elec_per_kwh": t["eur"]["electricity"] * 100},
             ashp["roi"], share, a)
+        if oil_ex and gas_ex and elec_ex:
+            row["roi_ex_tax"] = route_cost_useful(
+                {"oil_per_kwh": oil_ex / kwh_l,
+                 "gas_per_kwh": gas_ex, "elec_per_kwh": elec_ex},
+                ashp["roi"], share, a)
         # NI only where the CCNI survey actually covers the week; the
         # bulletin bridge belongs to the back-look, not here, and a
         # bridged price in a cost-of-heat chart would be an estimate
@@ -4635,6 +4735,17 @@ def derive_heat_cost_series(feeds, anchors=None):
                  "gas_per_kwh": t["gbp"]["gas"] * 100,
                  "elec_per_kwh": t["gbp"]["electricity"] * 100},
                 ashp["ni"], share, a)
+            # NI needs no published ex-tax series: kerosene is fully
+            # duty-rebated with no carbon price, and gas and
+            # electricity carry no carbon price and no CCL on domestic
+            # use. So ex-tax is retail over 1.05 exactly.
+            row["ni_ex_tax"] = route_cost_useful(
+                {"oil_per_kwh": ex_tax(ppl, "ni", "oil", w_end) / kwh_l,
+                 "gas_per_kwh": ex_tax(t["gbp"]["gas"] * 100, "ni",
+                                       "gas", w_end),
+                 "elec_per_kwh": ex_tax(t["gbp"]["electricity"] * 100,
+                                        "ni", "electricity", w_end)},
+                ashp["ni"], share, a)
         out.append(row)
     if not out:
         return None
@@ -4646,6 +4757,22 @@ def derive_heat_cost_series(feeds, anchors=None):
                 f"{last['dhw_share']}): oil {r['oil_boiler']} / gas "
                 f"{r['gas_boiler']} / ashp {r['ashp']} / gshp "
                 f"{r['gshp']} / network {r['network']} per useful kWh")
+    # The decomposition, computed here rather than in the browser.
+    if "roi" in last and "roi_ex_tax" in last:
+        wedge = round(last["roi"]["oil_boiler"]
+                      - last["roi_ex_tax"]["oil_boiler"], 2)
+        log(f"heat cost: ROI oil tax wedge {wedge} per useful kWh "
+            f"({round(100 * wedge / last['roi']['oil_boiler'])}% of the "
+            f"retail price) - carbon "
+            f"{carbon_for(last['week_ending'])['kerosene_c_per_l']} c/L, "
+            f"NORA {NORA_LEVY_C_PER_L} c/L, VAT "
+            f"{int(VAT['roi']['oil'] * 100)}%")
+    if "ni" in last and "ni_ex_tax" in last:
+        wedge = round(last["ni"]["oil_boiler"]
+                      - last["ni_ex_tax"]["oil_boiler"], 2)
+        log(f"heat cost: NI oil tax wedge {wedge} per useful kWh - VAT "
+            f"{int(VAT['ni']['oil'] * 100)}% only, nil excise, no "
+            f"carbon price")
     log(f"heat cost: {len(out)} weeks priced "
         f"({sum(1 for r in out if 'ni' in r)} with NI), "
         f"{out[0]['week_ending']}..{out[-1]['week_ending']}; "
