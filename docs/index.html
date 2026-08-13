@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.0.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.0.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -795,6 +795,144 @@ function drawTrends(HIST, win, scope){
     return rows(h.cols);
   }
 
+// The cost panel lives at TOP LEVEL. Shipped inside heroCards in
+// site 5.0.0, which put costPanel out of scope for the top-level
+// caller - the ReferenceError killed every render after it and the
+// page came up blank. Anything called from the fetch handler has to
+// be declared where the fetch handler can see it.
+let HEROSTATE = "all";
+// ---------------------------------------------------------- cost panel
+// Five routes, weekly, in each jurisdiction's own currency. The
+// series is priced in the pipeline - including the ex-tax strip and
+// the tax wedge - so this only draws it.
+const COST_ROUTES = [
+  ["oil_boiler", "Oil boiler", "#E4572E"],
+  ["gas_boiler", "Gas boiler", "#D98E2B"],
+  ["ashp", "Air-source heat pump", "#4FA3C7"],
+  ["gshp", "Ground source", "#8E7CC3"],
+  ["network", "Geothermal network", "#3AAA35"],
+];
+let COST = [], CBASIS = "retail", CWIN = 17;
+
+function costPanel(series){
+  COST = Array.isArray(series) ? series : [];
+  const sec = el("cost");
+  if(!COST.length){ if(sec) sec.hidden = true; return; }
+  document.querySelectorAll(".costctl button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      if(b.dataset.basis){
+        CBASIS = b.dataset.basis;
+        document.querySelectorAll("[data-basis]").forEach(x=>
+          x.setAttribute("aria-pressed", String(x === b)));
+      } else {
+        CWIN = +b.dataset.cwin;
+        document.querySelectorAll("[data-cwin]").forEach(x=>
+          x.setAttribute("aria-pressed", String(x === b)));
+      }
+      drawCost();
+    });
+  });
+  drawCost();
+}
+
+function drawCost(){
+  const state = HEROSTATE === "ni" ? "ni" : "roi";
+  const key = state + (CBASIS === "ex_tax" ? "_ex_tax" : "");
+  const unit = state === "ni" ? "p" : "c";
+  const rows = COST.slice(-CWIN).filter(r => r[key]);
+  const box = el("costChart");
+  if(rows.length < 3){
+    box.textContent = state === "ni"
+      ? "Northern Ireland is priced from the Consumer Council survey, "
+        + "which begins in February 2026 - there is not yet a window "
+        + "this long. Switch to all-island or ROI, or a shorter window."
+      : "Not enough priced weeks in this window yet.";
+    el("costLegend").innerHTML = "";
+    return;
+  }
+  const W = 1000, H = 320, P = {t:14, r:14, b:26, l:44};
+  const vals = [];
+  rows.forEach(r => COST_ROUTES.forEach(([k]) => vals.push(r[key][k])));
+  const hi = Math.max.apply(null, vals) * 1.06, lo = 0;
+  const x = i => P.l + i * (W - P.l - P.r) / Math.max(rows.length - 1, 1);
+  const y = v => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b);
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" '
+    + 'height="' + H + '" role="img" aria-label="Cost of a useful kWh '
+    + 'of heat by route">';
+  for(let g = 0; g <= 4; g++){
+    const v = lo + (hi - lo) * g / 4;
+    svg += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(v)
+      + '" y2="' + y(v) + '" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="' + (P.l - 6) + '" y="' + (y(v) + 4)
+      + '" text-anchor="end" font-size="11" fill="var(--muted)" '
+      + 'font-family="IBM Plex Mono, monospace">' + v.toFixed(0) + '</text>';
+  }
+  COST_ROUTES.forEach(([k, , col]) => {
+    let d = "";
+    rows.forEach((r, i) => { d += (i ? "L" : "M") + x(i) + " " + y(r[key][k]); });
+    svg += '<path d="' + d + '" fill="none" stroke="' + col
+      + '" stroke-width="2"/>';
+  });
+  const lab = i => rows[i].week_ending.slice(0, 7);
+  svg += '<text x="' + P.l + '" y="' + (H - 6) + '" font-size="11" '
+    + 'fill="var(--muted)" font-family="IBM Plex Mono, monospace">'
+    + lab(0) + '</text>'
+    + '<text x="' + (W - P.r) + '" y="' + (H - 6) + '" text-anchor="end" '
+    + 'font-size="11" fill="var(--muted)" '
+    + 'font-family="IBM Plex Mono, monospace">' + lab(rows.length - 1)
+    + '</text></svg>';
+  box.innerHTML = svg;
+
+  el("costLegend").innerHTML = COST_ROUTES.map(([, name, col]) =>
+    '<span><span class="k" style="background:' + col + '"></span>'
+    + name + "</span>").join("");
+  const last = rows[rows.length - 1];
+  el("costspan").textContent = "\u00b7 " + unit + " per useful kWh \u00b7 "
+    + rows.length + " wks \u00b7 " + (state === "ni" ? "NI" : "ROI");
+
+  // The wedge, stated rather than left to be inferred from a toggle.
+  let wedge = "";
+  if(last[state] && last[state + "_ex_tax"]){
+    const w = last[state].oil_boiler - last[state + "_ex_tax"].oil_boiler;
+    wedge = " Tax and levies are " + w.toFixed(1) + unit
+      + " of the oil figure \u2014 "
+      + Math.round(100 * w / last[state].oil_boiler) + "% of it.";
+  }
+  el("costNote").textContent =
+    "Week ending " + last.week_ending + ", "
+    + Math.round(100 * last.dhw_share) + "% of the heat wanted that week "
+    + "was hot water." + wedge
+    + " Every route is priced in the mode the week actually demands, so "
+    + "the summer figures are hot-water figures.";
+
+  el("costMethod").innerHTML =
+    "<p>Nothing here is metered. Most of the island's heat arrives by "
+    + "tanker \u2014 no meter, no grid, no daily statistics \u2014 so "
+    + "this is an estimate built from published prices and published "
+    + "efficiencies, and it is shown as one.</p>"
+    + "<p>The weekly split between hot water and space heat is the "
+    + "site's own shaping: hot water is flat across the year, space "
+    + "heat follows the week's share of the trailing year's heating "
+    + "degree days. In August that leaves roughly four-fifths of the "
+    + "heat as hot water, and every route performs worse on hot water "
+    + "than on space heat \u2014 an oil boiler cycling for a small "
+    + "summer load falls furthest.</p>"
+    + "<p>Oil hot water is part boiler, part immersion. At COP 1 on "
+    + "domestic electricity the immersion costs more than the "
+    + "inefficient boiler, so the leakage pushes the oil line up. The "
+    + "share is a judgement figure\u2020 \u2014 no metered Irish or "
+    + "Northern Irish study of summer immersion use exists.</p>"
+    + "<p>Ex-tax means product, distribution and margin \u2014 not a "
+    + "wholesale quote. VAT comes off first because it is charged on "
+    + "the carbon-inclusive price; the carbon component comes off "
+    + "after. Northern Irish kerosene is fully duty-rebated with no "
+    + "carbon price, so its ex-tax figure is exact rather than "
+    + "estimated.</p>"
+    + "<p>Judgement figures carry a dagger\u2020 and are challengeable "
+    + "at contact@causewaygt.com.</p>";
+}
+
+
 function heroCards(h, HIST){
   HIST=HIST||[];
   // Weeks reconstructed behind LIVE_FROM rather than observed.
@@ -906,7 +1044,7 @@ function heroCards(h, HIST){
         ' \u00b7 comfort cooling shaped by live overheating record\u2020':'')+
       '</div>';
   }
-  let WIN=2, HEROSTATE="all";
+  let WIN=2;
   const SUMN={2:0,5:4,13:12,53:52};
   const WLBL={5:'4 weeks',13:'12 weeks',53:'12 months'};
   // Plain-English name for each window, for the two page titles only.
@@ -979,137 +1117,6 @@ function heroCards(h, HIST){
   function mScale(m,s){return m>=1000?s+fmt(m/1000,1)+'bn':s+fmt(m,0)+'m';}
   function mOne(e,g,state){return state==='ni'?mScale(g,'\u00a3'):mScale(e,'\u20ac');}
   function ktScale(k){return k>=1000?fmt(k/1000,1)+' Mt':fmt(k,0)+' kt';}
-  // ---------------------------------------------------------- cost panel
-  // Five routes, weekly, in each jurisdiction's own currency. The
-  // series is priced in the pipeline - including the ex-tax strip and
-  // the tax wedge - so this only draws it.
-  const COST_ROUTES = [
-    ["oil_boiler", "Oil boiler", "#E4572E"],
-    ["gas_boiler", "Gas boiler", "#D98E2B"],
-    ["ashp", "Air-source heat pump", "#4FA3C7"],
-    ["gshp", "Ground source", "#8E7CC3"],
-    ["network", "Geothermal network", "#3AAA35"],
-  ];
-  let COST = [], CBASIS = "retail", CWIN = 17;
-
-  function costPanel(series){
-    COST = Array.isArray(series) ? series : [];
-    const sec = el("cost");
-    if(!COST.length){ if(sec) sec.hidden = true; return; }
-    document.querySelectorAll(".costctl button").forEach(b=>{
-      b.addEventListener("click", ()=>{
-        if(b.dataset.basis){
-          CBASIS = b.dataset.basis;
-          document.querySelectorAll("[data-basis]").forEach(x=>
-            x.setAttribute("aria-pressed", String(x === b)));
-        } else {
-          CWIN = +b.dataset.cwin;
-          document.querySelectorAll("[data-cwin]").forEach(x=>
-            x.setAttribute("aria-pressed", String(x === b)));
-        }
-        drawCost();
-      });
-    });
-    drawCost();
-  }
-
-  function drawCost(){
-    const state = HEROSTATE === "ni" ? "ni" : "roi";
-    const key = state + (CBASIS === "ex_tax" ? "_ex_tax" : "");
-    const unit = state === "ni" ? "p" : "c";
-    const rows = COST.slice(-CWIN).filter(r => r[key]);
-    const box = el("costChart");
-    if(rows.length < 3){
-      box.textContent = state === "ni"
-        ? "Northern Ireland is priced from the Consumer Council survey, "
-          + "which begins in February 2026 - there is not yet a window "
-          + "this long. Switch to all-island or ROI, or a shorter window."
-        : "Not enough priced weeks in this window yet.";
-      el("costLegend").innerHTML = "";
-      return;
-    }
-    const W = 1000, H = 320, P = {t:14, r:14, b:26, l:44};
-    const vals = [];
-    rows.forEach(r => COST_ROUTES.forEach(([k]) => vals.push(r[key][k])));
-    const hi = Math.max.apply(null, vals) * 1.06, lo = 0;
-    const x = i => P.l + i * (W - P.l - P.r) / Math.max(rows.length - 1, 1);
-    const y = v => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b);
-    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" '
-      + 'height="' + H + '" role="img" aria-label="Cost of a useful kWh '
-      + 'of heat by route">';
-    for(let g = 0; g <= 4; g++){
-      const v = lo + (hi - lo) * g / 4;
-      svg += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(v)
-        + '" y2="' + y(v) + '" stroke="var(--line)" stroke-width="1"/>'
-        + '<text x="' + (P.l - 6) + '" y="' + (y(v) + 4)
-        + '" text-anchor="end" font-size="11" fill="var(--muted)" '
-        + 'font-family="IBM Plex Mono, monospace">' + v.toFixed(0) + '</text>';
-    }
-    COST_ROUTES.forEach(([k, , col]) => {
-      let d = "";
-      rows.forEach((r, i) => { d += (i ? "L" : "M") + x(i) + " " + y(r[key][k]); });
-      svg += '<path d="' + d + '" fill="none" stroke="' + col
-        + '" stroke-width="2"/>';
-    });
-    const lab = i => rows[i].week_ending.slice(0, 7);
-    svg += '<text x="' + P.l + '" y="' + (H - 6) + '" font-size="11" '
-      + 'fill="var(--muted)" font-family="IBM Plex Mono, monospace">'
-      + lab(0) + '</text>'
-      + '<text x="' + (W - P.r) + '" y="' + (H - 6) + '" text-anchor="end" '
-      + 'font-size="11" fill="var(--muted)" '
-      + 'font-family="IBM Plex Mono, monospace">' + lab(rows.length - 1)
-      + '</text></svg>';
-    box.innerHTML = svg;
-
-    el("costLegend").innerHTML = COST_ROUTES.map(([, name, col]) =>
-      '<span><span class="k" style="background:' + col + '"></span>'
-      + name + "</span>").join("");
-    const last = rows[rows.length - 1];
-    el("costspan").textContent = "\u00b7 " + unit + " per useful kWh \u00b7 "
-      + rows.length + " wks \u00b7 " + (state === "ni" ? "NI" : "ROI");
-
-    // The wedge, stated rather than left to be inferred from a toggle.
-    let wedge = "";
-    if(last[state] && last[state + "_ex_tax"]){
-      const w = last[state].oil_boiler - last[state + "_ex_tax"].oil_boiler;
-      wedge = " Tax and levies are " + w.toFixed(1) + unit
-        + " of the oil figure \u2014 "
-        + Math.round(100 * w / last[state].oil_boiler) + "% of it.";
-    }
-    el("costNote").textContent =
-      "Week ending " + last.week_ending + ", "
-      + Math.round(100 * last.dhw_share) + "% of the heat wanted that week "
-      + "was hot water." + wedge
-      + " Every route is priced in the mode the week actually demands, so "
-      + "the summer figures are hot-water figures.";
-
-    el("costMethod").innerHTML =
-      "<p>Nothing here is metered. Most of the island's heat arrives by "
-      + "tanker \u2014 no meter, no grid, no daily statistics \u2014 so "
-      + "this is an estimate built from published prices and published "
-      + "efficiencies, and it is shown as one.</p>"
-      + "<p>The weekly split between hot water and space heat is the "
-      + "site's own shaping: hot water is flat across the year, space "
-      + "heat follows the week's share of the trailing year's heating "
-      + "degree days. In August that leaves roughly four-fifths of the "
-      + "heat as hot water, and every route performs worse on hot water "
-      + "than on space heat \u2014 an oil boiler cycling for a small "
-      + "summer load falls furthest.</p>"
-      + "<p>Oil hot water is part boiler, part immersion. At COP 1 on "
-      + "domestic electricity the immersion costs more than the "
-      + "inefficient boiler, so the leakage pushes the oil line up. The "
-      + "share is a judgement figure\u2020 \u2014 no metered Irish or "
-      + "Northern Irish study of summer immersion use exists.</p>"
-      + "<p>Ex-tax means product, distribution and margin \u2014 not a "
-      + "wholesale quote. VAT comes off first because it is charged on "
-      + "the carbon-inclusive price; the carbon component comes off "
-      + "after. Northern Irish kerosene is fully duty-rebated with no "
-      + "carbon price, so its ex-tax figure is exact rather than "
-      + "estimated.</p>"
-      + "<p>Judgement figures carry a dagger\u2020 and are challengeable "
-      + "at contact@causewaygt.com.</p>";
-  }
-
   function render(state){
     HEROSTATE = state;
     setWording();
@@ -1697,7 +1704,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.0.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.0.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
