@@ -2227,10 +2227,12 @@ def test_unbuildable_weeks_name_themselves():
     assert B.week_inputs(feeds, w_end, skips) is not None
     assert skips == []
 
-    # outside the window: declines silently, by design
+    # A week before the tariff table is now NAMED rather than silently
+    # declined - it is a real gap with a fix (extend TARIFF_HISTORY),
+    # not a week outside the window by design.
     skips = []
     assert B.week_inputs(feeds, "2020-01-05", skips) is None
-    assert skips == []
+    assert len(skips) == 1 and "tariff table" in skips[0][1]
 
     # no ROI bulletin at or before the week: named
     stripped = {**feeds, "oil_bulletin": {
@@ -3038,6 +3040,76 @@ def test_roi_vat_on_gas_stepped_down_in_may_2022():
     assert B.vat_for("roi", "electricity", "2023-06-01") == 0.09
     assert B.vat_for("roi", "oil", "2023-06-01") == 0.135
     assert B.vat_for("ni", "gas", "2021-06-01") == 0.05
+
+
+def test_tariffs_refuse_before_the_table_rather_than_clamping():
+    """The clamp was live and wrong. Once the price panel's floor came
+    off it reached April 2024, and 68 weeks were quietly priced with
+    August-2025 gas and electricity tariffs in both jurisdictions -
+    the same fault as the carbon clamp, one function along. A missing
+    figure is visible; a wrong one is not."""
+    import build as B
+    first = B.TARIFF_HISTORY[0][0]
+    assert B.tariffs_for(first) is not None
+    assert B.tariffs_for("2024-06-01") is None
+    assert B.tariffs_for("2020-01-01") is None
+    # and a week that cannot be priced is SKIPPED WITH A REASON, not
+    # silently dropped
+    feeds = _history_fixture_feeds()
+    skips = []
+    assert B.week_inputs(feeds, "2024-06-01", skips) is None
+    assert len(skips) == 1 and "tariff table" in skips[0][1]
+
+
+def test_cost_series_declines_unpriceable_weeks_and_says_how_many():
+    """The panel reaches deeper than the tariff table, so it must
+    report the shortfall rather than quietly returning fewer rows."""
+    import build as B
+    lines = []
+    real = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        rows = B.derive_heat_cost_series(_history_fixture_feeds())
+    finally:
+        B.log = real
+    assert rows
+    for r in rows:
+        assert r["week_ending"] >= B.TARIFF_HISTORY[0][0]
+
+
+def test_tariffs_refuse_before_the_table_rather_than_clamping():
+    """The clamp was live and wrong. Once the price panel's floor came
+    off it reached April 2024, and 68 weeks were quietly priced with
+    August-2025 gas and electricity tariffs in both jurisdictions -
+    the same fault as the carbon clamp, one function along. A missing
+    figure is visible; a wrong one is not."""
+    import build as B
+    first = B.TARIFF_HISTORY[0][0]
+    assert B.tariffs_for(first) is not None
+    assert B.tariffs_for("2024-06-01") is None
+    assert B.tariffs_for("2020-01-01") is None
+    # and a week that cannot be priced is SKIPPED WITH A REASON, not
+    # silently dropped
+    feeds = _history_fixture_feeds()
+    skips = []
+    assert B.week_inputs(feeds, "2024-06-01", skips) is None
+    assert len(skips) == 1 and "tariff table" in skips[0][1]
+
+
+def test_cost_series_declines_unpriceable_weeks_and_says_how_many():
+    """The panel reaches deeper than the tariff table, so it must
+    report the shortfall rather than quietly returning fewer rows."""
+    import build as B
+    lines = []
+    real = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        rows = B.derive_heat_cost_series(_history_fixture_feeds())
+    finally:
+        B.log = real
+    assert rows
+    for r in rows:
+        assert r["week_ending"] >= B.TARIFF_HISTORY[0][0]
 
 
 if __name__ == "__main__":
