@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.4.0 / site 5.3.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.6.0 / site 5.3.0.
 
 ## The premise
 
@@ -401,14 +401,43 @@ and the hot-water penalty is flow temperature alone. Pricing the summer
 at an annual efficiency would flatter the heat pumps and flatter the
 boiler at exactly the point where the lines converge.
 
-**Oil hot water is part boiler, part immersion, and the split is a
-dagger.** Oil households commonly switch to the cylinder immersion in
-summer rather than fire a boiler at sub-40% for a small load. At COP 1
-on domestic electricity that is dearer than the inefficient boiler, so
-the leakage pushes the oil line up rather than down. The evidence is
-consistent but qualitative – no metered Irish or NI study of summer
-immersion use exists – so the share is exposed as a parameter rather
-than buried, at 30%†.
+**The immersion leakage is zeroed.** Oil households do switch to the
+cylinder immersion in summer rather than fire a boiler at sub-40% for a
+small load, and at COP 1 that is dearer than the inefficient boiler – so
+the mechanism is real and it pushed the oil line up, not down. But at
+30% it was adding 5.8 c to the summer oil figure, nearly half of it
+electricity rather than oil, on no metered evidence: the research found
+consumer guidance and owner forums and nothing measured. It sat under
+the most striking feature of the chart, and the UK sibling has no
+equivalent, so carrying it broke parity between the two dashboards. The
+constant stays in the code at zero; a metered Irish or NI study of
+summer immersion use is what would turn it back on.
+
+**What still differs between the two dashboards.** The heat-pump side is
+aligned – both price hot water at a 52 °C cylinder flow year-round while
+space heat follows the weather-compensated curve. The remaining divergence is
+the boiler: this site prices a boiler at a separate hot-water efficiency
+where the UK applies one figure year-round. Those figures are now taken
+from **SAP 2012 Table 4b**, which publishes a winter and a summer
+seasonal efficiency for every gas and oil archetype – 0.71 oil and 0.75
+gas, the mean modern-stock summer/winter ratio applied to this site's
+winter anchors.
+
+They were 0.55 and 0.68, built on a BRE remark about two specific oil
+boilers having "very low hot water efficiency (under 40% gross)" and
+treated here as a fleet floor. Table 4b is the fleet answer: summer runs
+82–89% of winter across every archetype, and the worst row in the whole
+table – a single-burner range cooker boiler at 47/37 – is still 0.79.
+The panel was using 0.67, below anything SAP publishes for any boiler,
+and the summer oil penalty is roughly half what was shown: the oil line
+now swings 15% between winter and summer rather than 49%.
+
+Two things are deliberately not applied. Table 4b is SAP's fallback for
+boilers absent from the Product Characteristics Database, so it is
+conservative and skewed to older plant; a BER-weighted PCDB figure would
+beat it, and BER records boiler make and model. And Table 4c deducts
+5 points from both figures where a regular boiler has no interlock,
+which is common in older Irish installations†.
 
 **Every route pays what it would actually pay.** The panel priced all
 five at domestic tariffs, which was wrong twice. About a quarter of the
