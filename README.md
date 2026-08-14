@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.3.0 / site 5.2.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.4.0 / site 5.3.0.
 
 ## The premise
 
@@ -363,6 +363,17 @@ because without that split a mild summer day gives absurd COPs on a load
 that is entirely hot water. The oil price is the only weekly input, so it
 is step-held across the week rather than interpolated.
 
+**The mode regime is seasonal; the COP is instantaneous.** A boiler in
+January does not drop to summer cycling efficiency because one day was
+mild – it is still running its space-heating circuit, and the sub-40%
+hot-water efficiency arises from a regime rather than a day. So the
+hot-water/space blend runs on a trailing 28-day share while the
+heat-pump COPs follow the day's own temperature. Blending the fuels on
+each day's own share made the oil line sawtooth between adjacent days,
+which is a shaping artefact rather than a price signal. Both shares are
+published: the daily one for the caption, the smoothed one for the
+money.
+
 The method runs in the UK's order: assert the SPF anchor, then calibrate
 the Carnot fraction so the heat-weighted trailing-year SPF reproduces it.
 The four calibrated fractions must land within 15% of each other, or the
@@ -588,7 +599,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 157 tests, no network
+python3 tests/test_synthetic.py   # 158 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
