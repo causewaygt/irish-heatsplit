@@ -3197,6 +3197,32 @@ def test_hot_water_is_priced_at_the_cylinder_flow():
     assert B.DHW_FLOW_C > B.FLOW_MILD_C
 
 
+def test_boilers_do_not_swing_with_a_single_day_of_weather():
+    """The mode regime is seasonal, not daily. A boiler in January does
+    not drop to summer cycling efficiency because one day was mild - it
+    is still running its space-heating circuit. Blending on the day's
+    own hot-water share made the oil line sawtooth 15 to 28 c between
+    adjacent days, which is a shaping artefact, not a price signal.
+
+    Heat pumps are the opposite: their COP IS instantaneous physics and
+    must follow the day."""
+    import build as B, statistics
+    rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
+    assert rows and len(rows) > 60
+
+    def jitter(route):
+        v = [r["roi"][route] for r in rows]
+        return statistics.mean(abs(v[i] - v[i - 1]) for i in range(1, len(v)))
+
+    # the fuels are near-flat day to day; the heat pump is not
+    assert jitter("oil_boiler") < 0.05, jitter("oil_boiler")
+    assert jitter("gas_boiler") < 0.05, jitter("gas_boiler")
+    assert jitter("ashp") > jitter("oil_boiler") * 2
+    # both shares are published - the daily one for the caption, the
+    # smoothed one for the money
+    assert "dhw_share" in rows[-1] and "dhw_mode" in rows[-1]
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
