@@ -30,6 +30,7 @@ import datetime as dt
 import html as html_mod
 import io
 import json
+import math
 import random
 import re
 import statistics
@@ -50,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.2.0"
+PIPELINE_VERSION = "5.3.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -1675,6 +1676,21 @@ def feed_hdd():
 
     daily_by_station = {n: clip_days(v) for n, v in arch.items()}
 
+    def weighted_temp(subset):
+        """Population-weighted daily mean AIR TEMPERATURE.
+
+        HDD is max(0, base - t), so it throws the temperature away
+        above the base - and the COP engine needs the temperature in
+        summer as much as in winter, because that is when hot water is
+        the whole load. Same weights, same days, one line of extra
+        state.
+        """
+        wsum = sum(STATIONS[n][2] for n in subset)
+        days = set.intersection(*(set(daily_by_station[n]) for n in subset))
+        return {d: round(sum(daily_by_station[n][d] * STATIONS[n][2]
+                             for n in subset) / wsum, 2)
+                for d in sorted(days)}
+
     def weighted(subset):
         wsum = sum(STATIONS[n][2] for n in subset)
         days = set.intersection(*(set(daily_by_station[n]) for n in subset))
@@ -1689,6 +1705,9 @@ def feed_hdd():
     ni = [n for n in weighted_names if STATIONS[n][3] == "NI"]
     out = {
         "hdd_island": trim_series(weighted(weighted_names)),
+        "temp_island": trim_series(weighted_temp(weighted_names)),
+        "temp_roi": trim_series(weighted_temp(roi)),
+        "temp_ni": trim_series(weighted_temp(ni)),
         "hdd_roi": trim_series(weighted(roi)),
         "hdd_ni": trim_series(weighted(ni)),
         "base_c": HDD_BASE_C,
@@ -4777,6 +4796,118 @@ def sector_blend(jur, fuel, date_iso, anchors=None, nondom=None):
             "network": nd, "services_share": round(w, 4)}
 
 
+# ---------------------------------------------------- the COP engine
+# Ported from the UK sibling so the two dashboards compute the electric
+# routes the same way. The Irish panel had ONE air-source SPF for the
+# whole record, which made every electric line a flat multiple of the
+# electricity price - they could never spread apart in cold weather,
+# which is the entire point of the chart.
+#
+# Method, in the UK's order: assert the SPF anchor, then CALIBRATE the
+# Carnot fraction so the trailing-year heat-weighted SPF reproduces it.
+# That is the right way round. Assuming a fraction and computing an SPF
+# (which is what I did by hand for the ROI figure) lets the two drift
+# apart; calibrating means the headline number is the anchor by
+# construction and the weather only redistributes it.
+FLOW_MILD_C, FLOW_COLD_C = 30.0, 50.0      # weather compensation ends
+FLOW_MILD_AT, FLOW_COLD_AT = 15.0, -5.0
+DHW_FLOW_C = 52.0        # dagger - cylinder flow, year-round
+MIN_LIFT_K = 8.0         # dagger - floor on Carnot lift
+AIR_APPROACH_C = 3.0     # evaporator approach below air temperature
+GROUND_SOURCE_C = 8.0    # 11 C ground less 3 C brine approach
+DEFROST_MAX = 0.12       # peak fractional COP loss, centred ~2 C
+
+# THE JURISDICTIONAL SPLIT. Permo-Triassic HSA is an NI play and has no
+# onshore ROI equivalent at scale, so the two network routes are
+# different machines and cannot share a number.
+#   NI  - the UK sibling's blended model: UTES and intermediate-doublet
+#         together, source 19.6 C, SPF 5.0.
+#   ROI - a 5G ambient loop on seasonal storage alone, charged from
+#         comfort cooling and process rejection. Source 16 C is the
+#         SEASONAL MEAN of a store charged to 25-30 C in September and
+#         depleting through the heating season; measured Dutch ATES
+#         recovery of 68-87% is what makes the mean that rather than
+#         the charge temperature. SPF 4.0, not the 4.2 I first derived
+#         - a distributed ambient loop carries more circulation
+#         pumping than the borehole array the fraction came from.
+NETWORK_MODEL = {
+    "ni": {"source_c": 19.6, "spf": 5.0,
+           "note": "UTES and intermediate-doublet blend (Permo-Triassic "
+                   "HSA), as the UK sibling"},
+    "roi": {"source_c": 16.0, "spf": 4.0,
+            "note": "5G ambient loop on seasonal storage, charged from "
+                    "comfort cooling and process heat rejection"},
+}
+SPF_ANCHORS = {"ashp": 2.80, "gshp": 3.24}
+
+
+def flow_temp(t_out):
+    """Weather-compensated SPACE flow. Hot water does not follow it."""
+    f = min(1.0, max(0.0, (FLOW_MILD_AT - t_out)
+                     / (FLOW_MILD_AT - FLOW_COLD_AT)))
+    return FLOW_MILD_C + (FLOW_COLD_C - FLOW_MILD_C) * f
+
+
+def defrost_factor(t_out):
+    """Fraction of COP retained. Bell-shaped loss centred on 2 C, the
+    humid frost band. Shape is a dagger; the level is re-anchored by
+    the eta calibration afterwards, so only the shape matters here."""
+    return 1.0 - DEFROST_MAX * math.exp(-((t_out - 2.0) / 3.0) ** 2)
+
+
+def carnot_cop(t_flow, t_source):
+    return (t_flow + 273.15) / max(MIN_LIFT_K, t_flow - t_source)
+
+
+def route_cop(route, t_out, eta, jur="roi", dhw=False):
+    """Point COP for one route on one day. `dhw` prices the hot-water
+    leg at the cylinder flow rather than the compensated space flow -
+    without that split, a mild summer day gives absurd COPs on a load
+    that is entirely hot water."""
+    tf = DHW_FLOW_C if dhw else flow_temp(t_out)
+    if route == "ashp":
+        return max(1.0, eta * carnot_cop(tf, t_out - AIR_APPROACH_C)
+                   * defrost_factor(t_out))
+    if route == "gshp":
+        return max(1.0, eta * carnot_cop(tf, GROUND_SOURCE_C))
+    if route == "network":
+        return max(1.0, eta * carnot_cop(tf, NETWORK_MODEL[jur]["source_c"]))
+    raise ValueError(route)
+
+
+def calibrate_eta(route, days, jur="roi", anchors=None):
+    """
+    Solve the Carnot fraction so the HEAT-WEIGHTED SPF over the days
+    given reproduces the route's anchor.
+
+    Heat-weighted, not day-averaged: almost all the heat is drawn in
+    the cold, so a mean over days would flatter every route. `days` is
+    [(t_out, space_kwh, dhw_kwh), ...].
+    """
+    a = anchors or ANCHORS
+    target = (NETWORK_MODEL[jur]["spf"] if route == "network"
+              else SPF_ANCHORS[route])
+
+    def spf(eta):
+        heat = elec = 0.0
+        for t, sp, dhw in days:
+            if sp > 0:
+                elec += sp / route_cop(route, t, eta, jur, dhw=False)
+            if dhw > 0:
+                elec += dhw / route_cop(route, t, eta, jur, dhw=True)
+            heat += sp + dhw
+        return (heat / elec) if elec > 0 else 0.0
+
+    lo, hi = 0.05, 1.20
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if spf(mid) < target:
+            lo = mid
+        else:
+            hi = mid
+    return round((lo + hi) / 2, 4)
+
+
 def route_cost_useful(prices, ashp_spf, dhw_share, anchors=None):
     """
     Cost per useful kWh by route, in native minor units, with hot
@@ -4796,8 +4927,18 @@ def route_cost_useful(prices, ashp_spf, dhw_share, anchors=None):
     # non-domestic rate is supplied, so callers need not change.
     elec_net = prices.get("elec_network_per_kwh", elec)
 
+    cops = prices.get("cops")           # {route: (space_cop, dhw_cop)}
+
     def blend(space_perf, dhw_perf, price):
         return (1 - w) * price / space_perf + w * price / dhw_perf
+
+    def blend_route(route, price, sp_fb, dhw_fb):
+        """Per-day COPs when supplied, the flat SPF otherwise. The
+        fallback is passed as its two performances rather than as a
+        computed number, so it is not evaluated when the COPs are
+        present - ashp_spf is legitimately None on the daily path."""
+        c = (cops or {}).get(route)
+        return blend(*(c if c else (sp_fb, dhw_fb)), price)
 
     # Oil hot water is part boiler, part immersion - and the immersion
     # runs on electricity at COP 1, so the leakage RAISES the cost
@@ -4809,10 +4950,12 @@ def route_cost_useful(prices, ashp_spf, dhw_share, anchors=None):
                             + w * oil_dhw, 2),
         "gas_boiler": round(blend(a["efficiency"]["gas"],
                                   DHW_MODE["gas_boiler"], gas), 2),
-        "ashp": round(blend(ashp_spf, DHW_MODE["ashp"], elec), 2),
-        "gshp": round(blend(GSHP_SPF, DHW_MODE["gshp"], elec), 2),
-        "network": round(blend(GEO_NETWORK_SCOP, DHW_MODE["network"],
-                               elec_net), 2),
+        "ashp": round(blend_route("ashp", elec, ashp_spf,
+                                  DHW_MODE["ashp"]), 2),
+        "gshp": round(blend_route("gshp", elec, GSHP_SPF,
+                                  DHW_MODE["gshp"]), 2),
+        "network": round(blend_route("network", elec_net, GEO_NETWORK_SCOP,
+                                     DHW_MODE["network"]), 2),
         "dhw_share": round(w, 3),
     }
 
@@ -4843,25 +4986,43 @@ def week_dhw_share(hdd_daily, w_end, anchors=None):
     return (dhw / tot) if tot > 0 else None
 
 
+def day_dhw_share(hdd_daily, day, anchors=None):
+    """Fraction of a DAY's delivered heat that is hot water. Same
+    shaping as the weekly version, one step finer."""
+    a = anchors or ANCHORS
+    days = sorted(d for d in hdd_daily if d <= day)
+    # Needs a trailing year to know what share of the year's degree
+    # days this one carries. Below ~200 the denominator is a season
+    # rather than a year and the share is meaningless.
+    if len(days) < 200:
+        return None
+    year = days[-365:]
+    hdd_yr = sum(hdd_daily[d] for d in year)
+    if hdd_yr <= 0:
+        return None
+    dhw = (1 - a["space_heat_fraction"]) / 365.0
+    space = a["space_heat_fraction"] * hdd_daily.get(day, 0.0) / hdd_yr
+    tot = dhw + space
+    return (dhw / tot) if tot > 0 else None
+
+
 def derive_heat_cost_series(feeds, anchors=None):
     """
-    Weekly cost of a useful kWh by route, back over the oil record -
-    the Irish equivalent of the UK sibling's "what heat costs to
-    make", with OIL as the main series because the island is the most
-    oil-heated corner of western Europe.
+    DAILY cost of a useful kWh by route - the Irish equivalent of the
+    UK sibling's panel, with oil as the main series.
 
-    Built from the FEEDS rather than the stored weeks: the oil
-    bulletin holds a thousand Ireland weeks to 2005 and CCNI is daily
-    since Feb 2026, so the price history reaches far deeper than the
-    back-look does. Each week is priced at its own DHW share, so
-    summer weeks are priced as hot water and winter weeks as space
-    heat - the whole point, because the routes do not degrade equally
-    when the load turns to hot water.
+    Daily, not weekly, because the electric routes are priced at each
+    day's own COP and the whole argument is what happens on the cold
+    days rather than the average of the days. The oil price is the
+    only weekly input (the EU bulletin publishes weekly), so it is
+    STEP-HELD across the week rather than interpolated - a price that
+    did not move should not appear to.
     """
     a = anchors or ANCHORS
     hddf = feeds.get("hdd") or {}
     hdd_i = hddf.get("hdd_island") or {}
-    if len(hdd_i) < 300:
+    temp = {"roi": hddf.get("temp_roi") or {}, "ni": hddf.get("temp_ni") or {}}
+    if len(hdd_i) < 300 or not temp["roi"]:
         return None
     bull = ((feeds.get("oil_bulletin") or {})
             .get("roi_heating_gasoil_eur_per_1000l") or {})
@@ -4871,54 +5032,84 @@ def derive_heat_cost_series(feeds, anchors=None):
             .get("daily", {}).get("900l") or {})
     if not bull:
         return None
-    ashp = {"ni": (derive_ashp_spf(hddf.get("hdd_ni") or {}, a)
-                   or {"spf": 2.8})["spf"],
-            "roi": (derive_ashp_spf(hddf.get("hdd_roi") or {}, a)
-                    or {"spf": 2.8})["spf"]}
     kwh_l = a["kerosene_kwh_per_litre"]
-    unpriced = 0
-    # NOT floored at HISTORY_START. That is the back-look's floor,
-    # chosen because four tariff anchors are verified from 1 Oct 2025;
-    # this panel is a different artefact and its real limit is how far
-    # the weather record reaches, since the DHW share needs a trailing
-    # year of degree days behind every week. The oil bulletin holds a
-    # thousand Ireland weeks to 2005, so the HDD retention is what
-    # binds - and that is what the 24- and 60-month views need.
-    floor = min(hdd_i)
-    out = []
-    for w_end in sorted(bull):
-        if w_end < floor:
+
+    # Calibrate once, over the trailing year, per jurisdiction.
+    etas = {}
+    for jur in ("roi", "ni"):
+        t = temp[jur]
+        cal = []
+        for d in sorted(t)[-365:]:
+            sh = day_dhw_share(hdd_i, d, a)
+            if sh is None:
+                continue
+            cal.append((t[d], 1 - sh, sh))
+        # A full year is what you want - the fraction is calibrated
+        # against the whole seasonal swing - but a short record should
+        # degrade rather than return nothing, and say so.
+        if len(cal) < 150:
+            log(f"heat cost: cannot calibrate {jur} - only {len(cal)} "
+                "days carry a hot-water share; needs 150")
+            return None
+        if len(cal) < 330:
+            log(f"heat cost: WARNING calibrating {jur} on {len(cal)} days, "
+                "not a full year - the fraction is biased toward whichever "
+                "season the record covers")
+        etas[jur] = {r: calibrate_eta(r, cal, jur, a)
+                     for r in ("ashp", "gshp", "network")}
+    log("heat cost: calibrated Carnot fractions "
+        + "; ".join(f"{j} " + ", ".join(f"{r} {v}" for r, v in e.items())
+                    for j, e in etas.items())
+        + f" (anchors ashp {SPF_ANCHORS['ashp']}, gshp "
+          f"{SPF_ANCHORS['gshp']}, network ni "
+          f"{NETWORK_MODEL['ni']['spf']} / roi "
+          f"{NETWORK_MODEL['roi']['spf']})")
+    spread = max(v for e in etas.values() for v in e.values()) / \
+        min(v for e in etas.values() for v in e.values())
+    if spread > 1.15:
+        log(f"heat cost: WARNING calibrated fractions spread {spread:.2f}x "
+            "- more than 15% apart means a source temperature and an SPF "
+            "anchor that do not describe the same machine")
+
+    def cops_for(jur, t_out):
+        e = etas[jur]
+        return {r: (route_cop(r, t_out, e[r], jur, dhw=False),
+                    route_cop(r, t_out, e[r], jur, dhw=True))
+                for r in ("ashp", "gshp", "network")}
+
+    weeks = sorted(bull)
+    out, unpriced = [], 0
+    for day in sorted(temp["roi"]):
+        if day < weeks[0]:
             continue
-        share = week_dhw_share(hdd_i, w_end, a)
+        share = day_dhw_share(hdd_i, day, a)
         if share is None:
             continue
-        nd, _ = nondom_for(w_end, ((feeds.get("ecb_fx") or {})
-                                   .get("eur_gbp_semester")))
-        t = tariffs_for(w_end)
+        t = tariffs_for(day)
         if t is None:
             unpriced += 1
             continue
-        row = {"week_ending": w_end, "dhw_share": round(share, 3)}
-        # ROI, both bases. Oil ex-tax comes from the bulletin's own
-        # without-taxes line where it exists - a published series
-        # beats a computed strip - and falls back to the strip only
-        # when that week is missing from it.
-        oil_c_l = bull[w_end] / 10.0
-        oil_ex = (bull_nt[w_end] / 10.0 if w_end in bull_nt
-                  else ex_tax(oil_c_l, "roi", "oil", w_end))
-        gb = sector_blend("roi", "gas", w_end, a, nd)
-        eb = sector_blend("roi", "electricity", w_end, a, nd)
+        # step-held: the most recent bulletin week at or before today
+        wk = max((w for w in weeks if w <= day), default=None)
+        if wk is None:
+            continue
+        nd, _ = nondom_for(day, ((feeds.get("ecb_fx") or {})
+                                 .get("eur_gbp_semester")))
+        row = {"day": day, "dhw_share": round(share, 3),
+               "t_roi": temp["roi"].get(day)}
+        oil_c_l = bull[wk] / 10.0
+        oil_ex = (bull_nt[wk] / 10.0 if wk in bull_nt
+                  else ex_tax(oil_c_l, "roi", "oil", day))
+        gb = sector_blend("roi", "gas", day, a, nd)
+        eb = sector_blend("roi", "electricity", day, a, nd)
+        cr = cops_for("roi", temp["roi"][day])
         row["roi"] = route_cost_useful(
-            {"oil_per_kwh": oil_c_l / kwh_l,
-             "gas_per_kwh": gb["blend"], "elec_per_kwh": eb["blend"],
-             "elec_network_per_kwh": eb["network"]},
-            ashp["roi"], share, a)
-        # Ex-tax: the domestic side strips VAT then carbon, the
-        # non-domestic side is already VAT-free so only carbon comes
-        # off. Blending the two stripped prices keeps the same weights.
-        gd_x = ex_tax(gb["domestic"], "roi", "gas", w_end)
-        en_x = ex_tax(eb["domestic"], "roi", "electricity", w_end)
-        c = carbon_for(w_end)
+            {"oil_per_kwh": oil_c_l / kwh_l, "gas_per_kwh": gb["blend"],
+             "elec_per_kwh": eb["blend"], "elec_network_per_kwh": eb["network"],
+             "cops": cr}, None, share, a)
+        gd_x = ex_tax(gb["domestic"], "roi", "gas", day)
+        en_x = ex_tax(eb["domestic"], "roi", "electricity", day)
+        c = carbon_for(day)
         gn_x = (gb["nondom"] - c["gas_c_per_kwh"]) if c and gb["nondom"] else None
         w_sv = gb.get("services_share", 0.0)
         if oil_ex and gd_x and en_x and gn_x:
@@ -4926,41 +5117,29 @@ def derive_heat_cost_series(feeds, anchors=None):
                 {"oil_per_kwh": oil_ex / kwh_l,
                  "gas_per_kwh": (1 - w_sv) * gd_x + w_sv * gn_x,
                  "elec_per_kwh": (1 - w_sv) * en_x + w_sv * eb["nondom"],
-                 "elec_network_per_kwh": eb["nondom"]},
-                ashp["roi"], share, a)
-        # NI only where the CCNI survey actually covers the week; the
-        # bulletin bridge belongs to the back-look, not here, and a
-        # bridged price in a cost-of-heat chart would be an estimate
-        # wearing a measurement's clothes.
-        wk = [d for d in ccni
-              if (dt.date.fromisoformat(w_end)
-                  - dt.timedelta(days=6)).isoformat() <= d <= w_end]
-        if wk:
-            ppl = statistics.mean(ccni[d] for d in wk) * 100 / 900
-            gbn = sector_blend("ni", "gas", w_end, a, nd)
-            ebn = sector_blend("ni", "electricity", w_end, a, nd)
+                 "elec_network_per_kwh": eb["nondom"], "cops": cr},
+                None, share, a)
+        if day in ccni and temp["ni"].get(day) is not None:
+            ppl = ccni[day] * 100 / 900
+            gbn = sector_blend("ni", "gas", day, a, nd)
+            ebn = sector_blend("ni", "electricity", day, a, nd)
+            cn = cops_for("ni", temp["ni"][day])
+            row["t_ni"] = temp["ni"][day]
             row["ni"] = route_cost_useful(
-                {"oil_per_kwh": ppl / kwh_l,
-                 "gas_per_kwh": gbn["blend"], "elec_per_kwh": ebn["blend"],
-                 "elec_network_per_kwh": ebn["network"]},
-                ashp["ni"], share, a)
-            # NI needs no published ex-tax series: kerosene is fully
-            # duty-rebated with no carbon price, and gas and
-            # electricity carry no carbon price and no CCL on domestic
-            # use. So ex-tax is retail over 1.05 exactly.
-            # NI: no carbon price at all, so ex-tax is the domestic
-            # rate over 1.05 blended with the non-domestic rate
-            # unchanged - the commercial side never carried VAT.
+                {"oil_per_kwh": ppl / kwh_l, "gas_per_kwh": gbn["blend"],
+                 "elec_per_kwh": ebn["blend"],
+                 "elec_network_per_kwh": ebn["network"], "cops": cn},
+                None, share, a)
             row["ni_ex_tax"] = route_cost_useful(
-                {"oil_per_kwh": ex_tax(ppl, "ni", "oil", w_end) / kwh_l,
+                {"oil_per_kwh": ex_tax(ppl, "ni", "oil", day) / kwh_l,
                  "gas_per_kwh": ((1 - w_sv) * ex_tax(gbn["domestic"], "ni",
-                                                     "gas", w_end)
+                                                     "gas", day)
                                  + w_sv * gbn["nondom"]),
                  "elec_per_kwh": ((1 - w_sv) * ex_tax(ebn["domestic"], "ni",
-                                                      "electricity", w_end)
+                                                      "electricity", day)
                                   + w_sv * ebn["nondom"]),
-                 "elec_network_per_kwh": ebn["nondom"]},
-                ashp["ni"], share, a)
+                 "elec_network_per_kwh": ebn["nondom"], "cops": cn},
+                None, share, a)
         out.append(row)
     if not out:
         return None
@@ -4968,36 +5147,16 @@ def derive_heat_cost_series(feeds, anchors=None):
     for j in ("roi", "ni"):
         if j in last:
             r = last[j]
-            log(f"heat cost ({j} {last['week_ending']}, DHW share "
-                f"{last['dhw_share']}): oil {r['oil_boiler']} / gas "
-                f"{r['gas_boiler']} / ashp {r['ashp']} / gshp "
-                f"{r['gshp']} / network {r['network']} per useful kWh")
-    # The decomposition, computed here rather than in the browser.
-    if "roi" in last and "roi_ex_tax" in last:
-        wedge = round(last["roi"]["oil_boiler"]
-                      - last["roi_ex_tax"]["oil_boiler"], 2)
-        log(f"heat cost: ROI oil tax wedge {wedge} per useful kWh "
-            f"({round(100 * wedge / last['roi']['oil_boiler'])}% of the "
-            f"retail price) - carbon "
-            f"{carbon_for(last['week_ending'])['kerosene_c_per_l']} c/L, "
-            f"NORA {NORA_LEVY_C_PER_L} c/L, VAT "
-            f"{int(VAT['roi']['oil'] * 100)}%")
-    if "ni" in last and "ni_ex_tax" in last:
-        wedge = round(last["ni"]["oil_boiler"]
-                      - last["ni_ex_tax"]["oil_boiler"], 2)
-        log(f"heat cost: NI oil tax wedge {wedge} per useful kWh - VAT "
-            f"{int(VAT['ni']['oil'] * 100)}% only, nil excise, no "
-            f"carbon price")
+            log(f"heat cost ({j} {last['day']}, {last.get('t_' + j)} C, "
+                f"DHW {last['dhw_share']}): oil {r['oil_boiler']} / gas "
+                f"{r['gas_boiler']} / ashp {r['ashp']} / gshp {r['gshp']} "
+                f"/ network {r['network']} per useful kWh")
     if unpriced:
-        log(f"heat cost: {unpriced} week(s) NOT priced - before the "
-            f"tariff table starts ({TARIFF_HISTORY[0][0]}). Extending "
-            "TARIFF_HISTORY backwards is what restores them; clamping "
-            "would price them at today's tariffs and say nothing")
-    log(f"heat cost: {len(out)} weeks priced "
+        log(f"heat cost: {unpriced} day(s) NOT priced - before the tariff "
+            f"table starts ({TARIFF_HISTORY[0][0]})")
+    log(f"heat cost: {len(out)} days priced "
         f"({sum(1 for r in out if 'ni' in r)} with NI), "
-        f"{out[0]['week_ending']}..{out[-1]['week_ending']}; "
-        f"oil DHW {DHW_MODE['oil_boiler']} dagger, immersion share "
-        f"{OIL_IMMERSION_DHW_SHARE} dagger")
+        f"{out[0]['day']}..{out[-1]['day']}; oil price step-held weekly")
     return out
 
 
