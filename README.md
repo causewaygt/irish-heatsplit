@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.7.0 / site 5.4.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.8.0 / site 5.5.0.
 
 ## The premise
 
@@ -348,9 +348,15 @@ one retained series.
 The Irish equivalent of the UK sibling's cost-of-delivered-heat panel,
 with **oil as the main series** because the island is the most
 oil-heated corner of western Europe. Five routes – oil boiler, gas
-boiler, air-source, ground-source, geothermal network – priced weekly
-in native minor units per useful kWh. Pipeline side only so far; the
-panel itself is not drawn.
+boiler, air-source, ground-source, geothermal network – priced daily in
+currency per MWh of delivered heat, on the same axis as the UK sibling.
+Three toggles: service, basis, window.
+
+*(This paragraph read "priced weekly in native minor units per useful
+kWh. Pipeline side only so far; the panel itself is not drawn" until
+5.8.0, by which point the panel had been drawn for some time and the
+paragraph directly under it already said daily. Corrected rather than
+left.)*
 
 **Daily, and every electric route is priced at that day's own COP.**
 Ported from the UK sibling so the two dashboards compute the electric
@@ -451,6 +457,38 @@ network prices wholly at non-domestic, whoever the end customer is; and
 oil stays a single price, because kerosene sells to both sectors on the
 same terms and no non-domestic oil rate exists.
 
+**Three services, toggled together: space heating, as delivered, hot
+water.** They answer different questions and the answers diverge. On
+space heat a heat pump rides a weather-compensated flow down to 30 °C;
+on hot water the cylinder pins it at 52 °C whatever the weather, so
+none of that benefit is available. Every electric route pays a similar
+penalty in absolute terms, so the cheapest takes the largest
+proportional hit and the geothermal advantage *narrows* on hot water –
+it is not air source collapsing, which is what an earlier version of
+this note claimed. "As delivered" blends the two at the season's own
+share and is the default, because it is what a household pays.
+
+**Axes are currency per MWh of delivered heat**, matching the UK
+sibling – the two charts were showing the same kind of number in
+different clothes, 7 c/kWh against £44/MWh.
+
+**Two gates on the degree-day series.** The trailing-year total is
+checked against a plausibility band on every run, because the failure it
+catches is invisible otherwise: the UK sibling once raised a regression
+window from 365 to 730 days, every quantity that treated the window as a
+year silently doubled, and all four of its test suites passed throughout.
+The band is provisional until the first live figure. And the degree-day
+base is scanned at 14.5, 15.5 and 16.5 against gas demand and the fit
+reported – log-only, because moving the base moves every shaped figure
+on the site, which is a decision rather than a tuning.
+
+**Hot-water shares are published by fuel** – SEAI's residential end-use
+model gives oil at 22.8% and gas at 26.8% – and those price the energy
+and bill panels. They are deliberately *not* used in the cost panel,
+where every route answers the same counterfactual, so the share belongs
+to the building's demand rather than to the fuel; using them there would
+compare two different demand profiles.
+
 **Retail and ex-tax, with the wedge derived rather than left to the
 browser.** Deliberately *ex-tax*, not *wholesale*: the EU bulletin's
 without-taxes line is product, distribution and margin, not a wholesale
@@ -487,6 +525,33 @@ exists because four tariff anchors are verified from 1 October 2025;
 this panel is a different artefact, and its limit is how far the
 weather record reaches, since every week needs a trailing year of
 degree days behind it to know its own hot-water share.
+
+**The volume under the price (5.8.0).** A second chart shares the price
+chart's x-axis and shows what the per-MWh figure is charged on: GWh of
+delivered heat that day, space heating stacked under hot water, in the
+same window and the same jurisdiction. It is **invariant to service and
+basis** – it is the island's heat, not a route and not a tax basis – and
+the caption says so rather than leaving the reader to test the buttons.
+
+Its shaping is not a second model. Hot water is flat across the year,
+space heat follows the day's share of the trailing year's degree days –
+the identical rule behind `dhw_share`, so `dhw / (space + dhw)`
+reproduces that share exactly, and a test pins it. What the volume adds
+is the scale: the sector anchors are fuel **input**, so they go through
+each jurisdiction's own fuel mix and efficiencies first, the same
+conversion `hourly_heat_mw()` uses. Delivered against input, that is
+about 25.3 TWh a year in ROI and 10.9 TWh in NI, against 30.8 and 13.0
+of purchased fuel.
+
+Shape is island-wide, scale is jurisdictional: one degree-day series
+shapes both, which is the same simplification the share has always
+carried. A separate NI degree-day shape would be a defensible
+refinement and is not made here.
+
+The fields are additive (`vol_roi`, `vol_ni`), so an un-updated front
+end ignores them; conversely the site deploys ahead of the data file,
+so the chart declines with a message naming that cause until a build
+has run.
 
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
@@ -628,7 +693,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 161 tests, no network
+python3 tests/test_synthetic.py   # 163 tests, no network
+node tests/test_vol.js            # executes drawVol against a fixture
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
