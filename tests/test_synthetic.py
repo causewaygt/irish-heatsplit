@@ -2874,30 +2874,40 @@ def test_every_route_costs_more_on_hot_water_than_on_space_heat():
     summer = B.route_cost_useful(p, 2.43, 1.0)
     for r in ("oil_boiler", "gas_boiler", "ashp", "gshp", "network"):
         assert summer[r] > winter[r], (r, winter[r], summer[r])
-    # and the ordering is not preserved: the routes do not degrade
-    # equally, which is the finding rather than a rounding artefact
-    assert (summer["oil_boiler"] / winter["oil_boiler"]
-            > summer["network"] / winter["network"])
+    # The routes do not degrade equally, which is the finding rather
+    # than a rounding artefact. Since the Table 4b correction the
+    # steepest summer degradation is AIR SOURCE, not oil: a boiler
+    # loses 15-18% while an air-source heat pump loses far more,
+    # because a 52 C cylinder duty is a much bigger lift than the
+    # 30 C weather-compensated flow it would otherwise run.
+    deg = {r: summer[r] / winter[r]
+           for r in ("oil_boiler", "gas_boiler", "ashp", "gshp", "network")}
+    assert deg["ashp"] > deg["oil_boiler"], deg
+    assert 1.10 < deg["oil_boiler"] < 1.30, deg["oil_boiler"]
 
 
-def test_oil_immersion_leakage_raises_the_summer_oil_cost():
-    """Oil households commonly switch to the cylinder immersion in
-    summer rather than fire a boiler at sub-40% for a small load. At
-    COP 1 on domestic electricity that is DEARER than the inefficient
-    boiler, so the leakage must push the oil line UP, not down."""
+def test_immersion_leakage_is_zeroed_and_the_mechanism_still_works():
+    """Zeroed on 14 Aug 2026: at 0.30 it added 5.8 c to the summer oil
+    figure on no metered evidence, and the UK sibling has no equivalent,
+    so it broke parity as well. The mechanism stays in the code - and
+    stays correct - because a metered study would turn it back on.
+
+    Note the direction, which surprises people: at COP 1 on domestic
+    electricity the immersion is DEARER than the inefficient boiler, so
+    the leakage pushes the oil line UP."""
     import build as B
+    assert B.OIL_IMMERSION_DHW_SHARE == 0.0
     p = {"oil_per_kwh": 10.0, "gas_per_kwh": 13.0, "elec_per_kwh": 40.4}
+    # with it off, summer oil IS the input price over the DHW efficiency
+    off = B.route_cost_useful(p, 2.43, 1.0)["oil_boiler"]
+    assert abs(off - 10.0 / B.DHW_MODE["oil_boiler"]) < 0.02
     real = B.OIL_IMMERSION_DHW_SHARE
     try:
-        B.OIL_IMMERSION_DHW_SHARE = 0.0
-        none_ = B.route_cost_useful(p, 2.43, 1.0)["oil_boiler"]
         B.OIL_IMMERSION_DHW_SHARE = 0.30
-        some = B.route_cost_useful(p, 2.43, 1.0)["oil_boiler"]
+        on = B.route_cost_useful(p, 2.43, 1.0)["oil_boiler"]
     finally:
         B.OIL_IMMERSION_DHW_SHARE = real
-    assert some > none_, (none_, some)
-    # boiler-only summer oil is the input price over the DHW efficiency
-    assert abs(none_ - 10.0 / B.DHW_MODE["oil_boiler"]) < 0.02
+    assert on > off, (off, on)
 
 
 def test_dhw_mode_figures_are_the_published_ones():
@@ -2912,8 +2922,16 @@ def test_dhw_mode_figures_are_the_published_ones():
     assert B.DHW_MODE["ashp"] == 1.70
     assert B.DHW_MODE["gshp"] == 2.24
     assert B.DHW_MODE["network"] == round(5.00 * 2.24 / 3.24, 2)
-    assert B.DHW_MODE_FLOOR_OIL == 0.40
+    # SAP 2012 Table 4b: summer runs 82-89% of winter across every oil
+    # and gas archetype, and the worst row in the whole table - a
+    # single-burner range cooker boiler - is 47/37, a ratio of 0.79.
+    # The panel used 0.55 on 0.82, a ratio of 0.67, below anything SAP
+    # publishes for any boiler.
+    assert B.DHW_MODE_FLOOR_OIL == 0.37
     assert B.DHW_MODE["oil_boiler"] > B.DHW_MODE_FLOOR_OIL
+    for fuel, key in (("oil", "oil_boiler"), ("gas", "gas_boiler")):
+        ratio = B.DHW_MODE[key] / B.ANCHORS["efficiency"][fuel]
+        assert 0.80 < ratio < 0.92, (fuel, round(ratio, 3))
     # every route is worse on hot water than on space heat
     assert B.DHW_MODE["oil_boiler"] < B.ANCHORS["efficiency"]["oil"]
     assert B.DHW_MODE["gas_boiler"] < B.ANCHORS["efficiency"]["gas"]
