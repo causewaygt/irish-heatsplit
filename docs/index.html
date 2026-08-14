@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.0.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.1.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -83,6 +83,15 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
   color:var(--faint);background:none;border:1px solid var(--line);
   border-radius:3px;padding:2px 8px;cursor:pointer}
 .trendctl button[aria-pressed="true"]{color:#3AAA35;border-color:#3AAA35}
+/* Temporary, and meant to look temporary. It comes off when the panels
+   settle and the x of the version number starts moving again. */
+.ucon{font-family:'IBM Plex Mono',monospace;font-size:.7rem;
+  letter-spacing:.18em;color:#E4A11B;border:1px solid #E4A11B;
+  border-radius:3px;padding:2px 8px;display:inline-block;margin-top:8px}
+.scopeline{color:var(--muted);font-size:.85rem;margin:0 0 12px}
+/* Panel headings follow the UK sibling: numbered, Lato, 24pt. */
+section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
+  font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-height:1.15}
 .costctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
   letter-spacing:.08em;margin-bottom:10px}
@@ -338,6 +347,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </g>
 </svg>
       <div class="btitle">IRISH HEAT SPLIT</div>
+      <div class="ucon">UNDER CONSTRUCTION</div>
     </div>
     <div class="sparkcol">
       <div class="spark" id="sparkBox">Loading the border&hellip;</div>
@@ -350,9 +360,11 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <div class="trendctl trendtop" id="trendctl" hidden>
       <span>SHOW</span>
       <button data-win="2" title="1 week" aria-pressed="true">WEEK</button>
-      <button data-win="5" title="4 weeks">MONTH</button>
-      <button data-win="13" title="12 weeks">QUARTER</button>
-      <button data-win="53" title="12 months">YEAR</button>
+      <button data-win="5" title="4 weeks">4 WEEKS</button>
+      <button data-win="13" title="12 weeks">12 WEEKS</button>
+      <button data-win="53" title="12 months">12 MONTHS</button>
+      <button data-win="105" title="24 months">24 MONTHS</button>
+      <button data-win="261" title="60 months">60 MONTHS</button>
       <span id="trendspan"></span>
     </div>
     <h1 class="headline">How the island of Ireland
@@ -370,7 +382,9 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 <main class="wrap">
 
 <section id="hero" aria-labelledby="hero-h">
-  <h2 id="hero-h"><span id="heroWin">This week</span>, <span id="heroScope">all island</span> <span class="dag">†</span></h2>
+  <h2 id="hero-h">1. How the island of Ireland heated and cooled itself
+    <span id="heroWin">in the last week</span><span class="dag">†</span></h2>
+  <p class="scopeline">Showing <span id="heroScope">all island</span>.</p>
   <div class="seg" role="tablist" aria-label="Hero jurisdiction">
     <button class="segbtn active" id="heroAll" role="tab">All island</button>
     <button class="segbtn" id="heroNIbtn" role="tab">NI</button>
@@ -387,7 +401,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </section>
 
 <section id="cost" aria-labelledby="cost-h">
-  <h2 id="cost-h">What heat costs to make</h2>
+  <h2 id="cost-h">2. What the island of Ireland's heat costs and emits</h2>
   <div class="panelbox">
     <div class="costctl">
       <span>BASIS</span>
@@ -1045,20 +1059,25 @@ function heroCards(h, HIST){
       '</div>';
   }
   let WIN=2;
-  const SUMN={2:0,5:4,13:12,53:52};
+  const SUMN={2:0,5:4,13:12,53:52,105:104,261:260};
   const WLBL={5:'4 weeks',13:'12 weeks',53:'12 months'};
   // Plain-English name for each window, for the two page titles only.
   // 4w is called a month and 12w a quarter - near enough to name, and
   // not near enough to compute with, which is why the label under
   // every figure keeps stating the true span ('over the last 12
   // weeks (12 live wks)'). Nothing numeric rests on the rounding.
-  const WNAME={2:'week',5:'month',13:'quarter',53:'year'};
+  // Spans, not names. "quarter" and "year" were roundings that needed
+  // caveating in every caption; stating the span removes the ambiguity.
+  const WNAME={2:'in the last week',5:'in the last 4 weeks',
+    13:'in the last 12 weeks',53:'in the last 12 months',
+    105:'in the last 24 months',261:'in the last 60 months'};
   // The buttons carry the round word; this carries the exact span, so
   // the rounding is never the only thing on screen.
-  const WSPAN={2:'1 week',5:'4 weeks',13:'12 weeks',53:'12 months'};
+  const WSPAN={2:'1 week',5:'4 weeks',13:'12 weeks',53:'12 months',
+    105:'24 months',261:'60 months'};
   const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
   function setWording(){
-    const w='this '+(WNAME[WIN]||'week');
+    const w=WNAME[WIN]||'in the last week';
     const ts=el('trendspan');
     if(ts) ts.textContent='\u00b7 '+(WSPAN[WIN]||'')+' \u00b7 '+
       HIST.length+' wks on record'+
@@ -1068,7 +1087,7 @@ function heroCards(h, HIST){
     // strapWin was retired with the 4.6.1 strap rewrite; the guard
     // stays so the setter survives either copy.
     const st=el('strapWin'); if(st) st.textContent=w+'\u2019s';
-    const hw=el('heroWin'); if(hw) hw.textContent=cap1(w);
+    const hw=el('heroWin'); if(hw) hw.textContent=w;
   }
   function windowed(n, scope){
     const G=e=>scope==='all'?e:(e[scope]||null);
@@ -1156,7 +1175,9 @@ function heroCards(h, HIST){
       // backfilled week live.
       const nLive=HIST.filter(e=>e.live!==false).length;
       const back=HIST.length-nLive;
-      const cap=(wv.n<sumN?' ('+wv.n+' wks)':'');
+      // Windows now reach 60 months, far past the record. State the
+      // shortfall rather than silently drawing whatever exists.
+      const cap=(wv.n<sumN?' ('+wv.n+' of '+sumN+' wks on record)':'');
       const lbl='over the last '+WLBL[WIN]+cap;
       const S=wv.split;
       const cards2=[
@@ -1704,7 +1725,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.0.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.1.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
