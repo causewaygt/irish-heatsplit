@@ -887,14 +887,20 @@ function drawCost(){
     svg += '<path d="' + d + '" fill="none" stroke="' + col
       + '" stroke-width="2"/>';
   });
-  const lab = i => rows[i].week_ending.slice(0, 7);
-  svg += '<text x="' + P.l + '" y="' + (H - 6) + '" font-size="11" '
-    + 'fill="var(--muted)" font-family="IBM Plex Mono, monospace">'
-    + lab(0) + '</text>'
-    + '<text x="' + (W - P.r) + '" y="' + (H - 6) + '" text-anchor="end" '
-    + 'font-size="11" fill="var(--muted)" '
-    + 'font-family="IBM Plex Mono, monospace">' + lab(rows.length - 1)
-    + '</text></svg>';
+  // Month ticks across the axis rather than the two ends - a year of
+  // daily points needs somewhere to stand.
+  const seen = {};
+  rows.forEach((r, i) => { const m = r.day.slice(0, 7);
+    if (seen[m] === undefined) seen[m] = i; });
+  const months = Object.keys(seen);
+  const mstep = Math.max(1, Math.ceil(months.length / 6));
+  months.forEach((m, k) => {
+    if (k % mstep) return;
+    svg += '<text x="' + x(seen[m]) + '" y="' + (H - 6) + '" '
+      + 'text-anchor="middle" font-size="11" fill="var(--muted)" '
+      + 'font-family="IBM Plex Mono, monospace">' + m + '</text>';
+  });
+  svg += '</svg>';
   box.innerHTML = svg;
 
   el("costLegend").innerHTML = COST_ROUTES.map(([, name, col]) =>
