@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.2.0 / site 5.1.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.3.0 / site 5.2.0.
 
 ## The premise
 
@@ -352,8 +352,31 @@ boiler, air-source, ground-source, geothermal network – priced weekly
 in native minor units per useful kWh. Pipeline side only so far; the
 panel itself is not drawn.
 
-**Each week is priced at its own hot-water share, and every route is
-priced in the mode that week actually demands.** Hot water is flat
+**Daily, and every electric route is priced at that day's own COP.**
+Ported from the UK sibling so the two dashboards compute the electric
+routes the same way. The panel had one air-source SPF for the whole
+record, which made every electric line a flat multiple of the
+electricity price – they could never spread apart in the cold, which is
+the effect the chart exists to show. Space flow follows the weather from
+30 °C at +15 down to 50 °C at −5; hot water is held at 52 °C year-round,
+because without that split a mild summer day gives absurd COPs on a load
+that is entirely hot water. The oil price is the only weekly input, so it
+is step-held across the week rather than interpolated.
+
+The method runs in the UK's order: assert the SPF anchor, then calibrate
+the Carnot fraction so the heat-weighted trailing-year SPF reproduces it.
+The four calibrated fractions must land within 15% of each other, or the
+source temperature and the anchor are not describing the same machine.
+
+**The two jurisdictions run different network models**, because
+Permo-Triassic HSA is an NI play with no onshore ROI equivalent at scale.
+Northern Ireland takes the UK sibling's blend – UTES and
+intermediate-doublet together, source 19.6 °C, SPF 5.0. The Republic
+takes a 5G ambient loop on seasonal storage alone, charged from comfort
+cooling and process rejection, source 16 °C, SPF 4.0.
+
+**Each day is priced at its own hot-water share, and every route is
+priced in the mode that day actually demands.** Hot water is flat
 across the year while space heat follows the week's share of the
 trailing year's degree days, so a July week is almost all hot water –
 and every route performs worse on hot water than on space heat. Oil
@@ -565,7 +588,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 154 tests, no network
+python3 tests/test_synthetic.py   # 157 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
