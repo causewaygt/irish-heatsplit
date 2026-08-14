@@ -3131,6 +3131,64 @@ def test_probe_station_never_enters_the_weighted_series():
     assert B.PROBE_STATIONS["Athlone"][1] > -9.0
 
 
+def test_network_route_buys_commercially_not_as_a_household():
+    """A heat network operator is not a household - it buys on a
+    commercial contract and would never pay a domestic tariff. The
+    panel priced all three electric routes at domestic rates, which
+    understated the route the whole site is about. This is the UK
+    sibling's own correction, adopted."""
+    import build as B
+    sem = {"2025-S2": 0.87073}
+    nd, _ = B.nondom_for("2026-08-10", sem)
+    for jur in ("roi", "ni"):
+        b = B.sector_blend(jur, "electricity", "2026-08-10", nondom=nd)
+        assert b["network"] == b["nondom"]
+        assert b["network"] < b["domestic"], jur
+        # the blend sits between the two, nearer domestic
+        assert b["nondom"] < b["blend"] < b["domestic"]
+    # and it reaches the cost, not just the price
+    p = {"oil_per_kwh": 10.0, "gas_per_kwh": 13.0, "elec_per_kwh": 40.0,
+         "elec_network_per_kwh": 26.0}
+    with_nd = B.route_cost_useful(p, 2.43, 0.2)
+    del p["elec_network_per_kwh"]
+    without = B.route_cost_useful(p, 2.43, 0.2)
+    assert with_nd["network"] < without["network"]
+    # the other routes are untouched by the network price
+    for r in ("oil_boiler", "gas_boiler", "ashp", "gshp"):
+        assert with_nd[r] == without[r]
+
+
+def test_sector_blend_matches_the_hero_bill_convention():
+    """The cost panel disagreed with the bill on the same page: the
+    hero blends services at non-domestic rates, the panel priced
+    everything domestic. Same weight now - the services share of
+    island heat input."""
+    import build as B
+    a = B.ANCHORS
+    r = sum(a[j]["residential_heat_twh"] for j in ("ni", "roi"))
+    sv = sum(a[j]["services_heat_twh"] for j in ("ni", "roi"))
+    want = sv / (r + sv)
+    sem = {"2025-S2": 0.87073}
+    nd, _ = B.nondom_for("2026-08-10", sem)
+    b = B.sector_blend("roi", "gas", "2026-08-10", nondom=nd)
+    assert abs(b["services_share"] - want) < 1e-3
+    assert abs(b["blend"] - ((1 - want) * b["domestic"]
+                             + want * b["nondom"])) < 0.01
+    # a week the tariff table cannot price refuses, as everything else does
+    assert B.sector_blend("roi", "gas", "2020-01-01", nondom=nd) is None
+
+
+def test_oil_is_not_sector_blended():
+    """There is no non-domestic oil rate - kerosene sells to both
+    sectors on the same terms - so oil must stay a single price rather
+    than acquire a blend it has no basis for."""
+    import build as B
+    sem = {"2025-S2": 0.87073}
+    nd, _ = B.nondom_for("2026-08-10", sem)
+    assert "oil" not in (nd.get("eur") or {})
+    assert "oil" not in (nd.get("gbp") or {})
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
