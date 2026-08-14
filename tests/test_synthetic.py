@@ -3112,6 +3112,25 @@ def test_cost_series_declines_unpriceable_weeks_and_says_how_many():
         assert r["week_ending"] >= B.TARIFF_HISTORY[0][0]
 
 
+def test_probe_station_never_enters_the_weighted_series():
+    """Athlone is fetched to TEST the all-coastal station set, not to
+    join it. If it leaked into the weighted series the probe would be
+    measuring itself, and every HDD-shaped figure on the site would
+    move without a decision being taken."""
+    import build as B
+    assert "Athlone" in B.PROBE_STATIONS
+    assert "Athlone" not in B.STATIONS
+    # the weighted set still sums to one on its own
+    assert abs(sum(v[2] for v in B.STATIONS.values()) - 1.0) < 1e-9
+    # and the probe carries a plausible midlands share
+    assert 0.0 < B.PROBE_STATIONS["Athlone"][2] < 0.10
+    # it is genuinely inland - that is the whole point
+    for name, (lat, lon, w, jur) in B.STATIONS.items():
+        pass
+    assert B.PROBE_STATIONS["Athlone"][1] < -7.0
+    assert B.PROBE_STATIONS["Athlone"][1] > -9.0
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
