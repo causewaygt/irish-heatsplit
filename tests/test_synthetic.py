@@ -748,6 +748,18 @@ def test_uk_sibling_ratio_regression():
 
 # ----------------------------------- weekly back-look (UK port)
 
+def _with_temp(feeds):
+    """The daily COP engine reads temperature, not degree days - HDD
+    throws the temperature away above its base. Derive it back for the
+    fixtures so they exercise the same path production does."""
+    import build as B
+    hdd = (feeds.get("hdd") or {}).get("hdd_island") or {}
+    for k in ("temp_island", "temp_roi", "temp_ni"):
+        feeds["hdd"][k] = {d: round(B.HDD_BASE_C - v, 2)
+                           for d, v in hdd.items()}
+    return feeds
+
+
 def _history_fixture_feeds():
     feeds = _hero_fixture_feeds()
     hdd = feeds["hdd"]["hdd_island"]
@@ -2986,15 +2998,15 @@ def test_cost_series_is_not_floored_at_the_back_look_start():
     verified from."""
     import build as B
     feeds = _history_fixture_feeds()
-    rows = B.derive_heat_cost_series(feeds)
+    rows = B.derive_heat_cost_series(_with_temp(feeds))
     assert rows
-    hdd_floor = min(feeds["hdd"]["hdd_island"])
-    assert rows[0]["week_ending"] >= hdd_floor
-    # both bases present on every row that has a jurisdiction
+    assert rows[0]["day"] >= min(feeds["hdd"]["hdd_island"])
+    # daily now, so consecutive rows are days apart
+    assert len(rows) > 60
     for r in rows:
         for j in ("roi", "ni"):
             if j in r:
-                assert j + "_ex_tax" in r, (r["week_ending"], j)
+                assert j + "_ex_tax" in r, (r["day"], j)
                 assert r[j + "_ex_tax"]["oil_boiler"] < r[j]["oil_boiler"]
 
 
@@ -3069,12 +3081,12 @@ def test_cost_series_declines_unpriceable_weeks_and_says_how_many():
     real = B.log
     B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
     try:
-        rows = B.derive_heat_cost_series(_history_fixture_feeds())
+        rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
     finally:
         B.log = real
     assert rows
     for r in rows:
-        assert r["week_ending"] >= B.TARIFF_HISTORY[0][0]
+        assert r["day"] >= B.TARIFF_HISTORY[0][0]
 
 
 def test_tariffs_refuse_before_the_table_rather_than_clamping():
@@ -3104,12 +3116,12 @@ def test_cost_series_declines_unpriceable_weeks_and_says_how_many():
     real = B.log
     B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
     try:
-        rows = B.derive_heat_cost_series(_history_fixture_feeds())
+        rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
     finally:
         B.log = real
     assert rows
     for r in rows:
-        assert r["week_ending"] >= B.TARIFF_HISTORY[0][0]
+        assert r["day"] >= B.TARIFF_HISTORY[0][0]
 
 
 def test_probe_stations_stay_out_of_every_weighted_calculation():
@@ -3128,6 +3140,61 @@ def test_probe_stations_stay_out_of_every_weighted_calculation():
     assert "weighted_names" in src
     assert "STATIONS[n][2] for n in names}" not in src, \
         "a probe station would raise KeyError here again"
+
+
+def test_electric_routes_move_with_the_weather():
+    """The whole point of the daily engine. The panel priced every
+    electric route at ONE seasonal SPF, so the lines were flat
+    multiples of the electricity price and could never spread apart in
+    the cold - which is the effect the chart exists to show."""
+    import build as B
+    rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
+    assert rows and len(rows) > 60
+    ashp = [r["roi"]["ashp"] for r in rows]
+    oil = [r["roi"]["oil_boiler"] for r in rows]
+    # air source swings hard; the oil boiler barely moves
+    assert max(ashp) / min(ashp) > 1.3, (min(ashp), max(ashp))
+    assert max(oil) / min(oil) < 1.2
+    # and the cold days are the dear ones for air source
+    cold = min(rows, key=lambda r: r["t_roi"])
+    mild = max(rows, key=lambda r: r["t_roi"])
+    assert cold["roi"]["ashp"] > mild["roi"]["ashp"]
+
+
+def test_calibration_reproduces_the_spf_anchors():
+    """Assert the anchor, calibrate the Carnot fraction to it - not the
+    other way round. And the three fractions must land within 15% of
+    each other, or the source temperature and the anchor are not
+    describing the same machine."""
+    import build as B, math
+    days = []
+    for i in range(365):
+        t = 10.5 - 6.5 * math.cos(2 * math.pi * (i - 200) / 365)
+        days.append((t, max(0.0, 15.5 - t), 0.29))
+    etas = {}
+    for r in ("ashp", "gshp"):
+        etas[r] = B.calibrate_eta(r, days)
+    for jur in ("ni", "roi"):
+        etas["network_" + jur] = B.calibrate_eta("network", days, jur)
+    assert max(etas.values()) / min(etas.values()) < 1.15, etas
+    # the ROI network is a different machine from the NI one
+    assert B.NETWORK_MODEL["roi"]["spf"] == 4.0
+    assert B.NETWORK_MODEL["ni"]["spf"] == 5.0
+    assert B.NETWORK_MODEL["roi"]["source_c"] < B.NETWORK_MODEL["ni"]["source_c"]
+
+
+def test_hot_water_is_priced_at_the_cylinder_flow():
+    """Without a service split, a mild summer day gives absurd COPs on
+    a load that is entirely hot water - the flow follows the weather
+    down to 30 C while the cylinder still needs 52 C."""
+    import build as B
+    e = 0.33
+    for t in (0.0, 8.0, 16.0):
+        assert B.route_cop("ashp", t, e, dhw=True) < \
+            B.route_cop("ashp", t, e, dhw=False) or t < 5
+    assert B.flow_temp(16.0) == B.FLOW_MILD_C
+    assert B.flow_temp(-6.0) == B.FLOW_COLD_C
+    assert B.DHW_FLOW_C > B.FLOW_MILD_C
 
 
 if __name__ == "__main__":
