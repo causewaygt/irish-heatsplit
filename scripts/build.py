@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.3.0"
+PIPELINE_VERSION = "5.4.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -5077,6 +5077,28 @@ def derive_heat_cost_series(feeds, anchors=None):
                     route_cop(r, t_out, e[r], jur, dhw=True))
                 for r in ("ashp", "gshp", "network")}
 
+    # THE MODE REGIME IS SEASONAL, NOT DAILY. A boiler in January does
+    # not drop to summer cycling efficiency because one day was mild -
+    # it is still running its space-heating circuit. The sub-40% hot
+    # water efficiency arises from a REGIME: the boiler off for space
+    # heat, cycling for a small cylinder load. So the mode blend runs
+    # on a trailing 28-day share while the heat-pump COPs stay on the
+    # day's own temperature, which is instantaneous physics.
+    #
+    # Before this the oil line sawtoothed 15 to 28 c between adjacent
+    # days, which is not a price signal, it is a shaping artefact.
+    MODE_SMOOTH_DAYS = 28
+    shares = {}
+    for d in sorted(temp["roi"]):
+        sh = day_dhw_share(hdd_i, d, a)
+        if sh is not None:
+            shares[d] = sh
+    sm_days = sorted(shares)
+    smooth = {}
+    for i, d in enumerate(sm_days):
+        w = [shares[x] for x in sm_days[max(0, i - MODE_SMOOTH_DAYS + 1):i + 1]]
+        smooth[d] = sum(w) / len(w)
+
     weeks = sorted(bull)
     out, unpriced = [], 0
     for day in sorted(temp["roi"]):
@@ -5095,7 +5117,10 @@ def derive_heat_cost_series(feeds, anchors=None):
             continue
         nd, _ = nondom_for(day, ((feeds.get("ecb_fx") or {})
                                  .get("eur_gbp_semester")))
+        # daily share for the caption, smoothed share for the money
+        mode = smooth.get(day, share)
         row = {"day": day, "dhw_share": round(share, 3),
+               "dhw_mode": round(mode, 3),
                "t_roi": temp["roi"].get(day)}
         oil_c_l = bull[wk] / 10.0
         oil_ex = (bull_nt[wk] / 10.0 if wk in bull_nt
@@ -5106,7 +5131,7 @@ def derive_heat_cost_series(feeds, anchors=None):
         row["roi"] = route_cost_useful(
             {"oil_per_kwh": oil_c_l / kwh_l, "gas_per_kwh": gb["blend"],
              "elec_per_kwh": eb["blend"], "elec_network_per_kwh": eb["network"],
-             "cops": cr}, None, share, a)
+             "cops": cr}, None, mode, a)
         gd_x = ex_tax(gb["domestic"], "roi", "gas", day)
         en_x = ex_tax(eb["domestic"], "roi", "electricity", day)
         c = carbon_for(day)
@@ -5118,7 +5143,7 @@ def derive_heat_cost_series(feeds, anchors=None):
                  "gas_per_kwh": (1 - w_sv) * gd_x + w_sv * gn_x,
                  "elec_per_kwh": (1 - w_sv) * en_x + w_sv * eb["nondom"],
                  "elec_network_per_kwh": eb["nondom"], "cops": cr},
-                None, share, a)
+                None, mode, a)
         if day in ccni and temp["ni"].get(day) is not None:
             ppl = ccni[day] * 100 / 900
             gbn = sector_blend("ni", "gas", day, a, nd)
@@ -5129,7 +5154,7 @@ def derive_heat_cost_series(feeds, anchors=None):
                 {"oil_per_kwh": ppl / kwh_l, "gas_per_kwh": gbn["blend"],
                  "elec_per_kwh": ebn["blend"],
                  "elec_network_per_kwh": ebn["network"], "cops": cn},
-                None, share, a)
+                None, mode, a)
             row["ni_ex_tax"] = route_cost_useful(
                 {"oil_per_kwh": ex_tax(ppl, "ni", "oil", day) / kwh_l,
                  "gas_per_kwh": ((1 - w_sv) * ex_tax(gbn["domestic"], "ni",
@@ -5139,7 +5164,7 @@ def derive_heat_cost_series(feeds, anchors=None):
                                                       "electricity", day)
                                   + w_sv * ebn["nondom"]),
                  "elec_network_per_kwh": ebn["nondom"], "cops": cn},
-                None, share, a)
+                None, mode, a)
         out.append(row)
     if not out:
         return None
