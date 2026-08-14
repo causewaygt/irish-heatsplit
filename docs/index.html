@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.3.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.4.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -405,6 +405,12 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 <section id="cost" aria-labelledby="cost-h">
   <h2 id="cost-h">2. What the island of Ireland's heat costs and emits</h2>
   <div class="panelbox">
+    <div class="costctl">
+      <span>SERVICE</span>
+      <button data-csvc="space">SPACE HEATING</button>
+      <button data-csvc="blend" aria-pressed="true">AS DELIVERED</button>
+      <button data-csvc="dhw">HOT WATER</button>
+    </div>
     <div class="costctl">
       <span>BASIS</span>
       <button data-basis="retail" aria-pressed="true">RETAIL</button>
@@ -829,7 +835,7 @@ const COST_ROUTES = [
   ["gshp", "Ground source", "#8E7CC3"],
   ["network", "Geothermal network", "#3AAA35"],
 ];
-let COST = [], CBASIS = "retail", CWIN = 28;
+let COST = [], CBASIS = "retail", CWIN = 28, CSVC = "blend";
 
 function costPanel(series){
   COST = Array.isArray(series) ? series : [];
@@ -837,7 +843,11 @@ function costPanel(series){
   if(!COST.length){ if(sec) sec.hidden = true; return; }
   document.querySelectorAll(".costctl button").forEach(b=>{
     b.addEventListener("click", ()=>{
-      if(b.dataset.basis){
+      if(b.dataset.csvc){
+        CSVC = b.dataset.csvc;
+        document.querySelectorAll("[data-csvc]").forEach(x=>
+          x.setAttribute("aria-pressed", String(x === b)));
+      } else if(b.dataset.basis){
         CBASIS = b.dataset.basis;
         document.querySelectorAll("[data-basis]").forEach(x=>
           x.setAttribute("aria-pressed", String(x === b)));
@@ -854,8 +864,17 @@ function costPanel(series){
 
 function drawCost(){
   const state = HEROSTATE === "ni" ? "ni" : "roi";
-  const key = state + (CBASIS === "ex_tax" ? "_ex_tax" : "");
-  const unit = state === "ni" ? "p" : "c";
+  // Service first, then basis. Ex-tax is computed only on the blended
+  // service, so a pure service falls back to retail rather than
+  // silently showing the wrong basis.
+  const svc = CSVC === "blend" ? "" : "_" + CSVC;
+  const key = svc ? state + svc
+                  : state + (CBASIS === "ex_tax" ? "_ex_tax" : "");
+  // Currency per MWh of delivered heat, matching the UK sibling - the
+  // two charts were showing the same kind of number in different
+  // clothes, 7 c/kWh against GBP 44/MWh.
+  const unit = state === "ni" ? "\u00a3" : "\u20ac";
+  const PER_MWH = 10.0;
   const rows = COST.slice(-CWIN).filter(r => r[key]);
   const box = el("costChart");
   if(rows.length < 3){
@@ -867,15 +886,20 @@ function drawCost(){
     el("costLegend").innerHTML = "";
     return;
   }
-  const W = 1000, H = 320, P = {t:14, r:14, b:26, l:44};
+  const W = 1000, H = 320, P = {t:14, r:14, b:26, l:62};
   const vals = [];
-  rows.forEach(r => COST_ROUTES.forEach(([k]) => vals.push(r[key][k])));
+  rows.forEach(r => COST_ROUTES.forEach(([k]) => vals.push(r[key][k] * PER_MWH)));
   const hi = Math.max.apply(null, vals) * 1.06, lo = 0;
   const x = i => P.l + i * (W - P.l - P.r) / Math.max(rows.length - 1, 1);
   const y = v => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b);
   let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" '
-    + 'height="' + H + '" role="img" aria-label="Cost of a useful kWh '
-    + 'of heat by route">';
+    + 'height="' + H + '" role="img" aria-label="Cost per MWh of '
+    + 'delivered heat by route">'
+    // y-axis label, as on the UK sibling
+    + '<text x="14" y="' + (H / 2) + '" transform="rotate(-90 14 '
+    + (H / 2) + ')" text-anchor="middle" font-size="12" '
+    + 'fill="var(--muted)" font-family="Lato, sans-serif">' + unit
+    + ' per MWh of delivered heat</text>';
   for(let g = 0; g <= 4; g++){
     const v = lo + (hi - lo) * g / 4;
     svg += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(v)
@@ -886,7 +910,8 @@ function drawCost(){
   }
   COST_ROUTES.forEach(([k, , col]) => {
     let d = "";
-    rows.forEach((r, i) => { d += (i ? "L" : "M") + x(i) + " " + y(r[key][k]); });
+    rows.forEach((r, i) => { d += (i ? "L" : "M") + x(i) + " "
+      + y(r[key][k] * PER_MWH); });
     svg += '<path d="' + d + '" fill="none" stroke="' + col
       + '" stroke-width="2"/>';
   });
@@ -910,16 +935,19 @@ function drawCost(){
     '<span><span class="k" style="background:' + col + '"></span>'
     + name + "</span>").join("");
   const last = rows[rows.length - 1];
-  el("costspan").textContent = "\u00b7 " + unit + " per useful kWh \u00b7 "
+  el("costspan").textContent = "\u00b7 " + unit + " per MWh of delivered "
+    + "heat \u00b7 "
     + rows.length + " days \u00b7 " + (state === "ni" ? "NI" : "ROI");
 
   // The wedge, stated rather than left to be inferred from a toggle.
   let wedge = "";
   if(last[state] && last[state + "_ex_tax"]){
-    const w = last[state].oil_boiler - last[state + "_ex_tax"].oil_boiler;
-    wedge = " Tax and levies are " + w.toFixed(1) + unit
+    const w = (last[state].oil_boiler
+               - last[state + "_ex_tax"].oil_boiler) * PER_MWH;
+    wedge = " Tax and levies are " + unit + w.toFixed(0)
       + " of the oil figure \u2014 "
-      + Math.round(100 * w / last[state].oil_boiler) + "% of it.";
+      + Math.round(100 * w / (last[state].oil_boiler * PER_MWH))
+      + "% of it.";
   }
   el("costNote").textContent =
     "On " + last.day + ", "
@@ -1737,7 +1765,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.3.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.4.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
