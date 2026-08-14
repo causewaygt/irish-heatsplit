@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "5.0.1"
+PIPELINE_VERSION = "5.0.2"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -1604,11 +1604,27 @@ def odh26_from_hourly(payload, names, weights, base_c=26.0):
     return {d: round(v, 2) for d, v in per_day.items()}
 
 
+# MIDLANDS PROBE, log-only. All seven weighted stations sit on or near
+# the coast, so the island series is entirely maritime. Ireland's
+# interior runs colder on winter nights, which would bias the weighted
+# HDD low - and with it the space-heat share of every week, since the
+# hot-water term is flat and space heat is what the degree days shape.
+#
+# Rather than argue about it, measure it: Athlone is fetched alongside
+# the seven at no extra request, given the midland counties' share of
+# island population (Longford, Westmeath, Offaly, Laois ~ 4%), the
+# other weights scaled down to make room, and both series logged. If
+# the difference is immaterial the caveat closes; if it is not, the
+# station set needs a midlands member and every anchor shifts.
+PROBE_STATIONS = {"Athlone": (53.42, -7.94, 0.04, "ROI")}
+
+
 def feed_hdd():
     """Open-Meteo, batched; forecast tail optional (degrades to lagging)."""
-    names = list(STATIONS)
-    lats = ",".join(str(STATIONS[n][0]) for n in names)
-    lons = ",".join(str(STATIONS[n][1]) for n in names)
+    names = list(STATIONS) + list(PROBE_STATIONS)
+    _all = {**STATIONS, **PROBE_STATIONS}
+    lats = ",".join(str(_all[n][0]) for n in names)
+    lons = ",".join(str(_all[n][1]) for n in names)
 
     def unpack(payload):
         locs = payload if isinstance(payload, list) else [payload]
@@ -1658,10 +1674,11 @@ def feed_hdd():
             for d in sorted(days)
         }
 
-    roi = [n for n in names if STATIONS[n][3] == "ROI"]
-    ni = [n for n in names if STATIONS[n][3] == "NI"]
+    weighted_names = [n for n in names if n in STATIONS]
+    roi = [n for n in weighted_names if STATIONS[n][3] == "ROI"]
+    ni = [n for n in weighted_names if STATIONS[n][3] == "NI"]
     out = {
-        "hdd_island": trim_series(weighted(names)),
+        "hdd_island": trim_series(weighted(weighted_names)),
         "hdd_roi": trim_series(weighted(roi)),
         "hdd_ni": trim_series(weighted(ni)),
         "base_c": HDD_BASE_C,
@@ -1671,6 +1688,45 @@ def feed_hdd():
                          "contact@causewaygt.com"),
         "source": "ERA5 via Open-Meteo, population-weighted HDD",
     }
+
+    # --- midlands probe (log-only, changes nothing)
+    try:
+        if "Athlone" in daily_by_station and daily_by_station["Athlone"]:
+            share = PROBE_STATIONS["Athlone"][2]
+            days = set(daily_by_station["Athlone"])
+            for n in weighted_names:
+                days &= set(daily_by_station[n])
+            days = sorted(days)
+            if len(days) > 300:
+                wsum = sum(STATIONS[n][2] for n in weighted_names)
+                base, withm = [], []
+                for d in days:
+                    t7 = sum(daily_by_station[n][d] * STATIONS[n][2]
+                             for n in weighted_names) / wsum
+                    t8 = ((1 - share) * t7
+                          + share * daily_by_station["Athlone"][d])
+                    base.append(max(0.0, HDD_BASE_C - t7))
+                    withm.append(max(0.0, HDD_BASE_C - t8))
+                a, b = sum(base) / len(base), sum(withm) / len(withm)
+                pct = 100 * (b - a) / a if a else 0.0
+                # Winter is what matters: a summer difference cannot
+                # move a space-heat share that is already near zero.
+                wi = [i for i, d in enumerate(days)
+                      if d[5:7] in ("12", "01", "02")]
+                wa = sum(base[i] for i in wi) / max(len(wi), 1)
+                wb = sum(withm[i] for i in wi) / max(len(wi), 1)
+                wpct = 100 * (wb - wa) / wa if wa else 0.0
+                log(f"hdd: MIDLANDS PROBE over {len(days)} days - island "
+                    f"HDD {a:.2f} without Athlone, {b:.2f} with it at "
+                    f"{share:.0%} ({pct:+.2f}%); winter only {wa:.2f} -> "
+                    f"{wb:.2f} ({wpct:+.2f}%)")
+                log("hdd:   log-only. Under ~1% the all-coastal station "
+                    "set is fine as it stands; more than that and the "
+                    "weighted series needs a midlands member, which "
+                    "would move every HDD-shaped figure on the site")
+    except Exception as exc:
+        log(f"hdd: midlands probe failed ({exc.__class__.__name__}) - "
+            "log-only, the feed is unaffected")
 
     # ODH26 groundwork: hourly overheating-degree-hours (base 26 C),
     # population-weighted, trailing 60 days per run, merged across runs.
