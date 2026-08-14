@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.1.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.2.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -91,7 +91,9 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 .scopeline{color:var(--muted);font-size:.85rem;margin:0 0 12px}
 /* Panel headings follow the UK sibling: numbered, Lato, 24pt. */
 section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
-  font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-height:1.15}
+  font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-height:1.15;
+  /* an earlier rule shouts every h2; the UK sibling is sentence case */
+  text-transform:none;color:#fff}
 .costctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
   letter-spacing:.08em;margin-bottom:10px}
@@ -411,10 +413,10 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     </div>
     <div class="costctl">
       <span>WINDOW</span>
-      <button data-cwin="17" aria-pressed="true">4M</button>
-      <button data-cwin="52">12M</button>
-      <button data-cwin="104">24M</button>
-      <button data-cwin="260">60M</button>
+      <button data-cwin="122" aria-pressed="true">4M</button>
+      <button data-cwin="365">12M</button>
+      <button data-cwin="730">24M</button>
+      <button data-cwin="1825">60M</button>
     </div>
     <div id="costChart" class="chart">Loading the routes&hellip;</div>
     <div class="legend" id="costLegend"></div>
@@ -826,7 +828,7 @@ const COST_ROUTES = [
   ["gshp", "Ground source", "#8E7CC3"],
   ["network", "Geothermal network", "#3AAA35"],
 ];
-let COST = [], CBASIS = "retail", CWIN = 17;
+let COST = [], CBASIS = "retail", CWIN = 122;
 
 function costPanel(series){
   COST = Array.isArray(series) ? series : [];
@@ -908,7 +910,7 @@ function drawCost(){
     + name + "</span>").join("");
   const last = rows[rows.length - 1];
   el("costspan").textContent = "\u00b7 " + unit + " per useful kWh \u00b7 "
-    + rows.length + " wks \u00b7 " + (state === "ni" ? "NI" : "ROI");
+    + rows.length + " days \u00b7 " + (state === "ni" ? "NI" : "ROI");
 
   // The wedge, stated rather than left to be inferred from a toggle.
   let wedge = "";
@@ -919,8 +921,8 @@ function drawCost(){
       + Math.round(100 * w / last[state].oil_boiler) + "% of it.";
   }
   el("costNote").textContent =
-    "Week ending " + last.week_ending + ", "
-    + Math.round(100 * last.dhw_share) + "% of the heat wanted that week "
+    "On " + last.day + ", "
+    + Math.round(100 * last.dhw_share) + "% of the heat wanted that day "
     + "was hot water." + wedge
     + " Every route is priced in the mode the week actually demands, so "
     + "the summer figures are hot-water figures.";
@@ -1731,7 +1733,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.1.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.2.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
