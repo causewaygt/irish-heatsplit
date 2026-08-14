@@ -51,7 +51,17 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.7.0"
+PIPELINE_VERSION = "5.8.0"
+# 5.8.0: heat_cost_series rows carry vol_roi and vol_ni - GWh of
+#   DELIVERED heat that day, split space / hot water - so the cost
+#   panel can draw the quantity its per-MWh axis is charged on. Shaped
+#   identically to day_dhw_share (hot water flat, space heat by the
+#   day's share of the trailing year's degree days) and scaled by the
+#   sector anchors converted from fuel input to delivered heat at each
+#   jurisdiction's own fuel mix, the same conversion hourly_heat_mw()
+#   uses. Shape is island-wide, scale is jurisdictional. Additive: a
+#   front end that has not been updated ignores the fields, and the
+#   site's own volume chart declines until a build has run.
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -5114,6 +5124,50 @@ def day_dhw_share(hdd_daily, day, anchors=None):
     return (dhw / tot) if tot > 0 else None
 
 
+def useful_heat_gwh_year(jur, anchors=None):
+    """
+    A jurisdiction's annual DELIVERED heat, GWh.
+
+    The sector anchors are fuel INPUT and each fuel burns at its own
+    efficiency, so they are converted before they can stand beside a
+    price per MWh of delivered heat. Same conversion as
+    hourly_heat_mw() uses - one definition of delivered heat on the
+    site, not two.
+    """
+    a = anchors or ANCHORS
+    j = a[jur]
+    heat = j["residential_heat_twh"] + j["services_heat_twh"]
+    return heat * sum(sh * a["efficiency"][f]
+                      for f, sh in j["fuel_shares"].items()) * 1000.0
+
+
+def day_delivered_heat(hdd_daily, day, jur, anchors=None):
+    """
+    GWh of delivered heat on one day, split space heat / hot water.
+
+    The QUANTITY the cost panel's axis is charged on. Shaping is
+    identical to day_dhw_share - hot water flat across the year, space
+    heat by the day's share of the trailing year's degree days - so
+    dhw / (space + dhw) reproduces that share exactly rather than
+    approximately, and a test pins it.
+
+    Shape is island-wide (one HDD series), scale is jurisdictional.
+    Returns None on the same short-record guard as the share.
+    """
+    a = anchors or ANCHORS
+    days = sorted(d for d in hdd_daily if d <= day)
+    if len(days) < 200:
+        return None
+    year = days[-365:]
+    hdd_yr = sum(hdd_daily[d] for d in year)
+    if hdd_yr <= 0:
+        return None
+    u = useful_heat_gwh_year(jur, a)
+    dhw = u * (1 - a["space_heat_fraction"]) / 365.0
+    space = u * a["space_heat_fraction"] * hdd_daily.get(day, 0.0) / hdd_yr
+    return {"space": round(space, 3), "dhw": round(dhw, 3)}
+
+
 def derive_heat_cost_series(feeds, anchors=None):
     """
     DAILY cost of a useful kWh by route - the Irish equivalent of the
@@ -5238,6 +5292,14 @@ def derive_heat_cost_series(feeds, anchors=None):
         row = {"day": day, "dhw_share": round(share, 3),
                "dhw_mode": round(mode, 3),
                "t_roi": temp["roi"].get(day)}
+        # The quantity behind the price. Emitted for BOTH jurisdictions
+        # unconditionally - it depends on degree days and the sector
+        # anchors, not on whether that day carries an NI oil price, so
+        # it does not belong inside the NI branch below.
+        for jur in ("roi", "ni"):
+            v = day_delivered_heat(hdd_i, day, jur, a)
+            if v:
+                row["vol_" + jur] = v
         oil_c_l = bull[wk] / 10.0
         oil_ex = (bull_nt[wk] / 10.0 if wk in bull_nt
                   else ex_tax(oil_c_l, "roi", "oil", day))
@@ -5307,6 +5369,13 @@ def derive_heat_cost_series(feeds, anchors=None):
     if unpriced:
         log(f"heat cost: {unpriced} day(s) NOT priced - before the tariff "
             f"table starts ({TARIFF_HISTORY[0][0]})")
+    for j in ("roi", "ni"):
+        v = last.get("vol_" + j)
+        if v:
+            log(f"heat cost: delivered heat {j} {last['day']} "
+                f"{v['space'] + v['dhw']:.1f} GWh "
+                f"(space {v['space']:.1f} / hot water {v['dhw']:.1f}); "
+                f"annual anchor {useful_heat_gwh_year(j, a):.0f} GWh")
     log(f"heat cost: {len(out)} days priced "
         f"({sum(1 for r in out if 'ni' in r)} with NI), "
         f"{out[0]['day']}..{out[-1]['day']}; oil price step-held weekly")
