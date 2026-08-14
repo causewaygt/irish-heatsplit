@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "5.0.2"
+PIPELINE_VERSION = "5.1.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -4718,6 +4718,49 @@ DHW_MODE_FLOOR_OIL = 0.40      # BRE "under 40% gross", the low bound
 OIL_IMMERSION_DHW_SHARE = 0.30   # dagger
 
 
+def sector_blend(jur, fuel, date_iso, anchors=None, nondom=None):
+    """
+    The price a route actually pays, blended across sectors.
+
+    Every route on this panel was priced at pure DOMESTIC tariffs,
+    which is wrong twice over. About a quarter of the island's
+    building heat is services rather than residential, and the hero
+    bill has always blended that - so the cost panel disagreed with
+    the bill on the same page. And a heat NETWORK operator is not a
+    household at all: it buys electricity on a commercial contract and
+    would never pay a domestic tariff, which is the UK sibling's own
+    correction.
+
+    So the blend is not uniform:
+      oil            one price - no non-domestic oil rate exists, and
+                     kerosene is sold to both sectors on the same terms
+      gas, ashp,     blended at the services share of island heat
+      gshp           input (~26%), matching the hero bill
+      network        100% NON-DOMESTIC, whoever the end customer is
+
+    Non-domestic rates already EXCLUDE VAT by convention (businesses
+    recover it), so the blend mixes a VAT-inclusive domestic rate with
+    a VAT-exclusive commercial one - which is the point, not an error:
+    it is what the heat actually costs to buy.
+    """
+    a = anchors or ANCHORS
+    dom = tariffs_for(date_iso)
+    if dom is None:
+        return None
+    cur = "gbp" if jur == "ni" else "eur"
+    d = dom[cur][fuel] * 100
+    nd = (nondom or {}).get(cur, {}).get(fuel)
+    nd = nd * 100 if nd else None
+    if nd is None:
+        return {"domestic": d, "nondom": None, "blend": d, "network": d}
+    r = sum(a[j]["residential_heat_twh"] for j in ("ni", "roi"))
+    sv = sum(a[j]["services_heat_twh"] for j in ("ni", "roi"))
+    w = sv / (r + sv) if (r + sv) else 0.0
+    return {"domestic": d, "nondom": nd,
+            "blend": round((1 - w) * d + w * nd, 4),
+            "network": nd, "services_share": round(w, 4)}
+
+
 def route_cost_useful(prices, ashp_spf, dhw_share, anchors=None):
     """
     Cost per useful kWh by route, in native minor units, with hot
@@ -4732,6 +4775,10 @@ def route_cost_useful(prices, ashp_spf, dhw_share, anchors=None):
     w = min(1.0, max(0.0, dhw_share))
     oil, gas, elec = (prices["oil_per_kwh"], prices["gas_per_kwh"],
                       prices["elec_per_kwh"])
+    # The network route buys commercially; the heat-pump routes are a
+    # domestic/services blend. Falls back to the blended price when no
+    # non-domestic rate is supplied, so callers need not change.
+    elec_net = prices.get("elec_network_per_kwh", elec)
 
     def blend(space_perf, dhw_perf, price):
         return (1 - w) * price / space_perf + w * price / dhw_perf
@@ -4749,7 +4796,7 @@ def route_cost_useful(prices, ashp_spf, dhw_share, anchors=None):
         "ashp": round(blend(ashp_spf, DHW_MODE["ashp"], elec), 2),
         "gshp": round(blend(GSHP_SPF, DHW_MODE["gshp"], elec), 2),
         "network": round(blend(GEO_NETWORK_SCOP, DHW_MODE["network"],
-                               elec), 2),
+                               elec_net), 2),
         "dhw_share": round(w, 3),
     }
 
@@ -4829,6 +4876,8 @@ def derive_heat_cost_series(feeds, anchors=None):
         share = week_dhw_share(hdd_i, w_end, a)
         if share is None:
             continue
+        nd, _ = nondom_for(w_end, ((feeds.get("ecb_fx") or {})
+                                   .get("eur_gbp_semester")))
         t = tariffs_for(w_end)
         if t is None:
             unpriced += 1
@@ -4841,18 +4890,27 @@ def derive_heat_cost_series(feeds, anchors=None):
         oil_c_l = bull[w_end] / 10.0
         oil_ex = (bull_nt[w_end] / 10.0 if w_end in bull_nt
                   else ex_tax(oil_c_l, "roi", "oil", w_end))
-        gas_ex = ex_tax(t["eur"]["gas"] * 100, "roi", "gas", w_end)
-        elec_ex = ex_tax(t["eur"]["electricity"] * 100, "roi",
-                         "electricity", w_end)
+        gb = sector_blend("roi", "gas", w_end, a, nd)
+        eb = sector_blend("roi", "electricity", w_end, a, nd)
         row["roi"] = route_cost_useful(
             {"oil_per_kwh": oil_c_l / kwh_l,
-             "gas_per_kwh": t["eur"]["gas"] * 100,
-             "elec_per_kwh": t["eur"]["electricity"] * 100},
+             "gas_per_kwh": gb["blend"], "elec_per_kwh": eb["blend"],
+             "elec_network_per_kwh": eb["network"]},
             ashp["roi"], share, a)
-        if oil_ex and gas_ex and elec_ex:
+        # Ex-tax: the domestic side strips VAT then carbon, the
+        # non-domestic side is already VAT-free so only carbon comes
+        # off. Blending the two stripped prices keeps the same weights.
+        gd_x = ex_tax(gb["domestic"], "roi", "gas", w_end)
+        en_x = ex_tax(eb["domestic"], "roi", "electricity", w_end)
+        c = carbon_for(w_end)
+        gn_x = (gb["nondom"] - c["gas_c_per_kwh"]) if c and gb["nondom"] else None
+        w_sv = gb.get("services_share", 0.0)
+        if oil_ex and gd_x and en_x and gn_x:
             row["roi_ex_tax"] = route_cost_useful(
                 {"oil_per_kwh": oil_ex / kwh_l,
-                 "gas_per_kwh": gas_ex, "elec_per_kwh": elec_ex},
+                 "gas_per_kwh": (1 - w_sv) * gd_x + w_sv * gn_x,
+                 "elec_per_kwh": (1 - w_sv) * en_x + w_sv * eb["nondom"],
+                 "elec_network_per_kwh": eb["nondom"]},
                 ashp["roi"], share, a)
         # NI only where the CCNI survey actually covers the week; the
         # bulletin bridge belongs to the back-look, not here, and a
@@ -4863,21 +4921,29 @@ def derive_heat_cost_series(feeds, anchors=None):
                   - dt.timedelta(days=6)).isoformat() <= d <= w_end]
         if wk:
             ppl = statistics.mean(ccni[d] for d in wk) * 100 / 900
+            gbn = sector_blend("ni", "gas", w_end, a, nd)
+            ebn = sector_blend("ni", "electricity", w_end, a, nd)
             row["ni"] = route_cost_useful(
                 {"oil_per_kwh": ppl / kwh_l,
-                 "gas_per_kwh": t["gbp"]["gas"] * 100,
-                 "elec_per_kwh": t["gbp"]["electricity"] * 100},
+                 "gas_per_kwh": gbn["blend"], "elec_per_kwh": ebn["blend"],
+                 "elec_network_per_kwh": ebn["network"]},
                 ashp["ni"], share, a)
             # NI needs no published ex-tax series: kerosene is fully
             # duty-rebated with no carbon price, and gas and
             # electricity carry no carbon price and no CCL on domestic
             # use. So ex-tax is retail over 1.05 exactly.
+            # NI: no carbon price at all, so ex-tax is the domestic
+            # rate over 1.05 blended with the non-domestic rate
+            # unchanged - the commercial side never carried VAT.
             row["ni_ex_tax"] = route_cost_useful(
                 {"oil_per_kwh": ex_tax(ppl, "ni", "oil", w_end) / kwh_l,
-                 "gas_per_kwh": ex_tax(t["gbp"]["gas"] * 100, "ni",
-                                       "gas", w_end),
-                 "elec_per_kwh": ex_tax(t["gbp"]["electricity"] * 100,
-                                        "ni", "electricity", w_end)},
+                 "gas_per_kwh": ((1 - w_sv) * ex_tax(gbn["domestic"], "ni",
+                                                     "gas", w_end)
+                                 + w_sv * gbn["nondom"]),
+                 "elec_per_kwh": ((1 - w_sv) * ex_tax(ebn["domestic"], "ni",
+                                                      "electricity", w_end)
+                                  + w_sv * ebn["nondom"]),
+                 "elec_network_per_kwh": ebn["nondom"]},
                 ashp["ni"], share, a)
         out.append(row)
     if not out:
