@@ -3241,6 +3241,71 @@ def test_boilers_do_not_swing_with_a_single_day_of_weather():
     assert "dhw_share" in rows[-1] and "dhw_mode" in rows[-1]
 
 
+def test_all_three_services_are_published():
+    """Space heating and hot water are different questions and the
+    answers diverge - on space heat a heat pump rides the compensated
+    flow down to 30 C, on hot water the cylinder pins it at 52 C
+    whatever the weather. The panel publishes both plus the blend a
+    household actually pays."""
+    import build as B
+    rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
+    assert rows
+    last = rows[-1]
+    for j in ("roi", "ni"):
+        if j not in last:
+            continue
+        sp, dhw, bl = last[j + "_space"], last[j + "_dhw"], last[j]
+        for r in ("oil_boiler", "gas_boiler", "ashp", "gshp", "network"):
+            assert dhw[r] > sp[r], (j, r)
+            assert sp[r] <= bl[r] <= dhw[r], (j, r)
+        # The finding, and it is not the one I first claimed. Every
+        # electric route pays roughly the SAME absolute penalty on hot
+        # water, because they all buy the same electricity and the
+        # cylinder adds a similar lift in kelvin to each. So the
+        # cheapest route takes the biggest RELATIVE hit, and the
+        # geothermal advantage over gas SHRINKS on hot water rather
+        # than air source collapsing.
+        adv_space = sp["gas_boiler"] / sp["network"]
+        adv_dhw = dhw["gas_boiler"] / dhw["network"]
+        assert adv_dhw < adv_space, (adv_space, adv_dhw)
+        assert adv_dhw > 1.0, adv_dhw
+
+
+def test_per_fuel_dhw_shares_exist_but_do_not_price_the_panel():
+    """SEAI publishes the hot-water share by fuel - oil 22.8%, gas
+    26.8% - and those are right for the energy and bill panels. They
+    are WRONG for the cost panel, where every route answers the same
+    counterfactual, so the share is a property of the building's
+    demand rather than of the fuel. Using them there would compare two
+    different demand profiles."""
+    import build as B
+    assert B.DHW_SHARE_BY_FUEL == {"oil": 0.228, "gas": 0.268}
+    # the panel prices on ONE share, whatever the route
+    rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
+    assert rows and "dhw_mode" in rows[-1]
+
+
+def test_hdd_year_gate_and_base_scan():
+    """Four lines that catch the class of error the UK sibling hit: an
+    annual quantity that silently stopped spanning a year while every
+    test suite kept passing."""
+    import build as B
+    good = {f"2026-{m:02d}-{d:02d}": 6.0
+            for m in range(1, 13) for d in range(1, 29)}
+    lines = []
+    real = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        total = B.hdd_year_gate(good)
+        B.hdd_year_gate({d: v * 2 for d, v in good.items()}, "doubled")
+    finally:
+        B.log = real
+    assert total and B.HDD_YEAR_MIN <= total <= B.HDD_YEAR_MAX
+    assert "OUTSIDE THE GATE" in " | ".join(lines)
+    # too short a record declines rather than passing a partial year
+    assert B.hdd_year_gate({"2026-01-01": 5.0}) is None
+
+
 if __name__ == "__main__":
     fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
     for fn in fns:
