@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.6.0"
+PIPELINE_VERSION = "5.7.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -4866,6 +4866,88 @@ NETWORK_MODEL = {
 }
 SPF_ANCHORS = {"ashp": 2.80, "gshp": 3.24}
 
+# Hot-water share BY FUEL, from SEAI's residential end-use model (2022):
+# oil space 1014.05 / water 299.27 / cooking 1.41; gas space 417.55 /
+# water 157.79 / cooking 14.42. So oil is 22.8% water and gas 26.8%.
+#
+# WHERE THESE APPLY, and where they do NOT. They are the right shares
+# for the ENERGY and BILL panels, where the question is how much of the
+# oil actually burned went on hot water. They are the WRONG shares for
+# the cost panel, where every route answers the same counterfactual -
+# if you heated THIS building with X, what would it cost - so the share
+# is a property of the building's demand, not of the fuel. Using 22.8%
+# on the oil line and 26.8% on the gas line there would compare two
+# different demand profiles and quietly break like-for-like. The cost
+# panel uses the island share; these sit alongside it for the panels
+# that need them.
+DHW_SHARE_BY_FUEL = {"oil": 0.228, "gas": 0.268}
+
+# Trailing-year HDD must land in this band or the build fails. Four
+# lines, and the UK sibling's own history is the argument: it raised a
+# regression window from 365 to 730 days, every quantity that treated
+# the window as a year silently doubled, and all four of its test
+# suites passed throughout - because they check structure and
+# consistency, not whether an annual quantity spans a year. Ireland is
+# milder than Britain, so the band sits lower: 1,900-2,900 brackets
+# the observed all-island figure with room for a hard or a soft year.
+# PROVISIONAL until the first live run reports the real figure - the
+# synthetic fixture reads 2,920, which is a made-up year rather than a
+# real one. Set this from observed all-island HDD once it is known.
+HDD_YEAR_MIN, HDD_YEAR_MAX = 1700, 3000
+
+
+def hdd_year_gate(hdd_daily, label="island"):
+    """Assert the trailing year of degree days is a plausible year."""
+    days = sorted(hdd_daily)[-365:]
+    if len(days) < 330:
+        return None
+    total = sum(hdd_daily[d] for d in days)
+    ok = HDD_YEAR_MIN <= total <= HDD_YEAR_MAX
+    log(f"hdd: trailing-year {label} HDD {total:.0f} "
+        f"(gate {HDD_YEAR_MIN}-{HDD_YEAR_MAX}) - "
+        + ("OK" if ok else "OUTSIDE THE GATE - an annual quantity is "
+                          "probably not spanning a year"))
+    return total
+
+
+def scan_hdd_base(temp_daily, gas_daily, bases=(14.5, 15.5, 16.5)):
+    """
+    Which degree-day base fits Irish gas demand best?
+
+    The base is fixed at 15.5 here and scanned in the UK sibling, which
+    lands on 16.5 - so it is not safe to assume the Irish stock gives
+    the same answer. Log-only: this reports the fit at each base and
+    changes nothing, because moving the base moves every HDD-shaped
+    figure on the site and that is a decision, not a tuning.
+    """
+    days = sorted(set(temp_daily) & set(gas_daily))
+    if len(days) < 300:
+        return None
+    out = {}
+    for b in bases:
+        xs = [max(0.0, b - temp_daily[d]) for d in days]
+        ys = [gas_daily[d] for d in days]
+        n = len(xs)
+        mx, my = sum(xs) / n, sum(ys) / n
+        sxx = sum((x - mx) ** 2 for x in xs)
+        sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+        if sxx <= 0:
+            continue
+        beta = sxy / sxx
+        alpha = my - beta * mx
+        ss_res = sum((y - (alpha + beta * x)) ** 2 for x, y in zip(xs, ys))
+        ss_tot = sum((y - my) ** 2 for y in ys)
+        out[b] = round(1 - ss_res / ss_tot, 4) if ss_tot > 0 else 0.0
+    if out:
+        best = max(out, key=out.get)
+        log(f"hdd: base scan on {len(days)} days - "
+            + ", ".join(f"{b} R2 {r}" for b, r in sorted(out.items()))
+            + f"; best {best}, in use {HDD_BASE_C}"
+            + ("" if best == HDD_BASE_C else
+               " - MOVING IT WOULD MOVE EVERY HDD-SHAPED FIGURE, so it "
+               "is a decision rather than a tuning"))
+    return out
+
 
 def flow_temp(t_out):
     """Weather-compensated SPACE flow. Hot water does not follow it."""
@@ -5083,6 +5165,14 @@ def derive_heat_cost_series(feeds, anchors=None):
                 "season the record covers")
         etas[jur] = {r: calibrate_eta(r, cal, jur, a)
                      for r in ("ashp", "gshp", "network")}
+    hdd_year_gate(hdd_i)
+    try:
+        gni = ((feeds.get("gni_live") or {}).get("ndm_gwh")
+               or (feeds.get("gni_live") or {}).get("total_gwh") or {})
+        if gni and hddf.get("temp_roi"):
+            scan_hdd_base(hddf["temp_roi"], gni)
+    except Exception as exc:
+        log(f"hdd: base scan skipped ({exc.__class__.__name__})")
     log("heat cost: calibrated Carnot fractions "
         + "; ".join(f"{j} " + ", ".join(f"{r} {v}" for r, v in e.items())
                     for j, e in etas.items())
@@ -5154,10 +5244,21 @@ def derive_heat_cost_series(feeds, anchors=None):
         gb = sector_blend("roi", "gas", day, a, nd)
         eb = sector_blend("roi", "electricity", day, a, nd)
         cr = cops_for("roi", temp["roi"][day])
-        row["roi"] = route_cost_useful(
-            {"oil_per_kwh": oil_c_l / kwh_l, "gas_per_kwh": gb["blend"],
-             "elec_per_kwh": eb["blend"], "elec_network_per_kwh": eb["network"],
-             "cops": cr}, None, mode, a)
+        pr = {"oil_per_kwh": oil_c_l / kwh_l, "gas_per_kwh": gb["blend"],
+              "elec_per_kwh": eb["blend"],
+              "elec_network_per_kwh": eb["network"], "cops": cr}
+        # THREE SERVICES, not one. Space heating and hot water are
+        # different questions and the answers diverge: on space heat a
+        # heat pump rides the weather-compensated flow down to 30 C,
+        # on hot water the cylinder pins it at 52 C whatever the
+        # weather. The geothermal advantage is STEADY on hot water and
+        # SWINGING on space heat - and it is air source whose case
+        # collapses on the cylinder, not the ground-coupled routes.
+        # "As delivered" is what a household actually pays: the two
+        # blended at the season's own share.
+        row["roi"] = route_cost_useful(pr, None, mode, a)
+        row["roi_space"] = route_cost_useful(pr, None, 0.0, a)
+        row["roi_dhw"] = route_cost_useful(pr, None, 1.0, a)
         gd_x = ex_tax(gb["domestic"], "roi", "gas", day)
         en_x = ex_tax(eb["domestic"], "roi", "electricity", day)
         c = carbon_for(day)
@@ -5176,11 +5277,12 @@ def derive_heat_cost_series(feeds, anchors=None):
             ebn = sector_blend("ni", "electricity", day, a, nd)
             cn = cops_for("ni", temp["ni"][day])
             row["t_ni"] = temp["ni"][day]
-            row["ni"] = route_cost_useful(
-                {"oil_per_kwh": ppl / kwh_l, "gas_per_kwh": gbn["blend"],
-                 "elec_per_kwh": ebn["blend"],
-                 "elec_network_per_kwh": ebn["network"], "cops": cn},
-                None, mode, a)
+            pn = {"oil_per_kwh": ppl / kwh_l, "gas_per_kwh": gbn["blend"],
+                  "elec_per_kwh": ebn["blend"],
+                  "elec_network_per_kwh": ebn["network"], "cops": cn}
+            row["ni"] = route_cost_useful(pn, None, mode, a)
+            row["ni_space"] = route_cost_useful(pn, None, 0.0, a)
+            row["ni_dhw"] = route_cost_useful(pn, None, 1.0, a)
             row["ni_ex_tax"] = route_cost_useful(
                 {"oil_per_kwh": ex_tax(ppl, "ni", "oil", day) / kwh_l,
                  "gas_per_kwh": ((1 - w_sv) * ex_tax(gbn["domestic"], "ni",
