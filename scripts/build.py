@@ -44,7 +44,13 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "5.1.1"
+# VERSIONING, and a temporary rule. Normally x.y.z means x a new
+# source or panel, y a source update, z wording or format. While the
+# site is under construction the x is FROZEN at 5 and only y and z
+# move - the panels are changing weekly and an x that tracked every
+# new one would say nothing. The "Under Construction" label on the
+# masthead and this freeze come off together.
+PIPELINE_VERSION = "5.2.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
