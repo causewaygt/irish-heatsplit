@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.4.0"
+PIPELINE_VERSION = "5.6.0"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -4584,15 +4584,32 @@ def derive_cool(feeds, anchors=None):
 # point where the lines converge - which is where the argument is won
 # or lost. So each route carries a PAIR.
 #
-#   oil boiler   space 0.85 / DHW 0.55 (dagger). BRE STP09/B01 on
-#                oil boilers in water-heating-only mode: "very low hot
-#                water efficiency (under 40% gross)". 0.55 is the
-#                middle of a defensible 0.45-0.65 band for a stock
-#                that is part condensing; 0.40 is the floor, not the
-#                estimate. This is the most challengeable number on
-#                the panel and it moves the summer oil line most.
-#   gas boiler   space 0.87 / DHW 0.68. BRE STP09/B07 DHW test rigs
-#                measured 64.6-71.6% against 85-90% at full load.
+#   oil boiler   space 0.82 / DHW 0.71. SAP 2012 Table 4b, p.207,
+#                "Seasonal efficiency for gas and oil boilers", gives a
+#                WINTER and a SUMMER figure for every archetype. Across
+#                the modern oil stock - standard 1998+ 80/68,
+#                condensing 84/72, condensing combi 82/73 - summer runs
+#                85 to 89% of winter, mean 0.866. On this site's 0.82
+#                winter anchor that is 0.71.
+#   gas boiler   space 0.85 / DHW 0.75. Same table: regular condensing
+#                84/74, condensing combi 84/75, regular non-condensing
+#                74/64; mean ratio 0.879 on 0.85 gives 0.75.
+#
+# CORRECTED 14 Aug 2026, and the correction is large. These were 0.55
+# and 0.68, resting on BRE STP09/B01's remark about "very low hot water
+# efficiency (under 40% gross)" - a line describing TWO SPECIFIC oil
+# boilers in a methodology paper, which I treated as a fleet floor and
+# cited to Simon as one. Table 4b IS the fleet answer, and its worst
+# archetype - a single-burner range cooker boiler at 47/37 - is a ratio
+# of 0.79, still far above the 0.67 I was using. The summer oil penalty
+# is real and roughly half what the panel was showing.
+#
+# Two things deliberately NOT applied. Table 4b is SAP's fallback for
+# boilers absent from the Product Characteristics Database, so it is
+# conservative and skewed to older plant; a BER-weighted PCDB figure
+# would beat it, and BER records boiler make and model. And Table 4c
+# deducts 5 points from BOTH figures where a regular boiler has no
+# interlock, which is common in older Irish installations (dagger).
 #   ashp         space from the Carnot engine at that day's air
 #                temperature; DHW 1.70 - the MCS 031 Issue 4.0 default
 #                (18 Mar 2025), cut from 1.75 in line with SAP 10.2.
@@ -4732,25 +4749,34 @@ def ex_tax(retail, jur, fuel, date_iso, kwh_per_litre=None):
 
 
 DHW_MODE = {
-    "oil_boiler": 0.55,        # dagger, BRE floor 0.40
-    "gas_boiler": 0.68,
+    "oil_boiler": 0.71,        # SAP Table 4b ratio on the 0.82 anchor
+    "gas_boiler": 0.75,        # SAP Table 4b ratio on the 0.85 anchor
     "ashp": 1.70,
     "gshp": 2.24,
     "network": round(5.00 * 2.24 / 3.24, 2),
 }
-DHW_MODE_FLOOR_OIL = 0.40      # BRE "under 40% gross", the low bound
+# Worst archetype in Table 4b: single-burner range cooker boiler with
+# a permanent pilot, 47 winter / 37 summer. Nothing in the Irish stock
+# should price below it.
+DHW_MODE_FLOOR_OIL = 0.37
 
-# What fraction of oil-home hot water is actually made by an ELECTRIC
-# IMMERSION rather than the boiler. Oil households commonly switch in
-# summer rather than fire a boiler at sub-40% for a small load, and
-# the cylinder immersion is near-universal in Irish homes. The
-# evidence is consistent but qualitative - no metered Irish or NI
-# study of summer immersion use exists - so this is a dagger, and it
-# is exposed rather than buried because it is the largest unquantified
-# term in the oil line. At COP 1 on domestic electricity the immersion
-# is DEARER than the inefficient boiler, which is why the oil line
-# rises in summer rather than falling.
-OIL_IMMERSION_DHW_SHARE = 0.30   # dagger
+# ZEROED, 14 Aug 2026. The fraction of oil-home hot water made by an
+# electric immersion rather than the boiler. The mechanism is real -
+# Irish oil households do switch in summer rather than fire a boiler
+# at sub-40% for a cylinder, and at COP 1 that is DEARER than the
+# inefficient boiler, so it pushed the oil line up rather than down.
+#
+# But at 0.30 it was adding 5.8 c to the summer oil figure, roughly
+# 46% of which was electricity rather than oil, on no metered evidence
+# at all - the research found consumer guidance and owner forums and
+# nothing measured. It was the largest unevidenced term on the panel
+# and it sat under its most striking feature. The UK sibling has no
+# equivalent, so carrying it here also broke parity between the two.
+#
+# Left as a named constant rather than deleted: the code path stays,
+# and a metered Irish or NI study of summer immersion use is what
+# would turn it back on.
+OIL_IMMERSION_DHW_SHARE = 0.0    # dagger - zeroed pending evidence
 
 
 def sector_blend(jur, fuel, date_iso, anchors=None, nondom=None):
