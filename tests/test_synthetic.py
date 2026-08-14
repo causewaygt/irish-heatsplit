@@ -3285,6 +3285,67 @@ def test_per_fuel_dhw_shares_exist_but_do_not_price_the_panel():
     assert rows and "dhw_mode" in rows[-1]
 
 
+def test_delivered_heat_volume_is_published_and_matches_the_share():
+    """The quantity the per-MWh axis is charged on. It is shaped by
+    the SAME rule as the hot-water share - hot water flat across the
+    year, space heat by the day's share of the trailing year's degree
+    days - so dhw / (space + dhw) must reproduce dhw_share EXACTLY.
+    If the two ever drift apart the panel is drawing a volume that
+    does not belong to the price above it."""
+    import build as B
+    rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
+    assert rows
+    seen = 0
+    for r in rows:
+        for j in ("roi", "ni"):
+            v = r.get("vol_" + j)
+            if not v:
+                continue
+            seen += 1
+            assert v["space"] >= 0 and v["dhw"] > 0, (j, v)
+            share = v["dhw"] / (v["space"] + v["dhw"])
+            assert abs(share - r["dhw_share"]) < 2e-3, (j, share,
+                                                        r["dhw_share"])
+    assert seen, "no row carried a delivered-heat volume"
+    # Hot water is FLAT: the same figure every day of the year. That
+    # is the shaping stated on the site, and the flat band is the
+    # feature of the chart - everything above it is weather.
+    dhw = {r["vol_roi"]["dhw"] for r in rows if r.get("vol_roi")}
+    assert len(dhw) == 1, dhw
+    # and the seasonal swing lands on space heat
+    sp = [r["vol_roi"]["space"] for r in rows if r.get("vol_roi")]
+    assert max(sp) > min(sp) * 1.5, (min(sp), max(sp))
+
+
+def test_delivered_heat_converts_input_to_useful_before_shaping():
+    """The sector anchors are fuel INPUT. A per-MWh-of-delivered-heat
+    axis cannot be charged on an input quantity, so the volume goes
+    through each jurisdiction's own fuel mix and efficiencies first -
+    the same conversion hourly_heat_mw() uses, not a second one."""
+    import build as B
+    for jur in ("roi", "ni"):
+        j = B.ANCHORS[jur]
+        raw = (j["residential_heat_twh"] + j["services_heat_twh"]) * 1000.0
+        useful = B.useful_heat_gwh_year(jur)
+        assert useful < raw, (jur, useful, raw)
+        # boilers dominate both jurisdictions, so the conversion is a
+        # haircut rather than a transformation
+        assert 0.7 < useful / raw < 1.0, (jur, useful / raw)
+    # ROI is the larger jurisdiction and must carry the larger volume
+    assert B.useful_heat_gwh_year("roi") > B.useful_heat_gwh_year("ni")
+    # the annual total reconciles with the daily emission
+    hdd = {f"2026-{m:02d}-{d:02d}": 6.0
+           for m in range(1, 13) for d in range(1, 29)}
+    day = sorted(hdd)[-1]
+    v = B.day_delivered_heat(hdd, day, "roi")
+    flat = (B.useful_heat_gwh_year("roi")
+            * (1 - B.ANCHORS["space_heat_fraction"]) / 365.0)
+    assert abs(v["dhw"] - flat) < 1e-2, (v, flat)
+    # short record declines rather than shaping on a season
+    assert B.day_delivered_heat({"2026-01-01": 5.0}, "2026-01-01",
+                                "roi") is None
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
