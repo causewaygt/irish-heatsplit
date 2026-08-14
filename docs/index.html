@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.4.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.5.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -100,6 +100,21 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .costctl button{background:none;border:1px solid var(--line);color:var(--muted);
   font:inherit;padding:3px 10px;border-radius:3px;cursor:pointer}
 .costctl button[aria-pressed="true"]{color:#3AAA35;border-color:#3AAA35}
+/* Panel 2 sits bare on the page like panel 1 rather than inside a
+   ruled box: the outline was drawing a frame around a chart that
+   already has its own axis, and the second chart under it made the
+   frame taller than anything it contained. */
+#cost .panelbox{background:none;border:none;border-radius:0;padding:0}
+/* The volume chart is the quantity behind the price above it. It
+   shares the x-axis, so it sits close under the price legend rather
+   than reading as a separate exhibit. */
+.volchart{margin-top:6px}
+/* WINDOW reads at panel 1's size and wording. It is the same control
+   doing the same job, so it should not look like a caption here and a
+   heading there. */
+.costctl.costwin{font-size:12px}
+.costctl.costwin button{font-size:13px;letter-spacing:.09em;
+  font-weight:600;padding:4px 12px}
 .fold{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 .fold summary{cursor:pointer;font-family:'IBM Plex Mono',monospace;
   font-size:.78rem;color:var(--muted);letter-spacing:.04em}
@@ -417,16 +432,19 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <button data-basis="ex_tax">EX-TAX</button>
       <span id="costspan"></span>
     </div>
-    <div class="costctl">
-      <span>WINDOW</span>
-      <button data-cwin="28" aria-pressed="true">4W</button>
-      <button data-cwin="84">12W</button>
-      <button data-cwin="365">12M</button>
-      <button data-cwin="730">24M</button>
-      <button data-cwin="1825">60M</button>
+    <div class="costctl costwin">
+      <span>SHOW</span>
+      <button data-cwin="7" title="1 week">WEEK</button>
+      <button data-cwin="28" title="4 weeks" aria-pressed="true">4 WEEKS</button>
+      <button data-cwin="84" title="12 weeks">12 WEEKS</button>
+      <button data-cwin="365" title="12 months">12 MONTHS</button>
+      <button data-cwin="730" title="24 months">24 MONTHS</button>
+      <button data-cwin="1825" title="60 months">60 MONTHS</button>
     </div>
     <div id="costChart" class="chart">Loading the routes&hellip;</div>
     <div class="legend" id="costLegend"></div>
+    <div id="volChart" class="chart volchart"></div>
+    <div class="legend" id="volLegend"></div>
     <p class="note" id="costNote"></p>
     <details class="fold">
       <summary>How this is estimated, and why it is not metered</summary>
@@ -862,6 +880,95 @@ function costPanel(series){
   drawCost();
 }
 
+// ------------------------------------------------- delivered heat volume
+// The quantity the price axis above is charged on. INVARIANT to
+// SERVICE and BASIS - it is the island's heat, not a route and not a
+// tax basis - so it is drawn once from the same rows and the same
+// window, and the caption says so rather than leaving the reader to
+// test the buttons.
+const VOL_PARTS = [
+  ["space", "Space heating", "#8FA6A0"],
+  ["dhw", "Hot water", "#C9D6D0"],
+];
+
+function drawVol(rows, state, geom){
+  const box = el("volChart"), leg = el("volLegend");
+  if(!box) return;
+  const key = "vol_" + state;
+  const have = rows.filter(r => r[key]);
+  if(have.length < 3){
+    // Same voice as the price chart: name the cause. The field ships
+    // with pipeline 5.8.0 and the site deploys ahead of the build.
+    box.textContent = "The delivered-heat volume arrives with the next "
+      + "daily build \u2014 the site is ahead of the data file.";
+    leg.innerHTML = "";
+    return;
+  }
+  const W = geom.W, H = 150, P = {t:12, r:geom.r, b:26, l:geom.l};
+  let hi = 0;
+  have.forEach(r => { const v = r[key];
+    hi = Math.max(hi, v.space + v.dhw); });
+  hi = hi * 1.06 || 1;
+  const x = i => P.l + i * (W - P.l - P.r) / Math.max(rows.length - 1, 1);
+  const y = v => P.t + (1 - v / hi) * (H - P.t - P.b);
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" '
+    + 'height="' + H + '" role="img" aria-label="GWh of delivered heat '
+    + 'per day, space heating and hot water">'
+    + '<text x="14" y="' + (H / 2) + '" transform="rotate(-90 14 '
+    + (H / 2) + ')" text-anchor="middle" font-size="12" '
+    + 'fill="var(--muted)" font-family="Lato, sans-serif">'
+    + 'GWh of delivered heat per day</text>';
+  for(let g = 0; g <= 2; g++){
+    const v = hi * g / 2;
+    svg += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(v)
+      + '" y2="' + y(v) + '" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="' + (P.l - 6) + '" y="' + (y(v) + 4)
+      + '" text-anchor="end" font-size="11" fill="var(--muted)" '
+      + 'font-family="IBM Plex Mono, monospace">' + v.toFixed(0) + '</text>';
+  }
+  // Stacked, space heat on the bottom: the flat hot-water band on top
+  // is the point - it is the same every day, and the swing above the
+  // summer floor is all weather.
+  let base = rows.map(() => 0);
+  VOL_PARTS.forEach(([k, , col]) => {
+    let top = "", back = "";
+    rows.forEach((r, i) => {
+      const v = r[key] ? r[key][k] : 0;
+      const t = base[i] + v;
+      top += (i ? "L" : "M") + x(i) + " " + y(t);
+      base[i] = t;
+    });
+    for(let i = rows.length - 1; i >= 0; i--){
+      back += "L" + x(i) + " " + y(base[i] - (rows[i][key]
+              ? rows[i][key][k] : 0));
+    }
+    svg += '<path d="' + top + back + 'Z" fill="' + col
+      + '" fill-opacity="0.55" stroke="none"/>'
+      + '<path d="' + top + '" fill="none" stroke="' + col
+      + '" stroke-width="1.4"/>';
+  });
+  const seen = {};
+  rows.forEach((r, i) => { const m = r.day.slice(0, 7);
+    if (seen[m] === undefined) seen[m] = i; });
+  const months = Object.keys(seen);
+  const mstep = Math.max(1, Math.ceil(months.length / 6));
+  months.forEach((m, k) => {
+    if (k % mstep) return;
+    svg += '<text x="' + x(seen[m]) + '" y="' + (H - 6) + '" '
+      + 'text-anchor="middle" font-size="11" fill="var(--muted)" '
+      + 'font-family="IBM Plex Mono, monospace">' + m + '</text>';
+  });
+  svg += '</svg>';
+  box.innerHTML = svg;
+  const last = have[have.length - 1][key];
+  leg.innerHTML = VOL_PARTS.map(([, name, col]) =>
+    '<span><span class="k" style="background:' + col + '"></span>'
+    + name + "</span>").join("")
+    + '<span style="color:var(--faint)">' + last.dhw.toFixed(1)
+    + " GWh of hot water every day of the year \u00b7 the same in "
+    + "every service and basis view</span>";
+}
+
 function drawCost(){
   const state = HEROSTATE === "ni" ? "ni" : "roi";
   // Service first, then basis. Ex-tax is computed only on the blended
@@ -878,12 +985,31 @@ function drawCost(){
   const rows = COST.slice(-CWIN).filter(r => r[key]);
   const box = el("costChart");
   if(rows.length < 3){
-    box.textContent = state === "ni"
-      ? "Northern Ireland is priced from the Consumer Council survey, "
-        + "which begins in February 2026 - there is not yet a window "
-        + "this long. Switch to all-island or ROI, or a shorter window."
-      : "Not enough priced weeks in this window yet.";
+    // Name the actual cause. "Not enough priced weeks" invited the
+    // reader to think the record was short when the real answer was
+    // usually that the field is absent from the payload - the site
+    // deploys immediately, data.json only changes at the next build,
+    // so a new service view can exist here before it exists there.
+    const missing = COST.length > 0 && !COST[COST.length - 1][key];
+    box.textContent = missing
+      ? "This view needs a field the current data file does not carry "
+        + "yet \u2014 it arrives with the next daily build. Try AS "
+        + "DELIVERED in the meantime."
+      : state === "ni"
+        ? "Northern Ireland is priced from the Consumer Council daily "
+          + "survey, which begins in February 2026, so this window "
+          + "reaches further back than the record does. Try a shorter "
+          + "window, or ROI."
+        : "Not enough priced days in this window yet.";
     el("costLegend").innerHTML = "";
+    // The volume chart shares this window, so it goes with it rather
+    // than being left behind under a message saying there is no data.
+    el("volChart").textContent = "";
+    el("volLegend").innerHTML = "";
+    // Do not leave the previous view's span behind it - it read
+    // "365 days" beside a message saying there was no data.
+    el("costspan").textContent = "";
+    el("costNote").textContent = "";
     return;
   }
   const W = 1000, H = 320, P = {t:14, r:14, b:26, l:62};
@@ -934,6 +1060,10 @@ function drawCost(){
   el("costLegend").innerHTML = COST_ROUTES.map(([, name, col]) =>
     '<span><span class="k" style="background:' + col + '"></span>'
     + name + "</span>").join("");
+  // Same W, same left and right padding, same row count - so the two
+  // charts stand on the same x-axis and a cold day lines up with the
+  // volume it produced.
+  drawVol(rows, state, {W: W, l: P.l, r: P.r});
   const last = rows[rows.length - 1];
   el("costspan").textContent = "\u00b7 " + unit + " per MWh of delivered "
     + "heat \u00b7 "
@@ -964,18 +1094,32 @@ function drawCost(){
     + "tanker \u2014 no meter, no grid, no daily statistics \u2014 so "
     + "this is an estimate built from published prices and published "
     + "efficiencies, and it is shown as one.</p>"
-    + "<p>The weekly split between hot water and space heat is the "
-    + "site's own shaping: hot water is flat across the year, space "
-    + "heat follows the week's share of the trailing year's heating "
-    + "degree days. In August that leaves roughly four-fifths of the "
-    + "heat as hot water, and every route performs worse on hot water "
-    + "than on space heat \u2014 an oil boiler cycling for a small "
-    + "summer load falls furthest.</p>"
-    + "<p>Oil hot water is part boiler, part immersion. At COP 1 on "
-    + "domestic electricity the immersion costs more than the "
-    + "inefficient boiler, so the leakage pushes the oil line up. The "
-    + "share is a judgement figure\u2020 \u2014 no metered Irish or "
-    + "Northern Irish study of summer immersion use exists.</p>"
+    + "<p>The split between hot water and space heat is the site's own "
+    + "shaping: hot water is flat across the year, space heat follows "
+    + "the day's share of the trailing year's heating degree days. In "
+    + "August that leaves roughly four-fifths of the heat as hot "
+    + "water. Every route performs worse on hot water than on space "
+    + "heat, and they do not degrade equally \u2014 which is what the "
+    + "service buttons are for.</p>"
+    + "<p>Space heating and hot water are different questions. On "
+    + "space heat a heat pump rides a weather-compensated flow down to "
+    + "30 \u00b0C in mild weather; on hot water the cylinder pins it "
+    + "at 52 \u00b0C whatever the weather, so none of that benefit is "
+    + "available. Every electric route pays a similar penalty in "
+    + "absolute terms, so the cheapest route takes the largest "
+    + "proportional hit and the geothermal advantage narrows on hot "
+    + "water rather than disappearing. \u201cAs delivered\u201d "
+    + "blends the two at the season's own share \u2014 that is what a "
+    + "household actually pays.</p>"
+    + "<p>Boilers are priced at a separate hot-water efficiency, from "
+    + "SAP 2012 Table 4b, which publishes a winter and a summer "
+    + "seasonal figure for every gas and oil archetype. A boiler "
+    + "cycling for a cylinder alone loses its condensing benefit and "
+    + "its standing losses land on a small load. Summer runs 82 to "
+    + "89% of winter across that table; this site uses 0.71 for oil "
+    + "and 0.75 for gas. Boilers move with the fuel price and with the "
+    + "season, not with a single day's weather; heat pumps move with "
+    + "the day, because their COP is instantaneous physics.</p>"
     + "<p>Ex-tax means product, distribution and margin \u2014 not a "
     + "wholesale quote. VAT comes off first because it is charged on "
     + "the carbon-inclusive price; the carbon component comes off "
@@ -1765,7 +1909,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.4.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.5.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
