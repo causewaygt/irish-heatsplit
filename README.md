@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.1.0 / site 5.0.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.2.0 / site 5.1.0.
 
 ## The premise
 
@@ -550,6 +550,13 @@ series exists.
 
 ## Versioning
 
+**Temporarily frozen at x = 5.** The scheme is `x.y.z` – x a new source
+or panel, y a source update, z wording or format – but while the site is
+under construction only y and z move. The panels are changing weekly and
+an x that tracked every new one would carry no information. The
+masthead's "Under Construction" label and this freeze come off together.
+
+
 `x.y.z` – x: new source or panel; y: source update; z: wording/format.
 Pipeline and site are versioned independently; both are stamped in the
 footer alongside the build time.
@@ -558,7 +565,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 157 tests, no network
+python3 tests/test_synthetic.py   # 154 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
