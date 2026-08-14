@@ -44,7 +44,7 @@ import requests
 
 # ---------------------------------------------------------------- constants
 
-PIPELINE_VERSION = "5.1.0"
+PIPELINE_VERSION = "5.1.1"
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -1604,19 +1604,23 @@ def odh26_from_hourly(payload, names, weights, base_c=26.0):
     return {d: round(v, 2) for d, v in per_day.items()}
 
 
-# MIDLANDS PROBE, log-only. All seven weighted stations sit on or near
-# the coast, so the island series is entirely maritime. Ireland's
-# interior runs colder on winter nights, which would bias the weighted
-# HDD low - and with it the space-heat share of every week, since the
-# hot-water term is flat and space heat is what the degree days shape.
+# MIDLANDS PROBE - RAN AND RETIRED, 14 Aug 2026. All seven weighted
+# stations sit on or near the coast, so the island series is entirely
+# maritime, and Ireland's interior runs colder on winter nights. The
+# worry was that the weighted HDD is biased low, and with it the
+# space-heat share of every week.
 #
-# Rather than argue about it, measure it: Athlone is fetched alongside
-# the seven at no extra request, given the midland counties' share of
-# island population (Longford, Westmeath, Offaly, Laois ~ 4%), the
-# other weights scaled down to make room, and both series logged. If
-# the difference is immaterial the caveat closes; if it is not, the
-# station set needs a midlands member and every anchor shifts.
-PROBE_STATIONS = {"Athlone": (53.42, -7.94, 0.04, "ROI")}
+# Measured rather than argued: Athlone was fetched alongside the seven
+# at the midland counties' share of island population (Longford,
+# Westmeath, Offaly, Laois ~ 4%) over 1,151 days. Island HDD moved
+# 4.65 -> 4.66, +0.28%; winter alone 8.90 -> 8.92, +0.27%. Immaterial,
+# so the all-coastal set stands and the probe is retired rather than
+# carried for ever.
+#
+# It also left a station in the fetch that STATIONS did not know
+# about, which broke the ODH26 loop with a KeyError - a reason to
+# retire a probe once it has answered rather than leave it running.
+PROBE_STATIONS: dict = {}
 
 
 def feed_hdd():
@@ -1689,7 +1693,7 @@ def feed_hdd():
         "source": "ERA5 via Open-Meteo, population-weighted HDD",
     }
 
-    # --- midlands probe (log-only, changes nothing)
+    # --- midlands probe (log-only, changes nothing; empty once answered)
     try:
         if "Athlone" in daily_by_station and daily_by_station["Athlone"]:
             share = PROBE_STATIONS["Athlone"][2]
@@ -1742,7 +1746,13 @@ def feed_hdd():
                 "hourly": "temperature_2m", "timezone": "UTC",
             }, timeout=180).json()
         odh_new = odh26_from_hourly(
-            hp, names, {n: STATIONS[n][2] for n in names})
+            # weighted_names, not names: a probe station is fetched
+            # but is not in STATIONS, and passing it here raised a
+            # KeyError that silently stopped ODH collection on
+            # 14 Aug 2026. Anything downstream of the fetch reads the
+            # WEIGHTED set.
+            hp, weighted_names,
+            {n: STATIONS[n][2] for n in weighted_names})
         odh = prev_series("hdd", "odh26_island")
         odh.update(odh_new)
         out["odh26_island"] = trim_series(odh)
