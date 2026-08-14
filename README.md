@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.0.2 / site 5.0.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.1.0 / site 5.0.1.
 
 ## The premise
 
@@ -376,6 +376,18 @@ consistent but qualitative – no metered Irish or NI study of summer
 immersion use exists – so the share is exposed as a parameter rather
 than buried, at 30%†.
 
+**Every route pays what it would actually pay.** The panel priced all
+five at domestic tariffs, which was wrong twice. About a quarter of the
+island's building heat is services rather than residential, and the hero
+bill has always blended that – so the cost panel disagreed with the bill
+on the same page. And a heat network operator is not a household at all:
+it buys electricity on a commercial contract and would never pay a
+domestic tariff. So gas, air source and ground source blend domestic and
+non-domestic at the services share of island heat input; the geothermal
+network prices wholly at non-domestic, whoever the end customer is; and
+oil stays a single price, because kerosene sells to both sectors on the
+same terms and no non-domestic oil rate exists.
+
 **Retail and ex-tax, with the wedge derived rather than left to the
 browser.** Deliberately *ex-tax*, not *wholesale*: the EU bulletin's
 without-taxes line is product, distribution and margin, not a wholesale
@@ -546,7 +558,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 154 tests, no network
+python3 tests/test_synthetic.py   # 157 tests, no network
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
