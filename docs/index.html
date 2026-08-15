@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.12.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.12.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -74,6 +74,11 @@ section{padding:34px 0;border-bottom:1px solid var(--line)}
 .spark b{color:var(--green);font-weight:700}
 .updated{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--faint);text-align:right;margin-top:8px}
 .headline{text-transform:none;letter-spacing:0;font-weight:800;font-size:clamp(1.6rem,4.4vw,2.5rem);line-height:1.15;color:#fff;margin:2px 0 10px}
+/* The line under the masthead is a statement of what the site is, not
+   a headline shouting it. Regular weight at the 24pt spec; .headline
+   keeps its 800 for the panel titles that still want it. */
+.headline.lede{font-weight:400;font-size:clamp(1.15rem,2.2vw,1.5rem);
+  line-height:1.3;max-width:900px}
 .headline .hot{color:#e2694a}
 .headline .cold{color:#5BA4CF}
 .trendctl{display:flex;gap:8px;align-items:center;justify-content:flex-end;
@@ -2186,7 +2191,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.12.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.12.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
