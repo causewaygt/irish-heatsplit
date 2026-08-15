@@ -51,7 +51,19 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.18.0"
+PIPELINE_VERSION = "5.19.0"
+# 5.19.0: derive_grid_views publishes the three series Panel 3 plots -
+#   168 hourly rows, 90 daily, up to 24 monthly, about 280 against the
+#   store's 9,000-plus hours, so the payload carries what is DRAWN
+#   rather than what was computed (~34 kB). Each row is the island's
+#   delivered heat and the electricity the site's own 20% what-if
+#   would draw by route, netted of the resistive heating already in
+#   observed demand, on the SAME hourly air COP the binding-hour panel
+#   uses.
+#   TWO WHAT-IFS, KEPT APART: the binding-hour panel SOLVES for the
+#   share that fits; these views plot the FIXED 20% the rest of the
+#   site uses. A test asserts the solve is not pinned to the constant,
+#   because reading them as one number would be the easy mistake.
 # 5.18.0: "What heat emits" - gCO2e per USEFUL kWh by route, the
 #   Irish answer to the UK sibling's sub-panel, under panel 2 with its
 #   own method fold. ALL-ISLAND and deliberately without a
@@ -4711,6 +4723,91 @@ def hourly_heat_mw(store, anchors=None):
     return {k: flat + space_mwh * dh[k] / total_dh for k in temps}
 
 
+GRID_WHATIF_SHARE = 0.20
+
+
+def derive_grid_views(store, anchors=None):
+    """
+    The three series Panel 3 plots, at the resolution each view needs.
+
+    NOT the whole hourly store. The live week is 168 hourly points, the
+    daily view 90, the falcon 24 monthly - about 280 rows against the
+    store's 9,384 hours, so the payload carries what is drawn rather
+    than what was computed. Each row is the island's delivered heat and
+    the electricity the SITE'S OWN 20% what-if would draw by route,
+    netted of the resistive heating already in observed demand.
+
+    The binding-hour panel above solves for the share that fits; this
+    is the fixed 20% the rest of the site uses, so the two answer
+    different questions and must not be read as one.
+    """
+    a = anchors or ANCHORS
+    heat = hourly_heat_mw(store, a)
+    if not heat:
+        return None
+    ser = expand_hourly(store) or {}
+    temps = ser.get("temp_ai") or {}
+    demand = ser.get("demand_ai") or {}
+    hours = sorted(k for k in heat if k in demand)
+    if len(hours) < 24 * 30:
+        return None
+
+    res = 0.0
+    for jur in ("ni", "roi"):
+        j = a[jur]
+        h = j["residential_heat_twh"] + j["services_heat_twh"]
+        res += h * j["fuel_shares"].get("electricity", 0.0) \
+            * a["efficiency"].get("electricity", 1.0)
+    tot = sum((a[j]["residential_heat_twh"] + a[j]["services_heat_twh"])
+              * sum(sh * a["efficiency"][f]
+                    for f, sh in a[j]["fuel_shares"].items())
+              for j in ("ni", "roi"))
+    res_share = (res / tot) if tot else 0.0
+    s = GRID_WHATIF_SHARE
+    # The SAME air COP the binding-hour panel uses, from the same
+    # anchors. Two hourly COP models on one panel would be a bug
+    # waiting to be found by a reader adding the numbers up.
+    p = a["ashp"]
+
+    def cop_at(t):
+        lift = max(5.0, p["flow_c"] - t)
+        return p["carnot_fraction"] * (p["flow_c"] + 273.15) / lift \
+            * p["defrost_derate"]
+
+    def row(keys):
+        """Mean MW across the keys, plus each route's what-if draw."""
+        q = sum(heat[k] for k in keys) / len(keys)
+        t = sum(temps.get(k, 5.0) for k in keys) / len(keys)
+        d = sum(demand[k] for k in keys) / len(keys)
+        cop = max(1.0, cop_at(t))
+        disp = s * q * res_share
+        return {
+            "heat_mw": round(q), "temp_c": round(t, 1),
+            "demand_mw": round(d),
+            "air_source": round(s * q / cop - disp),
+            "ground_source": round(s * q / GSHP_SPF - disp),
+            "geothermal_network": round(s * q / GEO_NETWORK_SCOP - disp),
+        }
+
+    def stamp(k, n):
+        return k[:n]
+
+    hourly = [dict(row([k]), t=k) for k in hours[-168:]]
+    days, months = {}, {}
+    for k in hours:
+        days.setdefault(stamp(k, 10), []).append(k)
+        months.setdefault(stamp(k, 7), []).append(k)
+    daily = [dict(row(v), t=d) for d, v in sorted(days.items())[-90:]]
+    monthly = [dict(row(v), t=m) for m, v in sorted(months.items())[-24:]]
+    out = {"share": s, "hourly": hourly, "daily": daily,
+           "monthly": monthly,
+           "span": [hours[0], hours[-1]]}
+    log(f"grid views: {len(hourly)} hourly, {len(daily)} daily, "
+        f"{len(monthly)} monthly rows at a {int(s * 100)}% what-if "
+        f"({hours[0]}..{hours[-1]})")
+    return out
+
+
 def derive_tightest_hour(store, feeds=None, anchors=None):
     """
     B.2.1 - the tightest hour. Log-only; nothing draws from it yet,
@@ -6796,6 +6893,9 @@ def main():
         try:
             if store and store.get("heat_ready"):
                 derived["tightest_hour"] = derive_tightest_hour(store)
+                gv = derive_grid_views(store)
+                if gv:
+                    derived["grid_views"] = gv
             elif store:
                 log("B.2.1 skipped - heat layer not ready "
                     f"(temp_ai {store.get('completeness_pct', {}).get('temp_ai')}%)")
