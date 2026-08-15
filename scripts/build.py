@@ -51,7 +51,15 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.10.0"
+PIPELINE_VERSION = "5.11.0"
+# 5.11.0: NI oil is STEP-HELD across its week, capped at
+#   NI_OIL_HOLD_DAYS. 5.10.0 gave the series depth back to 2023 but
+#   priced only the survey days, so behind the daily checker's start
+#   the NI line was one day in seven - 144 of 375 on the first live
+#   run against ROI's 375. That reads as missing data rather than as a
+#   weekly survey. Held forward it is the same treatment, and the same
+#   claim, as the ROI bulletin week has always had. The cap stops one
+#   reading being smeared across the archive's real gaps.
 # 5.10.0: the CCNI WEEKLY ARCHIVE joins the daily checker as a second
 #   source for NI oil. The archive page embeds a chart array of the
 #   same shape as the daily page, so it parses through the existing
@@ -5063,6 +5071,12 @@ DHW_SHARE_BY_FUEL = {"oil": 0.228, "gas": 0.268}
 HDD_YEAR_MIN, HDD_YEAR_MAX = 1700, 3000
 
 
+# How long a single NI oil reading may be held forward. The CCNI
+# daily checker publishes Mon-Fri and the weekly archive once a week,
+# so 10 days covers a normal weekly cadence plus a missed publication
+# without smearing one price across one of the archive's real gaps.
+NI_OIL_HOLD_DAYS = 10
+
 # The widest window the cost panel offers, in days. The retained
 # series must cover this PLUS a trailing year, because every day needs
 # a year of degree days behind it to know its own hot-water share.
@@ -5469,6 +5483,8 @@ def derive_heat_cost_series(feeds, anchors=None):
         smooth[d] = sum(w) / len(w)
 
     weeks = sorted(bull)
+    # Sorted once: the NI step-hold below scans it per day.
+    ccni_days = sorted(ccni)
     out, unpriced = [], 0
     for day in sorted(temp["roi"]):
         if day < weeks[0]:
@@ -5539,8 +5555,26 @@ def derive_heat_cost_series(feeds, anchors=None):
                  "elec_per_kwh": (1 - w_sv) * en_x + w_sv * eb["nondom"],
                  "elec_network_per_kwh": eb["nondom"], "cops": cr},
                 None, mode, a)
-        if day in ccni and temp["ni"].get(day) is not None:
-            ppl = ccni[day] * 100 / 900
+        # STEP-HELD, exactly as the ROI bulletin week is above. The
+        # NI series is daily only back to the CCNI daily checker's
+        # start; behind that it is the weekly archive, one reading a
+        # week. Reading `day in ccni` priced one day in seven and left
+        # the NI line dotted - 144 of 375 days on the 15 Aug run
+        # against ROI's 375 - which looks like missing data rather
+        # than a weekly survey. Holding the reading forward is the
+        # same treatment, and the same claim, as ROI oil.
+        #
+        # CAPPED at NI_OIL_HOLD_DAYS. The archive has real gaps - a
+        # 26-day one after its first row, a 21-day one in 2023 - and
+        # smearing one reading across a month would invent a flat
+        # price rather than admit a hole.
+        ni_day = max((d for d in ccni_days if d <= day), default=None)
+        if ni_day is not None \
+                and (dt.date.fromisoformat(day)
+                     - dt.date.fromisoformat(ni_day)).days \
+                <= NI_OIL_HOLD_DAYS \
+                and temp["ni"].get(day) is not None:
+            ppl = ccni[ni_day] * 100 / 900
             gbn = sector_blend("ni", "gas", day, a, nd)
             ebn = sector_blend("ni", "electricity", day, a, nd)
             cn = cops_for("ni", temp["ni"][day])
