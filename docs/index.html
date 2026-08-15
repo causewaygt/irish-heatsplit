@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.5.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.6.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -381,7 +381,6 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <button data-win="13" title="12 weeks">12 WEEKS</button>
       <button data-win="53" title="12 months">12 MONTHS</button>
       <button data-win="105" title="24 months">24 MONTHS</button>
-      <button data-win="261" title="60 months">60 MONTHS</button>
       <span id="trendspan"></span>
     </div>
     <h1 class="headline">How the island of Ireland
@@ -439,7 +438,6 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <button data-cwin="84" title="12 weeks">12 WEEKS</button>
       <button data-cwin="365" title="12 months">12 MONTHS</button>
       <button data-cwin="730" title="24 months">24 MONTHS</button>
-      <button data-cwin="1825" title="60 months">60 MONTHS</button>
     </div>
     <div id="costChart" class="chart">Loading the routes&hellip;</div>
     <div class="legend" id="costLegend"></div>
@@ -896,11 +894,19 @@ function drawVol(rows, state, geom){
   if(!box) return;
   const key = "vol_" + state;
   const have = rows.filter(r => r[key]);
-  if(have.length < 3){
-    // Same voice as the price chart: name the cause. The field ships
-    // with pipeline 5.8.0 and the site deploys ahead of the build.
-    box.textContent = "The delivered-heat volume arrives with the next "
-      + "daily build \u2014 the site is ahead of the data file.";
+  if(have.length < 3 || have.length !== rows.length){
+    // Two cases, one message each. A PARTIAL window is the one that
+    // matters: the pipeline emits a volume only once 200 days of
+    // degree days sit behind the day, so the early end of a long
+    // window can be bare while the recent end is full. Plotting those
+    // days at zero would read as "no heat that day", which is worse
+    // than not drawing - so the chart declines rather than drawing a
+    // floor nobody meant.
+    box.textContent = have.length && have.length !== rows.length
+      ? "The delivered-heat volume does not cover the whole of this "
+        + "window yet \u2014 it starts " + have[0].day + "."
+      : "The delivered-heat volume arrives with the next daily build "
+        + "\u2014 the site is ahead of the data file.";
     leg.innerHTML = "";
     return;
   }
@@ -996,10 +1002,9 @@ function drawCost(){
         + "yet \u2014 it arrives with the next daily build. Try AS "
         + "DELIVERED in the meantime."
       : state === "ni"
-        ? "Northern Ireland is priced from the Consumer Council daily "
-          + "survey, which begins in February 2026, so this window "
-          + "reaches further back than the record does. Try a shorter "
-          + "window, or ROI."
+        ? "Northern Ireland's oil record does not reach this far back "
+          + "yet. Try a shorter window, or ROI \u2014 the Republic's "
+          + "series runs deeper."
         : "Not enough priced days in this window yet.";
     el("costLegend").innerHTML = "";
     // The volume chart shares this window, so it goes with it rather
@@ -1243,8 +1248,14 @@ function heroCards(h, HIST){
       '</div>';
   }
   let WIN=2;
-  const SUMN={2:0,5:4,13:12,53:52,105:104,261:260};
-  const WLBL={5:'4 weeks',13:'12 weeks',53:'12 months'};
+  const SUMN={2:0,5:4,13:12,53:52,105:104};
+  // EVERY window with sumN>0 needs an entry here or the card labels
+  // read "over the last undefined". 105 was missing from the day the
+  // 24-month button shipped: WIN=2 takes the weekly branch and never
+  // reads this map, 5/13/53 were present, so the fault was live and
+  // invisible on exactly one button. A test now pins the two maps
+  // together rather than trusting them to be edited in step.
+  const WLBL={5:'4 weeks',13:'12 weeks',53:'12 months',105:'24 months'};
   // Plain-English name for each window, for the two page titles only.
   // 4w is called a month and 12w a quarter - near enough to name, and
   // not near enough to compute with, which is why the label under
@@ -1254,11 +1265,11 @@ function heroCards(h, HIST){
   // caveating in every caption; stating the span removes the ambiguity.
   const WNAME={2:'in the last week',5:'in the last 4 weeks',
     13:'in the last 12 weeks',53:'in the last 12 months',
-    105:'in the last 24 months',261:'in the last 60 months'};
+    105:'in the last 24 months'};
   // The buttons carry the round word; this carries the exact span, so
   // the rounding is never the only thing on screen.
   const WSPAN={2:'1 week',5:'4 weeks',13:'12 weeks',53:'12 months',
-    105:'24 months',261:'60 months'};
+    105:'24 months'};
   const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
   function setWording(){
     const w=WNAME[WIN]||'in the last week';
@@ -1359,8 +1370,11 @@ function heroCards(h, HIST){
       // backfilled week live.
       const nLive=HIST.filter(e=>e.live!==false).length;
       const back=HIST.length-nLive;
-      // Windows now reach 60 months, far past the record. State the
-      // shortfall rather than silently drawing whatever exists.
+      // Windows reach 24 months, which can still be past the record.
+      // State the shortfall rather than silently drawing whatever
+      // exists. The 60-month window was removed at site 5.6.0:
+      // HISTORY_MAX is 120 weeks, about 27 months, so that button
+      // could never fill whatever happened to the tariff table.
       const cap=(wv.n<sumN?' ('+wv.n+' of '+sumN+' wks on record)':'');
       const lbl='over the last '+WLBL[WIN]+cap;
       const S=wv.split;
@@ -1900,7 +1914,10 @@ fetch('data.json').then(r=>{
   else el('heroCards').innerHTML='<div class="stat"><div class="lab">Hero</div>'+
     '<div class="sub">Waiting for the first build with degree-day history \u2013 '+
     'check back after the next daily run.</div></div>';
-  costPanel((D.derived||{}).heat_cost_series);
+  // Columnar since pipeline 5.9.0, plain list before it. expandHistory
+  // takes either, which is the same tolerance the history block needs
+  // and for the same reason.
+  costPanel(expandHistory((D.derived||{}).heat_cost_series));
   oilTicker(D.feeds||{}, ((D.feeds||{}).ecb_fx||{}).eur_gbp, D.events);
   gasEngine(D.feeds||{}, D.derived);
   heatGap(D);
@@ -1909,7 +1926,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.5.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.6.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
