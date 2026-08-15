@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.14.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.15.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -566,7 +566,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <span>VIEW</span>
       <button data-gview="hourly" aria-pressed="true">HOURLY · 7d</button>
       <button data-gview="daily">DAILY · 90d</button>
-      <button data-gview="monthly">MONTHLY</button>
+      <button data-gview="monthly">MONTHLY &middot; FALCON</button>
       <span id="gridViewNote"></span>
     </div>
     <div id="gridChart" class="chart"></div>
@@ -1097,7 +1097,8 @@ function drawGridViews(gv){
     if(leg) leg.innerHTML = ""; if(note) note.textContent = "";
     return;
   }
-  const rows = gv[GVIEW];
+  const rows = (GVIEW === "monthly" && gv.falcon && gv.falcon.length >= 6)
+    ? gv.falcon : gv[GVIEW];
   const W = 1000, H = 300, P = {t:14, r:56, b:28, l:56};
   const hiH = Math.max(...rows.map(r=>r.heat_mw)) * 1.06 || 1;
   const hiE = Math.max(...rows.map(r=>Math.max(
@@ -1128,13 +1129,19 @@ function drawGridViews(gv){
       + '" stroke-width="1.6"/>';
   });
   const seen = {};
-  rows.forEach((r,i)=>{ const m=r.t.slice(0,7);
-    if(seen[m]===undefined) seen[m]=i; });
-  const ms = Object.keys(seen), step = Math.max(1, Math.ceil(ms.length/6));
+  const isFalcon = rows.length && rows[0].m !== undefined;
+  if(isFalcon){
+    rows.forEach((r,i)=>{ seen[monthLabel(r.t)] = i; });
+  } else {
+    rows.forEach((r,i)=>{ const m=r.t.slice(0,7);
+      if(seen[m]===undefined) seen[m]=i; });
+  }
+  const ms = Object.keys(seen),
+        step = Math.max(1, Math.ceil(ms.length/(isFalcon?12:6)));
   ms.forEach((m,i)=>{ if(i%step) return;
     s += '<text x="'+x(seen[m])+'" y="'+(H-8)+'" text-anchor="middle" '
       + 'font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,'
-      + 'monospace">'+monthLabel(m)+'</text>'; });
+      + 'monospace">'+(isFalcon?m:monthLabel(m))+'</text>'; });
   s += '<text x="14" y="'+(H/2)+'" transform="rotate(-90 14 '+(H/2)
     + ')" text-anchor="middle" font-size="11" fill="var(--muted)" '
     + 'font-family="Lato, sans-serif">heat delivered, GW</text>'
@@ -1149,13 +1156,12 @@ function drawGridViews(gv){
     + GV_SERIES.map(([,n,c])=>'<span><span class="k" style="background:'
       + c + '"></span>the fifth via ' + n.toLowerCase() + '</span>').join("");
   if(note){
-    const months = (gv.monthly||[]).length;
-    note.textContent = " \u00b7 " + rows.length + " points \u00b7 "
-      + gvLabel(rows[0].t) + " to " + gvLabel(rows[rows.length-1].t)
-      + (GVIEW === "monthly" && months < 24
-         ? " \u00b7 the hourly store holds " + months
-           + " months, so this is not yet a year-on-year comparison"
-         : "");
+    const fc = gv.falcon_complete || (gv.falcon||[]).length;
+    note.textContent = GVIEW === "monthly" && rows.length && rows[0].m
+      ? " \u00b7 the falcon curve \u00b7 calendar year, each month the "
+        + "latest complete one \u00b7 " + fc + "/12 months"
+      : " \u00b7 " + rows.length + " points \u00b7 "
+        + gvLabel(rows[0].t) + " to " + gvLabel(rows[rows.length-1].t);
   }
 }
 
@@ -2383,7 +2389,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.14.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.15.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
