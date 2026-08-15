@@ -3474,6 +3474,54 @@ def test_week_source_records_which_ccni_page_priced_it():
             == "ccni archive (weekly)")
 
 
+def test_ni_oil_is_step_held_across_its_week_and_capped():
+    """The NI series is daily only back to the CCNI daily checker's
+    start; behind that it is the weekly archive, one reading a week.
+    Pricing only the survey days left the NI line dotted - 144 of 375
+    days on the 15 Aug run - which reads as missing data rather than a
+    weekly survey. Held forward, capped, exactly as ROI's bulletin
+    week is."""
+    import build as B
+    feeds = _with_temp(_history_fixture_feeds())
+    ser = (((feeds.get("ccni_oil") or {}).get("series_gbp") or {})
+           .get("daily") or {})
+    days = sorted(ser.get("900l") or {})
+    assert len(days) > 20, "fixture carries too little NI oil to thin"
+    dense = B.derive_heat_cost_series(feeds)
+    n_dense = sum(1 for r in dense if "ni" in r)
+
+    # thin to one reading a week, as the archive publishes
+    keep = set(days[::7])
+    ser["900l"] = {d: v for d, v in ser["900l"].items() if d in keep}
+    weekly = B.derive_heat_cost_series(feeds)
+    n_weekly = sum(1 for r in weekly if "ni" in r)
+    # a weekly source must not cost six days in seven
+    assert n_weekly > n_dense * 0.8, (n_dense, n_weekly)
+    # and the held days carry the reading of the survey day at or
+    # before them, not an interpolation
+    by_day = {r["day"]: r for r in weekly}
+    for d in sorted(keep)[2:6]:
+        src = by_day.get(d)
+        nxt = (B.dt.date.fromisoformat(d)
+               + B.dt.timedelta(days=1)).isoformat()
+        if src and nxt in by_day and "ni" in by_day[nxt] and "ni" in src:
+            assert (by_day[nxt]["ni"]["oil_boiler"]
+                    == src["ni"]["oil_boiler"]), (d, nxt)
+
+    # the cap: a reading is not smeared across one of the archive's
+    # real gaps
+    hold = B.NI_OIL_HOLD_DAYS
+    assert 7 <= hold <= 14, hold
+    ser["900l"] = {days[0]: ser["900l"].get(days[0], 900.0)} \
+        if days[0] in keep else {sorted(keep)[0]: 900.0}
+    sparse = B.derive_heat_cost_series(feeds)
+    priced = [r["day"] for r in sparse if "ni" in r]
+    if priced:
+        first = min(priced)
+        assert (B.dt.date.fromisoformat(max(priced))
+                - B.dt.date.fromisoformat(first)).days <= hold, priced[-3:]
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
