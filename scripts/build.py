@@ -51,7 +51,26 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.11.0"
+PIPELINE_VERSION = "5.12.0"
+# 5.12.0: THE BACK-LOOK REACHES APRIL 2024. Both sides of the tariff
+#   table move together, because they had to - the sterling side is a
+#   dated table but the euro side was derived at call time from a
+#   single S2 2025 anchor, so extending one alone would have priced
+#   every earlier ROI day at the 2025 level. Silently.
+#   - three sterling rows from UREGNI's tariff-review releases, which
+#     publish the annual bill at this site's own consumption basis;
+#   - IE_DOMESTIC_SEMESTER, the ROI domestic band series by semester
+#     (band DC electricity, band D2 gas), replacing the derived euro
+#     side. ie_domestic_eur refuses below the first semester rather
+#     than clamping, the same rule as tariffs_for and nondom_for.
+#   - electricity is CREDIT-FREE: Ireland credited domestic
+#     electricity accounts €1,500 in lump sums per meter, which SEAI
+#     books into the effective unit price. A lump sum never changed
+#     the cost of the next kWh, so it is added back. Gas accounts
+#     were never eligible and need no correction.
+#   The divisor for that add-back is a JUDGEMENT (dagger) - three
+#   controls bracket it 1,500-2,000 kWh a semester and the run logs
+#   the sensitivity every time rather than burying it.
 # 5.11.0: NI oil is STEP-HELD across its week, capped at
 #   NI_OIL_HOLD_DAYS. 5.10.0 gave the series depth back to 2023 but
 #   priced only the survey days, so behind the daily checker's start
@@ -334,6 +353,48 @@ IE_FX = {"rate": IE_FX_FALLBACK, "source": "fallback (UNVERIFIED)",
 # below Large + Very Large using UREGNI's own published consumption
 # shares (5.1 / 32.9 / 19.1 / 26.8 / 16.1%); gas non-domestic is band
 # I1, where services buildings sit.
+# ROI DOMESTIC BY SEMESTER, euro cent/kWh, all taxes included.
+# Electricity is Eurostat/SEAI band DC (2,500-5,000 kWh a year), gas
+# is band D2 (20-200 GJ) - the bands the existing anchors were shown
+# to sit on: band DC S2 2025 is 40.4 c, and the anchor 35.2p at the
+# S2 2025 ECB mean of 0.87073 is 40.43 c. Gas band D2 S2 2025 is
+# 13.0 c against the anchor's 11.3p = 12.98 c.
+#
+# ELECTRICITY IS CREDIT-FREE, GAS IS AS PUBLISHED. Ireland credited
+# domestic ELECTRICITY accounts €1,500 between 2022 and 2025, and
+# SEAI states the credits "are accounted for in the residential
+# electricity prices for the relevant semester" - they reduce the
+# effective unit price. Gas accounts were never eligible, so the gas
+# figures need no correction at all.
+#
+# The credit was a LUMP SUM PER METER, not a change in unit rate: a
+# household's cost of the next kWh never moved when it landed. A
+# per-MWh-of-delivered-heat axis needs the unit rate, or the electric
+# routes look cheap exactly while a subsidy runs and jump when it
+# stops. So the credit is added back. Proof of the mechanism is in
+# the band gradient itself - the 12-month change at S2 2025 runs
+# DA +93%, DB +79%, DC +33%, DD +8%, DE -4%, monotone in band size,
+# which is what a fixed sum per meter does.
+IE_DOMESTIC_SEMESTER = {
+    # semester: (electricity as published, gas as published, credits
+    #            paid to a domestic account in that semester, EUR)
+    "2024-S1": (25.9, 12.7, 300.0),   # two €150 credits, Jan and Mar
+    "2024-S2": (30.4, 13.4, 125.0),   # one €125 credit, Nov
+    "2025-S1": (32.6, 12.2, 125.0),   # one €125 credit, Jan
+    "2025-S2": (40.4, 13.0, 0.0),     # first clean semester
+}
+# Semester consumption the lump sum is divided by. DAGGER. Three
+# controls disagree: band DE flatness implies ~1,500, the S2 2024
+# reconciliation ~1,810, and the S1 2024 double-credit check ~2,000.
+# The site's own 3,200 kWh/yr basis (1,600 here) was the first
+# recommendation and is NOT used, because at 1,600 the corrected
+# S1 2025 lands exactly on S2 2025 - implying no market movement
+# across an autumn in which Energia, Pinergy, SSE Airtricity and
+# Flogas all raised prices. The midpoint is carried and the
+# sensitivity is logged every run rather than buried.
+IE_CREDIT_KWH_PER_SEMESTER = 1750.0
+IE_CREDIT_SENSITIVITY = (1500.0, 2000.0)
+
 IE_PUBLISHED_P_PER_KWH = {
     "domestic_electricity": 35.2,
     "domestic_gas": 11.3,
@@ -346,9 +407,44 @@ IE_STEPS = [("2026-07-01", {"domestic_electricity": 1.08,
                             "domestic_gas": 1.077})]
 
 
+def ie_domestic_eur(fuel, date_iso):
+    """
+    ROI domestic EUR/kWh on the credit-free band series.
+
+    Returns None below the first published semester - REFUSE, do not
+    clamp, the same rule tariffs_for and nondom_for follow. Above the
+    last published semester the level holds and IE_STEPS carries the
+    announcements forward, which is how the 1 Jul 2026 change is
+    applied.
+    """
+    keys = sorted(IE_DOMESTIC_SEMESTER)
+    want = semester_of(date_iso)
+    if want < keys[0]:
+        return None
+    use = want if want in IE_DOMESTIC_SEMESTER else keys[-1]
+    elec, gas, credit = IE_DOMESTIC_SEMESTER[use]
+    if fuel == "domestic_gas":
+        v = gas / 100.0
+    else:
+        # add the credit back: lump sum per meter over a semester's
+        # consumption at the stated basis. The credit is in EUROS and
+        # the band figures in CENTS, hence the 100.
+        v = (elec + 100.0 * credit / IE_CREDIT_KWH_PER_SEMESTER) / 100.0
+    for frm, steps in IE_STEPS:
+        if date_iso >= frm and fuel in steps:
+            v *= steps[fuel]
+    return round(v, 4)
+
+
 def ie_eur(key, date_iso=None):
     """Published Irish sterling figure -> EUR/kWh at the fetched
-    semester rate, stepped by any announcement on or before the date."""
+    semester rate, stepped by any announcement on or before the date.
+    Domestic fuels now come from the dated band series instead, so
+    this carries the non-domestic anchors only."""
+    if date_iso and key in ("domestic_electricity", "domestic_gas"):
+        v = ie_domestic_eur(key, date_iso)
+        if v is not None:
+            return v
     v = IE_PUBLISHED_P_PER_KWH[key] / 100.0 / IE_FX["rate"]
     for frm, steps in IE_STEPS:
         if date_iso and date_iso >= frm and key in steps:
@@ -990,6 +1086,20 @@ TARIFF_HISTORY = [
     # including VAT and standing charges. gbp: UREGNI regulated bills,
     # gas weighted SSE/Firmus by customers. eur: Eurostat band prices
     # (S2 2024) stepped by the Electric Ireland announcements.
+    # Rows below added at 5.12.0, from UREGNI's tariff-review news
+    # releases, which publish the annual bill at this site's exact
+    # basis (12,000 kWh gas, 3,200 kWh electricity, standard tariff,
+    # VAT in) split by supplier pairing. Same construction as the
+    # rows that follow: bill divided by consumption, gas weighted
+    # SSE 0.7235 / Firmus 0.2765 by regulated customer count. The
+    # 2025-04-01 row reproduces the old 2025-08-06 floor row exactly,
+    # which is the check that the derivation is the right one.
+    ("2024-04-01", {"eur": None,
+                    "gbp": {"electricity": 0.2972, "gas": 0.0916}}),
+    ("2024-12-01", {"eur": None,
+                    "gbp": {"electricity": 0.3091, "gas": 0.0916}}),
+    ("2025-04-01", {"eur": None,
+                    "gbp": {"electricity": 0.3091, "gas": 0.0884}}),
     ("2025-08-06", {"eur": None,
                     "gbp": {"electricity": 0.3091, "gas": 0.0884}}),
     ("2025-10-01", {"eur": None,
@@ -1051,6 +1161,19 @@ def apply_ie_fx(feeds):
     ANCHORS["nondom_gbp_per_kwh"] = nd["gbp"]
     log(f"fx: EUR/GBP {IE_FX['rate']} ({IE_FX['source']}); "
         f"ROI domestic {tariffs_for(HISTORY_START)['eur']}")
+    lo, hi = IE_CREDIT_SENSITIVITY
+    for sem in sorted(IE_DOMESTIC_SEMESTER):
+        e, g, credit = IE_DOMESTIC_SEMESTER[sem]
+        if not credit:
+            log(f"roi domestic: {sem} elec {e:.1f}c (clean), gas {g:.1f}c")
+            continue
+        log(f"roi domestic: {sem} elec {e:.1f}c published -> "
+            f"{e + 100 * credit / IE_CREDIT_KWH_PER_SEMESTER:.1f}c "
+            f"credit-free (\u20ac{credit:.0f} over "
+            f"{IE_CREDIT_KWH_PER_SEMESTER:.0f} kWh) \u2020; at "
+            f"{lo:.0f}/{hi:.0f} kWh it would be "
+            f"{e + 100 * credit / lo:.1f}/{e + 100 * credit / hi:.1f}c; "
+            f"gas {g:.1f}c (no credit ever applied to gas)")
     log(f"nondom: live week on semester {used} "
         f"(latest published; REMM lags ~9 months) - "
         f"NI {nd['gbp']}, ROI {nd['eur']}")
