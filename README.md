@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.18.0 / site 5.11.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.18.0 / site 5.12.0.
 
 ## The premise
 
@@ -760,6 +760,23 @@ that is the heat-weighted **harmonic** mean of 5.0 in the North and 4.0
 in the Republic — harmonic because efficiencies average that way, and an
 arithmetic mean would flatter it.
 
+**Panel 3 is stubbed in, and the oil ticker has moved (site 5.12.0).**
+"Electricity grid impacts — the 20% what-if, hour by hour" now sits
+third, where the oil ticker was; the ticker has moved to the foot of the
+page beneath "Why heat?". The panel carries its jurisdiction toggle and
+its scope note; the charts follow.
+
+**The toggle switches whose heat is electrified, not the ceiling.** The
+SEM is a single all-island market with one dispatch, and Northern Irish
+demand is met from all-island generation across the tie-lines — so a
+separate northern capacity ceiling would invent a constraint that does
+not exist. Each jurisdiction's what-if is measured against one shared
+de-rated block, and the panel says so rather than leaving it implied.
+The regional constraint story — network constraints are about
+two-thirds of dispatch-down and concentrated west and northwest, while
+SNSP is around 1% — is geography rather than jurisdiction, and belongs
+in the map panel rather than here.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -901,7 +918,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 177 tests, no network
-node tests/test_vol.js            # 73 front-end fixture checks
+node tests/test_vol.js            # 79 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
