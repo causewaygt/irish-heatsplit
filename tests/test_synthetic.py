@@ -2040,12 +2040,23 @@ def test_services_rates_sit_below_domestic_but_not_far_below():
 def test_both_jurisdictions_price_domestic_all_in():
     """NI and ROI domestic are the same KIND of quantity - an all-in
     effective rate at a stated consumption, VAT and standing charges
-    included - so the bills compare at component level."""
+    included - so the bills compare at component level.
+
+    From 5.12.0 the ROI side is the published band figure in euro
+    directly (band DC electricity, band D2 gas) rather than a sterling
+    anchor converted at the fetched rate, so this checks against the
+    band table and then confirms it still reconciles with the old
+    sterling anchor at that semester's own ECB mean."""
     import build as B
     pre = B.tariffs_for("2025-09-01")["eur"]
-    assert abs(pre["electricity"]
-               - 35.2 / 100 / B.IE_FX["rate"]) < 5e-4
-    assert abs(pre["gas"] - 11.3 / 100 / B.IE_FX["rate"]) < 5e-4
+    elec_c, gas_c, credit = B.IE_DOMESTIC_SEMESTER["2025-S2"]
+    assert credit == 0.0, "S2 2025 is the first clean semester"
+    assert abs(pre["electricity"] - elec_c / 100) < 1e-4
+    assert abs(pre["gas"] - gas_c / 100) < 1e-4
+    # and it still agrees with the sterling anchor it replaced, at the
+    # S2 2025 ECB mean - 35.2p / 0.87073 = 40.43c against 40.4c
+    assert abs(pre["electricity"] - 35.2 / 100 / 0.87073) < 4e-4
+    assert abs(pre["gas"] - 11.3 / 100 / 0.87073) < 4e-4
     jul = B.tariffs_for("2026-07-01")["eur"]
     assert abs(jul["electricity"] / pre["electricity"] - 1.08) < 0.002
     assert abs(jul["gas"] / pre["gas"] - 1.077) < 0.002
@@ -2096,8 +2107,15 @@ def test_fx_falls_back_loudly_and_scales_every_irish_anchor():
         assert B.IE_FX["rate"] == 0.9
         assert abs(B.ANCHORS["nondom_eur_per_kwh"]["electricity"]
                    - 22.68 / 100 / 0.9) < 5e-4
+        # DOMESTIC no longer moves with the rate. From 5.12.0 the ROI
+        # domestic side is the published euro band figure, so it is
+        # the NON-domestic anchors alone that the fetched rate scales.
+        # That is a narrowing of the rate's blast radius, not a loss:
+        # the sterling-derived figure was a conversion of a euro
+        # original, and the conversion was the part that could go
+        # stale.
         assert abs(B.tariffs_for("2025-09-01")["eur"]["electricity"]
-                   - 35.2 / 100 / 0.9) < 5e-4
+                   - B.IE_DOMESTIC_SEMESTER["2025-S2"][0] / 100) < 1e-9
     finally:
         B.IE_FX.update(before)
         B.apply_ie_fx({})
@@ -3084,13 +3102,13 @@ def test_tariffs_refuse_before_the_table_rather_than_clamping():
     import build as B
     first = B.TARIFF_HISTORY[0][0]
     assert B.tariffs_for(first) is not None
-    assert B.tariffs_for("2024-06-01") is None
+    assert B.tariffs_for("2024-03-31") is None
     assert B.tariffs_for("2020-01-01") is None
     # and a week that cannot be priced is SKIPPED WITH A REASON, not
     # silently dropped
     feeds = _history_fixture_feeds()
     skips = []
-    assert B.week_inputs(feeds, "2024-06-01", skips) is None
+    assert B.week_inputs(feeds, "2024-03-31", skips) is None
     assert len(skips) == 1 and "tariff table" in skips[0][1]
 
 
@@ -3119,13 +3137,13 @@ def test_tariffs_refuse_before_the_table_rather_than_clamping():
     import build as B
     first = B.TARIFF_HISTORY[0][0]
     assert B.tariffs_for(first) is not None
-    assert B.tariffs_for("2024-06-01") is None
+    assert B.tariffs_for("2024-03-31") is None
     assert B.tariffs_for("2020-01-01") is None
     # and a week that cannot be priced is SKIPPED WITH A REASON, not
     # silently dropped
     feeds = _history_fixture_feeds()
     skips = []
-    assert B.week_inputs(feeds, "2024-06-01", skips) is None
+    assert B.week_inputs(feeds, "2024-03-31", skips) is None
     assert len(skips) == 1 and "tariff table" in skips[0][1]
 
 
@@ -3520,6 +3538,71 @@ def test_ni_oil_is_step_held_across_its_week_and_capped():
         first = min(priced)
         assert (B.dt.date.fromisoformat(max(priced))
                 - B.dt.date.fromisoformat(first)).days <= hold, priced[-3:]
+
+
+def test_roi_domestic_is_credit_free_and_gas_is_untouched():
+    """Ireland credited domestic ELECTRICITY accounts in lump sums per
+    meter, which SEAI books into the effective unit price. A lump sum
+    never changed the cost of the next kWh, so it is added back for a
+    per-MWh-of-heat axis. Gas accounts were never eligible."""
+    import build as B
+    for sem, (elec, gas, credit) in B.IE_DOMESTIC_SEMESTER.items():
+        day = f"{sem[:4]}-{'03' if sem.endswith('S1') else '09'}-15"
+        e = B.ie_domestic_eur("domestic_electricity", day)
+        g = B.ie_domestic_eur("domestic_gas", day)
+        # gas is the published figure, untouched
+        assert abs(g - gas / 100) < 1e-9, (sem, g, gas)
+        # electricity is published PLUS the credit over the basis
+        want = (elec + 100 * credit / B.IE_CREDIT_KWH_PER_SEMESTER) / 100
+        assert abs(e - want) < 1e-4, (sem, e, want)
+        # and it is never below the published figure
+        assert e >= elec / 100 - 1e-9
+    # the clean semester needs no correction at all
+    assert B.IE_DOMESTIC_SEMESTER["2025-S2"][2] == 0.0
+    # the divisor is a judgement and must stay inside its own bracket
+    lo, hi = B.IE_CREDIT_SENSITIVITY
+    assert lo < B.IE_CREDIT_KWH_PER_SEMESTER < hi
+
+
+def test_roi_domestic_refuses_below_its_first_semester():
+    """Same rule as tariffs_for and nondom_for: a missing figure is
+    visible, a clamped one is not."""
+    import build as B
+    first = sorted(B.IE_DOMESTIC_SEMESTER)[0]
+    assert B.ie_domestic_eur("domestic_electricity", "2019-01-01") is None
+    assert B.ie_domestic_eur("domestic_gas", f"{int(first[:4]) - 1}-06-01") \
+        is None
+    # above the last semester the level holds and the announcements
+    # carry it forward
+    last = sorted(B.IE_DOMESTIC_SEMESTER)[-1]
+    held = B.ie_domestic_eur("domestic_electricity", "2026-06-01")
+    assert abs(held - B.IE_DOMESTIC_SEMESTER[last][0] / 100) < 1e-4
+    stepped = B.ie_domestic_eur("domestic_electricity", "2026-08-01")
+    assert abs(stepped / held - 1.08) < 0.002
+
+
+def test_the_table_now_reaches_a_full_24_months():
+    """The whole point of the exercise. Both sides of the tariff table
+    must reach back past the widest window, and BOTH must resolve on
+    the same day - extending one alone was the blocker that stopped
+    this shipping in two pieces."""
+    import build as B
+    floor = B.dt.date.fromisoformat(B.TARIFF_HISTORY[0][0])
+    today = B.dt.date(2026, 8, 15)
+    assert (today - floor).days >= B.WINDOW_MAX_DAYS, (floor, today)
+    # every semester boundary inside the window resolves on both sides
+    d = floor
+    while d <= today:
+        t = B.tariffs_for(d.isoformat())
+        assert t is not None, d
+        assert t["gbp"]["electricity"] and t["gbp"]["gas"], d
+        assert t["eur"]["electricity"] and t["eur"]["gas"], d
+        d += B.dt.timedelta(days=29)
+    # and the row added for 2025-04-01 must reproduce the old floor
+    # row exactly - the check that the bill-over-consumption
+    # derivation is the right one
+    assert (B.tariffs_for("2025-04-01")["gbp"]
+            == B.tariffs_for("2025-08-06")["gbp"])
 
 
 def test_hdd_year_gate_and_base_scan():
