@@ -51,7 +51,16 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.16.0"
+PIPELINE_VERSION = "5.17.0"
+# 5.17.0: the calibration is PUBLISHED, not just logged. CALIBRATION
+#   carries each route's solved Carnot fraction beside the SPF anchor
+#   it was solved to reproduce and the source temperature it saw, per
+#   jurisdiction, with the spread and the gate. It rides in
+#   derived["calibration"] and the site draws it in panel 1's method
+#   fold. A fraction without its anchor means nothing, so the two
+#   travel together. This is the exhibit that answers "how do you know
+#   the COP model is right" - it belongs on the page rather than in a
+#   run log nobody reads.
 # 5.16.0: two places where the code did not say what it does.
 #   - build_history offered a LITERAL 60 weeks while HISTORY_MAX was
 #     120, and the cap was applied afterwards to a list that could
@@ -5278,6 +5287,12 @@ NETWORK_MODEL = {
             "note": "5G ambient loop on seasonal storage, charged from "
                     "comfort cooling and process heat rejection"},
 }
+# Filled by derive_heat_cost_series and published in the payload, so
+# the calibration board on the page shows what the log has always
+# said. Module-level because the derivation is deep inside the cost
+# series and returning it would change that function's contract.
+CALIBRATION = {}
+
 SPF_ANCHORS = {"ashp": 2.80, "gshp": 3.24}
 
 # Hot-water share BY FUEL, from SEAI's residential end-use model (2022):
@@ -5688,6 +5703,25 @@ def derive_heat_cost_series(feeds, anchors=None):
           f"{NETWORK_MODEL['roi']['spf']})")
     spread = max(v for e in etas.values() for v in e.values()) / \
         min(v for e in etas.values() for v in e.values())
+    # Published, not just logged. The calibration is the answer to
+    # "how do you know the COP model is right", so it belongs on the
+    # page rather than in a run log nobody sees. Anchors travel with
+    # the fractions because the fraction alone means nothing without
+    # the SPF it was solved to reproduce.
+    CALIBRATION.clear()
+    CALIBRATION.update({
+        "gate": 1.15,
+        "spread": round(spread, 4),
+        "jurisdictions": {
+            j: {r: {"eta": e[r],
+                    "spf_anchor": (NETWORK_MODEL[j]["spf"] if r == "network"
+                                   else SPF_ANCHORS[r]),
+                    "source_c": (NETWORK_MODEL[j]["source_c"]
+                                 if r == "network" else
+                                 (GROUND_SOURCE_C if r == "gshp" else None))}
+                for r in ("ashp", "gshp", "network")}
+            for j, e in etas.items()},
+    })
     if spread > 1.15:
         log(f"heat cost: WARNING calibrated fractions spread {spread:.2f}x "
             "- more than 15% apart means a source temperature and an SPF "
@@ -6599,6 +6633,8 @@ def main():
                 f"({100 * _ccols // max(_cflat, 1)}%)")
             # The masthead ticker, from the same rows the panel draws
             derived["heat_gap"] = heat_gap_from_cost_series(hcs)
+            if CALIBRATION:
+                derived["calibration"] = dict(CALIBRATION)
             for j, g in derived["heat_gap"].items():
                 log(f"heat gap: {j} oil {g['oil_boiler']:.2f} vs network "
                     f"{g['geothermal_spf40']:.2f} per useful kWh - ground "
