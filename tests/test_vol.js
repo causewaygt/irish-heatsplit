@@ -276,4 +276,49 @@ ok(/single all-island market/.test(html)
    && /does\s+not\s+switch\s+the\s+ceiling/i.test(html),
    "and states that the toggle does not move the ceiling, with the reason");
 
+// ---- Panel 3: the coldest hour, drawn from the published B.2.1 -----
+const grSrc = lift(/const GROUTES = \[[\s\S]*?\];/, "GROUTES");
+const grFn = lift(/function gridPanel\(th\)\{[\s\S]*?\n\}/, "gridPanel");
+function esc(s){ return String(s); }
+let GJUR = "all";
+eval(grSrc + "\n" + grFn);
+const TH = {hour:"2026-01-05T17", observed_mw:7180, air_c:0.21,
+  useful_heat_mw:11365, block_mw:8595, ceiling_mw:9713,
+  wind_solar_mw:1118, heat_vs_block_ratio:1.32,
+  added_mw:{air_source:3579, ground_source:2409, geothermal_network:1174},
+  headroom_by_route_mw:{air_source:-1046, ground_source:124,
+                        geothermal_network:1359},
+  routes_that_fit:["ground_source","geothermal_network"],
+  share_that_fits_pct:{air_source:70.6, ground_source:102.4,
+                       geothermal_network:210.1},
+  share_binding_hour:{air_source:"2026-01-05T17",
+    ground_source:"2026-01-05T17", geothermal_network:"2026-01-05T17"}};
+DOM.gridPanel = null; el("gridPanel");
+gridPanel(TH);
+const gp = DOM.gridPanel.innerHTML;
+ok(!/NaN|undefined/.test(gp), "no NaN or undefined in the coldest hour");
+ok(/\+3\.6 GW/.test(gp) && /\+1\.2 GW/.test(gp),
+   "added load is shown in GW per route");
+ok(/exceeds the ceiling by 1\.0 GW/.test(gp),
+   "a route that does not fit says so rather than showing bare headroom");
+ok(/fits, 1\.4 GW spare/.test(gp), "and one that does says how much spare");
+ok(/9\.7 GW/.test(gp) && /1\.1 GW of wind and solar/.test(gp),
+   "the ceiling is stated as block plus the wind and solar that blew");
+ok(/1\.32x its power system/.test(gp),
+   "the heat-system-against-power-system ratio is on the page");
+ok(/peak-capacity test, not an energy test/.test(gp),
+   "and the framing that must travel with it");
+ok(/102\.4%/.test(gp) && /all of it, with room over/.test(gp),
+   "shares that fit are tabled, and above 100% is spelled out");
+// the jurisdiction states must not show island figures under an NI label
+GJUR = "ni"; DOM.gridPanel = null; el("gridPanel");
+gridPanel(TH);
+ok(/not built yet/.test(DOM.gridPanel.innerHTML)
+   && !/GW/.test(DOM.gridPanel.innerHTML),
+   "NI and ROI decline rather than relabelling the island figures");
+GJUR = "all"; DOM.gridPanel = null; el("gridPanel");
+gridPanel(null);
+ok(/coming build/.test(DOM.gridPanel.innerHTML),
+   "and a payload without the block declines cleanly");
+
 console.log(checks + " front-end fixture checks passed");

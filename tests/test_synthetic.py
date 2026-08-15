@@ -3766,6 +3766,86 @@ def test_heat_emissions_are_per_useful_kwh_and_all_island():
     assert B.derive_heat_emissions(thin) is None
 
 
+def _synthetic_hourly_store(days=400):
+    """A store the grid layer can actually run on: a year-plus of
+    hourly temperature, demand, wind and solar on an Irish-shaped
+    seasonal and diurnal profile. Schema-1 shape (a dict per series),
+    which expand_hourly still accepts."""
+    import math, datetime as _dt
+    t0 = _dt.datetime(2025, 7, 1)
+    temp, dem, wind, solar = {}, {}, {}, {}
+    for i in range(days * 24):
+        h = t0 + _dt.timedelta(hours=i)
+        k = h.strftime("%Y-%m-%dT%H")
+        doy, hod = h.timetuple().tm_yday, h.hour
+        t = (10.3 - 5.0 * math.cos(2 * math.pi * (doy - 15) / 365)
+             - 2.5 * math.cos(2 * math.pi * (hod - 15) / 24))
+        temp[k] = round(t, 2)
+        dem[k] = round(4200 + 900 * math.sin(2 * math.pi * (hod - 8) / 24)
+                       + 400 * math.cos(2 * math.pi * (doy - 15) / 365), 1)
+        wind[k] = round(900 + 700 * math.sin(i / 37.0), 1)
+        solar[k] = round(max(0.0, 500 * math.sin(
+            math.pi * max(0.0, hod - 6) / 12)), 1)
+    return {"schema": 1, "heat_ready": True,
+            "series": {"temp_ai": temp, "demand_ai": dem,
+                       "wind_ai": wind, "solar_ai": solar}}
+
+
+def test_grid_views_carry_what_is_drawn_not_the_whole_store():
+    """Panel 3 plots three resolutions. The payload carries at most 168
+    hourly, 90 daily and 24 monthly rows - about 280 against a store of
+    9,000-plus hours - so it holds what is drawn rather than what was
+    computed."""
+    import build as B
+    store = _synthetic_hourly_store()
+    gv = B.derive_grid_views(store)
+    assert gv is not None, "the grid views declined on a full store"
+    assert len(gv["hourly"]) == 168, len(gv["hourly"])
+    assert len(gv["daily"]) == 90 and len(gv["monthly"]) <= 24
+    assert gv["share"] == B.GRID_WHATIF_SHARE
+    rows = gv["hourly"] + gv["daily"] + gv["monthly"]
+    for row in rows:
+        # every route draws less electricity than the heat it serves
+        assert 0 < row["air_source"] < row["heat_mw"], row
+        # the network is always the least, at a flat SCOP of 5
+        assert row["geothermal_network"] < row["ground_source"], row
+    # THE ORDERING IS NOT UNIVERSAL, and that is a finding rather than
+    # a defect. In the cold, air source draws the most. In mild
+    # weather the weather-compensated air COP passes ground source's
+    # flat 3.24 and the two invert - the same effect that closed the
+    # Carnot ceilings in the calibration work. Asserting air > ground
+    # everywhere would have been asserting a bug.
+    cold = min(rows, key=lambda r: r["temp_c"])
+    mild = max(rows, key=lambda r: r["temp_c"])
+    assert cold["air_source"] > cold["ground_source"], cold
+    assert mild["air_source"] < mild["ground_source"], mild
+    # the hourly view is the live week and is the finest resolution
+    assert len(gv["hourly"][0]["t"]) == 13          # YYYY-MM-DDTHH
+    assert len(gv["daily"][0]["t"]) == 10
+    assert len(gv["monthly"][0]["t"]) == 7
+    # cold rows draw more air-source electricity than mild ones, which
+    # is the seasonal shape the panel exists to show
+    cold = min(gv["daily"], key=lambda r: r["temp_c"])
+    mild = max(gv["daily"], key=lambda r: r["temp_c"])
+    assert cold["air_source"] > mild["air_source"], (cold, mild)
+    # a store too short to shape declines rather than guessing
+    assert B.derive_grid_views(_synthetic_hourly_store(20)) is None
+
+
+def test_the_two_what_if_questions_stay_separate():
+    """The binding-hour panel SOLVES for the share that fits; the three
+    views plot the site's FIXED 20%. They answer different questions
+    and must not be read as one, so the constants stay distinct."""
+    import build as B
+    assert B.GRID_WHATIF_SHARE == 0.20
+    # the tightest-hour block reports a solved share, not this one
+    import inspect
+    src = inspect.getsource(B.derive_tightest_hour)
+    assert "share_that_fits_pct" in src
+    assert "GRID_WHATIF_SHARE" not in src, \
+        "the binding-hour solve must not be pinned to the 20% what-if"
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
