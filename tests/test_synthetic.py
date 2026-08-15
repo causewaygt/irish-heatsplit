@@ -3677,6 +3677,34 @@ def test_calibration_is_weighted_by_heat_not_by_days():
     assert ratio(heat) > ratio(flat), (ratio(heat), ratio(flat))
 
 
+def test_ticker_comes_from_the_same_engine_as_the_panel():
+    """The masthead ticker used derive_heat_gap, which never got the
+    panel's changes - one geothermal SPF of 4.0 for both jurisdictions
+    against the panel's 5.0/4.0, a single oil efficiency of 0.82
+    against the panel's 0.71 on hot water, and no hot-water blending.
+    The headline disagreed with the chart underneath it."""
+    import build as B
+    rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
+    assert rows
+    hg = B.heat_gap_from_cost_series(rows)
+    assert hg, "no jurisdiction produced a ticker"
+    for jur, g in hg.items():
+        last = [r for r in rows if r.get(jur)][-1][jur]
+        # every published figure is the panel's own last row
+        assert g["oil_boiler"] == last["oil_boiler"]
+        assert g["geothermal_spf40"] == last["network"], jur
+        assert g["gas_boiler"] == last["gas_boiler"]
+        # the gap is the difference, and the median is reported beside it
+        assert abs(g["gap_now"]
+                   - (last["oil_boiler"] - last["network"])) < 1e-9
+        assert "gap_median" in g and g["gap_days"] >= 1
+        assert g["day"] == [r for r in rows if r.get(jur)][-1]["day"]
+    # the ticker's network figure must NOT be the old single anchor
+    # where the panel's jurisdictional model differs from it
+    if "ni" in hg:
+        assert B.NETWORK_MODEL["ni"]["spf"] != B.ANCHORS["geothermal_spf"]
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
