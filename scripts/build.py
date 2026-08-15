@@ -51,7 +51,18 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.20.0"
+PIPELINE_VERSION = "5.20.1"
+# 5.20.1: THE GRID LAYER NEVER SHIPPED. data.json is serialised before
+#   the hourly block runs, so derived["tightest_hour"] and
+#   derived["grid_views"] were assigned to a dict already written to
+#   disk. Panel 3 drew its decline messages for two bundles while the
+#   log showed B.2.1 and the falcon computing perfectly - the
+#   renderers were right and the payload was empty. The tell was there
+#   and missed: data.json stayed at 1,436 kB when the grid views
+#   should have added ~34 kB. main() now writes AGAIN once the grid
+#   keys exist, and says in the log when they are absent. The first
+#   write stays put so a payload still lands if the hourly step
+#   throws.
 # 5.20.0: THE FALCON, and a correction. I said it needed two winters
 #   and deferred it; it does not. The UK sibling builds it as a
 #   CALENDAR YEAR with each month filled by the LATEST COMPLETE
@@ -6933,6 +6944,26 @@ def main():
     except Exception as exc:
         log(f"hourly: store step failed ({exc.__class__.__name__}: "
             f"{exc}) - weekly output unaffected")
+    # RE-WRITE. data.json is serialised ABOVE, before the hourly block,
+    # so anything the grid layer adds to `derived` - tightest_hour,
+    # grid_views - lands after the file is already on disk and never
+    # ships. That is why Panel 3 drew its decline messages while the
+    # log showed B.2.1 and the falcon computing perfectly: the
+    # renderers were right and the payload was empty.
+    #
+    # The first write stays where it is on purpose: it guarantees a
+    # payload lands even if the hourly step throws. This adds the grid
+    # layer when there is one, and says so, rather than moving the
+    # write and making the weekly tracker depend on the hourly store.
+    grid_keys = [k for k in ("tightest_hour", "grid_views")
+                 if derived.get(k)]
+    if grid_keys:
+        DATA_PATH.write_text(json.dumps(doc, indent=1, sort_keys=True))
+        log(f"wrote {DATA_PATH} again with the grid layer "
+            f"({', '.join(grid_keys)})")
+    else:
+        log("grid layer absent from the payload - Panel 3 will draw its "
+            "decline message")
     log(f"wrote {DATA_PATH} ({DATA_PATH.stat().st_size/1024:.0f} kB)")
 
     if failures:
