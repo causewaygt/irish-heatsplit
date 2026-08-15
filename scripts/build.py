@@ -51,7 +51,19 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.15.0"
+PIPELINE_VERSION = "5.16.0"
+# 5.16.0: two places where the code did not say what it does.
+#   - build_history offered a LITERAL 60 weeks while HISTORY_MAX was
+#     120, and the cap was applied afterwards to a list that could
+#     never exceed 60. The record sat at 60, the log line "60 weeks
+#     built, none skipped" reported the loop bound rather than any
+#     data limit, and panel 1's sparklines were short because they
+#     slice whatever the record holds. Now driven by HISTORY_MAX, with
+#     a test that fails if a literal comes back.
+#   - the carbon-reach diagnostic sat INSIDE the backfill branch, so
+#     on any run where the backfill did not fire it said nothing - and
+#     nothing is indistinguishable from "the block never ran", which
+#     is the one case the line exists for. It now reports every run.
 # 5.15.0: the masthead ticker now comes from the SAME engine as panel
 #   2. derive_heat_gap is the original calculation and never got the
 #   panel's changes - one geothermal SPF of 4.0 for both jurisdictions
@@ -1798,6 +1810,7 @@ def feed_eirgrid():
         # because the retained series already covers the floor.
         if ser and min(ser) > HISTORY_START:
             edge = dt.date.fromisoformat(min(ser))
+            walked = 0
             for _ in range(24):
                 if edge.isoformat() <= HISTORY_START:
                     break
@@ -1816,10 +1829,25 @@ def feed_eirgrid():
                         f"flakiness before, so this may clear itself)")
                     break
                 ser.update(chunk)
+                walked += 1
                 edge = a
-            log(f"eirgrid: carbon backfill reached {min(ser)} "
-                f"(HISTORY_START {HISTORY_START})")
+            log(f"eirgrid: carbon backfill walked {walked} chunk(s)")
         out["co2_intensity_g_per_kwh"] = trim_series(ser)
+        # UNCONDITIONAL. This line used to sit inside the branch above,
+        # so on any run where the backfill did not fire it said nothing
+        # at all - and "nothing" is indistinguishable from "the block
+        # never ran". A diagnostic that goes quiet in the case you
+        # cannot otherwise tell apart is the one case it is for. It now
+        # reports where the carbon record reaches every run, whether
+        # the backfill walked or not.
+        cser = out["co2_intensity_g_per_kwh"]
+        if cser:
+            reach = min(cser)
+            log(f"eirgrid: carbon reaches {reach} against HISTORY_START "
+                f"{HISTORY_START} - "
+                + ("covered" if reach <= HISTORY_START else
+                   "SHORT, weeks before it will be refused for want of "
+                   "their own carbon"))
         log(f"eirgrid: co2 intensity {len(got)} days this run, "
             f"{len(out['co2_intensity_g_per_kwh'])} retained")
     except Exception as e:
@@ -3806,10 +3834,17 @@ def expand_history(doc):
 def build_history(feeds, anchors=None):
     """UK-pattern weekly history: complete calendar weeks (Mon-Sun),
     hero combined four + what-if twins per entry, frozen after the two
-    most recent, capped at 60, append-or-update by week_ending. The
-    Irish hero is anchor x HDD, so depth is bounded by the PRICE feeds
-    (CCNI from 2026-02-26), not gas. Records the GNI feed's empirical
-    window each run (gas_window) per the porting handover."""
+    most recent, capped at HISTORY_MAX, append-or-update by
+    week_ending. Records the GNI feed's empirical window each run
+    (gas_window) per the porting handover.
+
+    DEPTH IS NOT BOUNDED HERE. This said "capped at 60 ... bounded by
+    the PRICE feeds (CCNI from 2026-02-26)"; both were wrong by
+    5.16.0. The 60 was a literal in the loop below, and CCNI stopped
+    being the constraint when the weekly archive landed at 5.10.0 and
+    took the series back to 2023. What binds now, in order: the carbon
+    backfill's reach, then the tariff table floor - and a week that
+    cannot be priced is refused by name rather than filled in."""
     def fuel_sub(b):
         """Compact per-fuel in/useful for the windowed energy bars.
         Keys stay short - this rides in every history entry, three
@@ -3871,7 +3906,16 @@ def build_history(feeds, anchors=None):
     today = today_utc()
     last_sun = today - dt.timedelta(days=(today.isoweekday() % 7) or 7)
     out = []
-    for k in range(59, -1, -1):
+    # HISTORY_MAX weeks offered, not a literal. This read
+    # `range(59, -1, -1)` while HISTORY_MAX was 120 and the cap was
+    # applied afterwards to a list that could never exceed 60 - so the
+    # record sat at 60 weeks and the log line "60 weeks built, none
+    # skipped" was reporting the loop bound rather than any data
+    # limit. It also shortened panel 1's sparklines, which slice
+    # whatever the record holds. Weeks that genuinely cannot be built
+    # are still refused BY NAME further down, which is what stops this
+    # from silently inventing depth.
+    for k in range(HISTORY_MAX - 1, -1, -1):
         w_end = (last_sun - dt.timedelta(weeks=k)).isoformat()
         if w_end in frozen:
             e = frozen[w_end]
