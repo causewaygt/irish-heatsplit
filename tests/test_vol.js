@@ -35,11 +35,14 @@ function lift(re, what){
   return m[0];
 }
 const partsSrc = lift(/const VOL_PARTS = \[[\s\S]*?\];/, "VOL_PARTS");
+const monthsSrc = lift(/const MONTHS3 = \[[\s\S]*?\];/, "MONTHS3");
+const mlabSrc = lift(/function monthLabel\(ym\)\{[\s\S]*?\n\}/, "monthLabel");
 const drawSrc = lift(/function drawVol\(rows, state, geom\)\{[\s\S]*?\n\}/,
                      "drawVol");
 const expandSrc = lift(/function expandHistory\(h\)\{[\s\S]*?\n  \}/,
                        "expandHistory");
-eval(partsSrc + "\n" + drawSrc + "\n" + expandSrc);
+eval(partsSrc + "\n" + monthsSrc + "\n" + mlabSrc + "\n"
+     + drawSrc + "\n" + expandSrc);
 
 const GEOM = {W: 1000, l: 62, r: 14};
 function row(day, space, dhw, jur){
@@ -63,7 +66,20 @@ ok(!/NaN|undefined/.test(svg), "no NaN or undefined anywhere in the svg");
 ok((svg.match(/<path /g) || []).length === 4,
    "two stacked bands, each a fill and an outline");
 ok(/GWh of delivered heat per day/.test(svg), "carries its own y-axis label");
+// The VISIBLE label is rotated within the chart height, so a single
+// long line is cut off - it shipped reading "GWh of delivered heat
+// per da". The old assertion passed on the aria-label alone and would
+// not have caught that, so pin the two tspans instead.
+ok(/<tspan[^>]*>GWh of delivered<\/tspan>/.test(svg)
+   && /<tspan[^>]*>heat per day<\/tspan>/.test(svg),
+   "y-axis label is split over two lines so it cannot clip");
 ok(/Hot water/.test(DOM.volLegend.innerHTML), "legend names both parts");
+// x-axis dates in the UK sibling's form, so the two sites' charts can
+// sit beside each other. "2026-01" reads as a database key.
+ok(monthLabel("2026-01") === "Jan 26" && monthLabel("2025-11") === "Nov 25",
+   "month labels read as Jan 26, not 2026-01");
+ok(/>Jan 26</.test(svg) && !/>2026-01</.test(svg),
+   "and the chart prints them that way");
 
 // The stack must reach the total, not just the larger part. Each band
 // emits TWO paths - a fill and an outline - both starting at the same
@@ -173,5 +189,37 @@ const costBtns = [...html.matchAll(/data-cwin="(\d+)"/g)].map(m => +m[1]);
 ok(!costBtns.includes(1825), "the 60-month cost button is gone");
 ok(Math.max(...costBtns) === 730, "the widest cost window is 24 months");
 ok(costBtns.includes(7), "and the 1-week window is offered");
+
+// ---- the calibration board renders what the pipeline publishes -----
+// The exhibit that answers "how do you know the COP model is right",
+// so it has to survive a payload that predates it as well as one that
+// carries it.
+const calSrc = lift(/const CAL_ROUTES = \[[\s\S]*?\];/, "CAL_ROUTES");
+const calFn = lift(/function calBoard\(cal\)\{[\s\S]*?\n\}/, "calBoard");
+function fmt(v, dp){ return Number(v).toFixed(dp); }
+eval(calSrc + "\n" + calFn);
+DOM.calBoard = null; el("calBoard");
+calBoard({gate: 1.15, spread: 1.076, jurisdictions: {
+  roi: {ashp:{eta:0.3175,spf_anchor:2.80,source_c:null},
+        gshp:{eta:0.3342,spf_anchor:3.24,source_c:8.0},
+        network:{eta:0.3106,spf_anchor:4.0,source_c:16.0}}}});
+const cb = DOM.calBoard.innerHTML;
+ok(/0\.3175/.test(cb) && /0\.3342/.test(cb) && /0\.3106/.test(cb),
+   "calibration board prints every route's fraction");
+ok(/2\.80/.test(cb) && /3\.24/.test(cb),
+   "and the SPF anchor each one was solved to reproduce");
+ok(/outdoor air/.test(cb), "air source's source is named, not left blank");
+ok(/inside the 15% gate/.test(cb), "a passing spread says so");
+DOM.calBoard = null; el("calBoard");
+calBoard({gate: 1.15, spread: 1.21, jurisdictions: {
+  ni: {ashp:{eta:0.30,spf_anchor:2.80,source_c:null},
+       gshp:{eta:0.36,spf_anchor:3.24,source_c:8.0},
+       network:{eta:0.363,spf_anchor:5.0,source_c:19.6}}}});
+ok(/OUTSIDE the 15% gate/.test(DOM.calBoard.innerHTML),
+   "and a failing spread is stated on the page, not just in the log");
+DOM.calBoard = null; el("calBoard");
+calBoard(null);
+ok(/next daily build/.test(DOM.calBoard.textContent),
+   "a payload without the calibration declines rather than drawing blank");
 
 console.log(checks + " front-end fixture checks passed");
