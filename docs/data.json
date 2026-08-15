@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-08-15T23:02:56+00:00",
+ "built_utc": "2026-08-15T23:26:55+00:00",
  "derived": {
   "anchor_epoch": 8,
   "calibration": {
@@ -73,6 +73,2590 @@
    "days": 129,
    "from": "2026-04-08",
    "to": "2026-08-14"
+  },
+  "grid_views": {
+   "daily": [
+    {
+     "air_source": 236,
+     "demand_mw": 4861,
+     "geothermal_network": 106,
+     "ground_source": 217,
+     "heat_mw": 5121,
+     "t": "2026-05-18",
+     "temp_c": 9.4
+    },
+    {
+     "air_source": 121,
+     "demand_mw": 4867,
+     "geothermal_network": 62,
+     "ground_source": 127,
+     "heat_mw": 2989,
+     "t": "2026-05-19",
+     "temp_c": 12.5
+    },
+    {
+     "air_source": 98,
+     "demand_mw": 4801,
+     "geothermal_network": 52,
+     "ground_source": 107,
+     "heat_mw": 2516,
+     "t": "2026-05-20",
+     "temp_c": 13.2
+    },
+    {
+     "air_source": 62,
+     "demand_mw": 4802,
+     "geothermal_network": 35,
+     "ground_source": 73,
+     "heat_mw": 1711,
+     "t": "2026-05-21",
+     "temp_c": 14.7
+    },
+    {
+     "air_source": 58,
+     "demand_mw": 4652,
+     "geothermal_network": 33,
+     "ground_source": 68,
+     "heat_mw": 1602,
+     "t": "2026-05-22",
+     "temp_c": 14.9
+    },
+    {
+     "air_source": 74,
+     "demand_mw": 4157,
+     "geothermal_network": 42,
+     "ground_source": 85,
+     "heat_mw": 2014,
+     "t": "2026-05-23",
+     "temp_c": 14.5
+    },
+    {
+     "air_source": 56,
+     "demand_mw": 3975,
+     "geothermal_network": 34,
+     "ground_source": 71,
+     "heat_mw": 1666,
+     "t": "2026-05-24",
+     "temp_c": 16.3
+    },
+    {
+     "air_source": 45,
+     "demand_mw": 4441,
+     "geothermal_network": 30,
+     "ground_source": 62,
+     "heat_mw": 1466,
+     "t": "2026-05-25",
+     "temp_c": 17.8
+    },
+    {
+     "air_source": 35,
+     "demand_mw": 4555,
+     "geothermal_network": 25,
+     "ground_source": 51,
+     "heat_mw": 1194,
+     "t": "2026-05-26",
+     "temp_c": 18.5
+    },
+    {
+     "air_source": 33,
+     "demand_mw": 4476,
+     "geothermal_network": 23,
+     "ground_source": 46,
+     "heat_mw": 1093,
+     "t": "2026-05-27",
+     "temp_c": 18.2
+    },
+    {
+     "air_source": 33,
+     "demand_mw": 4594,
+     "geothermal_network": 21,
+     "ground_source": 44,
+     "heat_mw": 1034,
+     "t": "2026-05-28",
+     "temp_c": 16.9
+    },
+    {
+     "air_source": 42,
+     "demand_mw": 4388,
+     "geothermal_network": 27,
+     "ground_source": 55,
+     "heat_mw": 1290,
+     "t": "2026-05-29",
+     "temp_c": 16.6
+    },
+    {
+     "air_source": 51,
+     "demand_mw": 4258,
+     "geothermal_network": 30,
+     "ground_source": 62,
+     "heat_mw": 1462,
+     "t": "2026-05-30",
+     "temp_c": 15.6
+    },
+    {
+     "air_source": 56,
+     "demand_mw": 4103,
+     "geothermal_network": 33,
+     "ground_source": 68,
+     "heat_mw": 1607,
+     "t": "2026-05-31",
+     "temp_c": 15.4
+    },
+    {
+     "air_source": 40,
+     "demand_mw": 4355,
+     "geothermal_network": 24,
+     "ground_source": 50,
+     "heat_mw": 1172,
+     "t": "2026-06-01",
+     "temp_c": 16.1
+    },
+    {
+     "air_source": 72,
+     "demand_mw": 4584,
+     "geothermal_network": 40,
+     "ground_source": 82,
+     "heat_mw": 1934,
+     "t": "2026-06-02",
+     "temp_c": 14.3
+    },
+    {
+     "air_source": 89,
+     "demand_mw": 4583,
+     "geothermal_network": 48,
+     "ground_source": 98,
+     "heat_mw": 2317,
+     "t": "2026-06-03",
+     "temp_c": 13.5
+    },
+    {
+     "air_source": 112,
+     "demand_mw": 4466,
+     "geothermal_network": 58,
+     "ground_source": 119,
+     "heat_mw": 2798,
+     "t": "2026-06-04",
+     "temp_c": 12.8
+    },
+    {
+     "air_source": 146,
+     "demand_mw": 4511,
+     "geothermal_network": 72,
+     "ground_source": 148,
+     "heat_mw": 3500,
+     "t": "2026-06-05",
+     "temp_c": 11.7
+    },
+    {
+     "air_source": 105,
+     "demand_mw": 4311,
+     "geothermal_network": 55,
+     "ground_source": 113,
+     "heat_mw": 2665,
+     "t": "2026-06-06",
+     "temp_c": 13.0
+    },
+    {
+     "air_source": 87,
+     "demand_mw": 4218,
+     "geothermal_network": 47,
+     "ground_source": 96,
+     "heat_mw": 2261,
+     "t": "2026-06-07",
+     "temp_c": 13.6
+    },
+    {
+     "air_source": 158,
+     "demand_mw": 4448,
+     "geothermal_network": 77,
+     "ground_source": 158,
+     "heat_mw": 3723,
+     "t": "2026-06-08",
+     "temp_c": 11.4
+    },
+    {
+     "air_source": 181,
+     "demand_mw": 4446,
+     "geothermal_network": 86,
+     "ground_source": 176,
+     "heat_mw": 4149,
+     "t": "2026-06-09",
+     "temp_c": 10.8
+    },
+    {
+     "air_source": 157,
+     "demand_mw": 4580,
+     "geothermal_network": 76,
+     "ground_source": 157,
+     "heat_mw": 3702,
+     "t": "2026-06-10",
+     "temp_c": 11.4
+    },
+    {
+     "air_source": 83,
+     "demand_mw": 4751,
+     "geothermal_network": 46,
+     "ground_source": 94,
+     "heat_mw": 2211,
+     "t": "2026-06-11",
+     "temp_c": 13.9
+    },
+    {
+     "air_source": 61,
+     "demand_mw": 4421,
+     "geothermal_network": 35,
+     "ground_source": 71,
+     "heat_mw": 1673,
+     "t": "2026-06-12",
+     "temp_c": 14.7
+    },
+    {
+     "air_source": 89,
+     "demand_mw": 4070,
+     "geothermal_network": 48,
+     "ground_source": 99,
+     "heat_mw": 2338,
+     "t": "2026-06-13",
+     "temp_c": 13.8
+    },
+    {
+     "air_source": 89,
+     "demand_mw": 4040,
+     "geothermal_network": 48,
+     "ground_source": 98,
+     "heat_mw": 2322,
+     "t": "2026-06-14",
+     "temp_c": 13.7
+    },
+    {
+     "air_source": 66,
+     "demand_mw": 4541,
+     "geothermal_network": 37,
+     "ground_source": 76,
+     "heat_mw": 1800,
+     "t": "2026-06-15",
+     "temp_c": 14.6
+    },
+    {
+     "air_source": 50,
+     "demand_mw": 4695,
+     "geothermal_network": 30,
+     "ground_source": 62,
+     "heat_mw": 1451,
+     "t": "2026-06-16",
+     "temp_c": 15.7
+    },
+    {
+     "air_source": 41,
+     "demand_mw": 4552,
+     "geothermal_network": 25,
+     "ground_source": 52,
+     "heat_mw": 1220,
+     "t": "2026-06-17",
+     "temp_c": 16.4
+    },
+    {
+     "air_source": 39,
+     "demand_mw": 4772,
+     "geothermal_network": 24,
+     "ground_source": 50,
+     "heat_mw": 1180,
+     "t": "2026-06-18",
+     "temp_c": 16.5
+    },
+    {
+     "air_source": 32,
+     "demand_mw": 4709,
+     "geothermal_network": 20,
+     "ground_source": 41,
+     "heat_mw": 975,
+     "t": "2026-06-19",
+     "temp_c": 16.4
+    },
+    {
+     "air_source": 64,
+     "demand_mw": 4153,
+     "geothermal_network": 37,
+     "ground_source": 76,
+     "heat_mw": 1797,
+     "t": "2026-06-20",
+     "temp_c": 15.1
+    },
+    {
+     "air_source": 67,
+     "demand_mw": 3963,
+     "geothermal_network": 40,
+     "ground_source": 81,
+     "heat_mw": 1921,
+     "t": "2026-06-21",
+     "temp_c": 15.5
+    },
+    {
+     "air_source": 39,
+     "demand_mw": 4614,
+     "geothermal_network": 26,
+     "ground_source": 53,
+     "heat_mw": 1259,
+     "t": "2026-06-22",
+     "temp_c": 17.7
+    },
+    {
+     "air_source": 24,
+     "demand_mw": 4672,
+     "geothermal_network": 19,
+     "ground_source": 40,
+     "heat_mw": 933,
+     "t": "2026-06-23",
+     "temp_c": 20.3
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 4721,
+     "geothermal_network": 20,
+     "ground_source": 41,
+     "heat_mw": 956,
+     "t": "2026-06-24",
+     "temp_c": 18.8
+    },
+    {
+     "air_source": 22,
+     "demand_mw": 4687,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-06-25",
+     "temp_c": 21.7
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 4717,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-06-26",
+     "temp_c": 20.7
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4284,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-06-27",
+     "temp_c": 18.4
+    },
+    {
+     "air_source": 48,
+     "demand_mw": 3894,
+     "geothermal_network": 28,
+     "ground_source": 58,
+     "heat_mw": 1371,
+     "t": "2026-06-28",
+     "temp_c": 15.5
+    },
+    {
+     "air_source": 59,
+     "demand_mw": 4556,
+     "geothermal_network": 34,
+     "ground_source": 70,
+     "heat_mw": 1657,
+     "t": "2026-06-29",
+     "temp_c": 15.2
+    },
+    {
+     "air_source": 42,
+     "demand_mw": 4607,
+     "geothermal_network": 26,
+     "ground_source": 53,
+     "heat_mw": 1251,
+     "t": "2026-06-30",
+     "temp_c": 16.4
+    },
+    {
+     "air_source": 49,
+     "demand_mw": 4702,
+     "geothermal_network": 30,
+     "ground_source": 61,
+     "heat_mw": 1429,
+     "t": "2026-07-01",
+     "temp_c": 15.7
+    },
+    {
+     "air_source": 51,
+     "demand_mw": 4513,
+     "geothermal_network": 30,
+     "ground_source": 62,
+     "heat_mw": 1472,
+     "t": "2026-07-02",
+     "temp_c": 15.6
+    },
+    {
+     "air_source": 61,
+     "demand_mw": 4551,
+     "geothermal_network": 37,
+     "ground_source": 76,
+     "heat_mw": 1793,
+     "t": "2026-07-03",
+     "temp_c": 15.8
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4166,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-07-04",
+     "temp_c": 17.7
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4091,
+     "geothermal_network": 20,
+     "ground_source": 41,
+     "heat_mw": 962,
+     "t": "2026-07-05",
+     "temp_c": 18.0
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4454,
+     "geothermal_network": 20,
+     "ground_source": 42,
+     "heat_mw": 990,
+     "t": "2026-07-06",
+     "temp_c": 18.4
+    },
+    {
+     "air_source": 33,
+     "demand_mw": 4535,
+     "geothermal_network": 24,
+     "ground_source": 48,
+     "heat_mw": 1143,
+     "t": "2026-07-07",
+     "temp_c": 18.8
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4632,
+     "geothermal_network": 20,
+     "ground_source": 41,
+     "heat_mw": 961,
+     "t": "2026-07-08",
+     "temp_c": 20.0
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 4690,
+     "geothermal_network": 20,
+     "ground_source": 42,
+     "heat_mw": 986,
+     "t": "2026-07-09",
+     "temp_c": 19.0
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4567,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 929,
+     "t": "2026-07-10",
+     "temp_c": 19.9
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4158,
+     "geothermal_network": 19,
+     "ground_source": 40,
+     "heat_mw": 939,
+     "t": "2026-07-11",
+     "temp_c": 19.4
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 3933,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-07-12",
+     "temp_c": 20.7
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4250,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-07-13",
+     "temp_c": 19.3
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4368,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-07-14",
+     "temp_c": 19.1
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4532,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-07-15",
+     "temp_c": 19.8
+    },
+    {
+     "air_source": 24,
+     "demand_mw": 4594,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 929,
+     "t": "2026-07-16",
+     "temp_c": 20.2
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4447,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 928,
+     "t": "2026-07-17",
+     "temp_c": 19.6
+    },
+    {
+     "air_source": 42,
+     "demand_mw": 3996,
+     "geothermal_network": 27,
+     "ground_source": 56,
+     "heat_mw": 1321,
+     "t": "2026-07-18",
+     "temp_c": 17.0
+    },
+    {
+     "air_source": 48,
+     "demand_mw": 3884,
+     "geothermal_network": 31,
+     "ground_source": 64,
+     "heat_mw": 1499,
+     "t": "2026-07-19",
+     "temp_c": 17.0
+    },
+    {
+     "air_source": 43,
+     "demand_mw": 4443,
+     "geothermal_network": 28,
+     "ground_source": 57,
+     "heat_mw": 1354,
+     "t": "2026-07-20",
+     "temp_c": 17.1
+    },
+    {
+     "air_source": 39,
+     "demand_mw": 4572,
+     "geothermal_network": 25,
+     "ground_source": 51,
+     "heat_mw": 1199,
+     "t": "2026-07-21",
+     "temp_c": 16.7
+    },
+    {
+     "air_source": 43,
+     "demand_mw": 4461,
+     "geothermal_network": 28,
+     "ground_source": 58,
+     "heat_mw": 1358,
+     "t": "2026-07-22",
+     "temp_c": 17.2
+    },
+    {
+     "air_source": 34,
+     "demand_mw": 4594,
+     "geothermal_network": 23,
+     "ground_source": 47,
+     "heat_mw": 1101,
+     "t": "2026-07-23",
+     "temp_c": 17.7
+    },
+    {
+     "air_source": 36,
+     "demand_mw": 4472,
+     "geothermal_network": 25,
+     "ground_source": 51,
+     "heat_mw": 1196,
+     "t": "2026-07-24",
+     "temp_c": 18.0
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 4224,
+     "geothermal_network": 20,
+     "ground_source": 42,
+     "heat_mw": 982,
+     "t": "2026-07-25",
+     "temp_c": 17.8
+    },
+    {
+     "air_source": 32,
+     "demand_mw": 4002,
+     "geothermal_network": 20,
+     "ground_source": 41,
+     "heat_mw": 976,
+     "t": "2026-07-26",
+     "temp_c": 16.6
+    },
+    {
+     "air_source": 38,
+     "demand_mw": 4653,
+     "geothermal_network": 25,
+     "ground_source": 52,
+     "heat_mw": 1230,
+     "t": "2026-07-27",
+     "temp_c": 17.6
+    },
+    {
+     "air_source": 24,
+     "demand_mw": 4654,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-07-28",
+     "temp_c": 20.4
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4756,
+     "geothermal_network": 20,
+     "ground_source": 40,
+     "heat_mw": 955,
+     "t": "2026-07-29",
+     "temp_c": 17.9
+    },
+    {
+     "air_source": 62,
+     "demand_mw": 4490,
+     "geothermal_network": 36,
+     "ground_source": 75,
+     "heat_mw": 1765,
+     "t": "2026-07-30",
+     "temp_c": 15.4
+    },
+    {
+     "air_source": 72,
+     "demand_mw": 4433,
+     "geothermal_network": 41,
+     "ground_source": 85,
+     "heat_mw": 2002,
+     "t": "2026-07-31",
+     "temp_c": 14.9
+    },
+    {
+     "air_source": 64,
+     "demand_mw": 4124,
+     "geothermal_network": 38,
+     "ground_source": 78,
+     "heat_mw": 1847,
+     "t": "2026-08-01",
+     "temp_c": 15.6
+    },
+    {
+     "air_source": 51,
+     "demand_mw": 4132,
+     "geothermal_network": 30,
+     "ground_source": 62,
+     "heat_mw": 1471,
+     "t": "2026-08-02",
+     "temp_c": 15.6
+    },
+    {
+     "air_source": 33,
+     "demand_mw": 4269,
+     "geothermal_network": 22,
+     "ground_source": 45,
+     "heat_mw": 1066,
+     "t": "2026-08-03",
+     "temp_c": 17.4
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 4666,
+     "geothermal_network": 19,
+     "ground_source": 40,
+     "heat_mw": 941,
+     "t": "2026-08-04",
+     "temp_c": 18.1
+    },
+    {
+     "air_source": 62,
+     "demand_mw": 4460,
+     "geothermal_network": 35,
+     "ground_source": 72,
+     "heat_mw": 1698,
+     "t": "2026-08-05",
+     "temp_c": 14.6
+    },
+    {
+     "air_source": 74,
+     "demand_mw": 4597,
+     "geothermal_network": 42,
+     "ground_source": 86,
+     "heat_mw": 2023,
+     "t": "2026-08-06",
+     "temp_c": 14.6
+    },
+    {
+     "air_source": 58,
+     "demand_mw": 4431,
+     "geothermal_network": 36,
+     "ground_source": 73,
+     "heat_mw": 1724,
+     "t": "2026-08-07",
+     "temp_c": 16.1
+    },
+    {
+     "air_source": 43,
+     "demand_mw": 4203,
+     "geothermal_network": 28,
+     "ground_source": 58,
+     "heat_mw": 1379,
+     "t": "2026-08-08",
+     "temp_c": 17.4
+    },
+    {
+     "air_source": 33,
+     "demand_mw": 4194,
+     "geothermal_network": 21,
+     "ground_source": 43,
+     "heat_mw": 1023,
+     "t": "2026-08-09",
+     "temp_c": 17.1
+    },
+    {
+     "air_source": 73,
+     "demand_mw": 4474,
+     "geothermal_network": 42,
+     "ground_source": 86,
+     "heat_mw": 2034,
+     "t": "2026-08-10",
+     "temp_c": 14.9
+    },
+    {
+     "air_source": 47,
+     "demand_mw": 4550,
+     "geothermal_network": 31,
+     "ground_source": 64,
+     "heat_mw": 1505,
+     "t": "2026-08-11",
+     "temp_c": 17.6
+    },
+    {
+     "air_source": 24,
+     "demand_mw": 4757,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12",
+     "temp_c": 20.5
+    },
+    {
+     "air_source": 22,
+     "demand_mw": 4891,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13",
+     "temp_c": 21.5
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4748,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14",
+     "temp_c": 19.2
+    },
+    {
+     "air_source": 39,
+     "demand_mw": 4335,
+     "geothermal_network": 24,
+     "ground_source": 49,
+     "heat_mw": 1166,
+     "t": "2026-08-15",
+     "temp_c": 16.5
+    }
+   ],
+   "falcon": [
+    {
+     "air_source": 435,
+     "demand_mw": 5495,
+     "geothermal_network": 166,
+     "ground_source": 341,
+     "heat_mw": 8052,
+     "m": "01",
+     "t": "2026-01",
+     "temp_c": 5.1
+    },
+    {
+     "air_source": 341,
+     "demand_mw": 5399,
+     "geothermal_network": 139,
+     "ground_source": 286,
+     "heat_mw": 6745,
+     "m": "02",
+     "t": "2026-02",
+     "temp_c": 7.0
+    },
+    {
+     "air_source": 296,
+     "demand_mw": 5080,
+     "geothermal_network": 125,
+     "ground_source": 257,
+     "heat_mw": 6070,
+     "m": "03",
+     "t": "2026-03",
+     "temp_c": 8.0
+    },
+    {
+     "air_source": 230,
+     "demand_mw": 4760,
+     "geothermal_network": 104,
+     "ground_source": 213,
+     "heat_mw": 5018,
+     "m": "04",
+     "t": "2026-04",
+     "temp_c": 9.5
+    },
+    {
+     "air_source": 133,
+     "demand_mw": 4514,
+     "geothermal_network": 68,
+     "ground_source": 140,
+     "heat_mw": 3307,
+     "m": "05",
+     "t": "2026-05",
+     "temp_c": 12.6
+    },
+    {
+     "air_source": 67,
+     "demand_mw": 4464,
+     "geothermal_network": 39,
+     "ground_source": 81,
+     "heat_mw": 1910,
+     "m": "06",
+     "t": "2026-06",
+     "temp_c": 15.3
+    },
+    {
+     "air_source": 35,
+     "demand_mw": 4413,
+     "geothermal_network": 24,
+     "ground_source": 49,
+     "heat_mw": 1160,
+     "m": "07",
+     "t": "2026-07",
+     "temp_c": 18.0
+    },
+    {
+     "air_source": 44,
+     "demand_mw": 4335,
+     "geothermal_network": 27,
+     "ground_source": 56,
+     "heat_mw": 1326,
+     "m": "08",
+     "t": "2025-08",
+     "temp_c": 16.6
+    },
+    {
+     "air_source": 109,
+     "demand_mw": 4544,
+     "geothermal_network": 57,
+     "ground_source": 117,
+     "heat_mw": 2761,
+     "m": "09",
+     "t": "2025-09",
+     "temp_c": 13.0
+    },
+    {
+     "air_source": 164,
+     "demand_mw": 4832,
+     "geothermal_network": 79,
+     "ground_source": 163,
+     "heat_mw": 3844,
+     "m": "10",
+     "t": "2025-10",
+     "temp_c": 11.3
+    },
+    {
+     "air_source": 268,
+     "demand_mw": 5176,
+     "geothermal_network": 116,
+     "ground_source": 239,
+     "heat_mw": 5639,
+     "m": "11",
+     "t": "2025-11",
+     "temp_c": 8.6
+    },
+    {
+     "air_source": 321,
+     "demand_mw": 5221,
+     "geothermal_network": 133,
+     "ground_source": 274,
+     "heat_mw": 6460,
+     "m": "12",
+     "t": "2025-12",
+     "temp_c": 7.4
+    }
+   ],
+   "falcon_complete": 12,
+   "hourly": [
+    {
+     "air_source": 30,
+     "demand_mw": 4000,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T00",
+     "temp_c": 16.8
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 3818,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T01",
+     "temp_c": 16.3
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 3824,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T02",
+     "temp_c": 16.0
+    },
+    {
+     "air_source": 32,
+     "demand_mw": 3766,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T03",
+     "temp_c": 15.6
+    },
+    {
+     "air_source": 34,
+     "demand_mw": 3684,
+     "geothermal_network": 20,
+     "ground_source": 42,
+     "heat_mw": 980,
+     "t": "2026-08-09T04",
+     "temp_c": 15.4
+    },
+    {
+     "air_source": 40,
+     "demand_mw": 3658,
+     "geothermal_network": 23,
+     "ground_source": 47,
+     "heat_mw": 1117,
+     "t": "2026-08-09T05",
+     "temp_c": 15.2
+    },
+    {
+     "air_source": 47,
+     "demand_mw": 3664,
+     "geothermal_network": 27,
+     "ground_source": 55,
+     "heat_mw": 1302,
+     "t": "2026-08-09T06",
+     "temp_c": 14.9
+    },
+    {
+     "air_source": 38,
+     "demand_mw": 3822,
+     "geothermal_network": 23,
+     "ground_source": 46,
+     "heat_mw": 1090,
+     "t": "2026-08-09T07",
+     "temp_c": 15.3
+    },
+    {
+     "air_source": 32,
+     "demand_mw": 4042,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T08",
+     "temp_c": 15.9
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 4256,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T09",
+     "temp_c": 16.6
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4376,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T10",
+     "temp_c": 17.6
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4400,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T11",
+     "temp_c": 18.6
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4444,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T12",
+     "temp_c": 19.3
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4385,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T13",
+     "temp_c": 20.0
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4295,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T14",
+     "temp_c": 19.8
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4277,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T15",
+     "temp_c": 19.8
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4383,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T16",
+     "temp_c": 19.2
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4527,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T17",
+     "temp_c": 18.6
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4625,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T18",
+     "temp_c": 18.4
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4664,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T19",
+     "temp_c": 18.5
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 4622,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T20",
+     "temp_c": 16.9
+    },
+    {
+     "air_source": 32,
+     "demand_mw": 4586,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-09T21",
+     "temp_c": 15.8
+    },
+    {
+     "air_source": 51,
+     "demand_mw": 4400,
+     "geothermal_network": 29,
+     "ground_source": 60,
+     "heat_mw": 1412,
+     "t": "2026-08-09T22",
+     "temp_c": 14.8
+    },
+    {
+     "air_source": 75,
+     "demand_mw": 4132,
+     "geothermal_network": 41,
+     "ground_source": 84,
+     "heat_mw": 1994,
+     "t": "2026-08-09T23",
+     "temp_c": 13.9
+    },
+    {
+     "air_source": 97,
+     "demand_mw": 3934,
+     "geothermal_network": 51,
+     "ground_source": 105,
+     "heat_mw": 2480,
+     "t": "2026-08-10T00",
+     "temp_c": 13.2
+    },
+    {
+     "air_source": 127,
+     "demand_mw": 3777,
+     "geothermal_network": 64,
+     "ground_source": 132,
+     "heat_mw": 3116,
+     "t": "2026-08-10T01",
+     "temp_c": 12.3
+    },
+    {
+     "air_source": 145,
+     "demand_mw": 3831,
+     "geothermal_network": 72,
+     "ground_source": 147,
+     "heat_mw": 3472,
+     "t": "2026-08-10T02",
+     "temp_c": 11.8
+    },
+    {
+     "air_source": 160,
+     "demand_mw": 3780,
+     "geothermal_network": 78,
+     "ground_source": 160,
+     "heat_mw": 3766,
+     "t": "2026-08-10T03",
+     "temp_c": 11.3
+    },
+    {
+     "air_source": 174,
+     "demand_mw": 3704,
+     "geothermal_network": 83,
+     "ground_source": 171,
+     "heat_mw": 4027,
+     "t": "2026-08-10T04",
+     "temp_c": 11.0
+    },
+    {
+     "air_source": 187,
+     "demand_mw": 3754,
+     "geothermal_network": 88,
+     "ground_source": 181,
+     "heat_mw": 4273,
+     "t": "2026-08-10T05",
+     "temp_c": 10.6
+    },
+    {
+     "air_source": 199,
+     "demand_mw": 4009,
+     "geothermal_network": 93,
+     "ground_source": 190,
+     "heat_mw": 4485,
+     "t": "2026-08-10T06",
+     "temp_c": 10.3
+    },
+    {
+     "air_source": 186,
+     "demand_mw": 4466,
+     "geothermal_network": 88,
+     "ground_source": 180,
+     "heat_mw": 4252,
+     "t": "2026-08-10T07",
+     "temp_c": 10.6
+    },
+    {
+     "air_source": 131,
+     "demand_mw": 4831,
+     "geothermal_network": 66,
+     "ground_source": 136,
+     "heat_mw": 3198,
+     "t": "2026-08-10T08",
+     "temp_c": 12.2
+    },
+    {
+     "air_source": 78,
+     "demand_mw": 4912,
+     "geothermal_network": 42,
+     "ground_source": 87,
+     "heat_mw": 2048,
+     "t": "2026-08-10T09",
+     "temp_c": 13.9
+    },
+    {
+     "air_source": 38,
+     "demand_mw": 4744,
+     "geothermal_network": 22,
+     "ground_source": 46,
+     "heat_mw": 1076,
+     "t": "2026-08-10T10",
+     "temp_c": 15.3
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 4663,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T11",
+     "temp_c": 16.5
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4615,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T12",
+     "temp_c": 17.3
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4541,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T13",
+     "temp_c": 18.4
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4474,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T14",
+     "temp_c": 18.5
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4476,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T15",
+     "temp_c": 18.7
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4662,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T16",
+     "temp_c": 18.4
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 4956,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T17",
+     "temp_c": 17.9
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 5070,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T18",
+     "temp_c": 17.7
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 5126,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T19",
+     "temp_c": 17.5
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 5062,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T20",
+     "temp_c": 16.9
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 5006,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-10T21",
+     "temp_c": 16.1
+    },
+    {
+     "air_source": 37,
+     "demand_mw": 4674,
+     "geothermal_network": 22,
+     "ground_source": 45,
+     "heat_mw": 1056,
+     "t": "2026-08-10T22",
+     "temp_c": 15.3
+    },
+    {
+     "air_source": 50,
+     "demand_mw": 4308,
+     "geothermal_network": 29,
+     "ground_source": 59,
+     "heat_mw": 1391,
+     "t": "2026-08-10T23",
+     "temp_c": 14.8
+    },
+    {
+     "air_source": 63,
+     "demand_mw": 4075,
+     "geothermal_network": 35,
+     "ground_source": 73,
+     "heat_mw": 1713,
+     "t": "2026-08-11T00",
+     "temp_c": 14.3
+    },
+    {
+     "air_source": 92,
+     "demand_mw": 3902,
+     "geothermal_network": 49,
+     "ground_source": 100,
+     "heat_mw": 2363,
+     "t": "2026-08-11T01",
+     "temp_c": 13.4
+    },
+    {
+     "air_source": 102,
+     "demand_mw": 3928,
+     "geothermal_network": 53,
+     "ground_source": 110,
+     "heat_mw": 2589,
+     "t": "2026-08-11T02",
+     "temp_c": 13.1
+    },
+    {
+     "air_source": 110,
+     "demand_mw": 3879,
+     "geothermal_network": 57,
+     "ground_source": 117,
+     "heat_mw": 2767,
+     "t": "2026-08-11T03",
+     "temp_c": 12.8
+    },
+    {
+     "air_source": 114,
+     "demand_mw": 3776,
+     "geothermal_network": 59,
+     "ground_source": 120,
+     "heat_mw": 2842,
+     "t": "2026-08-11T04",
+     "temp_c": 12.7
+    },
+    {
+     "air_source": 121,
+     "demand_mw": 3786,
+     "geothermal_network": 62,
+     "ground_source": 127,
+     "heat_mw": 3000,
+     "t": "2026-08-11T05",
+     "temp_c": 12.5
+    },
+    {
+     "air_source": 123,
+     "demand_mw": 4048,
+     "geothermal_network": 63,
+     "ground_source": 128,
+     "heat_mw": 3027,
+     "t": "2026-08-11T06",
+     "temp_c": 12.4
+    },
+    {
+     "air_source": 97,
+     "demand_mw": 4524,
+     "geothermal_network": 51,
+     "ground_source": 106,
+     "heat_mw": 2493,
+     "t": "2026-08-11T07",
+     "temp_c": 13.2
+    },
+    {
+     "air_source": 52,
+     "demand_mw": 4864,
+     "geothermal_network": 30,
+     "ground_source": 61,
+     "heat_mw": 1432,
+     "t": "2026-08-11T08",
+     "temp_c": 14.8
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 4961,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T09",
+     "temp_c": 16.2
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4813,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T10",
+     "temp_c": 17.5
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4698,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T11",
+     "temp_c": 18.6
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4602,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T12",
+     "temp_c": 19.5
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 4496,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T13",
+     "temp_c": 21.2
+    },
+    {
+     "air_source": 21,
+     "demand_mw": 4490,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T14",
+     "temp_c": 22.1
+    },
+    {
+     "air_source": 20,
+     "demand_mw": 4552,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T15",
+     "temp_c": 22.5
+    },
+    {
+     "air_source": 20,
+     "demand_mw": 4803,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T16",
+     "temp_c": 22.7
+    },
+    {
+     "air_source": 20,
+     "demand_mw": 5123,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T17",
+     "temp_c": 22.4
+    },
+    {
+     "air_source": 21,
+     "demand_mw": 5248,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T18",
+     "temp_c": 22.0
+    },
+    {
+     "air_source": 22,
+     "demand_mw": 5228,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T19",
+     "temp_c": 21.5
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 5141,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T20",
+     "temp_c": 20.7
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 5067,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T21",
+     "temp_c": 19.6
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4769,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T22",
+     "temp_c": 18.8
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4422,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-11T23",
+     "temp_c": 18.5
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 4149,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T00",
+     "temp_c": 17.9
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 3960,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T01",
+     "temp_c": 17.1
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 4003,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T02",
+     "temp_c": 17.0
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 3924,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T03",
+     "temp_c": 16.9
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 3846,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T04",
+     "temp_c": 16.7
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 3950,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T05",
+     "temp_c": 16.6
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 4238,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T06",
+     "temp_c": 16.5
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 4702,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T07",
+     "temp_c": 17.0
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 5138,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T08",
+     "temp_c": 18.3
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 5254,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T09",
+     "temp_c": 19.6
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 5103,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T10",
+     "temp_c": 20.8
+    },
+    {
+     "air_source": 21,
+     "demand_mw": 5023,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T11",
+     "temp_c": 21.9
+    },
+    {
+     "air_source": 20,
+     "demand_mw": 4980,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T12",
+     "temp_c": 23.0
+    },
+    {
+     "air_source": 18,
+     "demand_mw": 4900,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T13",
+     "temp_c": 23.9
+    },
+    {
+     "air_source": 17,
+     "demand_mw": 4886,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T14",
+     "temp_c": 24.4
+    },
+    {
+     "air_source": 17,
+     "demand_mw": 4925,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T15",
+     "temp_c": 24.8
+    },
+    {
+     "air_source": 17,
+     "demand_mw": 5064,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T16",
+     "temp_c": 24.7
+    },
+    {
+     "air_source": 17,
+     "demand_mw": 5318,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T17",
+     "temp_c": 24.7
+    },
+    {
+     "air_source": 17,
+     "demand_mw": 5382,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T18",
+     "temp_c": 24.3
+    },
+    {
+     "air_source": 19,
+     "demand_mw": 5352,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T19",
+     "temp_c": 23.1
+    },
+    {
+     "air_source": 21,
+     "demand_mw": 5244,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T20",
+     "temp_c": 22.1
+    },
+    {
+     "air_source": 22,
+     "demand_mw": 5241,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T21",
+     "temp_c": 21.3
+    },
+    {
+     "air_source": 24,
+     "demand_mw": 4973,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T22",
+     "temp_c": 20.6
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4614,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-12T23",
+     "temp_c": 19.9
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4373,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T00",
+     "temp_c": 19.4
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4197,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T01",
+     "temp_c": 18.8
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4215,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T02",
+     "temp_c": 18.7
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4134,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T03",
+     "temp_c": 18.4
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 4052,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T04",
+     "temp_c": 18.0
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4097,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T05",
+     "temp_c": 17.7
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4343,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T06",
+     "temp_c": 17.6
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4803,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T07",
+     "temp_c": 18.3
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 5241,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T08",
+     "temp_c": 19.7
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 5402,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T09",
+     "temp_c": 21.1
+    },
+    {
+     "air_source": 21,
+     "demand_mw": 5334,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T10",
+     "temp_c": 22.0
+    },
+    {
+     "air_source": 20,
+     "demand_mw": 5301,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T11",
+     "temp_c": 23.0
+    },
+    {
+     "air_source": 18,
+     "demand_mw": 5198,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T12",
+     "temp_c": 24.0
+    },
+    {
+     "air_source": 16,
+     "demand_mw": 5067,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T13",
+     "temp_c": 24.8
+    },
+    {
+     "air_source": 16,
+     "demand_mw": 4986,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T14",
+     "temp_c": 25.0
+    },
+    {
+     "air_source": 16,
+     "demand_mw": 4961,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T15",
+     "temp_c": 25.1
+    },
+    {
+     "air_source": 17,
+     "demand_mw": 5128,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T16",
+     "temp_c": 24.6
+    },
+    {
+     "air_source": 17,
+     "demand_mw": 5356,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T17",
+     "temp_c": 24.7
+    },
+    {
+     "air_source": 18,
+     "demand_mw": 5432,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T18",
+     "temp_c": 23.6
+    },
+    {
+     "air_source": 19,
+     "demand_mw": 5402,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T19",
+     "temp_c": 23.3
+    },
+    {
+     "air_source": 20,
+     "demand_mw": 5333,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T20",
+     "temp_c": 22.8
+    },
+    {
+     "air_source": 21,
+     "demand_mw": 5325,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T21",
+     "temp_c": 22.0
+    },
+    {
+     "air_source": 22,
+     "demand_mw": 5029,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T22",
+     "temp_c": 21.8
+    },
+    {
+     "air_source": 22,
+     "demand_mw": 4676,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-13T23",
+     "temp_c": 21.7
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 4408,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T00",
+     "temp_c": 20.9
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4234,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T01",
+     "temp_c": 19.7
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4225,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T02",
+     "temp_c": 19.3
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4124,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T03",
+     "temp_c": 19.0
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4034,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T04",
+     "temp_c": 18.9
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4050,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T05",
+     "temp_c": 18.3
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4288,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T06",
+     "temp_c": 17.7
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4772,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T07",
+     "temp_c": 17.5
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 5164,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T08",
+     "temp_c": 17.7
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 5265,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T09",
+     "temp_c": 18.1
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 5147,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T10",
+     "temp_c": 19.0
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 5057,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T11",
+     "temp_c": 19.4
+    },
+    {
+     "air_source": 24,
+     "demand_mw": 4996,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T12",
+     "temp_c": 20.4
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 4911,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T13",
+     "temp_c": 20.8
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 4866,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T14",
+     "temp_c": 21.2
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 4854,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T15",
+     "temp_c": 21.2
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 4933,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T16",
+     "temp_c": 20.7
+    },
+    {
+     "air_source": 23,
+     "demand_mw": 5115,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T17",
+     "temp_c": 20.7
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 5206,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T18",
+     "temp_c": 20.1
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 5145,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T19",
+     "temp_c": 19.7
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 5050,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T20",
+     "temp_c": 19.1
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 4964,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T21",
+     "temp_c": 18.2
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4698,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T22",
+     "temp_c": 17.5
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 4446,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-14T23",
+     "temp_c": 16.7
+    },
+    {
+     "air_source": 31,
+     "demand_mw": 4212,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T00",
+     "temp_c": 16.1
+    },
+    {
+     "air_source": 32,
+     "demand_mw": 4049,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T01",
+     "temp_c": 15.8
+    },
+    {
+     "air_source": 35,
+     "demand_mw": 4064,
+     "geothermal_network": 21,
+     "ground_source": 42,
+     "heat_mw": 994,
+     "t": "2026-08-15T02",
+     "temp_c": 15.4
+    },
+    {
+     "air_source": 49,
+     "demand_mw": 3969,
+     "geothermal_network": 28,
+     "ground_source": 57,
+     "heat_mw": 1350,
+     "t": "2026-08-15T03",
+     "temp_c": 14.9
+    },
+    {
+     "air_source": 65,
+     "demand_mw": 3859,
+     "geothermal_network": 36,
+     "ground_source": 74,
+     "heat_mw": 1747,
+     "t": "2026-08-15T04",
+     "temp_c": 14.3
+    },
+    {
+     "air_source": 77,
+     "demand_mw": 3841,
+     "geothermal_network": 42,
+     "ground_source": 87,
+     "heat_mw": 2041,
+     "t": "2026-08-15T05",
+     "temp_c": 13.9
+    },
+    {
+     "air_source": 89,
+     "demand_mw": 3912,
+     "geothermal_network": 48,
+     "ground_source": 98,
+     "heat_mw": 2302,
+     "t": "2026-08-15T06",
+     "temp_c": 13.5
+    },
+    {
+     "air_source": 84,
+     "demand_mw": 4140,
+     "geothermal_network": 45,
+     "ground_source": 93,
+     "heat_mw": 2185,
+     "t": "2026-08-15T07",
+     "temp_c": 13.7
+    },
+    {
+     "air_source": 54,
+     "demand_mw": 4436,
+     "geothermal_network": 31,
+     "ground_source": 63,
+     "heat_mw": 1480,
+     "t": "2026-08-15T08",
+     "temp_c": 14.7
+    },
+    {
+     "air_source": 35,
+     "demand_mw": 4638,
+     "geothermal_network": 21,
+     "ground_source": 43,
+     "heat_mw": 1008,
+     "t": "2026-08-15T09",
+     "temp_c": 15.4
+    },
+    {
+     "air_source": 32,
+     "demand_mw": 4688,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T10",
+     "temp_c": 15.9
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 4640,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T11",
+     "temp_c": 16.7
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4545,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T12",
+     "temp_c": 17.6
+    },
+    {
+     "air_source": 28,
+     "demand_mw": 4393,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T13",
+     "temp_c": 17.9
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4228,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T14",
+     "temp_c": 18.4
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4165,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T15",
+     "temp_c": 19.0
+    },
+    {
+     "air_source": 25,
+     "demand_mw": 4260,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T16",
+     "temp_c": 19.5
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4518,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T17",
+     "temp_c": 19.5
+    },
+    {
+     "air_source": 26,
+     "demand_mw": 4694,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T18",
+     "temp_c": 19.0
+    },
+    {
+     "air_source": 27,
+     "demand_mw": 4740,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T19",
+     "temp_c": 18.4
+    },
+    {
+     "air_source": 29,
+     "demand_mw": 4698,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T20",
+     "temp_c": 17.6
+    },
+    {
+     "air_source": 30,
+     "demand_mw": 4676,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T21",
+     "temp_c": 16.7
+    },
+    {
+     "air_source": 32,
+     "demand_mw": 4457,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-15T22",
+     "temp_c": 15.9
+    },
+    {
+     "air_source": 35,
+     "demand_mw": 4223,
+     "geothermal_network": 21,
+     "ground_source": 42,
+     "heat_mw": 994,
+     "t": "2026-08-15T23",
+     "temp_c": 15.4
+    }
+   ],
+   "monthly": [
+    {
+     "air_source": 39,
+     "demand_mw": 4438,
+     "geothermal_network": 24,
+     "ground_source": 49,
+     "heat_mw": 1167,
+     "t": "2025-07",
+     "temp_c": 16.5
+    },
+    {
+     "air_source": 44,
+     "demand_mw": 4335,
+     "geothermal_network": 27,
+     "ground_source": 56,
+     "heat_mw": 1326,
+     "t": "2025-08",
+     "temp_c": 16.6
+    },
+    {
+     "air_source": 109,
+     "demand_mw": 4544,
+     "geothermal_network": 57,
+     "ground_source": 117,
+     "heat_mw": 2761,
+     "t": "2025-09",
+     "temp_c": 13.0
+    },
+    {
+     "air_source": 164,
+     "demand_mw": 4832,
+     "geothermal_network": 79,
+     "ground_source": 163,
+     "heat_mw": 3844,
+     "t": "2025-10",
+     "temp_c": 11.3
+    },
+    {
+     "air_source": 268,
+     "demand_mw": 5176,
+     "geothermal_network": 116,
+     "ground_source": 239,
+     "heat_mw": 5639,
+     "t": "2025-11",
+     "temp_c": 8.6
+    },
+    {
+     "air_source": 321,
+     "demand_mw": 5221,
+     "geothermal_network": 133,
+     "ground_source": 274,
+     "heat_mw": 6460,
+     "t": "2025-12",
+     "temp_c": 7.4
+    },
+    {
+     "air_source": 435,
+     "demand_mw": 5495,
+     "geothermal_network": 166,
+     "ground_source": 341,
+     "heat_mw": 8052,
+     "t": "2026-01",
+     "temp_c": 5.1
+    },
+    {
+     "air_source": 341,
+     "demand_mw": 5399,
+     "geothermal_network": 139,
+     "ground_source": 286,
+     "heat_mw": 6745,
+     "t": "2026-02",
+     "temp_c": 7.0
+    },
+    {
+     "air_source": 296,
+     "demand_mw": 5080,
+     "geothermal_network": 125,
+     "ground_source": 257,
+     "heat_mw": 6070,
+     "t": "2026-03",
+     "temp_c": 8.0
+    },
+    {
+     "air_source": 230,
+     "demand_mw": 4760,
+     "geothermal_network": 104,
+     "ground_source": 213,
+     "heat_mw": 5018,
+     "t": "2026-04",
+     "temp_c": 9.5
+    },
+    {
+     "air_source": 133,
+     "demand_mw": 4514,
+     "geothermal_network": 68,
+     "ground_source": 140,
+     "heat_mw": 3307,
+     "t": "2026-05",
+     "temp_c": 12.6
+    },
+    {
+     "air_source": 67,
+     "demand_mw": 4464,
+     "geothermal_network": 39,
+     "ground_source": 81,
+     "heat_mw": 1910,
+     "t": "2026-06",
+     "temp_c": 15.3
+    },
+    {
+     "air_source": 35,
+     "demand_mw": 4413,
+     "geothermal_network": 24,
+     "ground_source": 49,
+     "heat_mw": 1160,
+     "t": "2026-07",
+     "temp_c": 18.0
+    },
+    {
+     "air_source": 44,
+     "demand_mw": 4455,
+     "geothermal_network": 28,
+     "ground_source": 58,
+     "heat_mw": 1377,
+     "t": "2026-08",
+     "temp_c": 17.1
+    }
+   ],
+   "share": 0.2,
+   "span": [
+    "2025-07-21T00",
+    "2026-08-15T23"
+   ]
   },
   "heat_cost_series": {
    "cols": {
@@ -56197,6 +58781,56 @@
    "residual_se_gwh_per_day": 3.52,
    "slope_gwh_per_hdd": 2.298
   },
+  "tightest_hour": {
+   "added_mw": {
+    "air_source": 3588,
+    "geothermal_network": 1177,
+    "ground_source": 2414
+   },
+   "air_c": 0.21,
+   "basis": "Hourly useful heat from temp_ai degree hours (hot water flat, space heat degree-shaped), through a Carnot-fraction COP at each hour's own air temperature, NETTED of the resistive heating already in observed demand, added to observed all-island demand. Block is the de-rated dispatchable capacity (dagger); no panel drawn.",
+   "block_mw": 8595,
+   "ceiling_mw": 9713,
+   "headroom_by_route_mw": {
+    "air_source": -1055,
+    "geothermal_network": 1356,
+    "ground_source": 119
+   },
+   "headroom_mw": -1055,
+   "heat_vs_block_ratio": 1.33,
+   "hour": "2026-01-05T18",
+   "hour_cop_air": 2.43,
+   "hours_considered": 9383,
+   "observed_mw": 7180,
+   "observed_peak_mw": 7502,
+   "routes_that_fit": [
+    "ground_source",
+    "geothermal_network"
+   ],
+   "share_binding_hour": {
+    "air_source": "2026-01-05T17",
+    "geothermal_network": "2026-01-05T17",
+    "ground_source": "2026-01-05T17"
+   },
+   "share_that_fits_pct": {
+    "air_source": 70.4,
+    "geothermal_network": 209.6,
+    "ground_source": 102.1
+   },
+   "spf": {
+    "air_seasonal": 2.8,
+    "ground": 3.24,
+    "network": 5.0
+   },
+   "total_mw": {
+    "air_source": 10768,
+    "geothermal_network": 8357,
+    "ground_source": 9594
+   },
+   "total_with_air_source_mw": 10767,
+   "useful_heat_mw": 11392,
+   "wind_solar_mw": 1118
+  },
   "weeks_live": 45,
   "weeks_on_record": 80
  },
@@ -56351,7 +58985,7 @@
     "2026-08-13",
     "2026-08-14"
    ],
-   "fetched_utc": "2026-08-15T23:02:26+00:00",
+   "fetched_utc": "2026-08-15T23:26:26+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -58426,7 +61060,7 @@
     "2025-S2": 0.87073,
     "2026-S1": 0.8672
    },
-   "fetched_utc": "2026-08-15T23:02:06+00:00",
+   "fetched_utc": "2026-08-15T23:26:03+00:00",
    "gbp_eur": 1.17028,
    "latest_day": "2026-08-14",
    "rate_date": "2026-08-14",
@@ -59186,24 +61820,24 @@
      "2026-08-15": 87.21
     }
    },
-   "fetched_utc": "2026-08-15T23:01:54+00:00",
+   "fetched_utc": "2026-08-15T23:25:50+00:00",
    "latest_day": "2026-08-15",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "eirgrid_probe": {
    "carbon_depth": {
-    "12mo": "EMPTY on 2 attempts - treat as unavailable",
+    "12mo": "HISTORIC CARBON RETURNED",
     "18mo": "HISTORIC CARBON RETURNED",
     "24mo": "HISTORIC CARBON RETURNED"
    },
-   "fetched_utc": "2026-08-15T23:02:55+00:00",
+   "fetched_utc": "2026-08-15T23:26:54+00:00",
    "latest_day": "2026-08-15",
    "source": "EirGrid Smart Grid Dashboard (probe, round 3)",
    "status": "ok"
   },
   "entsog_probe": {
-   "fetched_utc": "2026-08-15T23:02:27+00:00",
+   "fetched_utc": "2026-08-15T23:26:27+00:00",
    "greater_belfast_gwh_daily": {
     "2026-07-20": 4.22306,
     "2026-07-21": 4.827287,
@@ -59341,7 +61975,7 @@
    }
   },
   "gb_oil": {
-   "fetched_utc": "2026-08-15T23:02:27+00:00",
+   "fetched_utc": "2026-08-15T23:26:27+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -62342,7 +64976,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-08-15T23:02:08+00:00",
+   "fetched_utc": "2026-08-15T23:26:04+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -74176,7 +76810,7 @@
     "2026-08-13": 6.933,
     "2026-08-14": 6.74
    },
-   "fetched_utc": "2026-08-15T23:02:26+00:00",
+   "fetched_utc": "2026-08-15T23:26:26+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-08-14",
    "ndm_gwh": {
@@ -74709,7 +77343,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-08-15T23:02:04+00:00",
+   "fetched_utc": "2026-08-15T23:25:57+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -81702,7 +84336,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-08-15T23:02:15+00:00",
+   "fetched_utc": "2026-08-15T23:26:14+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -82045,7 +84679,7 @@
    "status": "ok"
   },
   "sem_mix": {
-   "fetched_utc": "2026-08-15T23:02:28+00:00",
+   "fetched_utc": "2026-08-15T23:26:29+00:00",
    "indigenous_share_daily": {
     "2026-06-25": 47.93,
     "2026-06-26": 46.75,
@@ -85735,7 +88369,7 @@
     "2026-08-13T22": 213.39,
     "2026-08-13T23": 190.49
    },
-   "fetched_utc": "2026-08-15T23:02:11+00:00",
+   "fetched_utc": "2026-08-15T23:26:08+00:00",
    "latest_day": "2026-08-13",
    "markets": {
     "NI-DA": {
@@ -85943,7 +88577,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "5.20.0",
+ "pipeline_version": "5.20.1",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
