@@ -3406,6 +3406,74 @@ def test_retention_span_gate_warns_before_the_window_under_fills():
     assert B.retention_span_gate({}) is None
 
 
+def test_ccni_archive_parses_through_the_daily_page_machinery():
+    """The archive page embeds a chart of exactly the same shape as
+    the daily checker, so it needs no parser of its own - which is the
+    finding that made this a small job. Fixture is the real page's
+    array, 277 points captured 15 Aug 2026."""
+    import build as B, pathlib
+    p = (pathlib.Path(__file__).parent / "fixtures"
+         / "ccni_archive_page.html")
+    s = B.parse_ccni_series(p.read_text())
+    assert {k: len(v) for k, v in s.items()} == {"300l": 277, "500l": 277,
+                                                 "900l": 277}
+    n = s["900l"]
+    assert min(n) == "2021-04-17" and max(n) == "2026-08-13"
+    assert n["2026-08-13"] == 778.15
+    # reaches well past the 24-month window, which the daily page
+    # (a few months of chart) cannot
+    assert min(n) < "2024-08-15"
+
+
+def test_ccni_ratio_gate_names_the_rows_that_cannot_be_right():
+    """A day's three litre figures come from one survey, so their
+    ratios barely move even as the level swings. CCNI's record holds
+    three rows that break that - and the 900 L series, the only one
+    the site prices on, hides two of them entirely."""
+    import build as B, pathlib
+    p = (pathlib.Path(__file__).parent / "fixtures"
+         / "ccni_archive_page.html")
+    s = B.parse_ccni_series(p.read_text())
+    bad = {d for d, *_ in B.ccni_ratio_gate(s, "test")}
+    assert bad == {"2021-06-17", "2021-09-09", "2021-11-17"}, bad
+    # 17 Nov 2021 is the one that reaches the priced series: 509.86
+    # against neighbours of 467.46 and 456.80
+    assert s["900l"]["2021-11-17"] == 509.86
+    assert s["900l"]["2021-11-18"] == 464.96
+    # the gate does not reject - the value is still published
+    assert "2021-11-17" in s["900l"]
+    # and a clean stretch trips nothing
+    clean = {k: {d: v for d, v in ser.items() if d >= "2025-01-01"}
+             for k, ser in s.items()}
+    assert B.ccni_ratio_gate(clean, "test") == []
+
+
+def test_week_source_records_which_ccni_page_priced_it():
+    """A week carried entirely by the weekly archive is a mean of ONE
+    reading, not five. The merged series is deliberately one dict so
+    every consumer reads it unchanged, so provenance has to be
+    recorded separately or it is unrecoverable."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    days = sorted((((feeds.get("ccni_oil") or {}).get("series_gbp") or {})
+                   .get("daily") or {}).get("900l") or {})
+    assert days, "fixture carries no CCNI series"
+    w_end = days[-1]
+    while B.dt.date.fromisoformat(w_end).weekday() != 6:
+        w_end = (B.dt.date.fromisoformat(w_end)
+                 - B.dt.timedelta(days=1)).isoformat()
+    # no provenance field: the old label, not a claim about the archive
+    assert "daily_page_days" not in feeds["ccni_oil"]
+    assert B.week_inputs(feeds, w_end)["ni_oil_source"] == "ccni"
+    # every day from the daily page
+    feeds["ccni_oil"]["daily_page_days"] = days
+    assert B.week_inputs(feeds, w_end)["ni_oil_source"] == "ccni"
+    # none of them: the week rests on the archive alone
+    feeds["ccni_oil"]["daily_page_days"] = []
+    assert (B.week_inputs(feeds, w_end)["ni_oil_source"]
+            == "ccni archive (weekly)")
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
