@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.18.0 / site 5.13.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.19.0 / site 5.13.0.
 
 ## The premise
 
@@ -797,6 +797,27 @@ heat what-if is computed all-island, so a jurisdiction split needs hourly
 heat per jurisdiction, which is not built. Selecting either says so
 instead of showing island figures under a jurisdiction heading.
 
+**The three views Panel 3 plots are published (5.19.0).** 168 hourly
+rows, 90 daily and up to 24 monthly — about 280 against a store of nine
+thousand hours, so the payload carries what is drawn rather than what was
+computed, at roughly 34 kB. Each row is the island's delivered heat and
+the electricity the site's own 20% what-if would draw by route, netted of
+the resistive heating already inside observed demand, on the same hourly
+air-source COP the binding-hour panel uses.
+
+**Two what-ifs, deliberately kept apart.** The binding-hour panel *solves*
+for the share of heat that fits inside today's fleet; these views plot
+the *fixed* 20% the rest of the site uses. They answer different
+questions, and a test asserts the solve is not pinned to the constant,
+because reading them as one number is the easy mistake.
+
+**The route ordering is not universal, and that is a finding.** In the
+cold, air source draws the most electricity of the three. In mild weather
+the weather-compensated air COP passes ground source's flat 3.24 and the
+two invert — the same effect that closed the Carnot ceilings in the
+calibration work. The test pins both ends rather than asserting an
+ordering that only holds in winter.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -937,7 +958,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 177 tests, no network
+python3 tests/test_synthetic.py   # 179 tests, no network
 node tests/test_vol.js            # 89 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
