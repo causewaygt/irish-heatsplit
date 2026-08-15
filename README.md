@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.11.0 / site 5.6.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.12.0 / site 5.7.0.
 
 ## The premise
 
@@ -608,6 +608,46 @@ forward, exactly as the ROI bulletin week always has been, capped at
 archive's real gaps (there is a 26-day one after its first row and a
 21-day one in 2023).
 
+**The back-look reaches April 2024 (5.12.0).** Both sides of the tariff
+table had to move together. The sterling side was already a dated table;
+the euro side was derived at call time from a single S2 2025 anchor, so
+extending one alone would have priced every earlier Irish day at the
+2025 level, silently — the same fault the table's own refusal was
+written to prevent. Three sterling rows come from UREGNI's tariff-review
+releases, which publish the annual bill at this site's own consumption
+basis; the row added at 1 April 2025 reproduces the old floor row
+exactly, which is the check that bill-over-consumption is the right
+derivation. The Irish side becomes `IE_DOMESTIC_SEMESTER`, the published
+band series by semester — band DC electricity, band D2 gas, the bands
+the existing anchors were shown to sit on.
+
+**Irish electricity is credit-free; Irish gas is untouched.** Between
+2022 and 2025 domestic electricity accounts received €1,500 in lump sums
+per meter, and SEAI books those into the effective unit price. The
+distortion is visible in the band gradient alone: the same electricity
+shows +93% in the smallest consumption band and −4% in the largest,
+because a fixed sum is worth more per kWh the less you use. A lump sum
+never changed the cost of the next kWh, so on a cost-of-delivered-heat
+axis it is added back. Households did pay less than the series shows in
+those semesters — it is the unit rate, not the bill, and the panel says
+so. Gas accounts were never eligible.
+
+**The divisor for that add-back is a judgement†.** Three controls
+bracket it: band DE flatness implies about 1,500 kWh a semester, the
+S2 2024 reconciliation about 1,810, and the S1 2024 double-credit check
+about 2,000. The site's own 3,200 kWh/yr basis was the first candidate
+and is **not** used — at that divisor the corrected S1 2025 lands exactly
+on S2 2025, implying no market movement across an autumn in which four
+suppliers raised prices. The midpoint is carried and every run logs what
+the series would be at either end of the bracket.
+
+**Irish prices step by semester, as published**, rather than riding a
+12-month mean. That keeps the figure traceable to SEAI's table with no
+transformation of ours in between, at the cost of an artefact worth
+knowing: household gas reads about 6% higher in the July–December half
+every year, because fixed network costs spread over far fewer summer
+units.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -748,7 +788,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 169 tests, no network
+python3 tests/test_synthetic.py   # 172 tests, no network
 node tests/test_vol.js            # 55 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
