@@ -3705,6 +3705,26 @@ def test_ticker_comes_from_the_same_engine_as_the_panel():
         assert B.NETWORK_MODEL["ni"]["spf"] != B.ANCHORS["geothermal_spf"]
 
 
+def test_history_offers_as_many_weeks_as_it_retains():
+    """The loop offered a literal 60 weeks while HISTORY_MAX was 120,
+    and the cap was applied afterwards to a list that could never
+    exceed 60. So the record sat at 60, the log line "60 weeks built,
+    none skipped" reported the loop bound rather than a data limit,
+    and panel 1's sparklines were short because they slice whatever
+    the record holds. A literal where a constant belongs is invisible
+    until someone counts."""
+    import build as B, inspect, re
+    src = inspect.getsource(B.build_history)
+    m = re.search(r"for k in range\(([^,]+),", src)
+    assert m, "could not find the week loop"
+    bound = m.group(1).strip()
+    assert "HISTORY_MAX" in bound, bound
+    # and the cap must not be able to truncate what the loop offers
+    assert "out[-HISTORY_MAX:]" in src
+    # a literal would silently re-break it
+    assert not re.search(r"for k in range\(\s*\d+\s*,", src), src
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
