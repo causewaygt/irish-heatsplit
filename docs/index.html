@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.6.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.7.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -427,7 +427,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     </div>
     <div class="costctl">
       <span>BASIS</span>
-      <button data-basis="retail" aria-pressed="true">RETAIL</button>
+      <button data-basis="retail" aria-pressed="true">UNIT RATE</button>
       <button data-basis="ex_tax">EX-TAX</button>
       <span id="costspan"></span>
     </div>
@@ -1131,6 +1131,23 @@ function drawCost(){
     + "after. Northern Irish kerosene is fully duty-rebated with no "
     + "carbon price, so its ex-tax figure is exact rather than "
     + "estimated.</p>"
+    + "<p>The Irish series excludes the government electricity "
+    + "credits. Between 2022 and 2025 domestic electricity accounts "
+    + "in the Republic received \u20ac1,500 in lump sums, and the "
+    + "published price statistics book those into the effective unit "
+    + "price \u2014 which is why the same electricity shows a 93% rise "
+    + "in the smallest consumption band and a 4% fall in the largest. "
+    + "A lump sum per meter never changed the cost of the next "
+    + "kilowatt-hour, so on an axis measuring the cost of delivering "
+    + "heat it is added back\u2020. Households did pay less than this "
+    + "series shows in those semesters: this is the unit rate, not "
+    + "the bill. Gas accounts were never eligible, so the gas series "
+    + "is the published figure untouched.</p>"
+    + "<p>Irish prices step by semester, as published. Household gas "
+    + "reads higher in the July\u2013December half than in "
+    + "January\u2013June, in every year \u2014 fixed network costs "
+    + "spread over far fewer summer units. That is an artefact of how "
+    + "the unit price is computed, not gas being dearest in July.</p>"
     + "<p>Judgement figures carry a dagger\u2020 and are challengeable "
     + "at contact@causewaygt.com.</p>";
 }
@@ -1926,7 +1943,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.6.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.7.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
