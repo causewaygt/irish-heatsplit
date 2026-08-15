@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.9.0 / site 5.6.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.10.0 / site 5.6.0.
 
 ## The premise
 
@@ -575,6 +575,29 @@ the last undefined" from the day it shipped. `tests/test_vol.js` now
 pins the window maps and the buttons against each other in both
 directions.
 
+**NI oil comes from two CCNI pages (5.10.0).** The daily checker
+(Mon–Fri) is the recent detail; the **weekly archive** carries the whole
+published record, 277 points back to April 2021. The archive page embeds
+a chart array of exactly the same shape as the daily page, so it parses
+through the same functions — no scraper, no new parser. That is what
+lets the NI oil series reach a 24-month window; the daily page alone
+cannot. The archive fetch is soft: if it fails the run keeps the daily
+series and loses reach, nothing else.
+
+The two merge into one series so every consumer reads it unchanged, with
+the daily reading winning any overlap and their disagreement logged each
+run rather than averaged. Which page priced a week is recorded in
+`daily_page_days` and surfaced as `ni_oil_source`, because a week
+carried by the archive alone is a mean of one reading rather than five.
+
+`ccni_ratio_gate` names rows whose litre ratios cannot be right — a
+day's three figures come from one survey, so their ratios barely move
+even as the level swings. Three such rows exist in CCNI's record
+(17 Jun 2021, 9 Sep 2021, 17 Nov 2021) and only the last is visible in
+the 900 L series the site prices on, where it sits about 10% above both
+neighbours. The gate does not reject them: the series is published and
+we do not get to overrule it.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -715,7 +738,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 165 tests, no network
+python3 tests/test_synthetic.py   # 168 tests, no network
 node tests/test_vol.js            # 55 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
