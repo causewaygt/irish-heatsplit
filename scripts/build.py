@@ -51,7 +51,18 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.14.0"
+PIPELINE_VERSION = "5.15.0"
+# 5.15.0: the masthead ticker now comes from the SAME engine as panel
+#   2. derive_heat_gap is the original calculation and never got the
+#   panel's changes - one geothermal SPF of 4.0 for both jurisdictions
+#   against the panel's 5.0/4.0, a single oil-boiler efficiency of
+#   0.82 against 0.71 on hot water, and no hot-water blending at all -
+#   so the headline disagreed with the chart underneath it by 13-20%
+#   on identical routes. It is kept as heat_gap_diagnostic for its
+#   breakeven-SPF figures and its tests; the ticker reads
+#   heat_gap_from_cost_series. That also carries the gap's MEDIAN over
+#   the window, because a spot gap reads as a standing fact and on
+#   this record oil climbs steeply from Nov 2025.
 # 5.14.0: THE CALIBRATION WAS DAY-WEIGHTED, NOT HEAT-WEIGHTED.
 #   calibrate_eta's docstring has said heat-weighted since it was
 #   written, and the caller passed the day's space/hot-water SHARES -
@@ -5806,6 +5817,51 @@ def derive_heat_cost_series(feeds, anchors=None):
     return out
 
 
+def heat_gap_from_cost_series(rows, window=730):
+    """
+    The masthead ticker, taken from the SAME engine as panel 2.
+
+    It used to come from derive_heat_gap(), which is the original
+    calculation and never got panel 2's changes: one geothermal SPF of
+    4.0 for both jurisdictions where the panel now uses 5.0 in the
+    North, a single oil-boiler efficiency of 0.82 where the panel
+    prices hot water at 0.71, and no hot-water blending at all. The
+    two disagreed by 13-20% on identical routes on the same day, with
+    the ticker sitting above the panel that contradicted it.
+
+    Also returns the gap's MEDIAN over the window. A spot gap alone
+    reads as a standing fact; on this record oil climbs steeply from
+    November 2025, so today's gap runs well above its own two-year
+    norm and the ticker was stating a war-driven condition as
+    structural.
+    """
+    out = {}
+    for jur in ("ni", "roi"):
+        have = [r for r in rows if r.get(jur)]
+        if not have:
+            continue
+        last = have[-1][jur]
+        gaps = sorted(r[jur]["oil_boiler"] - r[jur]["network"]
+                      for r in have[-window:])
+        n = len(gaps)
+        med = gaps[n // 2] if n % 2 else (gaps[n // 2 - 1] + gaps[n // 2]) / 2
+        out[jur] = {
+            "oil_boiler": last["oil_boiler"],
+            "gas_boiler": last["gas_boiler"],
+            "ashp": last["ashp"],
+            "gshp": last["gshp"],
+            # key kept so the front end keeps reading; the value is
+            # now the panel's jurisdictional network model rather than
+            # a single 4.0 anchor
+            "geothermal_spf40": last["network"],
+            "gap_now": round(last["oil_boiler"] - last["network"], 2),
+            "gap_median": round(med, 2),
+            "gap_days": n,
+            "day": have[-1]["day"],
+        }
+    return out
+
+
 def derive_heat_gap(feeds, anchors=None):
     """
     Cost of useful heat by route, per jurisdiction, standard tariffs -
@@ -6440,9 +6496,12 @@ def main():
                       ("week_ending", "heat_purchased_gwh",
                        "indigenous_share_pct", "bill_eur_m", "bill_gbp_m",
                        "emissions_kt_co2")})
+    # derive_heat_gap is retained for its breakeven-SPF diagnostics and
+    # its unit tests, but it NO LONGER feeds the masthead ticker - see
+    # heat_gap_from_cost_series, wired after the cost series below.
     hg = derive_heat_gap(feeds)
     if hg:
-        derived["heat_gap"] = hg
+        derived["heat_gap_diagnostic"] = hg
     # Carbon for the backfilled weeks. The daily feed keeps 50 days;
     # anything older comes from the hourly store, which is read here
     # BEFORE history so week_context can see it. Daily values win
@@ -6494,6 +6553,13 @@ def main():
             log(f"heat cost: encoded {len(hcs)} days columnar, "
                 f"{_cflat // 1024} kB -> {_ccols // 1024} kB "
                 f"({100 * _ccols // max(_cflat, 1)}%)")
+            # The masthead ticker, from the same rows the panel draws
+            derived["heat_gap"] = heat_gap_from_cost_series(hcs)
+            for j, g in derived["heat_gap"].items():
+                log(f"heat gap: {j} oil {g['oil_boiler']:.2f} vs network "
+                    f"{g['geothermal_spf40']:.2f} per useful kWh - ground "
+                    f"wins by {g['gap_now']:.2f} today against a median "
+                    f"{g['gap_median']:.2f} over {g['gap_days']} days")
     except Exception as exc:
         log(f"heat cost: failed ({exc.__class__.__name__}) - "
             "the weekly tracker is unaffected")
