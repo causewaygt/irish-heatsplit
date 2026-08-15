@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.16.0 / site 5.9.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.17.0 / site 5.10.0.
 
 ## The premise
 
@@ -718,6 +718,28 @@ which is precisely the case the line exists for. It now reports where
 the carbon record reaches, and whether that covers `HISTORY_START`,
 every run.
 
+**Panel 1 has a method fold (site 5.10.0).** "How this is estimated, and
+why it is not metered" sits at the foot of the panel and now carries the
+anchors-and-degree-days prose, the gas engine room chart and its note,
+the feed status table, and a new calibration board. The standalone
+"Method & sources" and "The gas engine room" sections are gone — each
+has one home rather than two, and the strap's Methodology link opens the
+fold rather than jumping to a section that no longer exists.
+
+**The calibration board publishes what the log has always said.** For
+each jurisdiction and route it shows the solved Carnot fraction beside
+the SPF anchor it was solved to reproduce and the source temperature it
+saw, then states how closely the three agree and whether that is inside
+the 15% gate. A fraction without its anchor means nothing, so they
+travel together. This is the exhibit that answers "how do you know the
+COP model is right", and after the weighting fix the fractions agree to
+1.6% in the North and 7.6% in the Republic, against the UK sibling's
+1.35%.
+
+**Panel 2's title follows its own jurisdiction toggle**, as panel 1's
+does — "What Northern Ireland's heat costs and emits" over a sterling
+view rather than "the island of Ireland's".
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -859,7 +881,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 176 tests, no network
-node tests/test_vol.js            # 58 front-end fixture checks
+node tests/test_vol.js            # 64 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
