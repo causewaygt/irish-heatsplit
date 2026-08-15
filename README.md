@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.10.0 / site 5.6.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.11.0 / site 5.6.0.
 
 ## The premise
 
@@ -598,6 +598,16 @@ the 900 L series the site prices on, where it sits about 10% above both
 neighbours. The gate does not reject them: the series is published and
 we do not get to overrule it.
 
+**NI oil is step-held across its week (5.11.0), capped.** The archive is
+weekly, so pricing only the survey days left the NI line as one point in
+seven behind the daily checker's start — 144 of 375 days on the first
+live run against ROI's 375. That reads as missing data rather than as a
+weekly survey. The most recent reading at or before a day is held
+forward, exactly as the ROI bulletin week always has been, capped at
+`NI_OIL_HOLD_DAYS` so a single reading is not smeared across one of the
+archive's real gaps (there is a 26-day one after its first row and a
+21-day one in 2023).
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -738,7 +748,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 168 tests, no network
+python3 tests/test_synthetic.py   # 169 tests, no network
 node tests/test_vol.js            # 55 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
