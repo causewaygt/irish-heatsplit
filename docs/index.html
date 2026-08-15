@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.12.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.13.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -121,6 +121,8 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 /* The volume chart is the quantity behind the price above it. It
    shares the x-axis, so it sits close under the price legend rather
    than reading as a separate exhibit. */
+.hstat .hval.ok{color:var(--green)}
+.hstat .hval.over{color:var(--amber)}
 .emit{margin:6px 0 10px}
 .emitrow{display:flex;align-items:center;gap:10px;margin:4px 0}
 .emitlab{flex:0 0 190px;text-align:right;color:var(--ink2);font-size:.82rem}
@@ -954,12 +956,13 @@ function emitPanel(he){
 // the ceiling: the SEM is one all-island market with one dispatch, so
 // a separate northern ceiling would invent a constraint. Live now so
 // the toggle is not decorative while the panel is being built.
-let GJUR = "all";
+let GJUR = "all", GTH = null;
 function gridJur(){
   const lab = {all: "the island of Ireland", ni: "Northern Ireland",
                roi: "the Republic of Ireland"};
   const w = el("gridWhere");
   if(w) w.textContent = lab[GJUR] || lab.all;
+  if(typeof gridPanel === "function") gridPanel(GTH);
 }
 document.querySelectorAll("[data-gjur]").forEach(b=>{
   b.addEventListener("click", ()=>{
@@ -970,6 +973,88 @@ document.querySelectorAll("[data-gjur]").forEach(b=>{
   });
 });
 gridJur();
+
+// ------------------------------------------- Panel 3: the coldest hour
+// B.2.1 has been computed and logged since the grid layer landed; this
+// is the first time it is drawn. All-island only for now: the heat
+// what-if is island-wide, so the NI and ROI states say the split is not
+// computed yet rather than showing island figures under a jurisdiction
+// label.
+const GROUTES = [["air_source","Air source"],
+                 ["ground_source","Ground source"],
+                 ["geothermal_network","Geothermal network"]];
+function gridPanel(th){
+  const box = el("gridPanel");
+  if(!box) return;
+  if(GJUR !== "all"){
+    box.innerHTML = '<p class="note">The hour-by-hour layer is computed '
+      + 'all-island. Splitting the what-if by jurisdiction needs hourly '
+      + 'heat per jurisdiction, which is not built yet \u2014 so rather '
+      + 'than show the island figures under a jurisdiction label, this '
+      + 'says so. Switch to ALL ISLAND.</p>';
+    return;
+  }
+  if(!th || !th.hour){
+    box.innerHTML = '<p class="note">The grid layer arrives with a '
+      + 'coming build.</p>';
+    return;
+  }
+  const gw = v => (v/1000);
+  const obs = th.observed_mw || 0;
+  let h = '<div class="hstats">'
+    + '<div class="hstat"><div class="hval">' + esc(th.hour) + '</div>'
+    + '<div class="hlab">tightest modelled hour<span class="dag">\u2020</span>'
+    + ' \u00b7 ' + fmt(th.useful_heat_mw/1000,1) + ' GWh of heat at '
+    + fmt(th.air_c,1) + ' \u00b0C</div></div>';
+  GROUTES.forEach(([k,name])=>{
+    const mw = (th.added_mw||{})[k];
+    if(mw==null) return;
+    const pct = obs ? 100*mw/obs : null;
+    const head = (th.headroom_by_route_mw||{})[k];
+    h += '<div class="hstat"><div class="hval'
+      + (head!=null && head>=0 ? ' ok' : ' over') + '">+'
+      + fmt(gw(mw),1) + ' GW</div><div class="hlab">' + name
+      + (pct!=null ? ' \u00b7 ' + fmt(pct,0)
+         + '% on top of what the island was using that hour' : '')
+      + (head!=null ? ' \u00b7 ' + (head>=0
+          ? 'fits, ' + fmt(gw(head),1) + ' GW spare'
+          : 'exceeds the ceiling by ' + fmt(gw(-head),1) + ' GW') : '')
+      + '</div></div>';
+  });
+  h += '</div>';
+  const fits = th.routes_that_fit || [];
+  h += '<p class="note">Ceiling that hour: ' + fmt(gw(th.ceiling_mw),1)
+    + ' GW \u2014 the ' + fmt(gw(th.block_mw),1) + ' GW de-rated '
+    + 'dispatchable block<span class="dag">\u2020</span> plus the '
+    + fmt(gw(th.wind_solar_mw),1) + ' GW of wind and solar actually '
+    + 'generated, so it breathes with the weather. '
+    + (fits.length
+        ? 'Routes that fit at a full electrification of heat: '
+          + fits.map(f=>f.replace(/_/g," ")).join(", ") + '.'
+        : 'No route fits a full electrification of heat in that hour.')
+    + ' Useful heat in that hour is ' + fmt(th.useful_heat_mw/1000,1)
+    + ' GWth against a ' + fmt(gw(th.block_mw),1) + ' GW electrical '
+    + 'block \u2014 the island\u2019s heat system is '
+    + fmt(th.heat_vs_block_ratio,2) + 'x its power system. This is a '
+    + 'peak-capacity test, not an energy test: nothing here phases the '
+    + 'conversion or counts storage, diversity or demand response.</p>';
+  const sh = th.share_that_fits_pct || {};
+  if(Object.keys(sh).length){
+    let t = '<h3 class="foldh">How much of the island\u2019s heat fits '
+      + 'inside today\u2019s fleet</h3><table class="caltab"><thead><tr>'
+      + '<th>Route</th><th>Share of island heat that fits</th>'
+      + '<th>Binding hour</th></tr></thead><tbody>';
+    GROUTES.forEach(([k,name])=>{
+      if(sh[k]==null) return;
+      t += '<tr><td>' + name + '</td><td><b>' + fmt(sh[k],1)
+        + '%</b>' + (sh[k]>=100 ? ' \u2014 all of it, with room over' : '')
+        + '</td><td>' + esc((th.share_binding_hour||{})[k]||"")
+        + '</td></tr>';
+    });
+    h += t + '</tbody></table>';
+  }
+  box.innerHTML = h;
+}
 
 function drawTrends(HIST, win, scope){
   var els = [].slice.call(document.querySelectorAll('.trend'));
@@ -2174,6 +2259,8 @@ fetch('data.json').then(r=>{
   sparkBox(D);
   calBoard((D.derived||{}).calibration);
   emitPanel((D.derived||{}).heat_emissions);
+  GTH = (D.derived||{}).tightest_hour || null;
+  gridPanel(GTH);
   const hero=(D.derived||{}).hero;
   if(hero){heroCards(hero,expandHistory((D.derived||{}).history));}
   else el('heroCards').innerHTML='<div class="stat"><div class="lab">Hero</div>'+
@@ -2191,7 +2278,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.12.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.13.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
