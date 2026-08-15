@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.17.0 / site 5.10.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.18.0 / site 5.11.0.
 
 ## The premise
 
@@ -740,6 +740,26 @@ COP model is right", and after the weighting fix the fractions agree to
 does — "What Northern Ireland's heat costs and emits" over a sterling
 view rather than "the island of Ireland's".
 
+**What heat emits (5.18.0).** gCO₂e per *useful* kWh by route, under
+panel 2 with its own method fold — the Irish answer to the UK sibling's
+sub-panel. Combustion factors are applied to the fuel burned and then
+divided by the boiler efficiency, so every bar is per unit of heat
+delivered rather than per unit purchased; electric routes take the live
+all-island grid intensity over each route's seasonal performance factor.
+
+**It is all-island and has no jurisdiction toggle, deliberately.** The
+combustion factors do not change at the border, the efficiencies are
+shared, and the grid is a single all-island market — so a split would
+draw the same bars three times. That is the finding rather than a gap,
+and the panel says so: the price answer differs sharply across the
+border and the carbon answer does not at all.
+
+The heat network here is **geothermal, not the gas-fired network assumed
+in most comparisons**. Its figure is the ambient loop at an island SPF
+that is the heat-weighted **harmonic** mean of 5.0 in the North and 4.0
+in the Republic — harmonic because efficiencies average that way, and an
+arithmetic mean would flatter it.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -880,8 +900,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 176 tests, no network
-node tests/test_vol.js            # 64 front-end fixture checks
+python3 tests/test_synthetic.py   # 177 tests, no network
+node tests/test_vol.js            # 73 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
