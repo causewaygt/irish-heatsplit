@@ -3874,6 +3874,31 @@ def test_the_falcon_is_a_calendar_year_not_two_years_of_history():
         assert len(short["falcon"]) < 12
 
 
+def test_the_grid_layer_is_written_to_the_payload_not_just_computed():
+    """data.json is serialised BEFORE the hourly block runs, so
+    anything the grid layer adds to `derived` lands after the file is
+    already on disk. That shipped: Panel 3 drew its decline messages
+    for two bundles while the log showed B.2.1 and the falcon
+    computing perfectly. The first write stays where it is - it
+    guarantees a payload even if the hourly step throws - so main()
+    must write AGAIN once the grid keys exist."""
+    import build as B, inspect
+    src = inspect.getsource(B.main)
+    first = src.index("DATA_PATH.write_text")
+    tight = src.index('derived["tightest_hour"]')
+    assert first < tight, \
+        "the grid layer is assigned before the first write - reorder"
+    # ... and there must be a SECOND write after it, or the keys never
+    # reach the file
+    second = src.index("DATA_PATH.write_text", tight)
+    assert second > tight, "no re-write after the grid layer is built"
+    # the re-write must be conditional on the keys actually being there
+    tail = src[tight:]
+    assert "grid_views" in tail and "tightest_hour" in tail
+    assert "decline message" in tail, \
+        "a run without the grid layer should say so in the log"
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
