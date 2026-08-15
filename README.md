@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.19.0 / site 5.14.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.20.0 / site 5.15.0.
 
 ## The premise
 
@@ -836,6 +836,17 @@ the fixed 20%. The added-load hour and the share-that-fits hour differ by
 one hour in the live data, which is correct and would otherwise look like
 an error.
 
+**The falcon curve (5.20.0), and a correction.** I said it needed two
+winters of history and deferred it. It does not. It is a **calendar
+year** with each month filled by the **latest complete instance** of that
+month — January to July from this year, August to December from last —
+so twelve complete months is enough, and a thirteen-month store already
+carries a full one. `derive_grid_views` publishes `falcon`: twelve rows
+ordered by calendar month, each tagged with the month it came from, plus
+`falcon_complete` so a shorter store draws a partial curve rather than a
+misleading one. The monthly view plots it and the note says how it is
+built.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -976,8 +987,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 179 tests, no network
-node tests/test_vol.js            # 98 front-end fixture checks
+python3 tests/test_synthetic.py   # 180 tests, no network
+node tests/test_vol.js            # 100 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
