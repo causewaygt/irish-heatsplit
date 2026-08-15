@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.8.0 / site 5.5.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.9.0 / site 5.6.0.
 
 ## The premise
 
@@ -354,7 +354,7 @@ Three toggles: service, basis, window.
 
 *(This paragraph read "priced weekly in native minor units per useful
 kWh. Pipeline side only so far; the panel itself is not drawn" until
-5.8.0, by which point the panel had been drawn for some time and the
+5.9.0, by which point the panel had been drawn for some time and the
 paragraph directly under it already said daily. Corrected rather than
 left.)*
 
@@ -526,7 +526,7 @@ this panel is a different artefact, and its limit is how far the
 weather record reaches, since every week needs a trailing year of
 degree days behind it to know its own hot-water share.
 
-**The volume under the price (5.8.0).** A second chart shares the price
+**The volume under the price (5.9.0).** A second chart shares the price
 chart's x-axis and shows what the per-MWh figure is charged on: GWh of
 delivered heat that day, space heating stacked under hot water, in the
 same window and the same jurisdiction. It is **invariant to service and
@@ -541,17 +541,39 @@ is the scale: the sector anchors are fuel **input**, so they go through
 each jurisdiction's own fuel mix and efficiencies first, the same
 conversion `hourly_heat_mw()` uses. Delivered against input, that is
 about 25.3 TWh a year in ROI and 10.9 TWh in NI, against 30.8 and 13.0
-of purchased fuel.
+of purchased fuel. Shape is island-wide, scale is jurisdictional: one
+degree-day series shapes both, the same simplification the share has
+always carried.
 
-Shape is island-wide, scale is jurisdictional: one degree-day series
-shapes both, which is the same simplification the share has always
-carried. A separate NI degree-day shape would be a defensible
-refinement and is not made here.
+A volume is emitted only once 200 days of degree days sit behind the
+day, so the early end of a long window can be bare while the recent end
+is full. The chart **declines a partly covered window** and names the
+day the volume starts, rather than plotting the bare days at zero –
+which would read as "no heat that day".
 
-The fields are additive (`vol_roi`, `vol_ni`), so an un-updated front
-end ignores them; conversely the site deploys ahead of the data file,
-so the chart declines with a message naming that cause until a build
-has run.
+**Three guards shipped ahead of the back-look extension, not after it.**
+`nondom_for` now REFUSES a week before the first published REMM
+semester instead of clamping it to that semester; callers decline the
+day or the week by name. Clamping was safe only while nothing reached
+back that far, and extending the window is exactly what removes that
+safety – the same fault already fixed for carbon and for tariffs.
+`retention_span_gate` asserts the retained record covers the widest
+window plus its trailing year; the margin is 55 days, thin enough that
+a change to any of the three constants should break the build rather
+than quietly shape space heat on a season. And `heat_cost_series` is
+now written columnar, same wire format and same encoder as the history
+block – measured at 32% of flat – with both readers accepting either
+shape, because index.html publishes on the Pages deploy while
+data.json only changes at 04:17.
+
+**The 60-month window has been withdrawn** from both panels. `HISTORY_MAX`
+is 120 weeks, about 27 months, so that button could never fill whatever
+happened to the tariff table; stated reach and actual reach are now the
+same number. Removing it surfaced a live defect: `WLBL` carried no entry
+for the 24-month window, so every card label on that button read "over
+the last undefined" from the day it shipped. `tests/test_vol.js` now
+pins the window maps and the buttons against each other in both
+directions.
 
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
@@ -693,8 +715,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 163 tests, no network
-node tests/test_vol.js            # executes drawVol against a fixture
+python3 tests/test_synthetic.py   # 165 tests, no network
+node tests/test_vol.js            # 55 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
