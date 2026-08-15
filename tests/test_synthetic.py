@@ -1891,18 +1891,23 @@ def test_schema_5_migration_backfills_frozen_jurisdiction_splits():
 
 
 def test_tariff_table_covers_the_backfilled_weeks():
-    """tariffs_for() clamps anything before the first row to that row.
-    The floor moved behind the old first row, so the table must reach
-    HISTORY_START or eight weeks would be priced at a tariff that did
-    not exist yet."""
+    """The table must reach HISTORY_START or the earliest weeks would
+    be priced at a tariff that did not exist yet. Both sides are now
+    dated - the euro side became a semester series at 5.12.0 - so a
+    week in S1 2025 and a week in S2 2025 must differ on BOTH."""
     import build as B
     first = B.TARIFF_HISTORY[0][0]
     assert first <= B.HISTORY_START, (first, B.HISTORY_START)
-    # the backfill row must differ from the Oct 2025 row on NI and
-    # match it on ROI - that asymmetry IS the finding
     pre = B.tariffs_for(B.HISTORY_START)
     oct25 = B.tariffs_for("2025-10-01")
-    assert pre["eur"] == oct25["eur"]
+    assert B.semester_of(B.HISTORY_START) != B.semester_of("2025-10-01")
+    # euro: was identical while the ROI side was one anchor stepped
+    # forward; now it moves with the semester, which is the point of
+    # 5.12.0 and the thing that stopped 68 weeks being priced at 2025
+    # levels
+    assert pre["eur"]["electricity"] != oct25["eur"]["electricity"]
+    assert pre["eur"]["gas"] != oct25["eur"]["gas"]
+    # sterling: NI gas fell and NI electricity rose across that gap
     assert pre["gbp"]["gas"] > oct25["gbp"]["gas"]
     assert pre["gbp"]["electricity"] < oct25["gbp"]["electricity"]
 
@@ -3603,6 +3608,73 @@ def test_the_table_now_reaches_a_full_24_months():
     # derivation is the right one
     assert (B.tariffs_for("2025-04-01")["gbp"]
             == B.tariffs_for("2025-08-06")["gbp"])
+
+
+def test_a_reconstructed_week_without_its_own_carbon_is_refused():
+    """Extending the record moved the binding constraint from tariffs
+    to grid carbon. A reconstructed week priced at the carbon ANCHOR
+    would carry today's grid intensity wearing last year's date - the
+    clamp pattern again, landing on emissions instead of price. It is
+    refused by name, so the record extends itself as the EirGrid
+    backfill reaches further."""
+    import build as B
+    feeds = _history_fixture_feeds()
+    days = sorted((((feeds.get("eirgrid") or {})
+                    .get("co2_intensity_g_per_kwh")) or {}))
+    assert days, "fixture carries no carbon series"
+    # a week that HAS carbon builds
+    w_end = days[-1]
+    while B.dt.date.fromisoformat(w_end).weekday() != 6:
+        w_end = (B.dt.date.fromisoformat(w_end)
+                 - B.dt.timedelta(days=1)).isoformat()
+    ok = B.week_inputs(feeds, w_end)
+    if ok is not None:
+        assert ok["ef_electricity"] is not None
+        assert ok["ef_source"] == "weekly grid CI"
+    # strip the carbon and the same week is declined, by name
+    feeds["eirgrid"]["co2_intensity_g_per_kwh"] = {}
+    skips = []
+    assert B.week_inputs(feeds, w_end, skips) is None or w_end >= B.LIVE_FROM
+    if skips:
+        assert "grid carbon" in skips[0][1], skips
+
+
+def test_calibration_is_weighted_by_heat_not_by_days():
+    """calibrate_eta's docstring has always said heat-weighted, and
+    the caller passed the day's SPACE/DHW SHARES - two numbers summing
+    to 1.0 on every day - so every day weighed the same regardless of
+    how much heat it carried. A mild day counted as much as a cold
+    one, which flatters air source and was most of the calibration
+    spread the gate was firing on."""
+    import build as B
+    hdd = {}
+    import math
+    for i in range(400):
+        d = (B.dt.date(2025, 7, 1) + B.dt.timedelta(days=i)).isoformat()
+        hdd[d] = max(0.0, 15.5 - (10.3 - 5.0 * math.cos(2 * math.pi * i / 365)))
+    day = sorted(hdd)[-1]
+    v = B.day_delivered_heat(hdd, day, "roi")
+    assert v is not None
+    # the weights the caller now passes are VOLUMES, not shares: they
+    # must not sum to 1, and they must swing across the year
+    tot = [sum(B.day_delivered_heat(hdd, d, "roi").values())
+           for d in sorted(hdd)[-365:]
+           if B.day_delivered_heat(hdd, d, "roi")]
+    assert max(tot) > 2 * min(tot), (min(tot), max(tot))
+    assert abs(sum(v.values()) - 1.0) > 0.5, v
+    # and heat-weighting must SEPARATE the air and ground ceilings,
+    # because the cold days where they differ most carry the heat
+    days = sorted(hdd)[-365:]
+    heat = [(10.3 - 5.0 * math.cos(2 * math.pi * i / 365),
+             B.day_delivered_heat(hdd, d, "roi")["space"],
+             B.day_delivered_heat(hdd, d, "roi")["dhw"])
+            for i, d in enumerate(days) if B.day_delivered_heat(hdd, d, "roi")]
+    flat = [(t, 0.776, 0.224) for t, _, _ in heat]
+    def ratio(w):
+        ea = B.calibrate_eta("ashp", w, "roi")
+        eg = B.calibrate_eta("gshp", w, "roi")
+        return (3.24 / eg) / (2.80 / ea)
+    assert ratio(heat) > ratio(flat), (ratio(heat), ratio(flat))
 
 
 def test_hdd_year_gate_and_base_scan():
