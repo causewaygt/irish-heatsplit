@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.20.0 / site 5.15.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.15.0.
 
 ## The premise
 
@@ -847,6 +847,17 @@ ordered by calendar month, each tagged with the month it came from, plus
 misleading one. The monthly view plots it and the note says how it is
 built.
 
+**The grid layer never reached the payload (5.20.1).** `data.json` is
+serialised before the hourly block runs, so `tightest_hour` and
+`grid_views` were being assigned to a dict already written to disk. Panel
+3 drew its decline messages for two bundles while the run log showed
+B.2.1 and the falcon computing perfectly — the renderers were right and
+the payload was empty. The tell was visible and missed: `data.json`
+stayed at 1,436 kB when the grid views should have added about 34 kB.
+`main()` now writes again once the grid keys exist, and says in the log
+when they are absent; the first write stays where it is so a payload
+still lands if the hourly step throws.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -987,7 +998,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 180 tests, no network
+python3 tests/test_synthetic.py   # 181 tests, no network
 node tests/test_vol.js            # 100 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
