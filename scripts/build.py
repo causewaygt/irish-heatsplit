@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.8.0"
+PIPELINE_VERSION = "5.9.0"
 # 5.8.0: heat_cost_series rows carry vol_roi and vol_ni - GWh of
 #   DELIVERED heat that day, split space / hot water - so the cost
 #   panel can draw the quantity its per-MWh axis is charged on. Shaped
@@ -60,8 +60,20 @@ PIPELINE_VERSION = "5.8.0"
 #   sector anchors converted from fuel input to delivered heat at each
 #   jurisdiction's own fuel mix, the same conversion hourly_heat_mw()
 #   uses. Shape is island-wide, scale is jurisdictional. Additive: a
-#   front end that has not been updated ignores the fields, and the
-#   site's own volume chart declines until a build has run.
+#   front end that has not been updated ignores the fields.
+# 5.9.0: three guards and an encoding, all ahead of the back-look
+#   extension rather than after it.
+#   - nondom_for REFUSES below the first published REMM semester
+#     instead of clamping to it. Clamping was safe only while nothing
+#     reached back that far; extending the window is what removes that
+#     safety. Callers decline the day or the week, by name.
+#   - retention_span_gate asserts the retained record covers the
+#     widest window plus its trailing year. Margin is 55 days.
+#   - heat_cost_series is written columnar, same wire format and same
+#     encoder as the history block. Measured 32% of flat.
+#   - WINDOW_MAX_DAYS records the widest window the site offers; the
+#     60-month window was withdrawn at site 5.6.0 because HISTORY_MAX
+#     is 120 weeks and it could never fill.
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "docs" / "data.json"
 # The hourly store lives in its OWN file: a malformed hourly write can
@@ -260,14 +272,24 @@ def nondom_for(date_iso, fx_by_semester=None):
     Non-domestic rates in force for a week: NI in sterling, ROI in
     euro, converted at each published figure's OWN semester rate.
 
-    Returns (rates, semester_used). Weeks before the first published
-    semester clamp to it; weeks after the last hold at it, which is
-    the REMM lag rather than a claim that prices stopped moving.
+    Returns (rates, semester_used), or (None, None) for a week before
+    the first published semester.
+
+    REFUSE, DO NOT CLAMP. This clamped until 5.9.0, which was safe
+    only because nothing reached past 2024-S2. Extending the back-look
+    is exactly what makes it unsafe: a clamped week is priced at a
+    semester it does not belong to and looks identical to one that
+    does. That is the fault already fixed for carbon and for tariffs,
+    and it is cheaper to close here while it still cannot fire than
+    after something reaches through it. Weeks after the last published
+    semester still HOLD at it - that is the REMM lag, a known ~9-month
+    publication delay, not a guess about a period nobody has measured.
     """
     keys = sorted(NONDOM_SEMESTERS)
     want = semester_of(date_iso)
-    use = keys[0] if want < keys[0] else (keys[-1] if want > keys[-1]
-                                          else want)
+    if want < keys[0]:
+        return None, None
+    use = keys[-1] if want > keys[-1] else want
     if use not in NONDOM_SEMESTERS:
         use = max(k for k in keys if k <= want)
     ni_e, ni_g, ie_e, ie_g = NONDOM_SEMESTERS[use]
@@ -3357,6 +3379,13 @@ def week_inputs(feeds, w_end, skips=None):
     ci_vals = [co2[d] for d in days if d in co2]
     ef = round(sum(ci_vals) / len(ci_vals), 1) if len(ci_vals) >= 4 \
         else None
+    nd_week, _nd_sem = nondom_for(w_end, ((feeds.get("ecb_fx") or {})
+                                          .get("eur_gbp_semester")))
+    if nd_week is None:
+        return _skip("non-domestic: no published REMM semester at or "
+                     f"before this week (first is "
+                     f"{sorted(NONDOM_SEMESTERS)[0]}) - extend "
+                     "NONDOM_SEMESTERS to price it")
     return {"ni_oil_ppl": round(sum(ni_vals) / len(ni_vals), 2),
             "roi_oil_eur_1000l": bull[b_days[-1]],
             "fx": round(fx, 5), "ef_electricity": ef,
@@ -3367,8 +3396,7 @@ def week_inputs(feeds, w_end, skips=None):
             # They are perfectly good weeks; they are just not LIVE
             # ones, and the milestone counts live.
             "live": w_end >= LIVE_FROM,
-            "nondom": nondom_for(w_end, ((feeds.get("ecb_fx") or {})
-                                         .get("eur_gbp_semester")))[0],
+            "nondom": nd_week,
             "tariffs": tar}
 
 
@@ -4906,6 +4934,47 @@ DHW_SHARE_BY_FUEL = {"oil": 0.228, "gas": 0.268}
 HDD_YEAR_MIN, HDD_YEAR_MAX = 1700, 3000
 
 
+# The widest window the cost panel offers, in days. The retained
+# series must cover this PLUS a trailing year, because every day needs
+# a year of degree days behind it to know its own hot-water share.
+WINDOW_MAX_DAYS = 730
+
+
+def retention_span_gate(hdd_daily, label="island"):
+    """
+    Assert the retained record can support the widest window offered.
+
+    SERIES_KEEP_DAYS is 1150 against 1095 needed - 55 days of margin,
+    which is thin enough that a change to the window, to the trailing
+    year, or to the retention constant could short the shaping without
+    anything failing. A short record does not throw: it silently
+    shapes space heat on a denominator that is a season rather than a
+    year, and every figure downstream stays plausible. So this gate
+    exists to make that change loud at the moment it is made rather
+    than at the moment someone notices the chart.
+
+    Returns the retained span in days, or None if it cannot be
+    measured.
+    """
+    days = sorted(hdd_daily)
+    if len(days) < 2:
+        return None
+    span = ((dt.date.fromisoformat(days[-1])
+             - dt.date.fromisoformat(days[0])).days + 1)
+    need = WINDOW_MAX_DAYS + 365
+    if span < need:
+        log(f"retention: WARNING {label} record spans {span} days, "
+            f"{need} needed for a {WINDOW_MAX_DAYS}-day window plus its "
+            f"trailing year - the widest window will under-fill and the "
+            f"earliest days in it are shaped on a partial year. Raise "
+            f"SERIES_KEEP_DAYS (currently {SERIES_KEEP_DAYS}) or narrow "
+            f"WINDOW_MAX_DAYS")
+    else:
+        log(f"retention: {label} record spans {span} days, {need} needed "
+            f"({span - need} days of margin)")
+    return span
+
+
 def hdd_year_gate(hdd_daily, label="island"):
     """Assert the trailing year of degree days is a plausible year."""
     days = sorted(hdd_daily)[-365:]
@@ -5220,6 +5289,7 @@ def derive_heat_cost_series(feeds, anchors=None):
         etas[jur] = {r: calibrate_eta(r, cal, jur, a)
                      for r in ("ashp", "gshp", "network")}
     hdd_year_gate(hdd_i)
+    retention_span_gate(hdd_i)
     try:
         gni = ((feeds.get("gni_live") or {}).get("ndm_gwh")
                or (feeds.get("gni_live") or {}).get("total_gwh") or {})
@@ -5287,6 +5357,13 @@ def derive_heat_cost_series(feeds, anchors=None):
             continue
         nd, _ = nondom_for(day, ((feeds.get("ecb_fx") or {})
                                  .get("eur_gbp_semester")))
+        if nd is None:
+            # Before the first published REMM semester. The services
+            # share of the gas and heat-pump routes, and the whole of
+            # the network route, have no anchor - so the day is not
+            # priced at all rather than priced on a borrowed one.
+            unpriced += 1
+            continue
         # daily share for the caption, smoothed share for the money
         mode = smooth.get(day, share)
         row = {"day": day, "dhw_share": round(share, 3),
@@ -6055,7 +6132,21 @@ def main():
     try:
         hcs = derive_heat_cost_series(feeds)
         if hcs:
-            derived["heat_cost_series"] = hcs
+            # Columnar, same wire format and same encoder as the
+            # history block. The cost rows are wide and shallow and
+            # there are now up to 730 of them - measured at 1,135
+            # bytes a row flat, which is 809 kB on top of a data.json
+            # already past 600. Encoding is not a restatement: the
+            # content schema is untouched and both readers accept
+            # either shape, because index.html publishes on the Pages
+            # deploy while data.json only changes at 04:17.
+            _cflat = len(json.dumps(hcs, separators=(",", ":")))
+            derived["heat_cost_series"] = compact_history(hcs)
+            _ccols = len(json.dumps(derived["heat_cost_series"],
+                                    separators=(",", ":")))
+            log(f"heat cost: encoded {len(hcs)} days columnar, "
+                f"{_cflat // 1024} kB -> {_ccols // 1024} kB "
+                f"({100 * _ccols // max(_cflat, 1)}%)")
     except Exception as exc:
         log(f"heat cost: failed ({exc.__class__.__name__}) - "
             "the weekly tracker is unaffected")
