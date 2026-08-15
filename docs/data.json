@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-08-15T20:46:52+00:00",
+ "built_utc": "2026-08-15T21:04:29+00:00",
  "derived": {
   "anchor_epoch": 8,
   "calibration": {
@@ -56351,7 +56351,7 @@
     "2026-08-13",
     "2026-08-14"
    ],
-   "fetched_utc": "2026-08-15T20:46:13+00:00",
+   "fetched_utc": "2026-08-15T21:03:51+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -58426,7 +58426,7 @@
     "2025-S2": 0.87073,
     "2026-S1": 0.8672
    },
-   "fetched_utc": "2026-08-15T20:45:50+00:00",
+   "fetched_utc": "2026-08-15T21:03:28+00:00",
    "gbp_eur": 1.17028,
    "latest_day": "2026-08-14",
    "rate_date": "2026-08-14",
@@ -59002,7 +59002,7 @@
     "2026-08-12": 204.9,
     "2026-08-13": 217.1,
     "2026-08-14": 233.1,
-    "2026-08-15": 227.7
+    "2026-08-15": 227.8
    },
    "demand_gwh_daily": {
     "island": {
@@ -59063,7 +59063,7 @@
      "2026-08-12": 114.17,
      "2026-08-13": 117.38,
      "2026-08-14": 113.95,
-     "2026-08-15": 103.95
+     "2026-08-15": 104.03
     },
     "ni": {
      "2026-06-19": 19.11,
@@ -59123,7 +59123,7 @@
      "2026-08-12": 19.32,
      "2026-08-13": 19.96,
      "2026-08-14": 18.89,
-     "2026-08-15": 16.86
+     "2026-08-15": 16.87
     },
     "roi": {
      "2026-06-19": 93.91,
@@ -59183,27 +59183,27 @@
      "2026-08-12": 94.85,
      "2026-08-13": 97.42,
      "2026-08-14": 95.06,
-     "2026-08-15": 87.1
+     "2026-08-15": 87.16
     }
    },
-   "fetched_utc": "2026-08-15T20:45:43+00:00",
+   "fetched_utc": "2026-08-15T21:03:19+00:00",
    "latest_day": "2026-08-15",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
   },
   "eirgrid_probe": {
    "carbon_depth": {
-    "12mo": "EMPTY on 2 attempts - treat as unavailable",
+    "12mo": "HISTORIC CARBON RETURNED",
     "18mo": "HISTORIC CARBON RETURNED",
     "24mo": "HISTORIC CARBON RETURNED"
    },
-   "fetched_utc": "2026-08-15T20:46:51+00:00",
+   "fetched_utc": "2026-08-15T21:04:28+00:00",
    "latest_day": "2026-08-15",
    "source": "EirGrid Smart Grid Dashboard (probe, round 3)",
    "status": "ok"
   },
   "entsog_probe": {
-   "fetched_utc": "2026-08-15T20:46:14+00:00",
+   "fetched_utc": "2026-08-15T21:03:56+00:00",
    "greater_belfast_gwh_daily": {
     "2026-07-20": 4.22306,
     "2026-07-21": 4.827287,
@@ -59341,11 +59341,48 @@
    }
   },
   "gb_oil": {
-   "fetched_utc": "2026-08-15T20:46:14+00:00",
+   "fetched_utc": "2026-08-15T21:03:56+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
    "gb_ppl_daily": {
+    "2023-07-15": 56.63,
+    "2023-08-15": 68.98,
+    "2023-09-15": 74.9,
+    "2023-10-15": 73.74,
+    "2023-11-15": 68.84,
+    "2023-12-15": 62.21,
+    "2024-01-15": 62.94,
+    "2024-02-15": 66.64,
+    "2024-03-15": 62.73,
+    "2024-04-15": 64.01,
+    "2024-05-15": 59.67,
+    "2024-06-15": 58.46,
+    "2024-07-15": 59.0,
+    "2024-08-15": 55.73,
+    "2024-09-15": 49.63,
+    "2024-10-15": 53.19,
+    "2024-11-15": 53.22,
+    "2024-12-15": 53.72,
+    "2025-01-15": 56.64,
+    "2025-02-15": 56.05,
+    "2025-03-15": 51.99,
+    "2025-04-15": 51.09,
+    "2025-05-15": 46.39,
+    "2025-06-15": 49.11,
+    "2025-07-15": 53.82,
+    "2025-08-15": 50.71,
+    "2025-09-15": 49.26,
+    "2025-10-15": 52.34,
+    "2025-11-15": 55.83,
+    "2025-12-15": 52.48,
+    "2026-01-15": 51.84,
+    "2026-02-15": 53.46,
+    "2026-03-15": 104.05,
+    "2026-04-15": 103.97,
+    "2026-05-15": 89.69,
+    "2026-06-15": 76.62,
+    "2026-07-15": 69.98,
     "2026-07-18": 94.12,
     "2026-07-19": 94.06,
     "2026-07-20": 94.03,
@@ -59376,8 +59413,9 @@
     "2026-08-14": 92.04,
     "2026-08-15": 91.01
    },
-   "latest_day": "2026-08-15",
-   "source": "BoilerJuice UK daily average (lowest quote per postcode district, incl 5% VAT)",
+   "latest_day": "2026-07-15",
+   "latest_ppl": 69.98,
+   "source": "DESNZ QEP 4.1.1 - typical retail price, standard grade burning oil, monthly, incl. taxes",
    "status": "ok"
   },
   "gni_ckan": {
@@ -62305,7 +62343,7 @@
     "2025-12-30": 8.71,
     "2025-12-31": 8.91
    },
-   "fetched_utc": "2026-08-15T20:45:52+00:00",
+   "fetched_utc": "2026-08-15T21:03:29+00:00",
    "latest_day": "2025-12-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -74139,7 +74177,7 @@
     "2026-08-13": 6.933,
     "2026-08-14": 6.74
    },
-   "fetched_utc": "2026-08-15T20:46:13+00:00",
+   "fetched_utc": "2026-08-15T21:03:50+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-08-14",
    "ndm_gwh": {
@@ -74672,7 +74710,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-08-15T20:45:47+00:00",
+   "fetched_utc": "2026-08-15T21:03:25+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -81665,7 +81703,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-08-15T20:46:01+00:00",
+   "fetched_utc": "2026-08-15T21:03:38+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -82008,7 +82046,7 @@
    "status": "ok"
   },
   "sem_mix": {
-   "fetched_utc": "2026-08-15T20:46:16+00:00",
+   "fetched_utc": "2026-08-15T21:03:58+00:00",
    "indigenous_share_daily": {
     "2026-06-25": 47.93,
     "2026-06-26": 46.75,
@@ -82060,9 +82098,10 @@
     "2026-08-11": 38.74,
     "2026-08-12": 29.26,
     "2026-08-13": 20.51,
-    "2026-08-14": 22.88
+    "2026-08-14": 22.88,
+    "2026-08-15": 11.3
    },
-   "latest_day": "2026-08-14",
+   "latest_day": "2026-08-15",
    "source": "energy-charts.info public_power IE - SEM all-island, half-hourly",
    "status": "ok"
   },
@@ -85697,7 +85736,7 @@
     "2026-08-13T22": 213.39,
     "2026-08-13T23": 190.49
    },
-   "fetched_utc": "2026-08-15T20:45:56+00:00",
+   "fetched_utc": "2026-08-15T21:03:33+00:00",
    "latest_day": "2026-08-13",
    "markets": {
     "NI-DA": {
