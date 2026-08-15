@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.15.0 / site 5.9.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.16.0 / site 5.9.0.
 
 ## The premise
 
@@ -700,6 +700,24 @@ today's figure. A spot gap reads as a standing fact, and on this record
 oil climbs steeply from November 2025 — so the headline was stating a
 war-driven condition as though it were structural.
 
+**The weekly record was capped by a literal (5.16.0).** `build_history`
+offered `range(59, -1, -1)` while `HISTORY_MAX` was 120, and the cap was
+applied afterwards to a list that could never exceed sixty. So the
+record sat at sixty weeks, the run log's "60 weeks built, none skipped"
+was reporting the loop bound rather than any data limit, and panel 1's
+sparklines were short because they slice whatever the record holds. The
+loop is now driven by `HISTORY_MAX` and a test fails if a literal
+returns. What binds depth now, in order: the carbon backfill's reach,
+then the tariff table floor — and a week that cannot be priced is
+refused by name rather than filled in.
+
+The carbon-reach diagnostic also moved out of the backfill branch. It
+only logged when the backfill fired, so on every other run it said
+nothing — and nothing is indistinguishable from "the block never ran",
+which is precisely the case the line exists for. It now reports where
+the carbon record reaches, and whether that covers `HISTORY_START`,
+every run.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -840,7 +858,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 175 tests, no network
+python3 tests/test_synthetic.py   # 176 tests, no network
 node tests/test_vol.js            # 58 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
