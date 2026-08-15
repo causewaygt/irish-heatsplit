@@ -51,7 +51,16 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.19.0"
+PIPELINE_VERSION = "5.20.0"
+# 5.20.0: THE FALCON, and a correction. I said it needed two winters
+#   and deferred it; it does not. The UK sibling builds it as a
+#   CALENDAR YEAR with each month filled by the LATEST COMPLETE
+#   instance of that month - Jan to Jul from this year, Aug to Dec
+#   from last - so twelve complete months is enough and a 13-month
+#   store already carries a full one. derive_grid_views publishes
+#   `falcon`, twelve rows ordered by calendar month with the month
+#   each came from, plus falcon_complete so a short store draws a
+#   partial curve rather than a wrong one.
 # 5.19.0: derive_grid_views publishes the three series Panel 3 plots -
 #   168 hourly rows, 90 daily, up to 24 monthly, about 280 against the
 #   store's 9,000-plus hours, so the payload carries what is DRAWN
@@ -4799,12 +4808,27 @@ def derive_grid_views(store, anchors=None):
         months.setdefault(stamp(k, 7), []).append(k)
     daily = [dict(row(v), t=d) for d, v in sorted(days.items())[-90:]]
     monthly = [dict(row(v), t=m) for m, v in sorted(months.items())[-24:]]
+    # THE FALCON. Not two years of history - a calendar year, each
+    # month filled with the LATEST COMPLETE instance of it. That is
+    # how the UK sibling builds it, and it is why twelve complete
+    # months is enough: Jan-Jul from this year, Aug-Dec from last.
+    # A month is complete only if the store covers a full one, so the
+    # first and last months of the span are dropped as partial.
+    keys = sorted(months)
+    complete = [m for m in keys[1:-1]]
+    latest = {}
+    for m in complete:
+        latest[m[5:7]] = m          # later months overwrite earlier
+    falcon = [dict(row(months[latest[f"{i:02d}"]]),
+                   t=latest[f"{i:02d}"], m=f"{i:02d}")
+              for i in range(1, 13) if f"{i:02d}" in latest]
     out = {"share": s, "hourly": hourly, "daily": daily,
-           "monthly": monthly,
+           "monthly": monthly, "falcon": falcon,
+           "falcon_complete": len(falcon),
            "span": [hours[0], hours[-1]]}
     log(f"grid views: {len(hourly)} hourly, {len(daily)} daily, "
-        f"{len(monthly)} monthly rows at a {int(s * 100)}% what-if "
-        f"({hours[0]}..{hours[-1]})")
+        f"{len(monthly)} monthly, {len(falcon)}/12 falcon months at a "
+        f"{int(s * 100)}% what-if ({hours[0]}..{hours[-1]})")
     return out
 
 
