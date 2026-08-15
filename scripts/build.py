@@ -51,7 +51,19 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.13.0"
+PIPELINE_VERSION = "5.14.0"
+# 5.14.0: THE CALIBRATION WAS DAY-WEIGHTED, NOT HEAT-WEIGHTED.
+#   calibrate_eta's docstring has said heat-weighted since it was
+#   written, and the caller passed the day's space/hot-water SHARES -
+#   two numbers summing to 1.0 on every day - so a mild August day
+#   weighed exactly as much as a January one. That flatters air
+#   source, whose advantage is concentrated in mild weather, and it
+#   was most of the calibration spread the 15% gate has been firing
+#   on. The caller now passes day_delivered_heat's actual GWh.
+#   Comparison with the UK sibling is what surfaced it: the UK's three
+#   fractions agree to 1.35% on the same constants and the same
+#   anchors, so the difference had to be in the weighting rather than
+#   in the physics.
 # 5.12.0: THE BACK-LOOK REACHES APRIL 2024. Both sides of the tariff
 #   table move together, because they had to - the sterling side is a
 #   dated table but the euro side was derived at call time from a
@@ -5586,10 +5598,10 @@ def derive_heat_cost_series(feeds, anchors=None):
         t = temp[jur]
         cal = []
         for d in sorted(t)[-365:]:
-            sh = day_dhw_share(hdd_i, d, a)
-            if sh is None:
+            v = day_delivered_heat(hdd_i, d, jur, a)
+            if v is None:
                 continue
-            cal.append((t[d], 1 - sh, sh))
+            cal.append((t[d], v["space"], v["dhw"]))
         # A full year is what you want - the fraction is calibrated
         # against the whole seasonal swing - but a short record should
         # degrade rather than return nothing, and say so.
