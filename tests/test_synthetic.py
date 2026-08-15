@@ -3846,6 +3846,34 @@ def test_the_two_what_if_questions_stay_separate():
         "the binding-hour solve must not be pinned to the 20% what-if"
 
 
+def test_the_falcon_is_a_calendar_year_not_two_years_of_history():
+    """The falcon does NOT need two winters. It is a calendar year with
+    each month filled by the LATEST COMPLETE instance of it - Jan to
+    Jul from this year, Aug to Dec from last - so twelve complete
+    months is enough. A 13-month store gives a full falcon."""
+    import build as B
+    gv = B.derive_grid_views(_synthetic_hourly_store())
+    f = gv["falcon"]
+    assert len(f) == 12 and gv["falcon_complete"] == 12
+    # ordered by calendar month, not by date
+    assert [r["m"] for r in f] == [f"{i:02d}" for i in range(1, 13)]
+    # and the early months come from the LATER year
+    yr = {r["m"]: r["t"][:4] for r in f}
+    assert yr["01"] > yr["12"], yr
+    # each month appears exactly once
+    assert len({r["t"] for r in f}) == 12
+    # the shape is the point: coldest month draws the most air-source
+    cold = max(f, key=lambda r: r["heat_mw"])
+    warm = min(f, key=lambda r: r["heat_mw"])
+    assert cold["air_source"] > warm["air_source"]
+    assert cold["m"] in ("12", "01", "02"), cold["m"]
+    # a store with too few complete months gives a partial falcon
+    # rather than a wrong one
+    short = B.derive_grid_views(_synthetic_hourly_store(150))
+    if short:
+        assert len(short["falcon"]) < 12
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every

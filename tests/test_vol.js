@@ -361,12 +361,32 @@ ok(/heat delivered, GW/.test(gc)
    + "magnitude and one axis would flatten the electricity");
 ok(/the fifth via geothermal network/.test(DOM.gridLegend.innerHTML),
    "the legend says these are the what-if's fifth, not all of it");
-// the monthly view must admit the store is not yet two years deep
+// the monthly view is the FALCON: a calendar year, each month the
+// latest complete instance - Jan-Jul from this year, Aug-Dec from
+// last. Twelve complete months is enough; it does not need two years.
+GV.falcon = [];
+for(let i = 1; i <= 12; i++){
+  const src = i <= 7 ? "2026-" : "2025-";
+  const cold = Math.cos(2 * Math.PI * (i - 1) / 12);
+  GV.falcon.push({m: String(i).padStart(2,"0"),
+    t: src + String(i).padStart(2,"0"),
+    heat_mw: 1200 + 900*cold, temp_c: 10 - 6*cold, demand_mw: 4200,
+    air_source: 90 + 70*cold, ground_source: 80 + 30*cold,
+    geothermal_network: 52 + 18*cold});
+}
+GV.falcon_complete = 12;
 GVIEW = "monthly";
 ["gridChart","gridViewNote"].forEach(k=>{DOM[k]=null; el(k);});
 drawGridViews(GV);
-ok(/not yet a year-on-year comparison/.test(DOM.gridViewNote.textContent),
-   "the monthly view says the store holds 14 months, not two years");
+ok(/falcon curve/.test(DOM.gridViewNote.textContent)
+   && /12\/12 months/.test(DOM.gridViewNote.textContent),
+   "the monthly view is the falcon and reports how many months it has");
+const fc = DOM.gridChart.innerHTML;
+ok(/>Jan 26</.test(fc) && /># *Dec 25</.test(fc) === false
+   && /Dec 25/.test(fc),
+   "and its axis runs the calendar year, Jan from this year and Dec "
+   + "from last");
+ok(!/NaN/.test(fc), "no NaN in the falcon");
 GVIEW = "daily";
 ["gridChart","gridViewNote"].forEach(k=>{DOM[k]=null; el(k);});
 drawGridViews(GV);
