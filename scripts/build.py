@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.12.0"
+PIPELINE_VERSION = "5.13.0"
 # 5.12.0: THE BACK-LOOK REACHES APRIL 2024. Both sides of the tariff
 #   table move together, because they had to - the sterling side is a
 #   dated table but the euro side was derived at call time from a
@@ -168,7 +168,15 @@ SERIES_KEEP_DAYS = 1150
 #  - Grid carbon for these weeks is NOT in the daily EirGrid feed
 #    (50-day retention). It is taken from the hourly store, whose
 #    floor advances daily - see daily_ci_from_hourly().
-HISTORY_START = "2025-08-06"
+HISTORY_START = "2025-02-02"
+# Moved back from 2025-08-06 at 5.13.0, once the tariff table reached
+# April 2024. It did NOT move all the way to match: the binding
+# constraint on the weekly record is no longer tariffs but each week's
+# own grid carbon, and the EirGrid probe's demonstrated reach is 18
+# months. Weeks are refused rather than priced at the carbon anchor,
+# so the record extends itself as the backfill reaches further and
+# never contains a week whose emissions are today's grid intensity
+# wearing last year's date.
 # The date from which the record has been observed as it happened.
 # Weeks before it are reconstructed from published tariffs and the
 # hourly store, and are counted and labelled separately - the 52-live
@@ -1757,6 +1765,37 @@ def feed_eirgrid():
                     min_intervals=40))
         ser = prev_series("eirgrid", "co2_intensity_g_per_kwh")
         ser.update(got)
+        # DEEP BACKFILL, once. Extending the weekly record needs each
+        # week's OWN carbon, and the daily feed retains 50 days while
+        # the hourly store starts 13 months back - so weeks older than
+        # the store have no carbon at all unless it is fetched. The
+        # probe has shown co2intensity walking back 18 months. This
+        # walks monthly chunks until the series reaches HISTORY_START
+        # or a chunk comes back empty, and then never runs again,
+        # because the retained series already covers the floor.
+        if ser and min(ser) > HISTORY_START:
+            edge = dt.date.fromisoformat(min(ser))
+            for _ in range(24):
+                if edge.isoformat() <= HISTORY_START:
+                    break
+                a = edge - dt.timedelta(days=28)
+                chunk = parse_eirgrid_rows(http_get(
+                    EIRGRID_ENDPOINT, params={
+                        "region": "ALL", "chartType": "co2",
+                        "dateRange": "month", "dateFrom": dmy(a),
+                        "dateTo": dmy(edge - dt.timedelta(days=1)),
+                        "areas": "co2intensity"}, timeout=90).json(),
+                    field="CO2_INTENSITY", daily="mean", min_intervals=40)
+                if not chunk:
+                    log(f"eirgrid: carbon backfill stopped at "
+                        f"{edge.isoformat()} - chunk from {a.isoformat()} "
+                        f"came back empty (0-row results have been "
+                        f"flakiness before, so this may clear itself)")
+                    break
+                ser.update(chunk)
+                edge = a
+            log(f"eirgrid: carbon backfill reached {min(ser)} "
+                f"(HISTORY_START {HISTORY_START})")
         out["co2_intensity_g_per_kwh"] = trim_series(ser)
         log(f"eirgrid: co2 intensity {len(got)} days this run, "
             f"{len(out['co2_intensity_g_per_kwh'])} retained")
@@ -3639,6 +3678,16 @@ def week_inputs(feeds, w_end, skips=None):
     ci_vals = [co2[d] for d in days if d in co2]
     ef = round(sum(ci_vals) / len(ci_vals), 1) if len(ci_vals) >= 4 \
         else None
+    if ef is None and w_end < LIVE_FROM:
+        # A reconstructed week priced at the carbon ANCHOR would carry
+        # today's grid intensity wearing last year's date - the clamp
+        # pattern, landing on emissions instead of price. Refuse it.
+        # The record then extends itself as the carbon backfill
+        # reaches further, and never contains a week it cannot date.
+        return _skip("no grid carbon for this week - the daily feed "
+                     "retains 50 days and the hourly store 13 months, "
+                     "so an older week needs the EirGrid backfill to "
+                     "have reached it")
     nd_week, _nd_sem = nondom_for(w_end, ((feeds.get("ecb_fx") or {})
                                           .get("eur_gbp_semester")))
     if nd_week is None:
