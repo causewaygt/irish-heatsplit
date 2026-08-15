@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.12.0 / site 5.7.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.13.0 / site 5.8.0.
 
 ## The premise
 
@@ -648,6 +648,26 @@ knowing: household gas reads about 6% higher in the July–December half
 every year, because fixed network costs spread over far fewer summer
 units.
 
+**The weekly record reaches back too (5.13.0), as far as carbon allows.**
+`HISTORY_START` moves from August 2025 to February 2025 — not all the
+way to the tariff table's April 2024 floor, because the binding
+constraint on the weekly record is no longer tariffs but each week's own
+grid carbon. The daily EirGrid feed retains 50 days and the hourly store
+13 months, so an older week has no carbon unless it is fetched; the
+probe's demonstrated reach is 18 months. A one-off deep backfill walks
+monthly chunks until the retained series covers the floor, then never
+runs again. **A reconstructed week without its own carbon is refused by
+name, not priced at the anchor** — otherwise its emissions would be
+today's grid intensity wearing last year's date. The record therefore
+extends itself as the backfill reaches further and can never contain a
+week it cannot date.
+
+**Panel 2 has its own jurisdiction toggle**, under the title, Republic or
+Northern Ireland. It previously followed panel 1, which meant selecting
+"all island" above silently showed the Republic below. There is no
+all-island option: the panel prices in one currency per jurisdiction, so
+there is no such figure to show.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -788,8 +808,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 172 tests, no network
-node tests/test_vol.js            # 55 front-end fixture checks
+python3 tests/test_synthetic.py   # 173 tests, no network
+node tests/test_vol.js            # 58 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
