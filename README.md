@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.13.0 / site 5.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.14.0 / site 5.8.0.
 
 ## The premise
 
@@ -668,6 +668,23 @@ Northern Ireland. It previously followed panel 1, which meant selecting
 all-island option: the panel prices in one currency per jurisdiction, so
 there is no such figure to show.
 
+**The calibration was day-weighted, not heat-weighted (5.14.0).** The
+Carnot fraction η is solved so the annual heat-weighted SPF reproduces
+each route's published anchor — that is what makes η a statement about
+machine quality, with the source carried by the Carnot term. But the
+caller passed the day's space and hot-water *shares*, two numbers
+summing to 1.0 on every day, so a mild August day weighed exactly as
+much as a January one. That flatters air source, whose advantage is
+concentrated in mild weather, and it was most of the spread the 15%
+consistency gate has been reporting.
+
+Comparing with the UK sibling is what surfaced it. On identical
+constants and identical anchors the UK's three fractions agree to 1.35%,
+so the difference had to be in the weighting rather than in the physics
+or the climate. With real delivered-heat volumes as the weights, the
+air-source and ground-source Carnot ceilings separate as they do in
+Britain, and the spread falls back inside the gate.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -808,7 +825,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 173 tests, no network
+python3 tests/test_synthetic.py   # 174 tests, no network
 node tests/test_vol.js            # 58 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
