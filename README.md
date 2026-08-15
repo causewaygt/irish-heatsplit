@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.14.0 / site 5.8.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.15.0 / site 5.9.0.
 
 ## The premise
 
@@ -685,6 +685,21 @@ or the climate. With real delivered-heat volumes as the weights, the
 air-source and ground-source Carnot ceilings separate as they do in
 Britain, and the spread falls back inside the gate.
 
+**The masthead ticker reads the panel's own rows (5.15.0).** It used to
+come from `derive_heat_gap`, the original calculation, which never
+received the panel's changes: one geothermal SPF of 4.0 for both
+jurisdictions where the panel uses 5.0 in the North, a single
+oil-boiler efficiency of 0.82 where the panel prices hot water at 0.71,
+and no hot-water blending at all. The two disagreed by 13–20% on
+identical routes on the same day, with the headline sitting above the
+chart that contradicted it. `derive_heat_gap` is kept as
+`heat_gap_diagnostic` for its break-even SPF figures.
+
+The ticker also now shows the gap's **median over the window** beside
+today's figure. A spot gap reads as a standing fact, and on this record
+oil climbs steeply from November 2025 — so the headline was stating a
+war-driven condition as though it were structural.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -825,7 +840,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 174 tests, no network
+python3 tests/test_synthetic.py   # 175 tests, no network
 node tests/test_vol.js            # 58 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
