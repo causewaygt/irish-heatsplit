@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.10.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.11.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -116,6 +116,15 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 /* The volume chart is the quantity behind the price above it. It
    shares the x-axis, so it sits close under the price legend rather
    than reading as a separate exhibit. */
+.emit{margin:6px 0 10px}
+.emitrow{display:flex;align-items:center;gap:10px;margin:4px 0}
+.emitlab{flex:0 0 190px;text-align:right;color:var(--ink2);font-size:.82rem}
+.emitbarw{flex:1;display:flex;align-items:center;gap:8px}
+.emitbar{display:inline-block;height:16px;border-radius:2px;
+  background:var(--line);min-width:2px}
+.emitbar.on{background:var(--green)}
+.emitbarw b{font-family:'IBM Plex Mono',monospace;font-size:.78rem;
+  color:var(--ink2)}
 .caltab{border-collapse:collapse;font-size:.82rem;margin:4px 0 2px}
 .caltab th{text-align:left;color:var(--muted);font-weight:600;
   padding:4px 14px 4px 0;border-bottom:1px solid var(--line)}
@@ -515,6 +524,13 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <summary>How this is estimated, and why it is not metered</summary>
       <div class="foldbody" id="costMethod"></div>
     </details>
+    <h3 class="foldh" style="margin-top:22px">What heat emits</h3>
+    <div id="emitBars"></div>
+    <p class="note" id="emitNote"></p>
+    <details class="fold">
+      <summary>Every route's carbon per useful kWh, live grid intensity</summary>
+      <div class="foldbody" id="emitMethod"></div>
+    </details>
   </div>
 </section>
 <section id="oil" aria-labelledby="oil-h">
@@ -838,6 +854,67 @@ function calBoard(cal){
       + '</p>'
     : '';
   box.innerHTML = h + within;
+}
+
+// -------------------------------------------------- what heat emits
+// ALL-ISLAND, and deliberately without a jurisdiction toggle: the
+// combustion factors do not change at the border, the efficiencies
+// are shared, and the grid is a single all-island market - so a split
+// would draw the same bars three times. That contrast with the panel
+// above is the point, and the note says it.
+const EMIT_GREEN = new Set(["ashp", "gshp", "network"]);
+function emitPanel(he){
+  const box = el("emitBars"), note = el("emitNote"), meth = el("emitMethod");
+  if(!box) return;
+  if(!he || !he.routes || !he.routes.length){
+    box.textContent = "Carbon by route arrives with the next daily build.";
+    if(note) note.textContent = "";
+    return;
+  }
+  const hi = Math.max(...he.routes.map(r => r.g_per_useful_kwh)) * 1.02;
+  let h = '<div class="emit">';
+  he.routes.forEach(r => {
+    const w = 100 * r.g_per_useful_kwh / hi;
+    h += '<div class="emitrow"><span class="emitlab">' + r.label
+      + '</span><span class="emitbarw"><span class="emitbar'
+      + (EMIT_GREEN.has(r.key) ? " on" : "") + '" style="width:'
+      + w.toFixed(1) + '%"></span><b>' + fmt(r.g_per_useful_kwh, 0)
+      + '</b></span></div>';
+  });
+  h += '</div>';
+  box.innerHTML = h;
+  if(note) note.textContent =
+    "gCO\u2082e per useful kWh, all island. There is no jurisdiction "
+    + "toggle here and that is the finding: the grid is a single "
+    + "all-island market and the combustion factors do not change at "
+    + "the border, so unlike the price above, the carbon answer is the "
+    + "same either side of it.";
+  if(meth){
+    let t = '<table class="caltab"><thead><tr><th>Route</th>'
+      + '<th>SPF / efficiency</th><th>gCO\u2082e per useful kWh</th>'
+      + '</tr></thead><tbody>';
+    he.routes.forEach(r => {
+      t += '<tr><td>' + r.label + '</td><td>'
+        + (r.spf ? "SPF " + fmt(r.spf, 2) : "boiler efficiency")
+        + '</td><td><b>' + fmt(r.g_per_useful_kwh, 0) + 'g</b></td></tr>';
+    });
+    t += '</tbody></table>'
+      + '<p class="note">Combustion factors are applied to the fuel '
+      + 'burned and then divided by the boiler efficiency, so every bar '
+      + 'is per unit of heat delivered rather than per unit purchased. '
+      + 'Electric routes take the live all-island grid intensity, '
+      + fmt(he.grid_g_per_kwh, 0) + ' g/kWh on a ' + he.grid_days
+      + '-day mean, over each route\u2019s seasonal performance factor. '
+      + 'The heat network here is GEOTHERMAL, not the gas-fired network '
+      + 'assumed in most comparisons \u2014 its figure is the ambient '
+      + 'loop at an island SPF of ' + fmt(he.network_spf_island, 2)
+      + '\u2020, the heat-weighted harmonic mean of 5.0 in the North '
+      + 'and 4.0 in the Republic. Harmonic because efficiencies average '
+      + 'that way; an arithmetic mean would flatter it. Every electric '
+      + 'route improves as the grid decarbonises; combustion never '
+      + 'does.</p>';
+    meth.innerHTML = t;
+  }
 }
 
 function drawTrends(HIST, win, scope){
@@ -2042,6 +2119,7 @@ fetch('data.json').then(r=>{
   statusBadges(D.feeds||{});
   sparkBox(D);
   calBoard((D.derived||{}).calibration);
+  emitPanel((D.derived||{}).heat_emissions);
   const hero=(D.derived||{}).hero;
   if(hero){heroCards(hero,expandHistory((D.derived||{}).history));}
   else el('heroCards').innerHTML='<div class="stat"><div class="lab">Hero</div>'+
@@ -2059,7 +2137,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.10.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.11.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
