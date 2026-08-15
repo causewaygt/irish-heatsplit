@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.18.0 / site 5.12.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.18.0 / site 5.13.0.
 
 ## The premise
 
@@ -777,6 +777,26 @@ two-thirds of dispatch-down and concentrated west and northwest, while
 SNSP is around 1% — is geography rather than jurisdiction, and belongs
 in the map panel rather than here.
 
+**Panel 3 draws the coldest hour (site 5.13.0).** B.2.1 has been computed
+and logged since the grid layer landed and has ridden in the payload as
+`tightest_hour` all along; this is the first time it appears on the page.
+Per route it shows the added load in GW, that load as a share of what the
+island was using in that hour, and whether it fits the ceiling or exceeds
+it and by how much — then the ceiling itself as the de-rated block plus
+the wind and solar actually generated, so it breathes with the weather.
+Beneath, the share of island heat that fits inside today's fleet, with
+its binding hour.
+
+The framing that must travel with it is on the page, not just in the
+README: this is a **peak-capacity test, not an energy test** — nothing
+here phases the conversion or counts storage, diversity or demand
+response.
+
+**The NI and ROI states decline rather than relabelling.** The hourly
+heat what-if is computed all-island, so a jurisdiction split needs hourly
+heat per jurisdiction, which is not built. Selecting either says so
+instead of showing island figures under a jurisdiction heading.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -918,7 +938,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 177 tests, no network
-node tests/test_vol.js            # 79 front-end fixture checks
+node tests/test_vol.js            # 89 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
