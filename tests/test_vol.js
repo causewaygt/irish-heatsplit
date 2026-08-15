@@ -321,4 +321,61 @@ gridPanel(null);
 ok(/coming build/.test(DOM.gridPanel.innerHTML),
    "and a payload without the block declines cleanly");
 
+// ---- Panel 3's three views -----------------------------------------
+const gvSer = lift(/const GV_SERIES = \[[\s\S]*?\];/, "GV_SERIES");
+const gvLab = lift(/function gvLabel\(t\)\{[\s\S]*?\n\}/, "gvLabel");
+const gvFn = lift(/function drawGridViews\(gv\)\{[\s\S]*?\n\}/,
+                  "drawGridViews");
+let GVIEW = "hourly";
+eval(gvSer + "\n" + gvLab + "\n" + gvFn);
+function gvRows(n, stamp){
+  const out = [];
+  for(let i = 0; i < n; i++){
+    const cold = Math.cos(2 * Math.PI * i / n);
+    out.push({t: stamp(i), heat_mw: 1200 + 900 * cold,
+              temp_c: 10 - 6 * cold, demand_mw: 4200,
+              air_source: 90 + 70 * cold, ground_source: 80 + 30 * cold,
+              geothermal_network: 52 + 18 * cold});
+  }
+  return out;
+}
+const GV = {share: 0.2,
+  hourly: gvRows(168, i => "2026-08-" + String(9 + Math.floor(i/24))
+    .padStart(2,"0") + "T" + String(i%24).padStart(2,"0")),
+  daily: gvRows(90, i => "2026-0" + (5 + Math.floor(i/31)) + "-"
+    + String(1 + i%28).padStart(2,"0")),
+  monthly: gvRows(14, i => "202" + (5 + Math.floor((6+i)/12)) + "-"
+    + String(1 + (6+i)%12).padStart(2,"0"))};
+["gridChart","gridLegend","gridViewNote"].forEach(k=>{DOM[k]=null; el(k);});
+drawGridViews(GV);
+const gc = DOM.gridChart.innerHTML;
+ok(gc.indexOf("<svg") === 0, "the hourly view draws");
+ok(!/NaN|undefined/.test(gc), "no NaN in the paths or the axes");
+ok((gc.match(/<path /g)||[]).length === 4,
+   "heat plus three routes, one path each");
+ok(/stroke-dasharray/.test(gc),
+   "heat delivered is dashed, so it reads as the demand not a route");
+ok(/heat delivered, GW/.test(gc)
+   && /electricity for the what-if, GW/.test(gc),
+   "both axes are labelled - the two quantities differ by an order of "
+   + "magnitude and one axis would flatten the electricity");
+ok(/the fifth via geothermal network/.test(DOM.gridLegend.innerHTML),
+   "the legend says these are the what-if's fifth, not all of it");
+// the monthly view must admit the store is not yet two years deep
+GVIEW = "monthly";
+["gridChart","gridViewNote"].forEach(k=>{DOM[k]=null; el(k);});
+drawGridViews(GV);
+ok(/not yet a year-on-year comparison/.test(DOM.gridViewNote.textContent),
+   "the monthly view says the store holds 14 months, not two years");
+GVIEW = "daily";
+["gridChart","gridViewNote"].forEach(k=>{DOM[k]=null; el(k);});
+drawGridViews(GV);
+ok(/90 points/.test(DOM.gridViewNote.textContent),
+   "and each view reports its own point count and span");
+GVIEW = "hourly";
+["gridChart","gridLegend"].forEach(k=>{DOM[k]=null; el(k);});
+drawGridViews(null);
+ok(/next daily build/.test(DOM.gridChart.textContent),
+   "a payload without the series declines rather than drawing empty axes");
+
 console.log(checks + " front-end fixture checks passed");
