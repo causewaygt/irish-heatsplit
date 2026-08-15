@@ -3725,6 +3725,47 @@ def test_history_offers_as_many_weeks_as_it_retains():
     assert not re.search(r"for k in range\(\s*\d+\s*,", src), src
 
 
+def test_heat_emissions_are_per_useful_kwh_and_all_island():
+    """Emissions per useful kWh are the combustion factor over the
+    boiler efficiency, or grid intensity over the route's COP. None of
+    those change at the border and the grid is one all-island market,
+    so this is deliberately NOT split by jurisdiction - a split would
+    draw the same bars three times."""
+    import build as B
+    he = B.derive_heat_emissions(_history_fixture_feeds())
+    assert he, "no emissions block"
+    r = {x["key"]: x for x in he["routes"]}
+    assert set(r) == {"gas_boiler", "oil_boiler", "resistive",
+                      "ashp", "gshp", "network"}
+    a = B.ANCHORS
+    # per USEFUL kWh: the boiler figure is above the fuel's own factor
+    assert r["gas_boiler"]["g_per_useful_kwh"] > a["ef_g_per_kwh"]["gas"]
+    assert abs(r["gas_boiler"]["g_per_useful_kwh"]
+               - a["ef_g_per_kwh"]["gas"] / a["efficiency"]["gas"]) < 0.2
+    # resistive is the grid itself; the heat pumps are the grid over SPF
+    assert r["resistive"]["g_per_useful_kwh"] == he["grid_g_per_kwh"]
+    assert abs(r["ashp"]["g_per_useful_kwh"]
+               - he["grid_g_per_kwh"] / B.SPF_ANCHORS["ashp"]) < 0.2
+    # ordering is the whole exhibit
+    assert (r["oil_boiler"]["g_per_useful_kwh"]
+            > r["gas_boiler"]["g_per_useful_kwh"]
+            > r["resistive"]["g_per_useful_kwh"]
+            > r["ashp"]["g_per_useful_kwh"]
+            > r["gshp"]["g_per_useful_kwh"]
+            > r["network"]["g_per_useful_kwh"])
+    # the island network SPF is the HEAT-WEIGHTED HARMONIC mean of the
+    # two jurisdictional models - an arithmetic mean would flatter it
+    lo, hi = (B.NETWORK_MODEL["roi"]["spf"], B.NETWORK_MODEL["ni"]["spf"])
+    arith = (lo + hi) / 2
+    assert lo < he["network_spf_island"] < hi
+    assert he["network_spf_island"] < arith, (he["network_spf_island"],
+                                              arith)
+    # and it declines rather than guessing when carbon is too thin
+    thin = _history_fixture_feeds()
+    thin["eirgrid"]["co2_intensity_g_per_kwh"] = {}
+    assert B.derive_heat_emissions(thin) is None
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every

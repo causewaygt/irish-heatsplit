@@ -222,4 +222,40 @@ calBoard(null);
 ok(/next daily build/.test(DOM.calBoard.textContent),
    "a payload without the calibration declines rather than drawing blank");
 
+// ---- what heat emits: all-island, no jurisdiction toggle -----------
+const emitSrc = lift(/const EMIT_GREEN = [\s\S]*?\);/, "EMIT_GREEN");
+const emitFn = lift(/function emitPanel\(he\)\{[\s\S]*?\n\}/, "emitPanel");
+eval(emitSrc + "\n" + emitFn);
+["emitBars","emitNote","emitMethod"].forEach(k=>{DOM[k]=null; el(k);});
+emitPanel({grid_g_per_kwh: 212, grid_days: 14, network_spf_island: 4.252,
+  routes: [
+    {key:"gas_boiler",label:"Gas boiler",g_per_useful_kwh:241.2,spf:null},
+    {key:"oil_boiler",label:"Oil boiler",g_per_useful_kwh:313.4,spf:null},
+    {key:"resistive",label:"Resistive electric",g_per_useful_kwh:212,spf:1},
+    {key:"ashp",label:"Air-source heat pump",g_per_useful_kwh:75.7,spf:2.8},
+    {key:"gshp",label:"Ground source",g_per_useful_kwh:65.4,spf:3.24},
+    {key:"network",label:"Geothermal heat network",
+     g_per_useful_kwh:49.9,spf:4.252}]});
+const eb = DOM.emitBars.innerHTML;
+ok((eb.match(/emitrow/g)||[]).length === 6, "six routes, one bar each");
+ok(/313/.test(eb) && /50/.test(eb), "values printed beside the bars");
+ok(!/NaN|undefined/.test(eb), "no NaN in the bar widths");
+// the three low-carbon routes are the highlighted ones
+ok((eb.match(/emitbar on/g)||[]).length === 3,
+   "the three heat-pump routes are highlighted, the three others are not");
+// the longest bar is the oil boiler, the shortest the network
+const w = [...eb.matchAll(/width:([\d.]+)%/g)].map(m=>parseFloat(m[1]));
+ok(w.length===6 && w[1]===Math.max(...w) && w[5]===Math.min(...w),
+   "oil is the longest bar and the geothermal network the shortest");
+ok(/all-island market/.test(DOM.emitNote.textContent),
+   "the note states why there is no jurisdiction toggle");
+ok(/GEOTHERMAL, not the gas-fired network/.test(DOM.emitMethod.innerHTML),
+   "the method fold does not inherit the gas-fired-network assumption");
+ok(/harmonic/.test(DOM.emitMethod.innerHTML),
+   "and says how the island SPF was combined");
+["emitBars","emitNote","emitMethod"].forEach(k=>{DOM[k]=null; el(k);});
+emitPanel(null);
+ok(/next daily build/.test(DOM.emitBars.textContent),
+   "an old payload declines rather than drawing an empty axis");
+
 console.log(checks + " front-end fixture checks passed");
