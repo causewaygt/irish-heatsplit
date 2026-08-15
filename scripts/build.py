@@ -51,7 +51,20 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.9.0"
+PIPELINE_VERSION = "5.10.0"
+# 5.10.0: the CCNI WEEKLY ARCHIVE joins the daily checker as a second
+#   source for NI oil. The archive page embeds a chart array of the
+#   same shape as the daily page, so it parses through the existing
+#   extract_chart_data_arrays / parse_ccni_series with no new parser -
+#   277 points to April 2021 against the daily chart's few months.
+#   This is what lets NI oil reach a 24-month window. The archive
+#   fetch is SOFT: a failure loses reach, not the run. Series merge
+#   into one dict (every consumer unchanged) with the daily reading
+#   winning any overlap, provenance recorded in daily_page_days, and
+#   the overlap disagreement logged every run rather than averaged.
+#   ccni_ratio_gate names rows whose litre ratios cannot be right -
+#   three exist in CCNI's own record and only one is visible in the
+#   900 L series the site prices on.
 # 5.8.0: heat_cost_series rows carry vol_roi and vol_ni - GWh of
 #   DELIVERED heat that day, split space / hot water - so the cost
 #   panel can draw the quantity its per-MWh axis is charged on. Shaped
@@ -2495,12 +2508,69 @@ def feed_oil_bulletin():
     return out, recency_status(out["latest_day"], 10)
 
 
+CCNI_ARCHIVE_URL = ("https://www.consumercouncil.org.uk/home-heating/"
+                    "price-checker/archive")
+# Bands for the volume ratios within one published row. CCNI's own
+# record contains rows that fail these: 18 Nov 2021 carries a 900 L
+# figure 9.7% above both its neighbours while its 300 and 500 L
+# figures are identical to the previous day's to the penny. The gate
+# does NOT reject - the series is published and we do not get to
+# overrule it - it names the rows so a run that uses them is not
+# silent about it. Bands are wide enough to leave the 2026 rows alone,
+# where the volume discount genuinely moved.
+CCNI_RATIO_BANDS = {"500_300": (1.40, 1.68), "900_500": (1.66, 1.82)}
+
+
+def ccni_ratio_gate(series, label):
+    """
+    Name rows whose litre ratios are not internally plausible.
+
+    A single day's 300/500/900 L figures come from one survey of the
+    same suppliers, so their ratios are near-constant even as the
+    level swings. A row that breaks that is a transcription fault in
+    one cell, not a market movement - and it is invisible in the
+    900 L series alone, which is the only one the site prices on.
+    """
+    days = sorted(set(series.get("300l", {})) & set(series.get("500l", {}))
+                  & set(series.get("900l", {})))
+    bad = []
+    for d in days:
+        a, b, c = (series["300l"][d], series["500l"][d], series["900l"][d])
+        if not a or not b:
+            continue
+        r53, r95 = b / a, c / b
+        lo53, hi53 = CCNI_RATIO_BANDS["500_300"]
+        lo95, hi95 = CCNI_RATIO_BANDS["900_500"]
+        if not (lo53 <= r53 <= hi53) or not (lo95 <= r95 <= hi95):
+            bad.append((d, a, b, c, r53, r95))
+    if bad:
+        log(f"ccni_oil: {len(bad)} {label} row(s) fail the litre-ratio "
+            f"gate - published as-is, listed so they are not silent")
+        for d, a, b, c, r53, r95 in bad[:5]:
+            log(f"ccni_oil:   {d} {a}/{b}/{c} "
+                f"(500:300 {r53:.3f}, 900:500 {r95:.3f})")
+    return bad
+
+
 def feed_ccni_oil():
     """
-    Consumer Council NI - daily checker page (weekly page confirmed
-    chart-free). Parsed series merges with previous runs so history extends
-    beyond the page's rolling window. See FEED_FLAGS for the average-vs-
-    council-area verification item.
+    Consumer Council NI home heating oil, from TWO pages.
+
+    The daily checker (Mon-Fri) is the recent detail; its embedded
+    chart reaches back only a few months. The weekly ARCHIVE carries
+    the whole published record - 277 rows to 2021 as of 15 Aug 2026 -
+    in an embedded chart of exactly the same shape, so it parses
+    through the same functions. That archive is what lets the NI oil
+    series reach a 24-month window; the daily page alone cannot.
+
+    (An earlier docstring here said "weekly page confirmed
+    chart-free". That was wrong, and it is the reason the archive was
+    written off as needing a scraper for months.)
+
+    The two are kept apart in the payload and merged for consumers.
+    Where a day appears in both, the DAILY reading wins: it is the
+    same survey at finer resolution, and their overlap is logged every
+    run rather than silently reconciled.
     """
     url = "https://www.consumercouncil.org.uk/home-heating/price-checker/daily"
     page = http_get(url).text
@@ -2525,6 +2595,40 @@ def feed_ccni_oil():
     log(f"ccni_oil: {n} datapoints across "
         f"{[k for k, v in parsed.items() if v]}")
 
+    # ---- the weekly archive, the deep half of the record ------------
+    # SOFT: a failure here loses reach, not the run. The daily page
+    # already priced every recent week before this feed existed, so a
+    # bad archive fetch must not take the live figures down with it.
+    archive = {"300l": {}, "500l": {}, "900l": {}}
+    try:
+        apage = http_get(CCNI_ARCHIVE_URL).text
+        archive = parse_ccni_series(apage)
+        an = sum(len(v) for v in archive.values())
+        a9 = archive.get("900l") or {}
+        log(f"ccni_oil: archive {an} datapoints, 900l {len(a9)} weeks "
+            f"{min(a9) if a9 else '-'}..{max(a9) if a9 else '-'}")
+        if not an:
+            log("ccni_oil: WARNING archive page parsed no litre-labelled "
+                "chart - reach falls back to the daily page")
+    except Exception as exc:
+        log(f"ccni_oil: archive fetch failed ({exc.__class__.__name__}) - "
+            "keeping the daily series; reach is short until it returns")
+
+    ccni_ratio_gate(parsed, "daily")
+    ccni_ratio_gate(archive, "archive")
+
+    # Overlap cross-check: the two pages describe the same survey, so
+    # a disagreement is a fact about CCNI's publishing, not a rounding
+    # question. Logged, never averaged.
+    both = sorted(set(parsed.get("900l", {})) & set(archive.get("900l", {})))
+    if both:
+        gaps = [(d, archive["900l"][d], parsed["900l"][d]) for d in both
+                if abs(parsed["900l"][d] - archive["900l"][d]) > 0.01]
+        log(f"ccni_oil: daily/archive overlap {len(both)} day(s) "
+            f"{both[0]}..{both[-1]}, {len(gaps)} disagree")
+        for d, av, dv in gaps[:5]:
+            log(f"ccni_oil:   {d} archive {av} vs daily {dv}")
+
     merged, conflicts = {}, 0
     for k, new in parsed.items():
         old = prev_series("ccni_oil", "series_gbp", "daily", k)
@@ -2534,19 +2638,29 @@ def feed_ccni_oil():
                 if conflicts <= 3:
                     log(f"ccni_oil: SERIES BREAK {k} {d}: stored "
                         f"{old[d]} -> page {v}")
+        # archive first, daily last: the daily reading wins a tie
+        old.update(archive.get(k) or {})
         old.update(new)
         merged[k] = trim_series(clip_days(old))
     if conflicts:
         log(f"ccni_oil: {conflicts} same-date value conflicts vs stored "
             "history - series identity unstable, new values kept")
-    out = {"series_gbp": {"daily": merged},
-           "series_conflicts_this_run": conflicts}
+    out = {"series_gbp": {"daily": merged,
+                          "archive_weekly": {k: v for k, v in
+                                             archive.items() if v}},
+           "series_conflicts_this_run": conflicts,
+           "daily_page_days": sorted(parsed.get("900l") or {})}
 
     all_days = [d for s in merged.values() for d in s]
     out["latest_day"] = max(all_days) if all_days else None
+    d9 = merged.get("900l") or {}
+    if d9:
+        log(f"ccni_oil: merged 900l {len(d9)} day(s) "
+            f"{min(d9)}..{max(d9)} (retention cap "
+            f"{SERIES_KEEP_DAYS} days)")
     out["source"] = ("Consumer Council for Northern Ireland home heating oil "
-                     "price checker - daily (Mon-Fri), NI average, "
-                     "300/500/900 L")
+                     "price checker - daily (Mon-Fri) and weekly archive, "
+                     "NI average, 300/500/900 L")
     return out, recency_status(out["latest_day"], 7)
 
 
@@ -3344,7 +3458,22 @@ def week_inputs(feeds, w_end, skips=None):
     ccni = (((feeds.get("ccni_oil") or {}).get("series_gbp") or {})
             .get("daily") or {}).get("900l") or {}
     ni_vals = [ccni[d] / 9.0 for d in days if d in ccni]
-    ni_src = "ccni"
+    # Which CCNI page priced this week. The merged series is one dict
+    # by design - every consumer reads it unchanged - but a week
+    # carried entirely by the weekly archive is a weekly mean of ONE
+    # reading, not of five, and that is worth recording rather than
+    # inferring later from the date.
+    dp = (feeds.get("ccni_oil") or {}).get("daily_page_days")
+    if dp is None:
+        # Field arrives with 5.10.0. A payload without it is not a
+        # week priced by the archive - it is a week whose provenance
+        # was never recorded, and saying "archive" would be a claim.
+        ni_src = "ccni"
+    else:
+        from_daily = [d for d in days if d in ccni and d in set(dp)]
+        ni_src = ("ccni" if len(from_daily) == len(ni_vals)
+                  else "ccni archive (weekly)" if not from_daily
+                  else "ccni (daily + archive)")
     if not ni_vals:
         # pre-CCNI weeks: bridge from the bulletin ex-tax series
         # (same cargoes, 5% VAT) plus the overlap-calibrated margin
