@@ -2323,11 +2323,13 @@ def test_carbon_depth_probe_retries_before_calling_a_month_empty():
     assert any("verdict" in l for l in depth)
 
 
-def test_nondom_steps_by_semester_and_holds_at_the_last_published():
-    """Services rates now move with the semester the week falls in.
-    Three semesters are published; weeks before the first clamp to it,
-    weeks after the last hold at it - the REMM lag, not a claim that
-    prices stopped moving."""
+def test_nondom_steps_by_semester_and_refuses_before_the_first():
+    """Services rates move with the semester the week falls in. Weeks
+    after the last published semester HOLD at it - the REMM lag, not a
+    claim that prices stopped moving. Weeks BEFORE the first are
+    refused outright as of 5.9.0: clamping them was safe only while
+    nothing reached back that far, and extending the back-look is
+    exactly what removes that safety."""
     import build as B
     sem = {"2024-S2": 0.8386, "2025-S1": 0.8412, "2025-S2": 0.87073}
     early, k0 = B.nondom_for("2023-01-05", sem)
@@ -2335,8 +2337,9 @@ def test_nondom_steps_by_semester_and_holds_at_the_last_published():
     s25a, _ = B.nondom_for("2025-03-01", sem)
     s25b, k2 = B.nondom_for("2025-09-06", sem)
     tail, k3 = B.nondom_for("2026-08-08", sem)
-    assert k0 == "2024-S2" and k2 == "2025-S2" and k3 == "2025-S2"
-    assert early == s24 and tail == s25b
+    assert early is None and k0 is None
+    assert k2 == "2025-S2" and k3 == "2025-S2"
+    assert tail == s25b
     # the semesters are genuinely different - holding one flat across
     # two years was the thing this replaces
     assert s24["gbp"]["gas"] != s25b["gbp"]["gas"]
@@ -3344,6 +3347,63 @@ def test_delivered_heat_converts_input_to_useful_before_shaping():
     # short record declines rather than shaping on a season
     assert B.day_delivered_heat({"2026-01-01": 5.0}, "2026-01-01",
                                 "roi") is None
+
+
+def test_cost_series_round_trips_through_the_columnar_encoding():
+    """The cost series is written columnar from 5.9.0 - same wire
+    format, same encoder as the history block. Encoding is not a
+    restatement, so the round trip must be exact, nulls included: a
+    day carrying no NI block is not the same as one carrying an empty
+    NI block."""
+    import build as B, json
+    rows = B.derive_heat_cost_series(_with_temp(_history_fixture_feeds()))
+    assert rows
+    packed = B.compact_history(rows)
+    back = B.expand_history(packed)
+    assert len(back) == len(rows)
+    for a, b in zip(rows, back):
+        for k in a:
+            assert b.get(k) == a[k], (a["day"], k, a[k], b.get(k))
+    # and it is genuinely smaller - the keys are most of the file
+    flat = len(json.dumps(rows, separators=(",", ":")))
+    cols = len(json.dumps(packed, separators=(",", ":")))
+    assert cols < flat * 0.6, (flat, cols)
+    # the container's len() is not the record length - the trap the
+    # history block already sprang once
+    assert len(packed) == 3 and packed["n"] == len(rows)
+    # a plain list still reads, because the site deploys ahead of the
+    # data file and the pipeline reads its own previous output
+    assert B.expand_history(rows) == rows
+
+
+def test_retention_span_gate_warns_before_the_window_under_fills():
+    """55 days of margin is thin, and a short record does not throw -
+    it silently shapes space heat on a season instead of a year and
+    every figure downstream stays plausible. The gate makes that loud
+    when the constant moves, not when someone notices the chart."""
+    import build as B
+    import datetime as _dt
+
+    def span(n):
+        d0 = _dt.date(2026, 8, 14) - _dt.timedelta(days=n - 1)
+        return {(d0 + _dt.timedelta(days=i)).isoformat(): 5.0
+                for i in range(n)}
+
+    lines = []
+    real = B.log
+    B.log = lambda *a: lines.append(" ".join(str(x) for x in a))
+    try:
+        long_ok = B.retention_span_gate(span(B.SERIES_KEEP_DAYS))
+        B.retention_span_gate(span(B.WINDOW_MAX_DAYS), "short")
+    finally:
+        B.log = real
+    assert long_ok == B.SERIES_KEEP_DAYS
+    assert any("margin" in l and "WARNING" not in l for l in lines), lines
+    assert any("WARNING" in l and "under-fill" in l for l in lines), lines
+    # the constants themselves must still stand up
+    assert B.SERIES_KEEP_DAYS >= B.WINDOW_MAX_DAYS + 365, (
+        B.SERIES_KEEP_DAYS, B.WINDOW_MAX_DAYS)
+    assert B.retention_span_gate({}) is None
 
 
 def test_hdd_year_gate_and_base_scan():
