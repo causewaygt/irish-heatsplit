@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.9.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.10.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -116,6 +116,14 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 /* The volume chart is the quantity behind the price above it. It
    shares the x-axis, so it sits close under the price legend rather
    than reading as a separate exhibit. */
+.caltab{border-collapse:collapse;font-size:.82rem;margin:4px 0 2px}
+.caltab th{text-align:left;color:var(--muted);font-weight:600;
+  padding:4px 14px 4px 0;border-bottom:1px solid var(--line)}
+.caltab td{padding:3px 14px 3px 0;border-bottom:1px solid var(--line)}
+.caltab td:first-child{color:var(--green);white-space:nowrap}
+.foldh{font-family:'IBM Plex Mono',monospace;font-size:.72rem;
+  text-transform:uppercase;letter-spacing:.1em;color:var(--green);
+  margin:18px 0 8px}
 .volchart{margin-top:6px}
 /* WINDOW reads at panel 1's size and wording. It is the same control
    doing the same job, so it should not look like a caption here and a
@@ -388,7 +396,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <p class="strap">Live from grid and gas data where it can be
       measured; official annual figures shaped by the weather where it
       cannot. Estimates, not measurements.<span class="dag">†</span>
-      <a href="#method">Methodology</a>.</p>
+      <a href="#heroMethod" onclick="var d=document.getElementById('heroMethod');if(d)d.open=true;">Methodology</a>.</p>
   </div>
 </header>
 
@@ -421,10 +429,56 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   <div id="ioScale" class="ioscale"></div>
   <div id="ioBars"></div>
   <p class="note" id="heroNote"></p>
+  <details class="fold" id="heroMethod">
+    <summary>How this is estimated, and why it is not metered</summary>
+    <div class="foldbody">
+      <p style="max-width:720px;margin-bottom:12px">Annual buildings-heat
+        anchors – SEAI Energy in Ireland 2025 and National Energy Balance (ROI);
+        DfE Energy in Northern Ireland and NISRA Continuous Household Survey
+        (NI) – are shaped by each week's population-weighted heating degree days
+        (ERA5 via Open-Meteo). Gas gets a live regression where daily data
+        exists; oil, the island's majority fuel, has no daily data anywhere –
+        it is carried as an anchor plus a live price. Figures marked
+        <span class="dag">†</span> are current Causeway Energies estimates –
+        challenge and input welcome at
+        <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
+
+      <h3 class="foldh">The gas engine room
+        <span id="gasBadge" class="badge lagging"
+              style="font-size:.62rem"></span></h3>
+      <div id="gasPlot" class="plot"></div>
+      <p class="note">Daily non-daily-metered gas demand (ROI – homes and SMEs,
+        power stations excluded) against population-weighted heating degree days.
+        The temperature-sensitive slope is space heat. Calibration series via
+        data.gov.ie (CC BY 4.0), quarterly refresh – the live GNI feed lands next.
+        The slope is estimated by within-class (monthly) centring, removing
+        seasonal confounds such as holidays and baseload drift; the variance
+        statistic is within-month variance explained, and the residual standard
+        error alongside the slope is the day-level uncertainty.
+        <span id="gasCal"></span></p>
+
+      <h3 class="foldh">Heat-pump calibration</h3>
+      <div id="calBoard"></div>
+      <p class="note">The Carnot fraction is solved, not assumed: for each route
+        it is the value that makes the annual heat-weighted mean of the daily
+        COP reproduce that route's published seasonal performance factor. The
+        fraction describes machine quality, which should not differ by route –
+        what differs is the source, and the Carnot term already carries it. So
+        the three agreeing is the check rather than a coincidence, and the build
+        says so in its log when they drift more than 15% apart.</p>
+
+      <h3 class="foldh">Feed status</h3>
+      <div class="badges" id="badges" aria-label="Data feed status"></div>
+      <table aria-label="Feed status detail"><thead>
+        <tr><th>Feed</th><th>Source</th><th>Status</th><th>Latest</th><th>Licence / terms</th><th>Flags</th></tr>
+      </thead><tbody id="feedTable"></tbody></table>
+    </div>
+  </details>
 </section>
 
 <section id="cost" aria-labelledby="cost-h">
-  <h2 id="cost-h">2. What the island of Ireland's heat costs and emits</h2>
+  <h2 id="cost-h">2. What <span id="costWhere">the island of Ireland</span>'s
+    heat costs and emits</h2>
   <div class="panelbox">
     <div class="costctl costjur">
       <span>WHERE</span>
@@ -502,20 +556,6 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     geography make NI's the densest, most competitive kerosene market in
     Europe.</span> Vertical markers are policy events. Same fuel, two price
     regimes, one island.</p>
-</section>
-
-<section id="gas" aria-labelledby="gas-h">
-  <h2 id="gas-h">The gas engine room <span id="gasBadge" class="badge lagging" style="font-size:.62rem"></span></h2>
-  <div class="panelbox"><div id="gasPlot" class="plot"></div></div>
-  <p class="note">Daily non-daily-metered gas demand (ROI – homes and SMEs,
-    power stations excluded) against population-weighted heating degree days.
-    The temperature-sensitive slope is space heat. Calibration series via
-    data.gov.ie (CC BY 4.0), quarterly refresh – the live GNI feed lands next.
-    The slope is estimated by within-class (monthly) centring, removing
-    seasonal confounds such as holidays and baseload drift; the variance
-    statistic is within-month variance explained, and the residual standard
-    error alongside the slope is the day-level uncertainty.
-    <span id="gasCal"></span></p>
 </section>
 
 <section id="gap" aria-labelledby="gap-h">
@@ -678,26 +718,6 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   <p class="note" id="whyNote"></p>
 </section>
 
-<section id="method" aria-labelledby="method-h">
-  <h2 id="method-h">Method &amp; sources</h2>
-  <div class="panelbox">
-    <p style="max-width:720px;margin-bottom:12px">Annual buildings-heat
-      anchors – SEAI Energy in Ireland 2025 and National Energy Balance (ROI);
-      DfE Energy in Northern Ireland and NISRA Continuous Household Survey
-      (NI) – are shaped by each week's population-weighted heating degree days
-      (ERA5 via Open-Meteo). Gas gets a live regression where daily data
-      exists; oil, the island's majority fuel, has no daily data anywhere –
-      it is carried as an anchor plus a live price. Figures marked
-      <span class="dag">†</span> are current Causeway Energies estimates –
-      challenge and input welcome at
-      <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
-    <div class="badges" id="badges" aria-label="Data feed status"></div>
-    <table aria-label="Feed status detail"><thead>
-      <tr><th>Feed</th><th>Source</th><th>Status</th><th>Latest</th><th>Licence / terms</th><th>Flags</th></tr>
-    </thead><tbody id="feedTable"></tbody></table>
-  </div>
-</section>
-
 </main>
 
 <footer>
@@ -777,6 +797,47 @@ function sparkBox(D){
   const up=el('updatedLine');
   if(up) up.textContent='updated '+(D.built_utc||'').slice(0,10)+
     ' \u00b7 week ending '+((((D.derived||{}).hero)||{}).week_ending||'');
+}
+
+// ------------------------------------------------ calibration board
+// The answer to "how do you know the COP model is right", on the page
+// rather than only in a run log. The fraction is meaningless without
+// the SPF it was solved to reproduce, so both travel together.
+const CAL_ROUTES = [["ashp","Air source"],["gshp","Ground source"],
+                    ["network","Geothermal network"]];
+function calBoard(cal){
+  const box = el("calBoard");
+  if(!box) return;
+  if(!cal || !cal.jurisdictions){
+    box.textContent = "The calibration arrives with the next daily build.";
+    return;
+  }
+  const jl = {roi:"Republic of Ireland", ni:"Northern Ireland"};
+  let h = '<table class="caltab"><thead><tr><th></th><th>Route</th>'
+    + '<th>SPF anchor</th><th>Source \u00b0C</th>'
+    + '<th>Carnot fraction \u03b7</th></tr></thead><tbody>';
+  Object.keys(cal.jurisdictions).forEach(j=>{
+    const d = cal.jurisdictions[j];
+    CAL_ROUTES.forEach(([k,name],i)=>{
+      const r = d[k]; if(!r) return;
+      h += '<tr><td>'+(i===0?(jl[j]||j):'')+'</td><td>'+name+'</td><td>'
+        + fmt(r.spf_anchor,2)+'</td><td>'
+        + (r.source_c==null?'outdoor air \u2013 3 K':fmt(r.source_c,1))
+        + '</td><td><b>'+r.eta.toFixed(4)+'</b></td></tr>';
+    });
+  });
+  h += '</tbody></table>';
+  const within = cal.spread!=null
+    ? '<p class="note">The fractions agree to '
+      + fmt((cal.spread-1)*100,1)+'%'
+      + (cal.spread>cal.gate
+         ? ' \u2014 OUTSIDE the '+Math.round((cal.gate-1)*100)
+           +'% gate, which means a source temperature and an SPF anchor '
+           +'that do not describe the same machine. Under review.'
+         : ', inside the '+Math.round((cal.gate-1)*100)+'% gate.')
+      + '</p>'
+    : '';
+  box.innerHTML = h + within;
 }
 
 function drawTrends(HIST, win, scope){
@@ -1019,6 +1080,12 @@ function drawVol(rows, state, geom){
 
 function drawCost(){
   const state = CJUR === "ni" ? "ni" : "roi";
+  // The title names what the toggle is showing, as panel 1's does.
+  // "What the island of Ireland's heat costs" over a Northern Ireland
+  // view in sterling was simply wrong.
+  const cw = el("costWhere");
+  if(cw) cw.textContent = state === "ni" ? "Northern Ireland"
+                                         : "the Republic of Ireland";
   // Service first, then basis. Ex-tax is computed only on the blended
   // service, so a pure service falls back to retail rather than
   // silently showing the wrong basis.
@@ -1974,6 +2041,7 @@ fetch('data.json').then(r=>{
 }).then(D=>{
   statusBadges(D.feeds||{});
   sparkBox(D);
+  calBoard((D.derived||{}).calibration);
   const hero=(D.derived||{}).hero;
   if(hero){heroCards(hero,expandHistory((D.derived||{}).history));}
   else el('heroCards').innerHTML='<div class="stat"><div class="lab">Hero</div>'+
@@ -1991,7 +2059,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.9.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.10.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
