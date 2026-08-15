@@ -51,7 +51,18 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.17.0"
+PIPELINE_VERSION = "5.18.0"
+# 5.18.0: "What heat emits" - gCO2e per USEFUL kWh by route, the
+#   Irish answer to the UK sibling's sub-panel, under panel 2 with its
+#   own method fold. ALL-ISLAND and deliberately without a
+#   jurisdiction toggle: the combustion factors do not change at the
+#   border, the efficiencies are shared and the grid is a single
+#   all-island market, so a split would draw the same bars three
+#   times. That is the finding rather than a gap - the PRICE answer
+#   differs sharply across the border and the CARBON answer does not
+#   at all. The network route's jurisdictional SPFs (5.0 NI, 4.0 ROI)
+#   combine as a heat-weighted HARMONIC mean, which is how
+#   efficiencies average; the arithmetic mean would flatter it.
 # 5.17.0: the calibration is PUBLISHED, not just logged. CALIBRATION
 #   carries each route's solved Carnot fraction beside the SPF anchor
 #   it was solved to reproduce and the source temperature it saw, per
@@ -5895,6 +5906,62 @@ def derive_heat_cost_series(feeds, anchors=None):
     return out
 
 
+def derive_heat_emissions(feeds, anchors=None):
+    """
+    gCO2e per USEFUL kWh by route, all-island.
+
+    ALL-ISLAND ON PURPOSE, with no jurisdiction toggle. Emissions per
+    useful kWh are the combustion factor over the boiler efficiency,
+    or the grid intensity over the route's COP. The factors do not
+    change at the border, the efficiencies are shared, and the grid is
+    a single all-island market - so an NI/ROI split would draw the
+    same bars three times. That is the finding rather than a gap: the
+    PRICE answer differs sharply across the border and the EMISSIONS
+    answer does not at all.
+
+    The network route's SPF is jurisdictional by design (5.0 NI, 4.0
+    ROI). For one island figure they combine as a HEAT-WEIGHTED
+    HARMONIC mean, which is the right way to average efficiencies over
+    a population - not the arithmetic mean, which would flatter it.
+    """
+    a = anchors or ANCHORS
+    co2 = ((feeds.get("eirgrid") or {})
+           .get("co2_intensity_g_per_kwh") or {})
+    cdays = sorted(co2)[-14:]
+    if len(cdays) < 7:
+        return None
+    grid = round(sum(co2[d] for d in cdays) / len(cdays), 1)
+
+    def heat(j):
+        return a[j]["residential_heat_twh"] + a[j]["services_heat_twh"]
+    w_ni, w_roi = heat("ni"), heat("roi")
+    net_spf = round((w_ni + w_roi) /
+                    (w_ni / NETWORK_MODEL["ni"]["spf"]
+                     + w_roi / NETWORK_MODEL["roi"]["spf"]), 3)
+
+    rows = [
+        ("gas_boiler", "Gas boiler",
+         a["ef_g_per_kwh"]["gas"] / a["efficiency"]["gas"], None),
+        ("oil_boiler", "Oil boiler",
+         a["ef_g_per_kwh"]["oil"] / a["efficiency"]["oil"], None),
+        ("resistive", "Resistive electric", grid, 1.0),
+        ("ashp", "Air-source heat pump", grid / SPF_ANCHORS["ashp"],
+         SPF_ANCHORS["ashp"]),
+        ("gshp", "Ground source", grid / SPF_ANCHORS["gshp"],
+         SPF_ANCHORS["gshp"]),
+        ("network", "Geothermal heat network", grid / net_spf, net_spf),
+    ]
+    out = {"grid_g_per_kwh": grid, "grid_days": len(cdays),
+           "network_spf_island": net_spf,
+           "routes": [{"key": k, "label": lab, "g_per_useful_kwh": round(v, 1),
+                       "spf": spf} for k, lab, v, spf in rows]}
+    log("heat emissions: grid {} g/kWh ({}-day mean), island network SPF "
+        "{} - ".format(grid, len(cdays), net_spf)
+        + ", ".join(f"{r['label']} {r['g_per_useful_kwh']:.0f}"
+                    for r in out["routes"]))
+    return out
+
+
 def heat_gap_from_cost_series(rows, window=730):
     """
     The masthead ticker, taken from the SAME engine as panel 2.
@@ -6643,6 +6710,13 @@ def main():
     except Exception as exc:
         log(f"heat cost: failed ({exc.__class__.__name__}) - "
             "the weekly tracker is unaffected")
+    try:
+        he = derive_heat_emissions(feeds)
+        if he:
+            derived["heat_emissions"] = he
+    except Exception as exc:
+        log(f"heat emissions: failed ({exc.__class__.__name__}) - "
+            "the rest of the panel is unaffected")
     _flat = len(json.dumps(_h, separators=(",", ":")))
     derived["history"] = compact_history(_h)
     derived["history_encoding"] = HISTORY_ENCODING
