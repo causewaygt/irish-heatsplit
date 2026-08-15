@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.19.0 / site 5.13.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.19.0 / site 5.14.0.
 
 ## The premise
 
@@ -818,6 +818,24 @@ two invert — the same effect that closed the Carnot ceilings in the
 calibration work. The test pins both ends rather than asserting an
 ordering that only holds in winter.
 
+**Panel 3's three views are drawn (site 5.14.0).** Hourly over the live
+week, daily over 90 days, and monthly — heat delivered on the left axis
+and the 20% what-if's electricity by route on the right, because the two
+quantities differ by roughly an order of magnitude and one axis would
+flatten the electricity into the floor. Heat is dashed so it reads as the
+demand being met rather than a fourth route.
+
+**The monthly view says what it is not.** The hourly store holds about
+thirteen months, so the falcon is not yet a year-on-year comparison and
+the view states that rather than drawing a single loop that looks like
+one. It fills in on its own as the store deepens.
+
+**Two hours, two questions, and the labels distinguish them.** The
+binding-hour cards solve for the share of heat that fits; the views plot
+the fixed 20%. The added-load hour and the share-that-fits hour differ by
+one hour in the live data, which is correct and would otherwise look like
+an error.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -959,7 +977,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 179 tests, no network
-node tests/test_vol.js            # 89 front-end fixture checks
+node tests/test_vol.js            # 98 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
