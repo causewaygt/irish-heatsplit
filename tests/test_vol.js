@@ -258,4 +258,22 @@ emitPanel(null);
 ok(/next daily build/.test(DOM.emitBars.textContent),
    "an old payload declines rather than drawing an empty axis");
 
+// ---- page order and the Panel 3 stub -------------------------------
+const order = [...html.matchAll(/<section id="([a-z]+)"/g)].map(m=>m[1]);
+ok(order.indexOf("grid") === 2,
+   "Panel 3 sits third, where the oil ticker used to be");
+ok(order.indexOf("oil") === order.length - 1,
+   "the oil ticker has moved to the foot of the page");
+ok(order.indexOf("why") < order.indexOf("oil"),
+   "and sits beneath Why heat");
+ok(html.split("<section ").length === html.split("</section>").length,
+   "sections balance - the move did not eat an opening tag");
+// the toggle switches whose heat, and says the ceiling is not toggled
+const gj = [...html.matchAll(/data-gjur="([a-z]+)"/g)].map(m=>m[1]);
+ok(gj.length === 3 && gj[0] === "all",
+   "Panel 3 offers all-island, NI and ROI, defaulting to all-island");
+ok(/single all-island market/.test(html)
+   && /does\s+not\s+switch\s+the\s+ceiling/i.test(html),
+   "and states that the toggle does not move the ceiling, with the reason");
+
 console.log(checks + " front-end fixture checks passed");
