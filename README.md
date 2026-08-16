@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.23.0 / site 5.22.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.23.1 / site 5.22.3.
 
 ## The premise
 
@@ -1072,6 +1072,33 @@ be no smaller than its ticks. It is proven by mutation — restoring one
 label to its old position and size fails the suite. Nothing had been
 testing this, which is why it survived so long.
 
+**The worked examples run on a rolling twelve months (5.23.1)** rather
+than a calendar year — currently July 2025 to June 2026, named at both
+ends on the panel. It keeps the figures current without waiting for a
+year to close, and it lands on the same window as the hourly store, so a
+spill-weighted COP computed later will cover exactly these months rather
+than a different set.
+
+The rolling year is a harder year than calendar 2025: **656 GWh of
+constrained wind rather than 563, 2,790 GWh of heat, 26% of Northern
+Ireland's building heat, and 401 hospitals against an acute estate of
+about ten.**
+
+**Tick values fixed on the last two charts (site 5.22.3).** The volume
+chart and the three-view chart still drew their tick numbers at 11px in
+muted grey, on axes divided into halves and thirds so the values were
+arbitrary rather than round. Both now use `niceTicks` at 13px in
+`--ink2`, and the three-view chart's right-hand electricity axis gets the
+same treatment as its left.
+
+These two were missed when the other charts were fixed, which is why the
+axes kept looking unlabelled after three rounds of "fixing the axis
+labels": every assertion looked at the rotated label and none looked at
+the ticks. A new predicate, `tickValuesReadable`, now requires each axis
+to carry at least three distinct tick values, no smaller than 13px and
+not in muted grey — proven by reverting one chart's ticks and watching
+the suite fail.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1213,7 +1240,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 167 front-end fixture checks
+node tests/test_vol.js            # 175 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
