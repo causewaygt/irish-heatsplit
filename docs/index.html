@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.20.2
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.21.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -594,6 +594,11 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     </div>
     <div id="ddChart"></div>
     <p class="note" id="ddNote"></p>
+    <h3 class="foldh">What that energy was worth
+      <span class="sub">&mdash; at the prices of the hours it was actually
+      spilled</span></h3>
+    <div id="ddValue"></div>
+    <p class="note" id="ddValueNote"></p>
   </div>
 </section>
 
@@ -994,7 +999,7 @@ document.querySelectorAll("[data-ddjur]").forEach(b=>{
     DDJUR = b.dataset.ddjur;
     document.querySelectorAll("[data-ddjur]").forEach(x=>
       x.setAttribute("aria-pressed", String(x === b)));
-    ddPanel(GDD);
+    ddPanel(GDD); ddValue(GDD);
   });
 });
 document.querySelectorAll("[data-gview]").forEach(b=>{
@@ -1378,6 +1383,101 @@ function ddPanel(dd){
       + "takes no account of whether the spill coincided with heat "
       + "demand, and a large flexible load would itself change the "
       + "dispatch.";
+  }
+}
+
+// ------------------- what the spilled energy was worth, monthly
+// NOT "value lost", and not a payment. It is the market value of the
+// energy at the price prevailing in the hours it was actually spilled.
+// Who would capture it differs by reason - constrained wind with firm
+// access is already compensated, so absorbing it saves the system
+// operator and consumers; curtailed wind is not, so absorbing it is
+// revenue the generator keeps - and that belongs in the note rather
+// than encoded in the bars.
+function ddValue(dd){
+  const box = el("ddValue"), note = el("ddValueNote");
+  if(!box) return;
+  if(!dd || !dd.jurisdictions || !dd.price_month_mean){
+    box.textContent = "The value series arrives with a coming build.";
+    if(note) note.textContent = "";
+    return;
+  }
+  const j = (DDJUR === "IE") ? "IE" : "NI";
+  const b = dd.jurisdictions[j], m = dd.months;
+  const v = b.value_eur_m; if(!v || !v.dd) { box.innerHTML = ""; return; }
+  const W = 1000, H = 320, P = {t:62, r:14, b:52, l:60};
+  const t = niceTicks(Math.max(...b.value_naive_eur_m) * 1.04, 4);
+  const y = q => P.t + (1 - q/t.top)*(H-P.t-P.b);
+  const bw = (W-P.l-P.r)/m.length, iw = Math.max(2, bw*0.78);
+  let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
+    + '" role="img" aria-label="Monthly market value of dispatched-down '
+    + 'wind, by reason">';
+  t.values.forEach(q=>{
+    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(q)+'" y2="'+y(q)
+      + '" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="'+(P.l-10)+'" y="'+(y(q)+5)+'" text-anchor="end" '
+      + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
+      + 'monospace">\u20ac'+fmt(q,0)+'m</text>';
+  });
+  m.forEach((mm,i)=>{
+    const x0 = P.l + bw*i + (bw-iw)/2;
+    const cons = (v.cons||[])[i] || 0, curt = (v.curt||[])[i] || 0;
+    let acc = 0;
+    [[cons,"#3AAA35"],[curt,"#C98F4F"]].forEach(([q,col])=>{
+      if(q <= 0) return;
+      s += '<rect x="'+x0+'" y="'+y(acc+q)+'" width="'+iw+'" height="'
+        + Math.max(0, y(acc)-y(acc+q))+'" fill="'+col+'"/>';
+      acc += q;
+    });
+  });
+  // the naive comparator as a line, so the gap between them IS the
+  // correction rather than a claim made in prose
+  const pts = m.map((mm,i)=>(i?"L":"M")+(P.l+bw*i+bw/2)+" "
+    + y(b.value_naive_eur_m[i]||0)).join("");
+  s += '<path d="'+pts+'" fill="none" stroke="#fff" stroke-width="1.6" '
+    + 'stroke-dasharray="4 3"/>';
+  const seen = {};
+  m.forEach((mm,i)=>{ if(seen[mm.slice(0,4)]===undefined) seen[mm.slice(0,4)]=i; });
+  Object.keys(seen).forEach(yy=>{
+    s += '<text x="'+(P.l+bw*seen[yy]+bw/2)+'" y="'+(H-22)
+      + '" text-anchor="middle" font-size="13" fill="var(--ink2)" '
+      + 'font-family="Lato,sans-serif">'+yy+'</text>';
+  });
+  const tot = v.dd.reduce((a,q)=>a+q,0),
+        naive = b.value_naive_eur_m.reduce((a,q)=>a+q,0);
+  s += '<text x="'+P.l+'" y="20" font-size="13" fill="#fff" '
+    + 'font-family="IBM Plex Mono,monospace">'
+    + (j==="NI" ? "Northern Ireland" : "Republic of Ireland")
+    + ' \u00b7 \u20ac' + fmt(tot,0) + 'm at the prices of its own hours'
+    + '</text>'
+    + '<text x="'+P.l+'" y="38" font-size="12" fill="var(--muted)" '
+    + 'font-family="IBM Plex Mono,monospace">\u2014 \u2014  \u20ac'
+    + fmt(naive,0) + 'm if valued at each month\u2019s average price '
+    + '\u00b7 the gap is the correction</text>'
+    + '<text x="16" y="'+(H/2)+'" transform="rotate(-90 16 '+(H/2)
+    + ')" text-anchor="middle" font-size="12" fill="var(--ink2)" '
+    + 'font-family="Lato, sans-serif">\u20ac million a month</text></svg>';
+  box.innerHTML = '<div class="legend">'
+    + '<span><span class="k" style="background:#3AAA35"></span>'
+    + 'constraint \u2014 local, already compensated</span>'
+    + '<span><span class="k" style="background:#C98F4F"></span>'
+    + 'curtailment \u2014 system-wide, generally not</span>'
+    + '<span><span class="k" style="background:#fff"></span>'
+    + 'valued at the month\u2019s average price instead</span></div>' + s;
+  if(note){
+    note.textContent = "What the energy was worth, not what anyone was "
+      + "paid. Spilled wind clears at roughly half the average price, "
+      + "because it is spilled when the wind blows and power is cheap \u2014 "
+      + "so valuing it at monthly averages overstates it by about 40%. "
+      + "Constraint hours are worth around 40% more per MWh than "
+      + "curtailment hours, so the volume a local heat load can absorb "
+      + "is also the more valuable volume. Who would capture it differs: "
+      + "constrained wind with firm access is already compensated, so "
+      + "absorbing it saves the system operator and consumers, while "
+      + "curtailed wind is not, so absorbing it is revenue the generator "
+      + "keeps. And delivering the energy would itself soften the price "
+      + "in those hours, so even this is an upper bound on its market "
+      + "value \u2014 though not on the heat, which is unaffected.";
   }
 }
 
@@ -2666,6 +2766,7 @@ fetch('data.json').then(r=>{
   GGV = (D.derived||{}).grid_views || null;
   GDD = (D.derived||{}).dispatch_down || null;
   ddPanel(GDD);
+  ddValue(GDD);
   gridPanel(GTH);
   drawGridViews(GGV);
   const hero=(D.derived||{}).hero;
@@ -2685,7 +2786,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.20.2 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.21.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
