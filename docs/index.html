@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.22.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.22.3
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1508,13 +1508,16 @@ function oddExamples(x){
   let s = '<div class="hstats">'
     + '<div class="hstat"><div class="hval">' + fmt(x.heat_gwh,0)
     + '<span style="font-size:.5em"> GWh</span></div><div class="hlab">'
-    + 'of heat from the wind Northern Ireland constrained off in '
-    + esc(x.basis_year) + ', through a geothermal network'
+    + 'of heat from the wind Northern Ireland constrained off in the '
+    + fmt(x.basis_months,0) + ' months to ' + esc(monthLabel(x.basis_to))
+    + ', through a geothermal network'
     + '<span class="dag">\u2020</span></div></div>'
     + '<div class="hstat"><div class="hval" style="color:#3AAA35">'
     + fmt(x.share_of_ni_heat_pct,0) + '<span style="font-size:.5em">%'
     + '</span></div><div class="hlab">of all the building heat '
-    + 'Northern Ireland actually uses in a year</div></div>'
+    + 'Northern Ireland uses in a year \u00b7 rolling twelve months, '
+    + esc(monthLabel(x.basis_from)) + ' to ' + esc(monthLabel(x.basis_to))
+    + '</div></div>'
     + '<div class="hstat"><div class="hval" style="color:#C98F4F">'
     + fmt(h.equivalent,0) + '</div><div class="hlab">hospitals of '
     + fmt(h.heat_gwh,1) + ' GWh a year would be needed to take it'
@@ -1573,17 +1576,25 @@ function drawGridViews(gv){
   let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
     + '" role="img" aria-label="Heat delivered and the electricity a '
     + '20% what-if would draw, by route">';
-  for(let g=0; g<=2; g++){
-    const v = hiH*g/2;
-    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+yH(v)+'" y2="'+yH(v)
+  // Round ticks on BOTH axes, at the size the rest of the site uses.
+  // These were hi*g/2 at 11px muted - arbitrary values, dimmer and
+  // smaller than the label beside them. Same fault the other charts
+  // had; this one and the volume chart were missed when the rest were
+  // fixed, which is what kept the axis looking unlabelled.
+  const tH = niceTicks(hiH/1000, 3), tE = niceTicks(hiE/1000, 3);
+  tH.values.forEach((v, gi) => {
+    const vh = v*1000;
+    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+yH(vh)+'" y2="'+yH(vh)
       + '" stroke="var(--line)" stroke-width="1"/>'
-      + '<text x="'+(P.l-6)+'" y="'+(yH(v)+4)+'" text-anchor="end" '
-      + 'font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,'
-      + 'monospace">'+fmt(v/1000,1)+'</text>'
-      + '<text x="'+(W-P.r+6)+'" y="'+(yE(hiE*g/2)+4)+'" font-size="11" '
-      + 'fill="var(--muted)" font-family="IBM Plex Mono,monospace">'
-      + fmt(hiE*g/2/1000,1)+'</text>';
-  }
+      + '<text x="'+(P.l-10)+'" y="'+(yH(vh)+5)+'" text-anchor="end" '
+      + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
+      + 'monospace">'+fmt(v,1)+'</text>';
+  });
+  tE.values.forEach(v => {
+    s += '<text x="'+(W-P.r+10)+'" y="'+(yE(v*1000)+5)+'" font-size="13" '
+      + 'fill="var(--ink2)" font-family="IBM Plex Mono,monospace">'
+      + fmt(v,1)+'</text>';
+  });
   const path = (key, sc) => rows.map((r,i)=>
     (i?"L":"M")+x(i)+" "+sc(r[key])).join("");
   s += '<path d="'+path("heat_mw",yH)+'" fill="none" stroke="#DCE5E0" '
@@ -1817,14 +1828,14 @@ function drawVol(rows, state, geom){
     + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
     + '<tspan x="18" dy="-0.2em">GWh of delivered</tspan>'
     + '<tspan x="18" dy="1.1em">heat per day</tspan></text>';
-  for(let g = 0; g <= 2; g++){
-    const v = hi * g / 2;
+  const vt = niceTicks(hi, 3);
+  vt.values.forEach(v => {
     svg += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(v)
       + '" y2="' + y(v) + '" stroke="var(--line)" stroke-width="1"/>'
-      + '<text x="' + (P.l - 6) + '" y="' + (y(v) + 4)
-      + '" text-anchor="end" font-size="11" fill="var(--muted)" '
+      + '<text x="' + (P.l - 10) + '" y="' + (y(v) + 5)
+      + '" text-anchor="end" font-size="13" fill="var(--ink2)" '
       + 'font-family="IBM Plex Mono, monospace">' + v.toFixed(0) + '</text>';
-  }
+  });
   // Stacked, space heat on the bottom: the flat hot-water band on top
   // is the point - it is the same every day, and the swing above the
   // summer floor is all weather.
@@ -2858,7 +2869,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.22.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.22.3 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
