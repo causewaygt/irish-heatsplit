@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.21.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.22.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -599,6 +599,11 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       spilled</span></h3>
     <div id="ddValue"></div>
     <p class="note" id="ddValueNote"></p>
+    <h3 class="foldh">What it would take to use it
+      <span class="sub">&mdash; two worked examples, sizing the load rather
+      than claiming the saving</span></h3>
+    <div id="oddEx"></div>
+    <p class="note" id="oddExNote"></p>
   </div>
 </section>
 
@@ -1478,6 +1483,67 @@ function ddValue(dd){
       + "keeps. And delivering the energy would itself soften the price "
       + "in those hours, so even this is an upper bound on its market "
       + "value \u2014 though not on the heat, which is unaffected.";
+  }
+}
+
+// ------------------------- worked examples of absorbing the spill
+// WORKED EXAMPLES, not measurements - a different kind of claim from
+// everything above, and marked as such. They size the SINK rather than
+// claim a benefit, because sizing survives the coincidence objection
+// and a benefit claim does not: half the spill falls outside the
+// heating season and only 44% in the small hours.
+function oddExamples(x){
+  const box = el("oddEx"), note = el("oddExNote");
+  if(!box) return;
+  if(!x || !x.hospital || !x.domestic){
+    box.textContent = "The worked examples arrive with a coming build.";
+    if(note) note.textContent = "";
+    return;
+  }
+  const h = x.hospital, d = x.domestic;
+  let s = '<div class="hstats">'
+    + '<div class="hstat"><div class="hval">' + fmt(x.heat_gwh,0)
+    + '<span style="font-size:.5em"> GWh</span></div><div class="hlab">'
+    + 'of heat from the wind Northern Ireland constrained off in '
+    + esc(x.basis_year) + ', through a geothermal network'
+    + '<span class="dag">\u2020</span></div></div>'
+    + '<div class="hstat"><div class="hval" style="color:#3AAA35">'
+    + fmt(x.share_of_ni_heat_pct,0) + '<span style="font-size:.5em">%'
+    + '</span></div><div class="hlab">of all the building heat '
+    + 'Northern Ireland actually uses in a year</div></div>'
+    + '<div class="hstat"><div class="hval" style="color:#C98F4F">'
+    + fmt(h.equivalent,0) + '</div><div class="hlab">hospitals of '
+    + fmt(h.heat_gwh,1) + ' GWh a year would be needed to take it'
+    + '<span class="dag">\u2020</span> \u00b7 Northern Ireland has about '
+    + 'ten acute sites</div></div>'
+    + '<div class="hstat"><div class="hval" style="color:#4FA3C7">'
+    + fmt(d.subscribers/1000,0) + 'k</div><div class="hlab">households '
+    + 'is the published optimum for absorbing it instead \u00b7 '
+    + fmt(d.curtailment_cut_pct,0) + '% less curtailment and '
+    + fmt(d.constraint_cut_pct,0) + '% less constraint</div></div>'
+    + '</div>';
+  box.innerHTML = s;
+  if(note){
+    note.innerHTML = 'Worked examples<span class="dag">\u2020</span>, not '
+      + 'measurements: they size the LOAD it would take, not heat '
+      + 'delivered. Half the spill falls outside the heating season and '
+      + 'only 44% of it between midnight and six, so absorbing it needs '
+      + 'storage \u2014 which is the difference between the routes, not '
+      + 'the efficiency. The hospital is sized from the ERIC 2024/25 '
+      + 'acute mean of ' + fmt(h.eui_kwh_m2,0) + ' kWh/m\u00b2 across '
+      + '1,104 English sites, at a ' + fmt(100*h.heat_share,0) + '% heat '
+      + 'share<span class="dag">\u2020</span> and '
+      + fmt(h.floor_m2/1000,0) + ',000 m\u00b2 \u2014 the heat share is '
+      + 'ours, ERIC publishes total energy. An anchor site is what you '
+      + 'can build, finance and monitor; it is not what absorbs the '
+      + 'volume. The domestic figures are the published results of '
+      + esc(d.cite) + ' \u2014 same jurisdiction, four SONI constraint '
+      + 'groups, hourly and spatial \u2014 quoted rather than re-derived, '
+      + 'including household savings of up to \u00a3'
+      + fmt(d.household_saving_gbp,0) + ' a year, \u00a3'
+      + fmt(d.farm_10mw_gbp,0) + ' a year to a 10 MW wind farm from '
+      + 'avoided curtailment, and up to ' + fmt(d.operator_saving_pct,0)
+      + '% off constraint payments.';
   }
 }
 
@@ -2767,6 +2833,7 @@ fetch('data.json').then(r=>{
   GDD = (D.derived||{}).dispatch_down || null;
   ddPanel(GDD);
   ddValue(GDD);
+  oddExamples((D.derived||{}).odd_examples || null);
   gridPanel(GTH);
   drawGridViews(GGV);
   const hero=(D.derived||{}).hero;
@@ -2786,7 +2853,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.21.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.22.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
