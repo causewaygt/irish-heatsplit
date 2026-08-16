@@ -351,6 +351,27 @@ ok((gp.match(/<svg /g)||[]).length === 2,
 ok(/actual use/.test(gp) && /20% what-if/.test(gp),
    "the legend names the grey base and the coloured increment");
 ok(/GW at the binding hour/.test(gp), "the y-axis is labelled");
+// THE AXIS ITSELF. niceTicks returns GW while y() works in MW, and
+// feeding one to the other put all seven gridlines on the baseline and
+// printed seven zeroes. The suite passed throughout, because nothing
+// checked that the ticks were distinct or that they spread.
+const ticks = [...gp.matchAll(/text-anchor="end"[^>]*>(\d+)<\/text>/g)]
+  .map(m => m[1]);
+ok(ticks.length >= 4, "the y-axis has tick labels at all");
+ok(new Set(ticks).size === ticks.length,
+   "and they are distinct - not seven zeroes stacked on the baseline");
+ok(ticks.indexOf("12") >= 0 && ticks.indexOf("0") >= 0,
+   "running 0 to 12 GW, covering the tallest bar and the ceiling");
+const gy = [...gp.matchAll(/<line [^>]*y1="([\d.]+)"[^>]*stroke="var\(--line\)"/g)]
+  .map(m => +m[1]);
+ok(new Set(gy.map(v => Math.round(v))).size === gy.length,
+   "the gridlines are at distinct heights");
+// both dashed rules must be visible against a dark background
+ok((gp.match(/stroke="#fff" stroke-width="2" stroke-dasharray="9 5"/g)||[])
+   .length === 2,
+   "the ceiling and the 100% rule are both white dashed rules");
+ok(/hstats overbars/.test(gp),
+   "the share cards are laid out to sit over their own bars");
 ok(/tightest hour of the year/i.test(gp),
    "and the sub-panel carries the UK sibling's title");
 ok(/1\.32x its power system/.test(gp),
