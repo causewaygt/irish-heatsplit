@@ -193,8 +193,16 @@ function axisLabelReadable(svg, gutter){
 // geometry is. Two charts kept their 11px muted ticks through three
 // rounds of "fixing the axis labels", because every assertion looked
 // at the rotated label and none looked at the ticks.
-function tickValuesReadable(svg, least){
-  const t = texts(svg).filter(x => /text-anchor="end"/.test(x.attr));
+function tickValuesReadable(svg, least, side){
+  // side "right" reads the ticks drawn past the plot's right edge,
+  // which carry no text-anchor. A predicate that only looked at
+  // left-anchored ticks could not see the dispatch-down chart's
+  // percentage axis, and that axis stayed 12px muted through every
+  // round of fixing.
+  const t = side === "right"
+    ? texts(svg).filter(x => !/text-anchor/.test(x.attr)
+                             && !/rotate/.test(x.attr) && x.x > 880)
+    : texts(svg).filter(x => /text-anchor="end"/.test(x.attr));
   if(t.length < (least || 3)) return false;
   const bodies = t.map(x => x.body.trim()).filter(Boolean);
   if(new Set(bodies).size < bodies.length) return false;   // all distinct
@@ -605,6 +613,8 @@ ok(axisLabelReadable(svgAt(gc, 0)),
    "and BOTH its axis labels clear their frames");
 ok(tickValuesReadable(svgAt(gc, 0), 3),
    "and the three-view chart's ticks are legible");
+ok(tickValuesReadable(svgAt(gc, 0), 3, "right"),
+   "and its RIGHT electricity axis too - Panel 3 has two-axis charts");
 ok(/the fifth via geothermal network/.test(DOM.gridLegend.innerHTML),
    "the legend says these are the what-if's fifth, not all of it");
 // the monthly view is the FALCON: a calendar year, each month the
@@ -680,6 +690,8 @@ const dsvg = svgAt(dc, 0);
 ok(gridlinesSpread(dsvg, 4), "the dispatch-down gridlines spread");
 ok(axisLabelReadable(dsvg), "and its axis label is legible");
 ok(tickValuesReadable(dsvg, 4), "and its tick values are legible");
+ok(tickValuesReadable(dsvg, 3, "right"),
+   "and its RIGHT percentage axis carries legible values too");
 ok(noTextInsideBars(dsvg), "no dispatch-down label sits inside a bar");
 ok(usesItsAxis(dsvg, 0.5), "and its bars use the axis height");
 ok(/stroke-dasharray/.test(dc) && /share of available wind spilled/.test(dc),
@@ -761,6 +773,9 @@ oddExamples({basis_from:"2025-07", basis_to:"2026-06", basis_months:12,
   hospital:{eui_kwh_m2:211, heat_share:0.6, floor_m2:55000,
             heat_gwh:7.0, equivalent:401,
             source:"ERIC 2024/25 acute mean, heat share \u2020"},
+  routes:{ashp:{spf:2.8, heat_gwh:1837.0, share_pct:16.9},
+          gshp:{spf:3.24, heat_gwh:2125.6, share_pct:19.5},
+          network:{spf:4.252, heat_gwh:2789.6, share_pct:25.6}},
   domestic:{subscribers:250000, constraint_cut_pct:67,
             curtailment_cut_pct:74, household_saving_gbp:220,
             farm_10mw_gbp:19400, operator_saving_pct:78,
@@ -806,5 +821,16 @@ ok(/heat share is[\s\S]{0,20}ours/.test(oxn)
 oddExamples(null);
 ok(/coming build/.test(DOM.oddEx.textContent),
    "and the panel declines cleanly without the block");
+// THE ROUTES MUST DIFFERENTIATE. Without this the panel implies one
+// heat pump is as good as another for absorbing the spill, which is
+// the opposite of the argument.
+ok(/16\.9%/.test(ox) && /19\.5%/.test(ox) && /25\.6%/.test(ox),
+   "each route's share of NI heat from the same spilled electricity");
+ok(/Air source/.test(ox) && /Geothermal network/.test(ox),
+   "named per route, not folded into one figure");
+ok(/storage measured in months rather than hours/.test(oxn),
+   "and the storage-duration discriminator is stated as the larger one");
+ok(/property of the route, not of the machine/.test(oxn),
+   "framed as a property of the route rather than of the heat pump");
 
 console.log(checks + " front-end fixture checks passed");
