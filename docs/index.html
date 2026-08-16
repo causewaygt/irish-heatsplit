@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.22.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.22.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1100,7 +1100,7 @@ function gridPanel(th){
   // through the bars, unreadable where it crossed them. It now has its
   // own band above the plot, and the plot top leaves room for the
   // increment labels rather than pushing them onto the gridline.
-  const W = 1000, H = 340, P = {t:56, r:14, b:52, l:56};
+  const W = 1000, H = 340, P = {t:56, r:14, b:52, l:82};
   const gt = niceTicks(Math.max(th.ceiling_mw, ...rows.map(r=>r.tot))
                        * 1.06 / 1000, 3);
   const hi = gt.top * 1000;
@@ -1147,9 +1147,10 @@ function gridPanel(th){
     + 'font-family="IBM Plex Mono,monospace">' + fmt(gw(th.block_mw),1)
     + ' GW de-rated dispatchable block\u2020 + ' + fmt(gw(th.wind_solar_mw),1)
     + ' GW of wind and solar that actually blew</text>'
-    + '<text x="16" y="'+(H/2)+'" transform="rotate(-90 16 '+(H/2)
-    + ')" text-anchor="middle" font-size="12" fill="var(--ink2)" '
-    + 'font-family="Lato, sans-serif">GW at the binding hour</text></svg>';
+    + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + ')" text-anchor="middle" font-size="13" font-weight="600" '
+    + 'fill="#fff" font-family="Lato, sans-serif">'
+    + 'GW at the binding hour</text></svg>';
   h += '<div class="legend"><span><span class="k" style="background:'
     + 'var(--line)"></span>actual use</span>'
     + rows.map(r=>'<span><span class="k" style="background:'+r.col
@@ -1197,7 +1198,7 @@ function gridPanel(th){
     });
     h += '</div>';
 
-    const SW = 1000, SH = 320, Q = {t:62, r:14, b:52, l:60};
+    const SW = 1000, SH = 320, Q = {t:62, r:14, b:52, l:82};
     const st = niceTicks(Math.max(110, ...srows.map(r=>r.pct)) * 1.04, 4);
     const shi = st.top;
     const sy = v => Q.t + (1 - v/shi)*(SH-Q.t-Q.b);
@@ -1235,9 +1236,10 @@ function gridPanel(th){
       + '<text x="'+Q.l+'" y="38" font-size="12" fill="var(--muted)" '
       + 'font-family="IBM Plex Mono,monospace">solved against the same '
       + 'ceiling as above, hour by hour across the year</text>'
-      + '<text x="16" y="'+(SH/2)+'" transform="rotate(-90 16 '+(SH/2)
-      + ')" text-anchor="middle" font-size="12" fill="var(--ink2)" '
-      + 'font-family="Lato, sans-serif">share of island heat</text></svg>';
+      + '<text x="26" y="'+(SH/2)+'" transform="rotate(-90 26 '+(SH/2)
+      + ')" text-anchor="middle" font-size="13" font-weight="600" '
+      + 'fill="#fff" font-family="Lato, sans-serif">'
+      + 'share of island heat</text></svg>';
     h += g2;
     h += '<p class="note">Each bar is the largest share of the island\u2019s '
       + 'building heat that could move to that route with the fleet still '
@@ -1319,7 +1321,7 @@ function ddPanel(dd){
   if(!b) { box.textContent = ""; return; }
   const keys = dd.reasons.filter(r => r.group !== "other")
     .map(r => r.key).filter(k => b[k] && b[k].some(v => v > 0));
-  const W = 1000, H = 340, P = {t:62, r:56, b:52, l:60};
+  const W = 1000, H = 340, P = {t:62, r:66, b:52, l:82};
   const tops = m.map((_, i) => keys.reduce((s,k) => s + (b[k][i]||0), 0));
   const t = niceTicks(Math.max(...tops) * 1.04, 4);
   const y = v => P.t + (1 - v/t.top)*(H-P.t-P.b);
@@ -1372,9 +1374,10 @@ function ddPanel(dd){
     + 'font-family="IBM Plex Mono,monospace">bars GWh a month by reason'
     + ' \u00b7 dashed line, right axis: share of available wind spilled'
     + '</text>'
-    + '<text x="16" y="'+(H/2)+'" transform="rotate(-90 16 '+(H/2)
-    + ')" text-anchor="middle" font-size="12" fill="var(--ink2)" '
-    + 'font-family="Lato, sans-serif">GWh dispatched down</text></svg>';
+    + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + ')" text-anchor="middle" font-size="13" font-weight="600" '
+    + 'fill="#fff" font-family="Lato, sans-serif">'
+    + 'GWh dispatched down</text></svg>';
   const leg = dd.reasons.filter(r => keys.indexOf(r.key) >= 0)
     .map(r => '<span><span class="k" style="background:'+DD_COL[r.key]
       + '"></span>'+r.label+' ('+r.group+')</span>').join("");
@@ -1410,7 +1413,7 @@ function ddValue(dd){
   const j = (DDJUR === "IE") ? "IE" : "NI";
   const b = dd.jurisdictions[j], m = dd.months;
   const v = b.value_eur_m; if(!v || !v.dd) { box.innerHTML = ""; return; }
-  const W = 1000, H = 320, P = {t:62, r:14, b:52, l:60};
+  const W = 1000, H = 320, P = {t:62, r:14, b:52, l:88};
   const t = niceTicks(Math.max(...b.value_naive_eur_m) * 1.04, 4);
   const y = q => P.t + (1 - q/t.top)*(H-P.t-P.b);
   const bw = (W-P.l-P.r)/m.length, iw = Math.max(2, bw*0.78);
@@ -1459,9 +1462,10 @@ function ddValue(dd){
     + 'font-family="IBM Plex Mono,monospace">\u2014 \u2014  \u20ac'
     + fmt(naive,0) + 'm if valued at each month\u2019s average price '
     + '\u00b7 the gap is the correction</text>'
-    + '<text x="16" y="'+(H/2)+'" transform="rotate(-90 16 '+(H/2)
-    + ')" text-anchor="middle" font-size="12" fill="var(--ink2)" '
-    + 'font-family="Lato, sans-serif">\u20ac million a month</text></svg>';
+    + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + ')" text-anchor="middle" font-size="13" font-weight="600" '
+    + 'fill="#fff" font-family="Lato, sans-serif">'
+    + '\u20ac million a month</text></svg>';
   box.innerHTML = '<div class="legend">'
     + '<span><span class="k" style="background:#3AAA35"></span>'
     + 'constraint \u2014 local, already compensated</span>'
@@ -1559,7 +1563,7 @@ function drawGridViews(gv){
   }
   const rows = (GVIEW === "monthly" && gv.falcon && gv.falcon.length >= 6)
     ? gv.falcon : gv[GVIEW];
-  const W = 1000, H = 300, P = {t:14, r:56, b:28, l:56};
+  const W = 1000, H = 320, P = {t:14, r:78, b:34, l:82};
   const hiH = Math.max(...rows.map(r=>r.heat_mw)) * 1.06 || 1;
   const hiE = Math.max(...rows.map(r=>Math.max(
     r.air_source, r.ground_source, r.geothermal_network))) * 1.15 || 1;
@@ -1602,12 +1606,13 @@ function drawGridViews(gv){
     s += '<text x="'+x(seen[m])+'" y="'+(H-8)+'" text-anchor="middle" '
       + 'font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,'
       + 'monospace">'+(isFalcon?m:monthLabel(m))+'</text>'; });
-  s += '<text x="14" y="'+(H/2)+'" transform="rotate(-90 14 '+(H/2)
-    + ')" text-anchor="middle" font-size="11" fill="var(--muted)" '
-    + 'font-family="Lato, sans-serif">heat delivered, GW</text>'
-    + '<text x="'+(W-12)+'" y="'+(H/2)+'" transform="rotate(90 '+(W-12)
-    + ' '+(H/2)+')" text-anchor="middle" font-size="11" '
-    + 'fill="var(--muted)" font-family="Lato, sans-serif">'
+  s += '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + ')" text-anchor="middle" font-size="13" font-weight="600" '
+    + 'fill="#fff" font-family="Lato, sans-serif">'
+    + 'heat delivered, GW</text>'
+    + '<text x="'+(W-24)+'" y="'+(H/2)+'" transform="rotate(90 '+(W-24)
+    + ' '+(H/2)+')" text-anchor="middle" font-size="13" '
+    + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
     + 'electricity for the what-if, GW</text></svg>';
   box.innerHTML = s;
   if(leg) leg.innerHTML =
@@ -1807,9 +1812,9 @@ function drawVol(rows, state, geom){
   let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" '
     + 'height="' + H + '" role="img" aria-label="GWh of delivered heat '
     + 'per day, space heating and hot water">'
-    + '<text transform="rotate(-90 18 ' + (H / 2) + ')" x="18" y="'
-    + (H / 2) + '" text-anchor="middle" font-size="11" '
-    + 'fill="var(--muted)" font-family="Lato, sans-serif">'
+    + '<text transform="rotate(-90 26 ' + (H / 2) + ')" x="26" y="'
+    + (H / 2) + '" text-anchor="middle" font-size="13" '
+    + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
     + '<tspan x="18" dy="-0.2em">GWh of delivered</tspan>'
     + '<tspan x="18" dy="1.1em">heat per day</tspan></text>';
   for(let g = 0; g <= 2; g++){
@@ -2853,7 +2858,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.22.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.22.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
