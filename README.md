@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.22.0 / site 5.21.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.23.0 / site 5.22.0.
 
 ## The premise
 
@@ -1033,6 +1033,31 @@ shift pulls the weighted figure *toward* the mean, which looks like a
 plausible answer rather than a broken one. A fixture test now fails if
 the weighted and naive totals converge.
 
+**What it would take to use it (5.23.0).** Two worked examples of
+absorbing Northern Ireland's constrained wind — **worked examples, not
+measurements**, and labelled as such on the panel. They size the *load*
+it would take rather than claiming a saving, because sizing survives the
+coincidence objection and a benefit claim does not: half the spill falls
+outside the heating season and only 44% between midnight and six.
+
+**The arithmetic gives the opposite answer to the one the framing
+suggests.** NI constrained 563 GWh of wind in 2025 — 2,392 GWh of heat
+through a network, or **22% of all the building heat Northern Ireland
+uses in a year**. That would need **344 hospitals** of 7.0 GWh against an
+acute estate of about ten. Institutional anchor loads cannot absorb this
+volume, which is precisely why the published answer is an aggregation of
+250,000 households. The hospital is the demonstrator; the aggregation is
+the scale.
+
+The domestic figures are the published results of **Agbonaye, Keatley,
+Huang, Odiase & Hewitt (2022)**, *Renewable Energy* 190:487–500 — same
+jurisdiction, four SONI constraint groups, hourly and spatial — quoted
+rather than re-derived. The hospital is sized from the ERIC 2024/25
+acute mean of 211 kWh/m² across 1,104 English sites; **the 60% heat
+share is ours and daggered, since ERIC publishes total energy**, and
+neither NHS Scotland nor Northern Ireland publishes an equivalent
+series.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1174,7 +1199,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 150 front-end fixture checks
+node tests/test_vol.js            # 162 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
