@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.16.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.17.0.
 
 ## The premise
 
@@ -878,6 +878,21 @@ find. **Note that `GRID_BLOCK_MW` remains under review**: the AIRAA
 Appendix 3 it cites is a plant register, and whether the 8,595 MW is
 installed or de-rated is unresolved.
 
+**Panel subtitles and chart tidying (site 5.17.0).** The six `.foldh`
+subtitles move from green mono at 0.72rem — which read as a code comment
+rather than a heading — to white Lato 11pt, all caps, with real space
+above them. The descriptive clause after each keeps its muted
+sentence-case form via a `.sub` span.
+
+On the tightest-hour chart, the ceiling label used to sit *on* the dashed
+line and ran straight through the bars, unreadable where it crossed
+them. It is now right-anchored above the line carrying only the figure,
+with the composition — de-rated block plus the wind and solar that
+actually blew — in its own band above the plot. The plot is taller, its
+top padding leaves room for the increment labels instead of pushing them
+onto the top gridline, and the bars are narrower so the three read as a
+comparison rather than a wall.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1019,7 +1034,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 181 tests, no network
-node tests/test_vol.js            # 105 front-end fixture checks
+node tests/test_vol.js            # 108 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
