@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.19.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.21.0 / site 5.20.0.
 
 ## The premise
 
@@ -926,6 +926,39 @@ values from muted grey at 11px to white and `--ink2` at 13–16px, since
 the previous setting was close to unreadable against the dark theme at
 presentation scale.
 
+**Wind that was thrown away (5.21.0).** Monthly wind dispatch-down by
+jurisdiction and reason, 2021 to date, from EirGrid's own half-hourly
+files. Bars are GWh a month stacked by reason; a dashed line on a second
+axis carries the share of available wind spilled.
+
+**Stacked by reason, not by the constraint/curtailment fold**, because
+the fold hides the finding. Northern Ireland spills 22–30% of its
+available wind and roughly 85% of that is transmission constraint — the
+local kind that only local load can absorb. The Republic runs 10–13% at
+about half that constraint share. Those are different problems, and only
+one of them has a heat answer.
+
+The series ships as a **static** `docs/dispatch_down_monthly.json`.
+The half-hourly downloads sit behind a JavaScript accordion on EirGrid's
+site and carry version suffixes that change without notice (`V7`, `v10`),
+so a fetcher built on a guessed URL would rot silently rather than fail
+loudly. `tools/dd_convert.py` regenerates the file from downloaded
+workbooks and asserts the schema rather than trusting it; closed years
+never change.
+
+**Column relationship, corrected.** `DD = CURTAILMENTS + CONSTRAINTS`
+exactly, and `OTHER` sits *outside* dispatch-down — DSO/DNO constraints,
+developer outages and developer testing, which are not TSO actions. An
+earlier reading of 1,314 non-reconciling rows was a wrong formula, not a
+data quirk.
+
+The heat conversion uses seasonal SPFs and is labelled on the panel as
+**an energy-scale statement, not a dispatch claim**: it takes no account
+of whether the spill coincided with heat demand, and a large flexible
+load would itself change the dispatch. The hourly-COP refinement is
+available only for the last 13 months and would make the series
+inconsistent with itself.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1066,8 +1099,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 181 tests, no network
-node tests/test_vol.js            # 115 front-end fixture checks
+python3 tests/test_synthetic.py   # 182 tests, no network
+node tests/test_vol.js            # 124 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
