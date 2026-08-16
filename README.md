@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.24.0 / site 5.23.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.24.0 / site 5.23.2.
 
 ## The premise
 
@@ -1136,6 +1136,19 @@ the check that was missing — the earlier predicates verified the labels
 that existed rather than testing whether one was absent, which is why a
 titleless axis survived four rounds of fixing.
 
+**The axis numbers were black on black (site 5.23.2).** `--ink2` was used
+in sixteen places and **never declared**. In CSS an invalid `var()` makes
+the property inherit, so those uses looked fine; in an SVG `fill`
+attribute it falls back to **black**, so every axis tick painted in it
+was black on a `#0b0d0d` background — present in the markup, invisible on
+the page, and passing every test that asked whether the text existed.
+
+Four rounds of geometry fixes chased position, size and rounding on ticks
+that could not be seen at any position or size. `--ink2` is now defined
+one step below `--ink`, and a guard asserts that every CSS variable used
+is declared — proven by deleting the declaration and watching the suite
+name it.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1277,7 +1290,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 186 front-end fixture checks
+node tests/test_vol.js            # 188 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
