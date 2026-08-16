@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.23.1 / site 5.22.3.
+(Causeway Geothermal NI Ltd). Pipeline 5.24.0 / site 5.23.0.
 
 ## The premise
 
@@ -1099,6 +1099,31 @@ to carry at least three distinct tick values, no smaller than 13px and
 not in muted grey — proven by reverting one chart's ticks and watching
 the suite fail.
 
+**Every Panel 3 axis now carries values (5.24.0 / site 5.23.0)**,
+including the right-hand axes on the two dual-axis charts — the
+three-view chart's electricity scale and the dispatch-down chart's spill
+rate. The percentage axis was still three arbitrary values at 12px muted,
+and the predicate could not see it because it only read left-anchored
+ticks; it now reads both sides.
+
+Fixing that surfaced a bug in `niceTicks` itself: `NICE` had no steps
+below 1, so a sub-1 GW axis fell through to the fallback and printed
+duplicate labels — "0.1, 0.1". Fractional steps added, and tick precision
+now follows the step size.
+
+**The routes are differentiated in the worked examples.** The same
+spilled electricity yields 1,837 GWh through air source, 2,126 through
+ground source and 2,790 through a network — 16.9%, 19.5% and 25.6% of
+Northern Ireland's building heat. The note names the larger discriminator
+explicitly: **half the spill falls outside the heating season, so
+absorbing it needs storage measured in months rather than hours — a
+property of the route, not of the machine.**
+
+The third discriminator, each route's COP *in the hours the wind is
+actually spilled*, is not built. It needs the hourly store joined to the
+spill half-hours, and the store covers 13 months against this series'
+five years.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1240,7 +1265,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 175 front-end fixture checks
+node tests/test_vol.js            # 181 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
