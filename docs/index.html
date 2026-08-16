@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.15.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.16.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -997,9 +997,11 @@ gridJur();
 // what-if is island-wide, so the NI and ROI states say the split is not
 // computed yet rather than showing island figures under a jurisdiction
 // label.
-const GROUTES = [["air_source","Air source"],
-                 ["ground_source","Ground source"],
-                 ["geothermal_network","Geothermal network"]];
+// Colours match the price chart and the three-view chart, so a route
+// is the same colour everywhere on the page.
+const GROUTES = [["air_source","Air source","#4FA3C7"],
+                 ["ground_source","Ground source","#A98FD0"],
+                 ["geothermal_network","Geothermal network","#3AAA35"]];
 function gridPanel(th){
   const box = el("gridPanel");
   if(!box) return;
@@ -1016,35 +1018,98 @@ function gridPanel(th){
       + 'coming build.</p>';
     return;
   }
-  const gw = v => (v/1000);
-  const obs = th.observed_mw || 0;
-  let h = '<div class="hstats">'
+  const gw = v => v/1000, obs = th.observed_mw || 0;
+  const rows = GROUTES.map(([k,name,col])=>{
+    const add = (th.added_mw||{})[k];
+    if(add==null) return null;
+    const tot = obs + add;
+    return {k:k, name:name, col:col, add:add, tot:tot,
+            spare:(th.headroom_by_route_mw||{})[k]};
+  }).filter(Boolean);
+  if(!rows.length){ box.innerHTML = ''; return; }
+
+  let h = '<h3 class="foldh" style="margin-top:4px">The tightest hour of '
+    + 'the year <span style="text-transform:none;letter-spacing:0;'
+    + 'color:var(--muted)">\u2014 what the island\u2019s power stations '
+    + 'would have to cover with the new fifth of electrified heat'
+    + '<span class="dag">\u2020</span></span></h3>';
+
+  h += '<div class="hstats">'
     + '<div class="hstat"><div class="hval">' + esc(th.hour) + '</div>'
-    + '<div class="hlab">tightest modelled hour<span class="dag">\u2020</span>'
-    + ' \u00b7 ' + fmt(th.useful_heat_mw/1000,1) + ' GWh of heat at '
-    + fmt(th.air_c,1) + ' \u00b0C</div></div>';
-  GROUTES.forEach(([k,name])=>{
-    const mw = (th.added_mw||{})[k];
-    if(mw==null) return;
-    const pct = obs ? 100*mw/obs : null;
-    const head = (th.headroom_by_route_mw||{})[k];
-    h += '<div class="hstat"><div class="hval'
-      + (head!=null && head>=0 ? ' ok' : ' over') + '">+'
-      + fmt(gw(mw),1) + ' GW</div><div class="hlab">' + name
-      + (pct!=null ? ' \u00b7 ' + fmt(pct,0)
-         + '% on top of what the island was using that hour' : '')
-      + (head!=null ? ' \u00b7 ' + (head>=0
-          ? 'fits, ' + fmt(gw(head),1) + ' GW spare'
-          : 'exceeds the ceiling by ' + fmt(gw(-head),1) + ' GW') : '')
-      + '</div></div>';
+    + '<div class="hlab">the binding hour \u2014 highest net requirement '
+    + 'on dispatchable supply<span class="dag">\u2020</span> \u00b7 '
+    + fmt(th.air_c,2) + ' \u00b0C, wind and solar '
+    + fmt(gw(th.wind_solar_mw),1) + ' GW</div></div>';
+  rows.forEach(r=>{
+    h += '<div class="hstat"><div class="hval" style="color:' + r.col
+      + '">' + fmt(gw(r.tot),1) + '<span style="font-size:.5em"> GW</span>'
+      + '</div><div class="hlab">' + r.name.toLowerCase() + ' \u00b7 '
+      + (r.spare>=0
+          ? fmt(gw(r.spare),1) + ' GW of spare capacity left'
+          : fmt(gw(-r.spare),1) + ' GW OVER the ceiling')
+      + '<span class="dag">\u2020</span></div></div>';
   });
   h += '</div>';
+
+  // Stacked bars: what the island was already using, plus what the
+  // what-if adds on top, against the ceiling as a dashed rule. The
+  // grey base is the same on every bar - only the increment differs,
+  // which is the whole point of the comparison.
+  const W = 1000, H = 300, P = {t:34, r:14, b:44, l:52};
+  const hi = Math.max(th.ceiling_mw, ...rows.map(r=>r.tot)) * 1.12;
+  const y = v => P.t + (1 - v/hi)*(H-P.t-P.b);
+  const bw = (W-P.l-P.r)/rows.length, inner = Math.min(150, bw*0.5);
+  let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
+    + '" role="img" aria-label="GW at the binding hour by route, '
+    + 'against the ceiling">';
+  for(let g=0; g<=3; g++){
+    const v = hi*g/3;
+    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(v)+'" y2="'+y(v)
+      + '" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="'+(P.l-8)+'" y="'+(y(v)+4)+'" text-anchor="end" '
+      + 'font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,'
+      + 'monospace">'+fmt(gw(v),0)+'</text>';
+  }
+  rows.forEach((r,i)=>{
+    const cx = P.l + bw*i + bw/2, x0 = cx - inner/2;
+    s += '<rect x="'+x0+'" y="'+y(obs)+'" width="'+inner+'" height="'
+      + (y(0)-y(obs))+'" fill="var(--line)"/>'
+      + '<rect x="'+x0+'" y="'+y(r.tot)+'" width="'+inner+'" height="'
+      + (y(obs)-y(r.tot))+'" fill="'+r.col+'"/>'
+      + '<text x="'+cx+'" y="'+(y(r.tot)-8)+'" text-anchor="middle" '
+      + 'font-size="13" font-weight="700" fill="var(--ink2)" '
+      + 'font-family="IBM Plex Mono,monospace">+'+fmt(gw(r.add),1)
+      + ' GW</text>'
+      + '<text x="'+cx+'" y="'+(y(obs)+(y(0)-y(obs))/2)+'" '
+      + 'text-anchor="middle" font-size="12" fill="var(--ink2)" '
+      + 'font-family="IBM Plex Mono,monospace">'+fmt(gw(obs),1)
+      + ' GW</text>'
+      + '<text x="'+cx+'" y="'+(H-24)+'" text-anchor="middle" '
+      + 'font-size="11" fill="var(--muted)" font-family="Lato,'
+      + 'sans-serif">'+r.name.toLowerCase()+'</text>';
+  });
+  s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(th.ceiling_mw)
+    + '" y2="'+y(th.ceiling_mw)+'" stroke="var(--ink2)" '
+    + 'stroke-width="1.2" stroke-dasharray="7 4"/>'
+    + '<text x="'+(P.l+6)+'" y="'+(y(th.ceiling_mw)-7)+'" font-size="11" '
+    + 'fill="var(--muted)" font-family="IBM Plex Mono,monospace">'
+    + 'capacity to deliver\u2020 \u2014 ' + fmt(gw(th.ceiling_mw),1)
+    + ' GW (' + fmt(gw(th.block_mw),1) + ' GW block + '
+    + fmt(gw(th.wind_solar_mw),1) + ' GW wind and solar that blew)</text>'
+    + '<text x="14" y="'+(H/2)+'" transform="rotate(-90 14 '+(H/2)
+    + ')" text-anchor="middle" font-size="11" fill="var(--muted)" '
+    + 'font-family="Lato, sans-serif">GW at the binding hour</text></svg>';
+  h += '<div class="legend"><span><span class="k" style="background:'
+    + 'var(--line)"></span>actual use</span>'
+    + rows.map(r=>'<span><span class="k" style="background:'+r.col
+      + '"></span>+ 20% what-if, ' + r.name.toLowerCase()
+      + ' (net\u2020)</span>').join("") + '</div>' + s;
+
   const fits = th.routes_that_fit || [];
-  h += '<p class="note">Ceiling that hour: ' + fmt(gw(th.ceiling_mw),1)
-    + ' GW \u2014 the ' + fmt(gw(th.block_mw),1) + ' GW de-rated '
-    + 'dispatchable block<span class="dag">\u2020</span> plus the '
-    + fmt(gw(th.wind_solar_mw),1) + ' GW of wind and solar actually '
-    + 'generated, so it breathes with the weather. '
+  h += '<p class="note">The ceiling breathes with the weather: a '
+    + fmt(gw(th.block_mw),1) + ' GW de-rated dispatchable block'
+    + '<span class="dag">\u2020</span> plus the wind and solar actually '
+    + 'generated in that hour. '
     + (fits.length
         ? 'Routes that fit at a full electrification of heat: '
           + fits.map(f=>f.replace(/_/g," ")).join(", ") + '.'
@@ -1072,6 +1137,7 @@ function gridPanel(th){
   }
   box.innerHTML = h;
 }
+
 
 // ------------------------------------- Panel 3: the three views
 // Heat delivered on the left axis, the 20% what-if's electricity on
@@ -2389,7 +2455,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.15.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.16.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
