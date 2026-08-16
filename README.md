@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.23.0 / site 5.22.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.23.0 / site 5.22.1.
 
 ## The premise
 
@@ -1058,6 +1058,20 @@ share is ours and daggered, since ERIC publishes total energy**, and
 neither NHS Scotland nor Northern Ireland publishes an equivalent
 series.
 
+**Axis labels made legible (site 5.22.1).** Every rotated y-axis label
+was rendering at x=14–18 in a 1000-unit viewBox — roughly 16px from the
+frame — in 12px muted grey, which is *smaller and dimmer than the tick
+numbers it was labelling*. Present, and effectively invisible. All six
+across five charts move to x=26 in 13px white at weight 600, with the
+left gutter widened from 56–60 to 82–88 to hold them; the three-view
+chart's right-hand label moves in from the opposite edge.
+
+A new predicate, `axisLabelReadable`, now requires every rotated label
+to clear the frame, sit inside the gutter rather than over the plot, and
+be no smaller than its ticks. It is proven by mutation — restoring one
+label to its old position and size fails the suite. Nothing had been
+testing this, which is why it survived so long.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1199,7 +1213,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 162 front-end fixture checks
+node tests/test_vol.js            # 167 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
