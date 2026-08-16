@@ -445,4 +445,56 @@ drawGridViews(null);
 ok(/next daily build/.test(DOM.gridChart.textContent),
    "a payload without the series declines rather than drawing empty axes");
 
+// ---- dispatch-down: stacked by reason, monthly since 2021 ----------
+const ddCol = lift(/const DD_COL = \{[\s\S]*?\};/, "DD_COL");
+const ddFn = lift(/function ddPanel\(dd\)\{[\s\S]*?\n\}/, "ddPanel");
+let DDJUR = "NI";
+eval(ddCol + "\n" + ddFn);
+const ddFix = JSON.parse(require("fs").readFileSync(
+  __dirname + "/../docs/dispatch_down_monthly.json", "utf8"));
+const DD = {months: ddFix.months, unit: "GWh", technology: "Wind",
+  spf: {ashp: 2.8, gshp: 3.24, network: 4.252},
+  reasons: [{key:"trans",label:"Transmission constraint",group:"constraint"},
+            {key:"test",label:"TSO testing",group:"constraint"},
+            {key:"hifrq",label:"High frequency / minimum generation",
+             group:"curtailment"},
+            {key:"snsp",label:"SNSP limit",group:"curtailment"},
+            {key:"rocof",label:"RoCoF / inertia",group:"curtailment"},
+            {key:"other",label:"Other reductions",group:"other"}],
+  jurisdictions: {}};
+["IE","NI"].forEach(j=>{
+  const b = ddFix.jurisdictions[j];
+  DD.jurisdictions[j] = Object.assign({}, b, {
+    rate_pct: b.dd.map((v,i)=> b.avail[i] ? 100*v/b.avail[i] : null),
+    heat: {network: b.dd.map(v=>v*4.252)}});
+});
+["ddChart","ddNote"].forEach(k=>{DOM[k]=null; el(k);});
+ddPanel(DD);
+const dc = DOM.ddChart.innerHTML;
+ok(!/NaN|undefined/.test(dc), "no NaN in the dispatch-down chart");
+ok(ddFix.months.length >= 60, "the series reaches back to 2021");
+ok(/2021/.test(dc) && /2026/.test(dc), "the x-axis is labelled by year");
+ok(/Northern Ireland/.test(dc) && /local constraint/.test(dc),
+   "the header names the jurisdiction and its constraint share");
+// stacked by REASON, not by the constraint/curtailment fold - the fold
+// hides that NI's spill is overwhelmingly the local kind
+ok(/Transmission constraint \(constraint\)/.test(dc)
+   && /SNSP limit \(curtailment\)/.test(dc),
+   "the legend names each reason and which group it belongs to");
+ok(/stroke-dasharray/.test(dc) && /share of available wind spilled/.test(dc),
+   "the rate rides on a second axis as a dashed line");
+ok(/energy-scale statement, not a dispatch claim/.test(DOM.ddNote.textContent),
+   "the heat conversion carries its own caveat");
+// the two jurisdictions must actually differ
+const niHead = dc.match(/(\d+)% local constraint/)[1];
+DDJUR = "IE"; ["ddChart","ddNote"].forEach(k=>{DOM[k]=null; el(k);});
+ddPanel(DD);
+const ieHead = DOM.ddChart.innerHTML.match(/(\d+)% local constraint/)[1];
+ok(+niHead > +ieHead + 15,
+   "Northern Ireland's spill is far more local than the Republic's");
+DDJUR = "NI"; ["ddChart","ddNote"].forEach(k=>{DOM[k]=null; el(k);});
+ddPanel(null);
+ok(/coming build/.test(DOM.ddChart.textContent),
+   "and a payload without the series declines cleanly");
+
 console.log(checks + " front-end fixture checks passed");

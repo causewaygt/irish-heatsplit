@@ -3899,6 +3899,51 @@ def test_the_grid_layer_is_written_to_the_payload_not_just_computed():
         "a run without the grid layer should say so in the log"
 
 
+def test_dispatch_down_series_and_its_heat_conversion():
+    """Wind dispatch-down by month, jurisdiction and reason, from
+    EirGrid's own half-hourly files. Shipped static because the
+    downloads sit behind a JavaScript accordion with version suffixes
+    that change without notice - a guessed URL would rot silently."""
+    import build as B
+    dd = B.derive_dispatch_down()
+    if dd is None:
+        return                      # file not in this checkout
+    m = dd["months"]
+    assert len(m) >= 60 and m[0] <= "2021-01", m[:1]
+    assert dd["technology"] == "Wind"
+    for j in ("IE", "NI"):
+        b = dd["jurisdictions"][j]
+        for k in ("avail", "dd", "cons", "curt", "rate_pct"):
+            assert len(b[k]) == len(m), (j, k)
+        # DD = CURTAILMENTS + CONSTRAINTS, exactly. OTHER sits OUTSIDE
+        # dispatch-down: it is DSO/DNO constraints, developer outages
+        # and developer testing, which are not TSO actions. I first
+        # tested dd == curt + cons + other and read the 1,314 failures
+        # as the data not reconciling; the formula was wrong, not the
+        # file. Zero rows fail once OTHER is left out.
+        for i in range(len(m)):
+            assert abs(b["cons"][i] + b["curt"][i] - b["dd"][i]) < 0.05, \
+                (j, m[i], b["cons"][i], b["curt"][i], b["dd"][i])
+            assert b["dd"][i] <= b["avail"][i] + 0.01, (j, i)
+        # heat is the spilled electricity times the route SPF, so every
+        # route yields MORE heat than the electricity it came from
+        for r, s in dd["spf"].items():
+            assert s > 1.0
+            assert abs(b["heat"][r][0] - b["dd"][0] * s) < 0.2, (j, r)
+    # THE FINDING: Northern Ireland spills a far larger share of its
+    # wind AND that spill is overwhelmingly local constraint, which is
+    # the only kind a local heat load can absorb
+    ie, ni = dd["jurisdictions"]["IE"], dd["jurisdictions"]["NI"]
+    ie_share = sum(ie["cons"]) / max(sum(ie["dd"]), 1)
+    ni_share = sum(ni["cons"]) / max(sum(ni["dd"]), 1)
+    assert ni_share > ie_share, (ni_share, ie_share)
+    assert (sum(ni["dd"]) / max(sum(ni["avail"]), 1)
+            > sum(ie["dd"]) / max(sum(ie["avail"]), 1))
+    # reason codes carry their curtailment/constraint grouping
+    groups = {r["key"]: r["group"] for r in dd["reasons"]}
+    assert groups["trans"] == "constraint" and groups["snsp"] == "curtailment"
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
