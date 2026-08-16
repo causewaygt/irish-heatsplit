@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.24.0 / site 5.23.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.24.0 / site 5.23.1.
 
 ## The premise
 
@@ -1124,6 +1124,18 @@ actually spilled*, is not built. It needs the hourly store joined to the
 spill half-hours, and the store covers 13 months against this series'
 five years.
 
+**The last unnamed axis (site 5.23.1).** The dispatch-down chart drew
+right-hand tick values — the spill rate, 0% to 50% — with nothing
+labelling them; its meaning sat in a line of subtitle text instead. It
+now carries "share of available wind spilled" rotated on the right, as
+the three-view chart does.
+
+A new predicate, `everyAxisTitled`, counts axes rather than labels: any
+axis carrying tick values must carry a title, on either side. That is
+the check that was missing — the earlier predicates verified the labels
+that existed rather than testing whether one was absent, which is why a
+titleless axis survived four rounds of fixing.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1265,7 +1277,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 181 front-end fixture checks
+node tests/test_vol.js            # 186 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
