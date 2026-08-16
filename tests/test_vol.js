@@ -298,12 +298,24 @@ gridPanel(TH);
 const gp = DOM.gridPanel.innerHTML;
 ok(!/NaN|undefined/.test(gp), "no NaN or undefined in the coldest hour");
 ok(/\+3\.6 GW/.test(gp) && /\+1\.2 GW/.test(gp),
-   "added load is shown in GW per route");
-ok(/exceeds the ceiling by 1\.0 GW/.test(gp),
-   "a route that does not fit says so rather than showing bare headroom");
-ok(/fits, 1\.4 GW spare/.test(gp), "and one that does says how much spare");
-ok(/9\.7 GW/.test(gp) && /1\.1 GW of wind and solar/.test(gp),
-   "the ceiling is stated as block plus the wind and solar that blew");
+   "the increment each route adds is labelled on its bar");
+// cards show the TOTAL requirement, as the UK sibling does, not just
+// the increment - 7180 + 3579 = 10.8 GW for air source
+ok(/10\.8/.test(gp) && /9\.6/.test(gp) && /8\.4/.test(gp),
+   "cards show what the island's power stations would have to cover");
+ok(/1\.0 GW OVER the ceiling/.test(gp),
+   "a route that does not fit says so, in GW over");
+ok(/0\.1 GW of spare capacity left/.test(gp),
+   "and one that does says how much spare is left");
+ok(/capacity to deliver/.test(gp) && /stroke-dasharray/.test(gp),
+   "the ceiling is a dashed rule across the chart, labelled");
+ok((gp.match(/<rect /g)||[]).length === 6,
+   "three bars, each a grey base plus a coloured increment");
+ok(/actual use/.test(gp) && /20% what-if/.test(gp),
+   "the legend names the grey base and the coloured increment");
+ok(/GW at the binding hour/.test(gp), "the y-axis is labelled");
+ok(/tightest hour of the year/i.test(gp),
+   "and the sub-panel carries the UK sibling's title");
 ok(/1\.32x its power system/.test(gp),
    "the heat-system-against-power-system ratio is on the page");
 ok(/peak-capacity test, not an energy test/.test(gp),
