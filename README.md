@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.17.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.18.0.
 
 ## The premise
 
@@ -893,6 +893,22 @@ top padding leaves room for the increment labels instead of pushing them
 onto the top gridline, and the bars are narrower so the three read as a
 comparison rather than a wall.
 
+**"How much of the island's heat fits inside today's fleet" is now a
+sub-panel (site 5.18.0)**, in the same shape as the tightest hour above
+it: subtitle, cards, chart, short note. It was a three-row table. Each
+route gets its share as a card and a bar, against a dashed rule at 100%
+— all of the island's building heat — with routes that fall short drawn
+at reduced opacity so the two outcomes are distinguishable before you
+read a number. Each card names that route's own binding hour, which
+differs by route because the hour that constrains a route depends on how
+much electricity it draws when it is cold.
+
+**The two sub-panels ask the same question from opposite ends**, and the
+note says so: the first fixes the share at a fifth and reports what it
+costs, the second solves for the largest share the fleet could carry.
+Reading them as one number would be the easy mistake, which is also why
+a pipeline test asserts the solve is not pinned to `GRID_WHATIF_SHARE`.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1034,7 +1050,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 181 tests, no network
-node tests/test_vol.js            # 108 front-end fixture checks
+node tests/test_vol.js            # 112 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
