@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.18.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.19.0.
 
 ## The premise
 
@@ -909,6 +909,23 @@ costs, the second solves for the largest share the fleet could carry.
 Reading them as one number would be the easy mistake, which is also why
 a pipeline test asserts the solve is not pinned to `GRID_WHATIF_SHARE`.
 
+**Panel 3 chart tidying (site 5.19.0).** Three fixes across both
+sub-panels. Hours read as **5 Jan 2026 · 17:00** rather than
+`2026-01-05T17`, on the cards and the binding-hour labels. Axis ticks are
+**round numbers** — the old code divided an arbitrary maximum into
+thirds and produced 76 / 151 / 227%; the new chooser tries each candidate
+step, keeps those giving three to six intervals, and takes the one
+wasting least plot height, which turns 11.9 GW into a 0–12 axis rather
+than 0–15. And **no label crosses a bar**: the ceiling line on the first
+chart and the 100% rule on the second both moved into a band above the
+plot, after the 100% label was found running straight through the
+geothermal bar.
+
+Chart text also moved up in size and contrast — tick labels and bar
+values from muted grey at 11px to white and `--ink2` at 13–16px, since
+the previous setting was close to unreadable against the dark theme at
+presentation scale.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1050,7 +1067,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 181 tests, no network
-node tests/test_vol.js            # 112 front-end fixture checks
+node tests/test_vol.js            # 115 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
