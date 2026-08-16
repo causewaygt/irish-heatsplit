@@ -172,6 +172,37 @@ function noTextInsideBars(svg){
     });
   });
 }
+// A rotated axis label jammed against the frame is present and
+// unreadable - it rendered at x=16 in a 1000-unit viewBox for weeks,
+// about 16px from the edge in 12px grey, and every suite passed.
+// Require it to clear the frame, to be no smaller than the tick
+// numbers it labels, and to sit in the gutter rather than over the
+// plot.
+function axisLabelReadable(svg, gutter){
+  const rot = texts(svg).filter(t => /rotate\(-?90/.test(t.attr));
+  if(!rot.length) return false;
+  return rot.every(t => {
+    const size = +(t.attr.match(/font-size="(\d+)"/) || [0,0])[1];
+    const x = t.x, right = /rotate\(90/.test(t.attr);
+    const clear = right ? x > 900 : (x >= 22 && x <= (gutter || 82));
+    return size >= 13 && clear;
+  });
+}
+// An axis with no numbers on it, or numbers dimmer and smaller than
+// the label beside them, reads as unlabelled however correct the
+// geometry is. Two charts kept their 11px muted ticks through three
+// rounds of "fixing the axis labels", because every assertion looked
+// at the rotated label and none looked at the ticks.
+function tickValuesReadable(svg, least){
+  const t = texts(svg).filter(x => /text-anchor="end"/.test(x.attr));
+  if(t.length < (least || 3)) return false;
+  const bodies = t.map(x => x.body.trim()).filter(Boolean);
+  if(new Set(bodies).size < bodies.length) return false;   // all distinct
+  return t.every(x => {
+    const size = +(x.attr.match(/font-size="(\d+)"/) || [0,0])[1];
+    return size >= 13 && !/var\(--muted\)/.test(x.attr);
+  });
+}
 // Bars must use the height available: a chart drawn at a tenth of its
 // axis is a scale fault, not a small number.
 function usesItsAxis(svg, frac){
@@ -204,6 +235,8 @@ ok(!/NaN|undefined/.test(svg), "no NaN or undefined anywhere in the svg");
 ok((svg.match(/<path /g) || []).length === 4,
    "two stacked bands, each a fill and an outline");
 ok(/GWh of delivered heat per day/.test(svg), "carries its own y-axis label");
+ok(tickValuesReadable(svg, 3),
+   "and the volume chart's tick values are legible");
 // The VISIBLE label is rotated within the chart height, so a single
 // long line is cut off - it shipped reading "GWh of delivered heat
 // per da". The old assertion passed on the aria-label alone and would
@@ -482,6 +515,8 @@ ok(/clears a full electrification of heat, with room over/.test(gp)
    "and says plainly which routes clear it and which do not");
 const ssvg = svgAt(gp, 1);
 ok(gridlinesSpread(ssvg, 4), "the share chart's gridlines spread too");
+ok(axisLabelReadable(ssvg), "and the share chart's label is legible too");
+ok(tickValuesReadable(ssvg, 4), "and its tick values are legible");
 ok(noTextInsideBars(ssvg), "and no share label sits inside its bar");
 ok(usesItsAxis(ssvg, 0.5), "and the share bars use their axis");
 ok(/asked the other way round/.test(gp),
@@ -504,6 +539,8 @@ ok(ticks.indexOf("12") >= 0 && ticks.indexOf("0") >= 0,
    "running 0 to 12 GW, covering the tallest bar and the ceiling");
 const gsvg = svgAt(gp, 0);
 ok(gridlinesSpread(gsvg, 4), "the gridlines are at distinct heights");
+ok(axisLabelReadable(gsvg), "its axis label clears the frame and is legible");
+ok(tickValuesReadable(gsvg, 4), "and its tick values are legible too");
 ok(noTextInsideBars(gsvg), "no label is drawn inside a bar");
 ok(usesItsAxis(gsvg, 0.5),
    "the bars use the height of the axis, not a corner of it");
@@ -564,6 +601,10 @@ ok(/heat delivered, GW/.test(gc)
    + "magnitude and one axis would flatten the electricity");
 ok(gridlinesSpread(svgAt(gc, 0), 2),
    "the three-view chart's gridlines spread");
+ok(axisLabelReadable(svgAt(gc, 0)),
+   "and BOTH its axis labels clear their frames");
+ok(tickValuesReadable(svgAt(gc, 0), 3),
+   "and the three-view chart's ticks are legible");
 ok(/the fifth via geothermal network/.test(DOM.gridLegend.innerHTML),
    "the legend says these are the what-if's fifth, not all of it");
 // the monthly view is the FALCON: a calendar year, each month the
@@ -637,6 +678,8 @@ ok(/Transmission constraint \(constraint\)/.test(dc)
    "the legend names each reason and which group it belongs to");
 const dsvg = svgAt(dc, 0);
 ok(gridlinesSpread(dsvg, 4), "the dispatch-down gridlines spread");
+ok(axisLabelReadable(dsvg), "and its axis label is legible");
+ok(tickValuesReadable(dsvg, 4), "and its tick values are legible");
 ok(noTextInsideBars(dsvg), "no dispatch-down label sits inside a bar");
 ok(usesItsAxis(dsvg, 0.5), "and its bars use the axis height");
 ok(/stroke-dasharray/.test(dc) && /share of available wind spilled/.test(dc),
@@ -674,6 +717,8 @@ const dv = DOM.ddValue.innerHTML;
 ok(!/NaN|undefined/.test(dv), "no NaN in the value chart");
 const vsvg = svgAt(dv, 0);
 ok(gridlinesSpread(vsvg, 4), "the value chart's gridlines spread");
+ok(axisLabelReadable(vsvg, 88), "and its axis label is legible");
+ok(tickValuesReadable(vsvg, 4), "and its tick values are legible");
 ok(noTextInsideBars(vsvg), "no value label sits inside a bar");
 // The axis on this chart is scaled to the NAIVE comparator line, which
 // sits above the bars by construction - that gap is the finding. So
@@ -710,10 +755,11 @@ ok(/coming build/.test(DOM.ddValue.textContent),
 
 // ---- worked examples: sizing the sink, not claiming a saving ------
 ["oddEx","oddExNote"].forEach(k=>{DOM[k]=null; el(k);});
-oddExamples({basis_year:"2025", constrained_gwh:562.5, heat_gwh:2391.8,
-  ni_delivered_heat_gwh:10888, share_of_ni_heat_pct:22.0,
+oddExamples({basis_from:"2025-07", basis_to:"2026-06", basis_months:12,
+  constrained_gwh:656.1, heat_gwh:2789.6,
+  ni_delivered_heat_gwh:10888, share_of_ni_heat_pct:25.6,
   hospital:{eui_kwh_m2:211, heat_share:0.6, floor_m2:55000,
-            heat_gwh:7.0, equivalent:344,
+            heat_gwh:7.0, equivalent:401,
             source:"ERIC 2024/25 acute mean, heat share \u2020"},
   domestic:{subscribers:250000, constraint_cut_pct:67,
             curtailment_cut_pct:74, household_saving_gbp:220,
@@ -724,9 +770,15 @@ const ox = DOM.oddEx.innerHTML, oxn = DOM.oddExNote.innerHTML;
 ok(!/NaN|undefined/.test(ox + oxn), "no NaN in the worked examples");
 // the unit sits in a nested span, so figure and unit are not
 // contiguous in the markup
-ok(/2,392/.test(ox) && /GWh/.test(ox) && /22</.test(ox),
+ok(/2,790/.test(ox) && /GWh/.test(ox) && /26</.test(ox),
    "the heat volume and its share of NI building heat are stated");
-ok(/344/.test(ox) && /ten acute sites/.test(ox),
+// A ROLLING window, not a calendar year: it keeps the panel current
+// without waiting for a year to close, and it lands on the same months
+// as the hourly store so a spill-weighted COP will cover exactly these.
+ok(/12 months to Jun 26/.test(ox) && /Jul 25 to Jun 26/.test(ox),
+   "and the window is named at both ends, not left as a year");
+ok(!/\b2025\b(?!-)/.test(ox), "the panel does not claim a calendar year");
+ok(/401/.test(ox) && /ten acute sites/.test(ox),
    "the hospital count is set against the size of the actual estate");
 ok(/250k/.test(ox) && /74% less curtailment/.test(ox),
    "and the published domestic optimum sits beside it");
