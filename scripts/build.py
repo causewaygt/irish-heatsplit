@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.23.1"
+PIPELINE_VERSION = "5.24.0"
 # 5.23.0: WORKED EXAMPLES of absorbing the constrained wind. A
 #   different kind of claim from every other panel - it sizes the SINK
 #   ("what scale of load would it take") rather than claiming a
@@ -6251,6 +6251,20 @@ def derive_odd_examples(dd, anchors=None):
     ni_heat = (a["ni"]["residential_heat_twh"]
                + a["ni"]["services_heat_twh"]) * 1000 \
         * a.get("delivered_over_input_ni", 0.8375)
+    # PER ROUTE. The same spilled electricity makes different amounts
+    # of heat, so the share of NI's heat it could cover differs by
+    # route - and that is a discriminator this panel can carry today.
+    # The SECOND discriminator, the COP each route sees IN THE HOURS
+    # THE WIND IS ACTUALLY SPILLED, needs the hourly store joined to
+    # the spill half-hours and is not built yet; the hourly record
+    # covers 13 months against this series' five years.
+    routes = {}
+    for r, s_ in (("ashp", SPF_ANCHORS["ashp"]),
+                  ("gshp", SPF_ANCHORS["gshp"]),
+                  ("network", spf)):
+        h = cons * s_
+        routes[r] = {"spf": s_, "heat_gwh": round(h, 1),
+                     "share_pct": round(100 * h / max(ni_heat, 1), 1)}
     hosp = ODD_HOSPITAL
     hosp_gwh = hosp["eui_kwh_m2"] * hosp["heat_share"] \
         * hosp["floor_m2"] / 1e6
@@ -6262,6 +6276,7 @@ def derive_odd_examples(dd, anchors=None):
         "heat_gwh": round(heat, 1),
         "ni_delivered_heat_gwh": round(ni_heat, 0),
         "share_of_ni_heat_pct": round(100 * heat / max(ni_heat, 1), 1),
+        "routes": routes,
         "hospital": dict(hosp, heat_gwh=round(hosp_gwh, 1),
                          equivalent=round(heat / max(hosp_gwh, 0.1))),
         "domestic": dict(AGBONAYE),
