@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.23.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.23.2
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -28,6 +28,14 @@
   --bg:#0b0d0d; --panel:#101413; --panel2:#0d1110; --line:#26302d;
   --green:#3AAA35; --green2:#568F59; --petrol:#1F4E5F; --amber:#D98E2B;
   --teal:#2F8F8C; --ink:#F0F2F1; --muted:#A9B4B1; --faint:#6E7B78;
+  /* --ink2 was USED IN SIXTEEN PLACES AND NEVER DEFINED. In CSS an
+     invalid var() makes the property inherit, so those uses looked
+     fine; in an SVG fill attribute it falls back to BLACK, so every
+     axis tick drawn in it was black on a near-black background -
+     present in the markup, invisible on the page, and passing every
+     test that checked the text existed. One step below --ink, so
+     ticks read clearly while the white axis titles still lead. */
+  --ink2:#D6DEDB;
 }
 html{font-size:17px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -2908,7 +2916,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.23.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.23.2 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
