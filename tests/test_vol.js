@@ -278,10 +278,15 @@ ok(/single all-island market/.test(html)
 
 // ---- Panel 3: the coldest hour, drawn from the published B.2.1 -----
 const grSrc = lift(/const GROUTES = \[[\s\S]*?\];/, "GROUTES");
+const hourSrc = lift(/function hourLabel\(t\)\{[\s\S]*?\n\}/, "hourLabel");
+const niceArr = lift(/const NICE = \[[\s\S]*?\];/, "NICE");
+const niceSrc = lift(/function niceTicks\(max, want\)\{[\s\S]*?\n\}/,
+                     "niceTicks");
 const grFn = lift(/function gridPanel\(th\)\{[\s\S]*?\n\}/, "gridPanel");
 function esc(s){ return String(s); }
 let GJUR = "all";
-eval(grSrc + "\n" + grFn);
+eval(monthsSrc + "\n" + niceArr + "\n" + hourSrc + "\n" + niceSrc + "\n" + grSrc
+     + "\n" + grFn);
 const TH = {hour:"2026-01-05T17", observed_mw:7180, air_c:0.21,
   useful_heat_mw:11365, block_mw:8595, ceiling_mw:9713,
   wind_solar_mw:1118, heat_vs_block_ratio:1.32,
@@ -312,19 +317,30 @@ ok(/capacity to deliver/.test(gp) && /stroke-dasharray/.test(gp),
 // the ceiling label used to sit ON the line and ran through the bars,
 // unreadable where it crossed them. It is now right-anchored above the
 // line, and its composition sits in its own band at the top.
-ok(/text-anchor="end"[^>]*>capacity to deliver/.test(gp),
-   "the ceiling label is right-anchored, clear of the bars");
+// the ceiling label was right-anchored above the line; on the share
+// chart the equivalent 100% label still ran through the tallest bar.
+// Both now sit in a band ABOVE the plot, so no label can cross a bar.
+ok(/capacity to deliver/.test(gp) && !/text-anchor="end"[^>]*>capacity/.test(gp),
+   "the ceiling label sits above the plot, not on the line");
 ok(/de-rated dispatchable block/.test(gp)
    && /wind and solar that actually blew/.test(gp),
-   "and the ceiling's composition has its own band above the plot");
+   "and the ceiling's composition is on its own line beneath it");
 ok(!/capacity to deliver[^<]*GW \(/.test(gp),
    "the long parenthetical no longer rides on the dashed line");
+// dates read as dates, not database keys
+ok(/5 Jan 2026 \u00b7 17:00/.test(gp) && !/2026-01-05T17/.test(gp),
+   "hours are labelled 5 Jan 2026 17:00, not 2026-01-05T17");
+// axis ticks are round numbers, not an arbitrary maximum in thirds
+ok(!/>151%</.test(gp) && !/>227%</.test(gp), "no ticks like 151% or 227%");
+ok(/>100%</.test(gp) && />200%</.test(gp),
+   "the share axis ticks on round hundreds");
 ok((gp.match(/<rect /g)||[]).length === 9,
    "six rects for three two-part bars, plus three for the share chart");
 ok(/102%/.test(gp) && /71%/.test(gp) && /210%/.test(gp),
    "the share sub-panel shows each route's share as a card and a bar");
-ok(/100% \u2014 all of the island\u2019s building heat/.test(gp),
-   "with a dashed rule at 100%, labelled");
+ok(/100% = all of the island\u2019s building heat/.test(gp)
+   && /stroke-dasharray/.test(gp),
+   "with a dashed rule at 100%, labelled above the plot");
 ok(/clears a full electrification of heat, with room over/.test(gp)
    && /the fleet binds before the heat is fully electrified/.test(gp),
    "and says plainly which routes clear it and which do not");
