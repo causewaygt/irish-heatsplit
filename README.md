@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.21.0 / site 5.20.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.21.0 / site 5.20.1.
 
 ## The premise
 
@@ -959,6 +959,19 @@ load would itself change the dispatch. The hourly-COP refinement is
 available only for the last 13 months and would make the series
 inconsistent with itself.
 
+**Panel 3 axis fix (site 5.20.1).** `niceTicks` returns values in GW
+while the plotting function works in MW, and 5.19.0 fed one to the other.
+Every gridline landed on the baseline and the axis printed seven zeroes
+stacked on top of each other — which read on the page as no axis and no
+ceiling line at all. The tick values are now converted at the point of
+use, and the fixture suite asserts the labels are distinct, that the
+gridlines sit at distinct heights, and that the axis runs 0 to 12 GW.
+It passed throughout the fault because nothing checked any of that.
+
+Both dashed rules — the capacity ceiling and the 100% line — are now
+white at 2px, and the share cards are laid out on the plot's own margins
+so each figure sits over its bar rather than 5% to the left of it.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1100,7 +1113,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 124 front-end fixture checks
+node tests/test_vol.js            # 130 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
