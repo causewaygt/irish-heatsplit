@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.22.3
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.23.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1281,7 +1281,12 @@ function hourLabel(t){
   return (+m[3]) + " " + MONTHS3[(+m[2])-1] + " " + m[1]
     + " \u00b7 " + m[4] + ":00";
 }
-const NICE = [1,2,2.5,5,10,20,25,50,100,200,250,500,1000,2000,2500,5000];
+// Fractional steps matter: the three-view chart's electricity axis
+// tops out below 1 GW, and without these it fell through to the
+// fallback and printed duplicate labels - "0.1, 0.1" - at one
+// decimal place.
+const NICE = [0.02,0.05,0.1,0.2,0.25,0.5,1,2,2.5,5,10,20,25,50,
+              100,200,250,500,1000,2000,2500,5000];
 function niceTicks(max, want){
   // Not "first step at least max/want" - that rounded 11.9 up to 15
   // and threw away a quarter of the plot. Try every step, keep those
@@ -1351,9 +1356,14 @@ function ddPanel(dd){
     : (i?"L":"M")+(P.l+bw*i+bw/2)+" "+yr(b.rate_pct[i])).filter(Boolean);
   s += '<path d="'+pts.join("")+'" fill="none" stroke="#fff" '
     + 'stroke-width="1.4" stroke-dasharray="3 3"/>';
-  [0, hiR/2, hiR].forEach(v=>{
-    s += '<text x="'+(W-P.r+8)+'" y="'+(yr(v)+5)+'" font-size="12" '
-      + 'fill="var(--muted)" font-family="IBM Plex Mono,monospace">'
+  // RIGHT AXIS, same treatment as the left. It was three arbitrary
+  // values from hiR/2 at 12px muted - the last axis on the panel still
+  // reading as unlabelled, and invisible to a predicate that only looks
+  // at left-anchored ticks.
+  const tR = niceTicks(hiR, 4);
+  tR.values.forEach(v=>{
+    s += '<text x="'+(W-P.r+10)+'" y="'+(yr(v)+5)+'" font-size="13" '
+      + 'fill="var(--ink2)" font-family="IBM Plex Mono,monospace">'
       + fmt(v,0)+'%</text>';
   });
   const seen = {};
@@ -1529,6 +1539,22 @@ function oddExamples(x){
     + fmt(d.curtailment_cut_pct,0) + '% less curtailment and '
     + fmt(d.constraint_cut_pct,0) + '% less constraint</div></div>'
     + '</div>';
+  if(x.routes){
+    const L = {ashp:"Air source", gshp:"Ground source",
+               network:"Geothermal network"},
+          C = {ashp:"#4FA3C7", gshp:"#A98FD0", network:"#3AAA35"};
+    s += '<table class="caltab" style="margin-top:14px"><thead><tr>'
+      + '<th>Route</th><th>SPF</th><th>Heat from the same spilled '
+      + 'electricity</th><th>Share of NI building heat</th></tr></thead>'
+      + '<tbody>';
+    ["ashp","gshp","network"].forEach(k=>{
+      const r = x.routes[k]; if(!r) return;
+      s += '<tr><td style="color:'+C[k]+'">'+L[k]+'</td><td>'
+        + fmt(r.spf,2)+'</td><td>'+fmt(r.heat_gwh,0)+' GWh</td>'
+        + '<td><b>'+fmt(r.share_pct,1)+'%</b></td></tr>';
+    });
+    s += '</tbody></table>';
+  }
   box.innerHTML = s;
   if(note){
     note.innerHTML = 'Worked examples<span class="dag">\u2020</span>, not '
@@ -1550,7 +1576,13 @@ function oddExamples(x){
       + fmt(d.household_saving_gbp,0) + ' a year, \u00a3'
       + fmt(d.farm_10mw_gbp,0) + ' a year to a 10 MW wind farm from '
       + 'avoided curtailment, and up to ' + fmt(d.operator_saving_pct,0)
-      + '% off constraint payments.';
+      + '% off constraint payments. The routes differ twice over: the '
+      + 'same spilled electricity makes half as much heat again '
+      + 'through a network as through air source, and \u2014 the '
+      + 'larger difference \u2014 half the spill falls outside the '
+      + 'heating season, so absorbing it needs storage measured in '
+      + 'months rather than hours. That is a property of the route, '
+      + 'not of the machine.';
   }
 }
 
@@ -1588,12 +1620,12 @@ function drawGridViews(gv){
       + '" stroke="var(--line)" stroke-width="1"/>'
       + '<text x="'+(P.l-10)+'" y="'+(yH(vh)+5)+'" text-anchor="end" '
       + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
-      + 'monospace">'+fmt(v,1)+'</text>';
+      + 'monospace">'+fmt(v, tH.top < 2 ? 2 : 1)+'</text>';
   });
   tE.values.forEach(v => {
     s += '<text x="'+(W-P.r+10)+'" y="'+(yE(v*1000)+5)+'" font-size="13" '
       + 'fill="var(--ink2)" font-family="IBM Plex Mono,monospace">'
-      + fmt(v,1)+'</text>';
+      + fmt(v, tE.top < 2 ? 2 : 1)+'</text>';
   });
   const path = (key, sc) => rows.map((r,i)=>
     (i?"L":"M")+x(i)+" "+sc(r[key])).join("");
@@ -2869,7 +2901,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.22.3 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.23.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
