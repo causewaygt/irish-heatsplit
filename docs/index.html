@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.17.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.18.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1130,21 +1130,85 @@ function gridPanel(th){
     + fmt(th.heat_vs_block_ratio,2) + 'x its power system. This is a '
     + 'peak-capacity test, not an energy test: nothing here phases the '
     + 'conversion or counts storage, diversity or demand response.</p>';
+  // The second sub-panel, same shape as the first: subtitle, cards,
+  // chart, short note. The question is the inverse of the one above -
+  // that one fixes the share at a fifth and asks what it costs; this
+  // one solves for the largest share the fleet could carry.
   const sh = th.share_that_fits_pct || {};
-  if(Object.keys(sh).length){
-    let t = '<h3 class="foldh">How much of the island\u2019s heat fits '
-      + 'inside today\u2019s fleet</h3><table class="caltab"><thead><tr>'
-      + '<th>Route</th><th>Share of island heat that fits</th>'
-      + '<th>Binding hour</th></tr></thead><tbody>';
-    GROUTES.forEach(([k,name])=>{
-      if(sh[k]==null) return;
-      t += '<tr><td>' + name + '</td><td><b>' + fmt(sh[k],1)
-        + '%</b>' + (sh[k]>=100 ? ' \u2014 all of it, with room over' : '')
-        + '</td><td>' + esc((th.share_binding_hour||{})[k]||"")
-        + '</td></tr>';
+  const srows = GROUTES.map(([k,name,col])=>
+    sh[k]==null ? null : {k:k, name:name, col:col, pct:sh[k],
+      hour:(th.share_binding_hour||{})[k]||""}).filter(Boolean);
+  if(srows.length){
+    h += '<h3 class="foldh">How much of the island\u2019s heat fits '
+      + 'inside today\u2019s fleet <span class="sub">\u2014 the largest '
+      + 'share that could move to each route before the tightest hour '
+      + 'binds<span class="dag">\u2020</span></span></h3>';
+    h += '<div class="hstats">';
+    srows.forEach(r=>{
+      h += '<div class="hstat"><div class="hval" style="color:' + r.col
+        + '">' + fmt(r.pct,0) + '<span style="font-size:.5em">%</span>'
+        + '</div><div class="hlab">' + r.name.toLowerCase() + ' \u00b7 '
+        + (r.pct >= 100
+            ? 'clears a full electrification of heat, with room over'
+            : 'the fleet binds before the heat is fully electrified')
+        + (r.hour ? ' \u00b7 binds ' + esc(r.hour) : '') + '</div></div>';
     });
-    h += t + '</tbody></table>';
+    h += '</div>';
+
+    const SW = 1000, SH = 300, Q = {t:52, r:14, b:52, l:56};
+    const shi = Math.max(110, ...srows.map(r=>r.pct)) * 1.08;
+    const sy = v => Q.t + (1 - v/shi)*(SH-Q.t-Q.b);
+    const sbw = (SW-Q.l-Q.r)/srows.length,
+          sin_ = Math.min(120, sbw*0.42);
+    let g2 = '<svg viewBox="0 0 '+SW+' '+SH+'" width="100%" height="'+SH
+      + '" role="img" aria-label="Share of island heat that fits inside '
+      + 'today\u2019s fleet, by route">';
+    for(let g=0; g<=3; g++){
+      const v = shi*g/3;
+      g2 += '<line x1="'+Q.l+'" x2="'+(SW-Q.r)+'" y1="'+sy(v)+'" y2="'
+        + sy(v)+'" stroke="var(--line)" stroke-width="1"/>'
+        + '<text x="'+(Q.l-8)+'" y="'+(sy(v)+4)+'" text-anchor="end" '
+        + 'font-size="11" fill="var(--muted)" font-family="IBM Plex Mono,'
+        + 'monospace">'+fmt(v,0)+'%</text>';
+    }
+    srows.forEach((r,i)=>{
+      const cx = Q.l + sbw*i + sbw/2, x0 = cx - sin_/2;
+      const top = Math.min(r.pct, shi);
+      g2 += '<rect x="'+x0+'" y="'+sy(top)+'" width="'+sin_+'" height="'
+        + (sy(0)-sy(top))+'" fill="'+r.col+'"'
+        + (r.pct >= 100 ? '' : ' opacity="0.75"') + '/>'
+        + '<text x="'+cx+'" y="'+(sy(top)-9)+'" text-anchor="middle" '
+        + 'font-size="13" font-weight="700" fill="var(--ink2)" '
+        + 'font-family="IBM Plex Mono,monospace">'+fmt(r.pct,0)+'%</text>'
+        + '<text x="'+cx+'" y="'+(SH-24)+'" text-anchor="middle" '
+        + 'font-size="11" fill="var(--muted)" font-family="Lato,'
+        + 'sans-serif">'+r.name.toLowerCase()+'</text>';
+    });
+    g2 += '<line x1="'+Q.l+'" x2="'+(SW-Q.r)+'" y1="'+sy(100)+'" y2="'
+      + sy(100)+'" stroke="var(--ink2)" stroke-width="1.2" '
+      + 'stroke-dasharray="7 4"/>'
+      + '<text x="'+(SW-Q.r)+'" y="'+(sy(100)-8)+'" text-anchor="end" '
+      + 'font-size="11" fill="var(--ink2)" font-family="IBM Plex Mono,'
+      + 'monospace">100% \u2014 all of the island\u2019s building heat</text>'
+      + '<text x="'+Q.l+'" y="20" font-size="11" fill="var(--muted)" '
+      + 'font-family="IBM Plex Mono,monospace">solved against the same '
+      + 'ceiling as above, hour by hour across the year</text>'
+      + '<text x="16" y="'+(SH/2)+'" transform="rotate(-90 16 '+(SH/2)
+      + ')" text-anchor="middle" font-size="11" fill="var(--muted)" '
+      + 'font-family="Lato, sans-serif">share of island heat</text></svg>';
+    h += g2;
+    h += '<p class="note">Each bar is the largest share of the island\u2019s '
+      + 'building heat that could move to that route with the fleet still '
+      + 'covering its own tightest hour. Above the dashed line means the '
+      + 'route clears a full electrification of heat with capacity to '
+      + 'spare. It is the same peak-capacity test as the panel above, '
+      + 'asked the other way round: that one fixes the share at a fifth '
+      + 'and reports what it costs, this one solves for the share. The '
+      + 'binding hour differs by route, because the hour that constrains '
+      + 'a route depends on how much electricity that route draws when '
+      + 'it is cold.</p>';
   }
+
   box.innerHTML = h;
 }
 
@@ -2465,7 +2529,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.17.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.18.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
