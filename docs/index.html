@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.23.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.23.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1387,7 +1387,14 @@ function ddPanel(dd){
     + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
     + ')" text-anchor="middle" font-size="13" font-weight="600" '
     + 'fill="#fff" font-family="Lato, sans-serif">'
-    + 'GWh dispatched down</text></svg>';
+    + 'GWh dispatched down</text>'
+    // RIGHT AXIS TITLE. This chart carried right-hand tick VALUES but
+    // nothing naming them - the only axis in Panel 3 without its own
+    // label, with its meaning stranded in a line of subtitle text.
+    + '<text x="'+(W-22)+'" y="'+(H/2)+'" transform="rotate(90 '+(W-22)
+    + ' '+(H/2)+')" text-anchor="middle" font-size="13" '
+    + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
+    + 'share of available wind spilled</text></svg>';
   const leg = dd.reasons.filter(r => keys.indexOf(r.key) >= 0)
     .map(r => '<span><span class="k" style="background:'+DD_COL[r.key]
       + '"></span>'+r.label+' ('+r.group+')</span>').join("");
@@ -2901,7 +2908,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.23.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.23.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
