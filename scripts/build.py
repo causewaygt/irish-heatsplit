@@ -51,7 +51,22 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.20.1"
+PIPELINE_VERSION = "5.21.0"
+# 5.21.0: WIND DISPATCH-DOWN, monthly by jurisdiction and REASON, from
+#   EirGrid's own half-hourly DD files, 2021 to date. Shipped as a
+#   static docs/dispatch_down_monthly.json rather than fetched: the
+#   downloads sit behind a JavaScript accordion and carry version
+#   suffixes that change without notice (V7, v10), so a guessed URL
+#   would rot silently. tools/dd_convert.py regenerates it and asserts
+#   the schema rather than trusting it. Closed years never change.
+#   Stacked by reason, not by the constraint/curtailment fold, because
+#   the fold hides the finding: NI spills 22-30% of its wind and ~85%
+#   of that is transmission constraint - the local kind a local heat
+#   load can absorb - while the Republic runs 10-13% at about half.
+#   COLUMN RELATIONSHIP, corrected: DD = CURTAILMENTS + CONSTRAINTS
+#   exactly, and OTHER sits OUTSIDE dispatch-down (DSO/DNO, developer
+#   outage and testing). I first read 1,314 non-reconciling rows as a
+#   data quirk; the formula was mine and wrong.
 # 5.20.1: THE GRID LAYER NEVER SHIPPED. data.json is serialised before
 #   the hourly block runs, so derived["tightest_hour"] and
 #   derived["grid_views"] were assigned to a dict already written to
@@ -6038,6 +6053,79 @@ def derive_heat_cost_series(feeds, anchors=None):
     return out
 
 
+DD_PATH = ROOT / "docs" / "dispatch_down_monthly.json"
+# Wind dispatch-down, monthly, by jurisdiction and reason code, from
+# EirGrid's own half-hourly DD files (DD-HH-<year>.xlsx on
+# eirgrid.ie/grid/system-and-renewable-data-reports). Shipped as a
+# STATIC file rather than fetched: the half-hourly downloads sit behind
+# a JavaScript accordion and carry version suffixes that change without
+# notice (V7, v10), so a guessed URL would rot silently. Closed years
+# never change. The current year is refreshed by re-running
+# tools/dd_convert.py against a freshly downloaded file.
+#
+# Wind only. Solar coverage does not start until 2023 and solar is a
+# tenth of the volume, so including it would mean a series whose
+# denominator changes shape midway.
+DD_REASONS = [
+    ("trans", "Transmission constraint", "constraint"),
+    ("test", "TSO testing", "constraint"),
+    ("hifrq", "High frequency / minimum generation", "curtailment"),
+    ("snsp", "SNSP limit", "curtailment"),
+    ("rocof", "RoCoF / inertia", "curtailment"),
+    ("other", "Other reductions", "other"),
+]
+
+
+def derive_dispatch_down(anchors=None):
+    """
+    Wind dispatch-down by month, jurisdiction and reason, plus the heat
+    each spilled GWh could have made by route.
+
+    AN ENERGY-SCALE STATEMENT, NOT A DISPATCH CLAIM. It is the heat that
+    volume of electricity could have produced, not heat the system would
+    have delivered: it takes no account of whether the spill coincided
+    with heat demand, and adding a large flexible load would itself
+    change the dispatch. The seasonal SPFs are used rather than an
+    hourly COP because the hourly store holds 13 months and this series
+    runs to 2021 - the hourly refinement is available only for the last
+    year and would make the series inconsistent with itself.
+    """
+    a = anchors or ANCHORS
+    if not DD_PATH.exists():
+        log("dispatch down: no monthly file - panel will decline")
+        return None
+    d = json.loads(DD_PATH.read_text())
+    months = d["months"]
+    spf = {"ashp": SPF_ANCHORS["ashp"], "gshp": SPF_ANCHORS["gshp"],
+           "network": round((a["ni"]["residential_heat_twh"]
+                             + a["ni"]["services_heat_twh"]
+                             + a["roi"]["residential_heat_twh"]
+                             + a["roi"]["services_heat_twh"]) /
+                            ((a["ni"]["residential_heat_twh"]
+                              + a["ni"]["services_heat_twh"])
+                             / NETWORK_MODEL["ni"]["spf"]
+                             + (a["roi"]["residential_heat_twh"]
+                                + a["roi"]["services_heat_twh"])
+                             / NETWORK_MODEL["roi"]["spf"]), 3)}
+    out = {"months": months, "unit": "GWh", "technology": "Wind",
+           "reasons": [{"key": k, "label": lab, "group": g}
+                       for k, lab, g in DD_REASONS],
+           "spf": spf, "jurisdictions": {}}
+    for j, block in d["jurisdictions"].items():
+        heat = {r: [round(v * s, 1) for v in block["dd"]]
+                for r, s in spf.items()}
+        rate = [round(100 * dd / av, 2) if av else None
+                for dd, av in zip(block["dd"], block["avail"])]
+        out["jurisdictions"][j] = dict(block, rate_pct=rate, heat=heat)
+    for j, b in out["jurisdictions"].items():
+        tot = sum(b["dd"])
+        log(f"dispatch down: {j} wind {tot:.0f} GWh over {len(months)} "
+            f"months, {100 * sum(b['cons']) / max(tot, 1):.0f}% constraint; "
+            f"at network SPF {spf['network']} that is "
+            f"{sum(b['heat']['network']) / 1000:.1f} TWh of heat")
+    return out
+
+
 def derive_heat_emissions(feeds, anchors=None):
     """
     gCO2e per USEFUL kWh by route, all-island.
@@ -6848,6 +6936,13 @@ def main():
             derived["heat_emissions"] = he
     except Exception as exc:
         log(f"heat emissions: failed ({exc.__class__.__name__}) - "
+            "the rest of the panel is unaffected")
+    try:
+        dd = derive_dispatch_down()
+        if dd:
+            derived["dispatch_down"] = dd
+    except Exception as exc:
+        log(f"dispatch down: failed ({exc.__class__.__name__}) - "
             "the rest of the panel is unaffected")
     _flat = len(json.dumps(_h, separators=(",", ":")))
     derived["history"] = compact_history(_h)
