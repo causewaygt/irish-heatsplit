@@ -655,4 +655,57 @@ ddPanel(null);
 ok(/coming build/.test(DOM.ddChart.textContent),
    "and a payload without the series declines cleanly");
 
+// ---- what the spilled energy was worth ----------------------------
+DD.price_month_mean = ddFix.price_month_mean;
+["IE","NI"].forEach(j=>{
+  const src = ddFix.jurisdictions[j], b = DD.jurisdictions[j];
+  b.value_eur_m = {};
+  ["dd","cons","curt"].forEach(k=>{
+    const pk = src["price_" + k] || [];
+    b.value_eur_m[k] = src[k].map((v,i)=>
+      (pk[i] && v) ? +(v*pk[i]/1000).toFixed(2) : 0);
+  });
+  b.value_naive_eur_m = src.dd.map((v,i)=>
+    ddFix.price_month_mean[i] ? +(v*ddFix.price_month_mean[i]/1000).toFixed(2) : 0);
+});
+["ddValue","ddValueNote"].forEach(k=>{DOM[k]=null; el(k);});
+ddValue(DD);
+const dv = DOM.ddValue.innerHTML;
+ok(!/NaN|undefined/.test(dv), "no NaN in the value chart");
+const vsvg = svgAt(dv, 0);
+ok(gridlinesSpread(vsvg, 4), "the value chart's gridlines spread");
+ok(noTextInsideBars(vsvg), "no value label sits inside a bar");
+// The axis on this chart is scaled to the NAIVE comparator line, which
+// sits above the bars by construction - that gap is the finding. So
+// the bars cannot fill it, and the threshold is lower here than on the
+// charts where the bars set their own scale.
+ok(usesItsAxis(vsvg, 0.3), "and its bars use the axis height");
+// THE POINT OF THE CHART: the weighted total must come out materially
+// BELOW the naive one. If a future join misaligns, the two converge -
+// which is exactly how the first attempt failed, and it looked
+// plausible rather than broken.
+const b = DD.jurisdictions.NI;
+const wtd = b.value_eur_m.dd.reduce((a,v)=>a+v,0);
+const naive = b.value_naive_eur_m.reduce((a,v)=>a+v,0);
+ok(wtd < naive * 0.8,
+   "spilled wind is worth materially less than the monthly average implies");
+ok(wtd > naive * 0.3, "but not implausibly less - the join is not broken");
+// constraint must be worth more per MWh than curtailment
+const pc = ddFix.jurisdictions.NI.price_cons.filter(v=>v),
+      pu = ddFix.jurisdictions.NI.price_curt.filter(v=>v);
+const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
+ok(mean(pc) > mean(pu) * 1.15,
+   "constraint hours clear well above curtailment hours");
+ok(/already compensated/.test(DOM.ddValueNote.textContent)
+   && /generator/.test(DOM.ddValueNote.textContent),
+   "the note says who would capture it, and that it differs by reason");
+ok(/upper bound/.test(DOM.ddValueNote.textContent),
+   "and that delivering the energy would itself soften the price");
+ok(!/value lost/i.test(dv) && /was worth/.test(html),
+   "the chart is titled what the energy was worth, not value lost");
+["ddValue","ddValueNote"].forEach(k=>{DOM[k]=null; el(k);});
+ddValue(null);
+ok(/coming build/.test(DOM.ddValue.textContent),
+   "and it declines cleanly without the series");
+
 console.log(checks + " front-end fixture checks passed");
