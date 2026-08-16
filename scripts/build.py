@@ -51,7 +51,24 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.21.0"
+PIPELINE_VERSION = "5.22.0"
+# 5.22.0: WHAT THE SPILLED ENERGY WAS WORTH. dd_convert.py now takes
+#   --prices, an hourly SEM day-ahead series, and emits the VOLUME-
+#   WEIGHTED price in the half-hours each reason was actually spilling
+#   alongside the month's plain average. The join derives UTC PER ROW
+#   from the file's own GMT_OFFSET column.
+#   THE RESULT IS THE POINT: spilled wind clears at roughly half the
+#   average price, because it is spilled when the wind blows and power
+#   is cheap. Island total since 2021 is EUR 721m at the prices of its
+#   own hours against EUR 1,218m at monthly averages - the naive figure
+#   overstates by 40%. Constraint hours clear ~40% above curtailment
+#   hours, so the volume a local heat load can absorb is also the more
+#   valuable volume.
+#   NOT A PAYMENT. Constrained wind with firm access is already
+#   compensated, so absorbing it saves the system operator and
+#   consumers; curtailed wind is not, so absorbing it is revenue the
+#   generator keeps. The panel is titled "what the energy was worth"
+#   for that reason and carries the split in its note.
 # 5.21.0: WIND DISPATCH-DOWN, monthly by jurisdiction and REASON, from
 #   EirGrid's own half-hourly DD files, 2021 to date. Shipped as a
 #   static docs/dispatch_down_monthly.json rather than fetched: the
@@ -6111,18 +6128,49 @@ def derive_dispatch_down(anchors=None):
            "reasons": [{"key": k, "label": lab, "group": g}
                        for k, lab, g in DD_REASONS],
            "spf": spf, "jurisdictions": {}}
+    if d.get("price_month_mean"):
+        out["price_month_mean"] = d["price_month_mean"]
+        out["price_unit"] = "EUR/MWh"
     for j, block in d["jurisdictions"].items():
         heat = {r: [round(v * s, 1) for v in block["dd"]]
                 for r, s in spf.items()}
         rate = [round(100 * dd / av, 2) if av else None
                 for dd, av in zip(block["dd"], block["avail"])]
-        out["jurisdictions"][j] = dict(block, rate_pct=rate, heat=heat)
+        # WHAT THE SPILLED ENERGY WAS WORTH: volume in GWh times the
+        # price in the half-hours it was actually spilling. Not a
+        # payment, and not the constraint payment - who captures it
+        # depends on the arrangement, and differs by reason. Constrained
+        # wind with firm access is already compensated, so absorbing it
+        # saves the system operator and consumers; curtailed wind is
+        # not, so absorbing it is revenue the generator keeps.
+        val = {}
+        for k in ("dd", "cons", "curt"):
+            pk = block.get("price_" + k)
+            if not pk:
+                continue
+            val[k] = [round(v * p / 1000.0, 2) if (p and v) else 0.0
+                      for v, p in zip(block[k], pk)]
+        # the same volume valued at the month's plain average, which is
+        # the naive figure this panel exists to correct
+        naive = [round(v * p / 1000.0, 2) if p else 0.0
+                 for v, p in zip(block["dd"], d.get("price_month_mean")
+                                 or [None] * len(months))]
+        out["jurisdictions"][j] = dict(block, rate_pct=rate, heat=heat,
+                                       value_eur_m=val,
+                                       value_naive_eur_m=naive)
     for j, b in out["jurisdictions"].items():
         tot = sum(b["dd"])
-        log(f"dispatch down: {j} wind {tot:.0f} GWh over {len(months)} "
-            f"months, {100 * sum(b['cons']) / max(tot, 1):.0f}% constraint; "
-            f"at network SPF {spf['network']} that is "
-            f"{sum(b['heat']['network']) / 1000:.1f} TWh of heat")
+        line = (f"dispatch down: {j} wind {tot:.0f} GWh over {len(months)} "
+                f"months, {100 * sum(b['cons']) / max(tot, 1):.0f}% "
+                f"constraint; at network SPF {spf['network']} that is "
+                f"{sum(b['heat']['network']) / 1000:.1f} TWh of heat")
+        if b.get("value_eur_m"):
+            v = sum(b["value_eur_m"]["dd"])
+            n = sum(b["value_naive_eur_m"])
+            line += (f"; worth EUR {v:.0f}m at the prices of its own "
+                     f"hours against EUR {n:.0f}m at monthly averages "
+                     f"({100 * v / max(n, 1):.0f}%)")
+        log(line)
     return out
 
 
