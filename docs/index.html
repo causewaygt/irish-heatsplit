@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.20.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.20.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -121,6 +121,13 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 /* The volume chart is the quantity behind the price above it. It
    shares the x-axis, so it sits close under the price legend rather
    than reading as a separate exhibit. */
+/* Cards sitting over a three-bar chart: match the plot's own margins
+   so each figure is centred on its bar. Equal thirds across the full
+   width would leave the first card about 5% left of its bar. */
+.hstats.overbars{display:grid;grid-template-columns:repeat(3,1fr);
+  padding:0 1.4% 0 6%;gap:0;text-align:center;margin-bottom:2px}
+.hstats.overbars .hstat{align-items:center}
+.hstats.overbars .hlab{max-width:260px;margin-left:auto;margin-right:auto}
 .hstat .hval.ok{color:var(--green)}
 .hstat .hval.over{color:var(--amber)}
 .emit{margin:6px 0 10px}
@@ -1092,12 +1099,15 @@ function gridPanel(th){
   let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
     + '" role="img" aria-label="GW at the binding hour by route, '
     + 'against the ceiling">';
+  // gt.values are in GW; y() works in MW. Feeding one to the other put
+  // every gridline on the baseline and printed seven zeroes.
   gt.values.forEach(v=>{
-    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(v)+'" y2="'+y(v)
+    const yv = y(v * 1000);
+    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+yv+'" y2="'+yv
       + '" stroke="var(--line)" stroke-width="1"/>'
-      + '<text x="'+(P.l-10)+'" y="'+(y(v)+5)+'" text-anchor="end" '
+      + '<text x="'+(P.l-10)+'" y="'+(yv+5)+'" text-anchor="end" '
       + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
-      + 'monospace">'+fmt(gw(v),0)+'</text>';
+      + 'monospace">'+fmt(v,0)+'</text>';
   });
   rows.forEach((r,i)=>{
     const cx = P.l + bw*i + bw/2, x0 = cx - inner/2;
@@ -1118,8 +1128,8 @@ function gridPanel(th){
       + 'sans-serif">'+r.name.toLowerCase()+'</text>';
   });
   s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(th.ceiling_mw)
-    + '" y2="'+y(th.ceiling_mw)+'" stroke="var(--ink2)" '
-    + 'stroke-width="1.2" stroke-dasharray="7 4"/>'
+    + '" y2="'+y(th.ceiling_mw)+'" stroke="#fff" '
+    + 'stroke-width="2" stroke-dasharray="9 5"/>'
     + '<text x="'+P.l+'" y="20" font-size="13" fill="#fff" '
     + 'font-family="IBM Plex Mono,monospace">\u2014 \u2014  capacity to '
     + 'deliver\u2020 ' + fmt(gw(th.ceiling_mw),1) + ' GW</text>'
@@ -1164,7 +1174,7 @@ function gridPanel(th){
       + 'inside today\u2019s fleet <span class="sub">\u2014 the largest '
       + 'share that could move to each route before the tightest hour '
       + 'binds<span class="dag">\u2020</span></span></h3>';
-    h += '<div class="hstats">';
+    h += '<div class="hstats overbars">';
     srows.forEach(r=>{
       h += '<div class="hstat"><div class="hval" style="color:' + r.col
         + '">' + fmt(r.pct,0) + '<span style="font-size:.5em">%</span>'
@@ -1207,8 +1217,8 @@ function gridPanel(th){
         + 'sans-serif">'+r.name.toLowerCase()+'</text>';
     });
     g2 += '<line x1="'+Q.l+'" x2="'+(SW-Q.r)+'" y1="'+sy(100)+'" y2="'
-      + sy(100)+'" stroke="var(--ink2)" stroke-width="1.2" '
-      + 'stroke-dasharray="7 4"/>'
+      + sy(100)+'" stroke="#fff" stroke-width="2" '
+      + 'stroke-dasharray="9 5"/>'
       + '<text x="'+Q.l+'" y="20" font-size="13" fill="#fff" '
       + 'font-family="IBM Plex Mono,monospace">\u2014 \u2014  100% = all '
       + 'of the island\u2019s building heat</text>'
@@ -2675,7 +2685,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.20.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.20.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
