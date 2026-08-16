@@ -309,8 +309,29 @@ ok(/0\.1 GW of spare capacity left/.test(gp),
    "and one that does says how much spare is left");
 ok(/capacity to deliver/.test(gp) && /stroke-dasharray/.test(gp),
    "the ceiling is a dashed rule across the chart, labelled");
-ok((gp.match(/<rect /g)||[]).length === 6,
-   "three bars, each a grey base plus a coloured increment");
+// the ceiling label used to sit ON the line and ran through the bars,
+// unreadable where it crossed them. It is now right-anchored above the
+// line, and its composition sits in its own band at the top.
+ok(/text-anchor="end"[^>]*>capacity to deliver/.test(gp),
+   "the ceiling label is right-anchored, clear of the bars");
+ok(/de-rated dispatchable block/.test(gp)
+   && /wind and solar that actually blew/.test(gp),
+   "and the ceiling's composition has its own band above the plot");
+ok(!/capacity to deliver[^<]*GW \(/.test(gp),
+   "the long parenthetical no longer rides on the dashed line");
+ok((gp.match(/<rect /g)||[]).length === 9,
+   "six rects for three two-part bars, plus three for the share chart");
+ok(/102%/.test(gp) && /71%/.test(gp) && /210%/.test(gp),
+   "the share sub-panel shows each route's share as a card and a bar");
+ok(/100% \u2014 all of the island\u2019s building heat/.test(gp),
+   "with a dashed rule at 100%, labelled");
+ok(/clears a full electrification of heat, with room over/.test(gp)
+   && /the fleet binds before the heat is fully electrified/.test(gp),
+   "and says plainly which routes clear it and which do not");
+ok(/asked the other way round/.test(gp),
+   "the note distinguishes the solved share from the fixed fifth above");
+ok((gp.match(/<svg /g)||[]).length === 2,
+   "two charts in the panel, one per sub-panel");
 ok(/actual use/.test(gp) && /20% what-if/.test(gp),
    "the legend names the grey base and the coloured increment");
 ok(/GW at the binding hour/.test(gp), "the y-axis is labelled");
@@ -320,8 +341,6 @@ ok(/1\.32x its power system/.test(gp),
    "the heat-system-against-power-system ratio is on the page");
 ok(/peak-capacity test, not an energy test/.test(gp),
    "and the framing that must travel with it");
-ok(/102\.4%/.test(gp) && /all of it, with room over/.test(gp),
-   "shares that fit are tabled, and above 100% is spelled out");
 // the jurisdiction states must not show island figures under an NI label
 GJUR = "ni"; DOM.gridPanel = null; el("gridPanel");
 gridPanel(TH);
