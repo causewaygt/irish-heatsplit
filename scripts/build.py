@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.23.0"
+PIPELINE_VERSION = "5.23.1"
 # 5.23.0: WORKED EXAMPLES of absorbing the constrained wind. A
 #   different kind of claim from every other panel - it sizes the SINK
 #   ("what scale of load would it take") rather than claiming a
@@ -6240,9 +6240,11 @@ def derive_odd_examples(dd, anchors=None):
     a = anchors or ANCHORS
     b = dd["jurisdictions"]["NI"]
     months = dd["months"]
-    last12 = [i for i, m in enumerate(months) if m >= months[-1][:4] + "-01"] \
-        or list(range(len(months)))[-12:]
-    yr = [i for i, m in enumerate(months) if m.startswith("2025")] or last12
+    # ROLLING TWELVE MONTHS, not a calendar year. It keeps the panel
+    # current without waiting for a year to close, and it lands on the
+    # same window as the hourly store, so a spill-weighted COP computed
+    # later covers exactly these months rather than a different set.
+    yr = list(range(len(months)))[-12:]
     cons = sum(b["cons"][i] for i in yr)          # GWh electricity
     spf = dd["spf"]["network"]
     heat = cons * spf                             # GWh of heat
@@ -6253,7 +6255,9 @@ def derive_odd_examples(dd, anchors=None):
     hosp_gwh = hosp["eui_kwh_m2"] * hosp["heat_share"] \
         * hosp["floor_m2"] / 1e6
     out = {
-        "basis_year": months[yr[0]][:4],
+        "basis_from": months[yr[0]],
+        "basis_to": months[yr[-1]],
+        "basis_months": len(yr),
         "constrained_gwh": round(cons, 1),
         "heat_gwh": round(heat, 1),
         "ni_delivered_heat_gwh": round(ni_heat, 0),
@@ -6262,8 +6266,9 @@ def derive_odd_examples(dd, anchors=None):
                          equivalent=round(heat / max(hosp_gwh, 0.1))),
         "domestic": dict(AGBONAYE),
     }
-    log(f"odd examples: NI constrained wind {cons:.0f} GWh in "
-        f"{out['basis_year']} -> {heat:.0f} GWh of heat at SPF {spf}, "
+    log(f"odd examples: NI constrained wind {cons:.0f} GWh in the "
+        f"{len(yr)} months {out['basis_from']}..{out['basis_to']} -> "
+        f"{heat:.0f} GWh of heat at SPF {spf}, "
         f"{out['share_of_ni_heat_pct']:.0f}% of NI delivered building "
         f"heat; equivalent to {out['hospital']['equivalent']} hospitals "
         f"of {hosp_gwh:.1f} GWh \u2020 - which is why the published "
