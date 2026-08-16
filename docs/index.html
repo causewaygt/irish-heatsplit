@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.16.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.17.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -137,9 +137,13 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
   padding:4px 14px 4px 0;border-bottom:1px solid var(--line)}
 .caltab td{padding:3px 14px 3px 0;border-bottom:1px solid var(--line)}
 .caltab td:first-child{color:var(--green);white-space:nowrap}
-.foldh{font-family:'IBM Plex Mono',monospace;font-size:.72rem;
-  text-transform:uppercase;letter-spacing:.1em;color:var(--green);
-  margin:18px 0 8px}
+/* Panel subtitles. Were green mono at 0.72rem, which read as a code
+   comment rather than a heading and sat too close to what came before. */
+.foldh{font-family:'Lato',sans-serif;font-size:11pt;font-weight:700;
+  text-transform:uppercase;letter-spacing:.09em;color:#fff;
+  margin:34px 0 12px}
+.foldh .sub{text-transform:none;letter-spacing:0;font-weight:400;
+  color:var(--muted);font-size:.85em}
 .volchart{margin-top:6px}
 /* WINDOW reads at panel 1's size and wording. It is the same control
    doing the same job, so it should not look like a caption here and a
@@ -531,7 +535,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <summary>How this is estimated, and why it is not metered</summary>
       <div class="foldbody" id="costMethod"></div>
     </details>
-    <h3 class="foldh" style="margin-top:22px">What heat emits</h3>
+    <h3 class="foldh">What heat emits</h3>
     <div id="emitBars"></div>
     <p class="note" id="emitNote"></p>
     <details class="fold">
@@ -1028,9 +1032,8 @@ function gridPanel(th){
   }).filter(Boolean);
   if(!rows.length){ box.innerHTML = ''; return; }
 
-  let h = '<h3 class="foldh" style="margin-top:4px">The tightest hour of '
-    + 'the year <span style="text-transform:none;letter-spacing:0;'
-    + 'color:var(--muted)">\u2014 what the island\u2019s power stations '
+  let h = '<h3 class="foldh">The tightest hour of the year '
+    + '<span class="sub">\u2014 what the island\u2019s power stations '
     + 'would have to cover with the new fifth of electrified heat'
     + '<span class="dag">\u2020</span></span></h3>';
 
@@ -1055,10 +1058,14 @@ function gridPanel(th){
   // what-if adds on top, against the ceiling as a dashed rule. The
   // grey base is the same on every bar - only the increment differs,
   // which is the whole point of the comparison.
-  const W = 1000, H = 300, P = {t:34, r:14, b:44, l:52};
-  const hi = Math.max(th.ceiling_mw, ...rows.map(r=>r.tot)) * 1.12;
+  // The ceiling label used to sit ON the dashed line and ran straight
+  // through the bars, unreadable where it crossed them. It now has its
+  // own band above the plot, and the plot top leaves room for the
+  // increment labels rather than pushing them onto the gridline.
+  const W = 1000, H = 340, P = {t:56, r:14, b:52, l:56};
+  const hi = Math.max(th.ceiling_mw, ...rows.map(r=>r.tot)) * 1.10;
   const y = v => P.t + (1 - v/hi)*(H-P.t-P.b);
-  const bw = (W-P.l-P.r)/rows.length, inner = Math.min(150, bw*0.5);
+  const bw = (W-P.l-P.r)/rows.length, inner = Math.min(120, bw*0.42);
   let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
     + '" role="img" aria-label="GW at the binding hour by route, '
     + 'against the ceiling">';
@@ -1091,12 +1098,15 @@ function gridPanel(th){
   s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(th.ceiling_mw)
     + '" y2="'+y(th.ceiling_mw)+'" stroke="var(--ink2)" '
     + 'stroke-width="1.2" stroke-dasharray="7 4"/>'
-    + '<text x="'+(P.l+6)+'" y="'+(y(th.ceiling_mw)-7)+'" font-size="11" '
-    + 'fill="var(--muted)" font-family="IBM Plex Mono,monospace">'
-    + 'capacity to deliver\u2020 \u2014 ' + fmt(gw(th.ceiling_mw),1)
-    + ' GW (' + fmt(gw(th.block_mw),1) + ' GW block + '
-    + fmt(gw(th.wind_solar_mw),1) + ' GW wind and solar that blew)</text>'
-    + '<text x="14" y="'+(H/2)+'" transform="rotate(-90 14 '+(H/2)
+    + '<text x="'+(W-P.r)+'" y="'+(y(th.ceiling_mw)-8)+'" '
+    + 'text-anchor="end" font-size="11" fill="var(--ink2)" '
+    + 'font-family="IBM Plex Mono,monospace">capacity to deliver'
+    + '\u2020 \u2014 ' + fmt(gw(th.ceiling_mw),1) + ' GW</text>'
+    + '<text x="'+P.l+'" y="20" font-size="11" fill="var(--muted)" '
+    + 'font-family="IBM Plex Mono,monospace">' + fmt(gw(th.block_mw),1)
+    + ' GW de-rated dispatchable block\u2020 + ' + fmt(gw(th.wind_solar_mw),1)
+    + ' GW of wind and solar that actually blew in that hour</text>'
+    + '<text x="16" y="'+(H/2)+'" transform="rotate(-90 16 '+(H/2)
     + ')" text-anchor="middle" font-size="11" fill="var(--muted)" '
     + 'font-family="Lato, sans-serif">GW at the binding hour</text></svg>';
   h += '<div class="legend"><span><span class="k" style="background:'
@@ -2455,7 +2465,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.16.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.17.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
