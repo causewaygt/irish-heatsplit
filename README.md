@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.21.0 / site 5.20.2.
+(Causeway Geothermal NI Ltd). Pipeline 5.22.0 / site 5.21.0.
 
 ## The premise
 
@@ -999,6 +999,40 @@ anchor point alone missed the original fault, whose start sat in a gap
 and whose body crossed the next two bars, so it now estimates the glyph
 span.
 
+**What the spilled energy was worth (5.22.0).** `dd_convert.py` now takes
+`--prices`, an hourly SEM day-ahead series, and emits the
+**volume-weighted price in the half-hours each reason was actually
+spilling** alongside the month's plain average. The join derives UTC per
+row from the dispatch-down file's own `GMT_OFFSET` column rather than
+assuming a fixed offset.
+
+**Spilled wind clears at roughly half the average price**, because it is
+spilled when the wind blows and power is cheap. Island total since 2021:
+**€721m at the prices of its own hours against €1,218m at monthly
+averages** — the naive figure overstates by 40%. The chart plots the
+weighted value as bars and the naive figure as a dashed line, so the gap
+between them is the correction rather than a claim made in prose.
+
+**Constraint hours clear about 40% above curtailment hours** — 61% of
+average against 43% — because curtailment fires on the system-wide
+conditions that also crush the price, while local network constraint
+does not. So the volume a local heat load can absorb is also the more
+valuable volume.
+
+**It is not a payment, and the panel says so.** Constrained wind with
+firm access is already compensated, so absorbing it saves the system
+operator and consumers; curtailed wind generally is not, so absorbing it
+is revenue the generator keeps. Delivering the energy would also soften
+the price in those hours, so even the weighted figure is an upper bound
+on market value — though not on the heat, which is unaffected.
+
+**A source caution.** Two published price series were compared and found
+to disagree by a full day; the weekday profile settled which was right
+(Sunday cheapest, not Monday). The error was hard to see because a date
+shift pulls the weighted figure *toward* the mean, which looks like a
+plausible answer rather than a broken one. A fixture test now fails if
+the weighted and naive totals converge.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1140,7 +1174,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 139 front-end fixture checks
+node tests/test_vol.js            # 150 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
