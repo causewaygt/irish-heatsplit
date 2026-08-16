@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.21.0 / site 5.20.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.21.0 / site 5.20.2.
 
 ## The premise
 
@@ -972,6 +972,33 @@ Both dashed rules — the capacity ceiling and the 100% line — are now
 white at 2px, and the share cards are laid out on the plot's own margins
 so each figure sits over its bar rather than 5% to the left of it.
 
+**Charting harness rebuilt (site 5.20.2).** Three changes, after two
+charts shipped visibly broken while their tests stayed green.
+
+*The harness evaluates the whole script block once* rather than lifting
+each function by its own regex. The per-function lifts worked while
+renderers were self-contained and broke as soon as they shared helpers —
+three consecutive runs failed on "X is not defined" before a single
+assertion ran, and `MONTHS3` ended up lifted twice. One consequence is
+worth knowing: `let` and `const` declarations inside an eval do not
+persist, only function declarations do, so the page's state is exposed
+through accessors defined inside the eval itself.
+
+*That immediately caught two false passes.* The harness had been
+defining its own `fmt` stub, so several assertions had never met the
+page's real formatter — which uses `minimumFractionDigits: 0` and prints
+2.80 as "2.8" and 1.046 GW as "1 GW".
+
+*Shared geometric predicates* now back every chart: `gridlinesSpread`,
+`noTextInsideBars` and `usesItsAxis`, each scoped to a single `<svg>`.
+Both shipped faults were geometry, and both passed a suite that only
+asked whether elements existed. All three are proven by mutation — the
+collapsed axis, a squashed scale and a label crossing the bars each make
+the suite fail. The label predicate needed a second pass: testing the
+anchor point alone missed the original fault, whose start sat in a gap
+and whose body crossed the next two bars, so it now estimates the glyph
+span.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1113,7 +1140,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 182 tests, no network
-node tests/test_vol.js            # 130 front-end fixture checks
+node tests/test_vol.js            # 139 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
