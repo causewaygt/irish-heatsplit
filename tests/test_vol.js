@@ -708,4 +708,51 @@ ddValue(null);
 ok(/coming build/.test(DOM.ddValue.textContent),
    "and it declines cleanly without the series");
 
+// ---- worked examples: sizing the sink, not claiming a saving ------
+["oddEx","oddExNote"].forEach(k=>{DOM[k]=null; el(k);});
+oddExamples({basis_year:"2025", constrained_gwh:562.5, heat_gwh:2391.8,
+  ni_delivered_heat_gwh:10888, share_of_ni_heat_pct:22.0,
+  hospital:{eui_kwh_m2:211, heat_share:0.6, floor_m2:55000,
+            heat_gwh:7.0, equivalent:344,
+            source:"ERIC 2024/25 acute mean, heat share \u2020"},
+  domestic:{subscribers:250000, constraint_cut_pct:67,
+            curtailment_cut_pct:74, household_saving_gbp:220,
+            farm_10mw_gbp:19400, operator_saving_pct:78,
+            cite:"Agbonaye, Keatley, Huang, Odiase & Hewitt (2022), "
+                 + "Renewable Energy 190:487\u2013500"}});
+const ox = DOM.oddEx.innerHTML, oxn = DOM.oddExNote.innerHTML;
+ok(!/NaN|undefined/.test(ox + oxn), "no NaN in the worked examples");
+// the unit sits in a nested span, so figure and unit are not
+// contiguous in the markup
+ok(/2,392/.test(ox) && /GWh/.test(ox) && /22</.test(ox),
+   "the heat volume and its share of NI building heat are stated");
+ok(/344/.test(ox) && /ten acute sites/.test(ox),
+   "the hospital count is set against the size of the actual estate");
+ok(/250k/.test(ox) && /74% less curtailment/.test(ox),
+   "and the published domestic optimum sits beside it");
+// THE EPISTEMIC LABEL. This panel is a different kind of claim from
+// everything above it and must say so, or it reads as measurement.
+ok(/Worked examples/.test(oxn) && /not\s+measurements/.test(oxn),
+   "the panel declares itself worked examples, not measurements");
+ok(/size the LOAD it would take, not heat delivered/.test(oxn),
+   "and that it sizes the load rather than claiming heat delivered");
+ok(/outside the heating season/.test(oxn) && /storage/.test(oxn),
+   "the coincidence objection is stated, not left for a reviewer");
+// Agbonaye is quoted, attributed and not re-derived - the supervisor
+// is a named peer reviewer, so the citation has to be exact
+ok(/Agbonaye, Keatley, Huang, Odiase &amp; Hewitt \(2022\)/.test(oxn)
+   || /Agbonaye, Keatley, Huang, Odiase & Hewitt \(2022\)/.test(oxn),
+   "the domestic figures are attributed to the paper in full");
+ok(/Renewable Energy 190:487/.test(oxn), "with the journal reference");
+ok(/quoted rather than re-derived/.test(oxn),
+   "and stated as quoted rather than recomputed");
+// the hospital benchmark's weakest joint must be admitted
+ok(/heat share is[\s\S]{0,20}ours/.test(oxn)
+   && /ERIC publishes total energy/.test(oxn),
+   "the hospital heat share is declared as ours, not ERIC's");
+["oddEx","oddExNote"].forEach(k=>{DOM[k]=null; el(k);});
+oddExamples(null);
+ok(/coming build/.test(DOM.oddEx.textContent),
+   "and the panel declines cleanly without the block");
+
 console.log(checks + " front-end fixture checks passed");
