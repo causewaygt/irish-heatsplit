@@ -51,7 +51,23 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.22.0"
+PIPELINE_VERSION = "5.23.0"
+# 5.23.0: WORKED EXAMPLES of absorbing the constrained wind. A
+#   different kind of claim from every other panel - it sizes the SINK
+#   ("what scale of load would it take") rather than claiming a
+#   benefit, because sizing survives the coincidence objection and a
+#   benefit claim does not. Half the spill falls outside the heating
+#   season and only 44% between midnight and six.
+#   THE RESULT IS THE POINT AND IT IS NOT THE ONE EXPECTED: NI's
+#   constrained wind in 2025 was 563 GWh, or 2,392 GWh of heat at
+#   network SPF - 22% of all the building heat NI uses. That needs 344
+#   hospitals of 7.0 GWh against an acute estate of about ten. So
+#   institutional anchor loads CANNOT absorb this volume, which is why
+#   the published answer is 250,000 households. The hospital is the
+#   demonstrator; the aggregation is the scale.
+#   Domestic figures are Agbonaye, Keatley, Huang, Odiase & Hewitt
+#   (2022) Renewable Energy 190:487-500, quoted not re-derived - Prof
+#   Hewitt is a named peer reviewer for this work.
 # 5.22.0: WHAT THE SPILLED ENERGY WAS WORTH. dd_convert.py now takes
 #   --prices, an hourly SEM day-ahead series, and emits the VOLUME-
 #   WEIGHTED price in the half-hours each reason was actually spilling
@@ -6174,6 +6190,88 @@ def derive_dispatch_down(anchors=None):
     return out
 
 
+# Worked examples of absorbing dispatched-down wind. WORKED EXAMPLES,
+# not measurements - a different kind of claim from every other panel
+# on the site, and labelled as such. They size the SINK ("what scale of
+# load would it take") rather than claim a benefit, because sizing is
+# robust to the coincidence objection and a benefit claim is not: half
+# the spill lands outside the heating season and only 44% of it in the
+# small hours, so nothing here should be read as heat delivered.
+#
+# The domestic figures are Agbonaye, Keatley, Huang, Odiase & Hewitt
+# (2022), Renewable Energy 190:487-500, doi 10.1016/j.renene.2022.03.131
+# - same jurisdiction, four SONI constraint groups, 2019 dispatch-down,
+# spatial and hourly. Quoted as the paper's own results, not re-derived.
+ODD_HOSPITAL = {
+    # ERIC 2024/25, 1,104 English acute sites, mean 211 kWh/m2 - TOTAL
+    # energy, so the heat share is ours and daggered. NHS Scotland and
+    # NI do not publish an equivalent series.
+    "eui_kwh_m2": 211,
+    "heat_share": 0.60,
+    "floor_m2": 55000,
+    "source": "ERIC 2024/25 acute mean, heat share \u2020",
+}
+AGBONAYE = {
+    "subscribers": 250000,
+    "constraint_cut_pct": 67,
+    "curtailment_cut_pct": 74,
+    "household_saving_gbp": 220,
+    "farm_10mw_gbp": 19400,
+    "operator_saving_pct": 78,
+    "cite": "Agbonaye, Keatley, Huang, Odiase & Hewitt (2022), "
+            "Renewable Energy 190:487\u2013500",
+}
+
+
+def derive_odd_examples(dd, anchors=None):
+    """
+    What scale of load it would take to absorb Northern Ireland's
+    constrained wind, worked two ways.
+
+    NI because that is where the spill is both largest as a share and
+    overwhelmingly LOCAL constraint - the only kind a local load can
+    address. The arithmetic is deliberately simple and the point is the
+    ORDER OF MAGNITUDE: institutional anchor loads cannot absorb this
+    volume, which is why the published answer is an aggregation of a
+    quarter of a million households rather than a list of large sites.
+    """
+    if not dd or "NI" not in dd.get("jurisdictions", {}):
+        return None
+    a = anchors or ANCHORS
+    b = dd["jurisdictions"]["NI"]
+    months = dd["months"]
+    last12 = [i for i, m in enumerate(months) if m >= months[-1][:4] + "-01"] \
+        or list(range(len(months)))[-12:]
+    yr = [i for i, m in enumerate(months) if m.startswith("2025")] or last12
+    cons = sum(b["cons"][i] for i in yr)          # GWh electricity
+    spf = dd["spf"]["network"]
+    heat = cons * spf                             # GWh of heat
+    ni_heat = (a["ni"]["residential_heat_twh"]
+               + a["ni"]["services_heat_twh"]) * 1000 \
+        * a.get("delivered_over_input_ni", 0.8375)
+    hosp = ODD_HOSPITAL
+    hosp_gwh = hosp["eui_kwh_m2"] * hosp["heat_share"] \
+        * hosp["floor_m2"] / 1e6
+    out = {
+        "basis_year": months[yr[0]][:4],
+        "constrained_gwh": round(cons, 1),
+        "heat_gwh": round(heat, 1),
+        "ni_delivered_heat_gwh": round(ni_heat, 0),
+        "share_of_ni_heat_pct": round(100 * heat / max(ni_heat, 1), 1),
+        "hospital": dict(hosp, heat_gwh=round(hosp_gwh, 1),
+                         equivalent=round(heat / max(hosp_gwh, 0.1))),
+        "domestic": dict(AGBONAYE),
+    }
+    log(f"odd examples: NI constrained wind {cons:.0f} GWh in "
+        f"{out['basis_year']} -> {heat:.0f} GWh of heat at SPF {spf}, "
+        f"{out['share_of_ni_heat_pct']:.0f}% of NI delivered building "
+        f"heat; equivalent to {out['hospital']['equivalent']} hospitals "
+        f"of {hosp_gwh:.1f} GWh \u2020 - which is why the published "
+        f"answer is {AGBONAYE['subscribers']:,} households, not a list "
+        f"of large sites")
+    return out
+
+
 def derive_heat_emissions(feeds, anchors=None):
     """
     gCO2e per USEFUL kWh by route, all-island.
@@ -6989,6 +7087,9 @@ def main():
         dd = derive_dispatch_down()
         if dd:
             derived["dispatch_down"] = dd
+            ex = derive_odd_examples(dd)
+            if ex:
+                derived["odd_examples"] = ex
     except Exception as exc:
         log(f"dispatch down: failed ({exc.__class__.__name__}) - "
             "the rest of the panel is unaffected")
