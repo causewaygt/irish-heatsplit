@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.15.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.20.1 / site 5.16.0.
 
 ## The premise
 
@@ -858,6 +858,26 @@ stayed at 1,436 kB when the grid views should have added about 34 kB.
 when they are absent; the first write stays where it is so a payload
 still lands if the hourly step throws.
 
+**The tightest hour of the year, in the UK sibling's layout (site
+5.16.0).** Four cards — the binding hour with its temperature and the
+wind and solar that blew, then each route's **total** requirement in GW
+rather than just its increment, with the spare capacity left or the
+amount it goes over. Beneath, stacked bars: a grey base of what the
+island was already using in that hour, identical on every bar, plus the
+coloured increment the what-if adds, against the ceiling as a dashed
+rule. Only the increment differs between bars, which is the comparison
+the panel exists to make.
+
+Route colours are the same here, on the price chart and on the three-view
+chart, so a route reads as one colour across the whole page.
+
+The ceiling label states its construction inline — de-rated dispatchable
+block plus the wind and solar actually generated — because that figure
+is the panel's most contestable input and should not need a footnote to
+find. **Note that `GRID_BLOCK_MW` remains under review**: the AIRAA
+Appendix 3 it cites is a plant register, and whether the 8,595 MW is
+installed or de-rated is unresolved.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -999,7 +1019,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 181 tests, no network
-node tests/test_vol.js            # 100 front-end fixture checks
+node tests/test_vol.js            # 105 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
