@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.19.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.20.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -578,6 +578,15 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <div id="gridPanel">The grid layer arrives with a coming build. The
       binding-hour computation runs and is logged today; it is not
       published until the three views below it are built.</div>
+    <h3 class="foldh">Wind that was thrown away
+      <span class="sub">&mdash; and why, month by month since 2021</span></h3>
+    <div class="costctl costjur" id="ddCtl">
+      <span>WHERE</span>
+      <button data-ddjur="NI" aria-pressed="true">NORTHERN IRELAND</button>
+      <button data-ddjur="IE">REPUBLIC OF IRELAND</button>
+    </div>
+    <div id="ddChart"></div>
+    <p class="note" id="ddNote"></p>
   </div>
 </section>
 
@@ -969,7 +978,18 @@ function emitPanel(he){
 // the ceiling: the SEM is one all-island market with one dispatch, so
 // a separate northern ceiling would invent a constraint. Live now so
 // the toggle is not decorative while the panel is being built.
-let GJUR = "all", GTH = null, GGV = null;
+let GJUR = "all", GTH = null, GGV = null, GDD = null;
+// Defaults to Northern Ireland: it is the jurisdiction where the
+// spill is largest AND overwhelmingly local, which is the finding.
+let DDJUR = "NI";
+document.querySelectorAll("[data-ddjur]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    DDJUR = b.dataset.ddjur;
+    document.querySelectorAll("[data-ddjur]").forEach(x=>
+      x.setAttribute("aria-pressed", String(x === b)));
+    ddPanel(GDD);
+  });
+});
 document.querySelectorAll("[data-gview]").forEach(b=>{
   b.addEventListener("click", ()=>{
     GVIEW = b.dataset.gview;
@@ -1257,6 +1277,98 @@ function niceTicks(max, want){
   const out = [];
   for(let v = 0; v <= best.top + 1e-9; v += best.step) out.push(v);
   return {top: best.top, values: out};
+}
+
+// ------------------------------- dispatch-down, monthly since 2021
+// Stacked by REASON, not by the constraint/curtailment fold, because
+// the fold hides the finding: Northern Ireland's spill is
+// overwhelmingly transmission constraint - the local kind a local heat
+// load can absorb - while the Republic's is far more system-wide.
+const DD_COL = {trans:"#3AAA35", test:"#7FBF7B", hifrq:"#C98F4F",
+                snsp:"#4FA3C7", rocof:"#A98FD0", other:"#5A6B64"};
+function ddPanel(dd){
+  const box = el("ddChart"), note = el("ddNote");
+  if(!box) return;
+  if(!dd || !dd.months || !dd.jurisdictions){
+    box.textContent = "The dispatch-down series arrives with a coming build.";
+    if(note) note.textContent = "";
+    return;
+  }
+  const j = (DDJUR === "IE") ? "IE" : "NI";
+  const b = dd.jurisdictions[j], m = dd.months;
+  if(!b) { box.textContent = ""; return; }
+  const keys = dd.reasons.filter(r => r.group !== "other")
+    .map(r => r.key).filter(k => b[k] && b[k].some(v => v > 0));
+  const W = 1000, H = 340, P = {t:62, r:56, b:52, l:60};
+  const tops = m.map((_, i) => keys.reduce((s,k) => s + (b[k][i]||0), 0));
+  const t = niceTicks(Math.max(...tops) * 1.04, 4);
+  const y = v => P.t + (1 - v/t.top)*(H-P.t-P.b);
+  const bw = (W-P.l-P.r)/m.length, iw = Math.max(2, bw*0.78);
+  const hiR = Math.max(...b.rate_pct.filter(v => v != null)) * 1.1 || 1;
+  const yr = v => P.t + (1 - v/hiR)*(H-P.t-P.b);
+  let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
+    + '" role="img" aria-label="Monthly wind dispatch-down by reason">';
+  t.values.forEach(v=>{
+    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(v)+'" y2="'+y(v)
+      + '" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="'+(P.l-10)+'" y="'+(y(v)+5)+'" text-anchor="end" '
+      + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
+      + 'monospace">'+fmt(v,0)+'</text>';
+  });
+  m.forEach((mm,i)=>{
+    let acc = 0;
+    const x0 = P.l + bw*i + (bw-iw)/2;
+    keys.forEach(k=>{
+      const v = b[k][i] || 0; if(v <= 0) return;
+      s += '<rect x="'+x0+'" y="'+y(acc+v)+'" width="'+iw+'" height="'
+        + Math.max(0, y(acc)-y(acc+v))+'" fill="'+(DD_COL[k]||"#888")+'"/>';
+      acc += v;
+    });
+  });
+  const pts = m.map((mm,i)=> b.rate_pct[i]==null ? null
+    : (i?"L":"M")+(P.l+bw*i+bw/2)+" "+yr(b.rate_pct[i])).filter(Boolean);
+  s += '<path d="'+pts.join("")+'" fill="none" stroke="#fff" '
+    + 'stroke-width="1.4" stroke-dasharray="3 3"/>';
+  [0, hiR/2, hiR].forEach(v=>{
+    s += '<text x="'+(W-P.r+8)+'" y="'+(yr(v)+5)+'" font-size="12" '
+      + 'fill="var(--muted)" font-family="IBM Plex Mono,monospace">'
+      + fmt(v,0)+'%</text>';
+  });
+  const seen = {};
+  m.forEach((mm,i)=>{ if(seen[mm.slice(0,4)]===undefined) seen[mm.slice(0,4)]=i; });
+  Object.keys(seen).forEach(yy=>{
+    s += '<text x="'+(P.l+bw*seen[yy]+bw/2)+'" y="'+(H-22)
+      + '" text-anchor="middle" font-size="13" fill="var(--ink2)" '
+      + 'font-family="Lato,sans-serif">'+yy+'</text>';
+  });
+  const tot = b.dd.reduce((a,v)=>a+v,0),
+        cons = b.cons.reduce((a,v)=>a+v,0);
+  s += '<text x="'+P.l+'" y="20" font-size="13" fill="#fff" '
+    + 'font-family="IBM Plex Mono,monospace">'
+    + (j==="NI" ? "Northern Ireland" : "Republic of Ireland")
+    + ' \u00b7 ' + fmt(tot,0) + ' GWh of wind spilled since 2021 \u00b7 '
+    + fmt(100*cons/Math.max(tot,1),0) + '% local constraint</text>'
+    + '<text x="'+P.l+'" y="38" font-size="12" fill="var(--muted)" '
+    + 'font-family="IBM Plex Mono,monospace">bars GWh a month by reason'
+    + ' \u00b7 dashed line, right axis: share of available wind spilled'
+    + '</text>'
+    + '<text x="16" y="'+(H/2)+'" transform="rotate(-90 16 '+(H/2)
+    + ')" text-anchor="middle" font-size="12" fill="var(--ink2)" '
+    + 'font-family="Lato, sans-serif">GWh dispatched down</text></svg>';
+  const leg = dd.reasons.filter(r => keys.indexOf(r.key) >= 0)
+    .map(r => '<span><span class="k" style="background:'+DD_COL[r.key]
+      + '"></span>'+r.label+' ('+r.group+')</span>').join("");
+  box.innerHTML = '<div class="legend">'+leg+'</div>'+s;
+  if(note){
+    const h = b.heat.network.reduce((a,v)=>a+v,0)/1000;
+    note.textContent = "Wind only. Over the same months that spilled "
+      + "electricity would have made about " + fmt(h,1) + " TWh of heat "
+      + "through a geothermal network at SPF " + fmt(dd.spf.network,2)
+      + ". That is an energy-scale statement, not a dispatch claim: it "
+      + "takes no account of whether the spill coincided with heat "
+      + "demand, and a large flexible load would itself change the "
+      + "dispatch.";
+  }
 }
 
 function drawGridViews(gv){
@@ -2542,6 +2654,8 @@ fetch('data.json').then(r=>{
   emitPanel((D.derived||{}).heat_emissions);
   GTH = (D.derived||{}).tightest_hour || null;
   GGV = (D.derived||{}).grid_views || null;
+  GDD = (D.derived||{}).dispatch_down || null;
+  ddPanel(GDD);
   gridPanel(GTH);
   drawGridViews(GGV);
   const hero=(D.derived||{}).hero;
@@ -2561,7 +2675,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.19.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.20.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
