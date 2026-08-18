@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.25.0 / site 5.23.2.
+(Causeway Geothermal NI Ltd). Pipeline 5.26.0 / site 5.24.0.
 
 ## The premise
 
@@ -1174,6 +1174,40 @@ any daylight cooling estimate downward. Night-time estimators are
 unaffected, solar being zero, which is why a weekday/weekend night
 contrast is the route that survives.
 
+**Panel 4: the rising demand for cooling (5.26.0 / site 5.24.0).**
+Replaces "The heat gap", which the dispatch-down work made redundant.
+Two bars on one axis — 10.6 TWh of useful cooling in 2023 against 12.9 by
+2034 — from the SEAI Comprehensive Assessment Technical Annex 2025,
+Figure 7, with the data centre block scaled on EirGrid's contracted
+demand trajectory (6.4 → 14.6 TWh of electricity). Data centres go from
+17% to 32% of Irish cooling, and every terawatt-hour of growth is theirs.
+
+**Only the data centre block is projected.** Industry, commercial and
+public are carried forward and drawn faded, labelled *held, not
+forecast* — because commercial cannot be projected while its two halves
+cannot be separated, and projecting it would produce the panel's
+conclusion by construction. A test fails if the held blocks are ever
+quietly grown.
+
+**The process/comfort boundary is a band, not a line.** Commercial's
+7.5 TWh is majority retail refrigeration by SEAI's own account, but SEAI
+does not draw the boundary and neither do we: a dashed band spans
+3.8–5.4 TWh, captioned as the boundary Irish statistics do not draw. The
+note states plainly that five methods of extracting a cooling signal from
+Irish electricity demand were tried and none identified one, so the
+comfort tier is unbounded above by anything we hold.
+
+**Three quantities kept apart, because two differ by a factor of eight.**
+Cooling electricity is what runs the plant; useful cooling is what the
+plant removes, and is what the bars show throughout; heat rejected is
+essentially the whole facility electricity, IT load included, because all
+of it leaves as heat. Only the last is the recoverable resource, and in
+Ireland much of it leaves without ever passing through a compressor.
+
+**Tier 2 sits outside the bars**, in a dashed outline with no committed
+width — a consumption survey cannot count non-consumption — and grows
+with the climate rather than the economy.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1315,7 +1349,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 188 front-end fixture checks
+node tests/test_vol.js            # 201 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
