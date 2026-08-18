@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.24.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.25.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -630,6 +630,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <span class="sub">&mdash; eleven terawatt-hours a year, and where the
       boundary between process and comfort is not drawn</span></h3>
     <div id="coolTiers"></div>
+    <div id="coolTierDefs"></div>
     <p class="note" id="coolTiersNote"></p>
   </div>
 </section>
@@ -1607,73 +1608,95 @@ function oddExamples(x){
 const COOL_COL = {datacentres:"#1F4E5F", industry:"#5A6B64",
                   commercial:null, public:"#4FA3C7"};
 function coolTiers(ct){
-  const box = el("coolTiers"), note = el("coolTiersNote");
+  const box = el("coolTiers"), note = el("coolTiersNote"),
+        defs = el("coolTierDefs");
   if(!box) return;
   if(!ct || !ct.tiers){
     box.textContent = "The cooling tiers arrive with a coming build.";
     if(note) note.textContent = "";
+    if(defs) defs.innerHTML = "";
     return;
   }
-  const W = 1000, H = 300, P = {t:58, r:20, b:56, l:82};
+  // Room at the top for TWO caption rows - the band labels used to sit
+  // at P.t-16 and collided with the header lines above them.
+  const W = 1000, H = 360, P = {t:104, r:22, b:62, l:88};
   const hi = niceTicks(Math.max(ct.total, ct.total_proj) * 1.06, 4);
   const x = v => P.l + (v / hi.top) * (W - P.l - P.r);
-  const bh = 44, gap = 34;
+  const bh = 46, gap = 38;
+  const y23 = P.t, y34 = P.t + bh + gap;
   let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
-    + '" role="img" aria-label="Irish cooling demand by tier, '
+    + '" role="img" aria-label="Irish cooling by tier, '
     + esc(ct.base_year) + ' and ' + esc(ct.proj_year) + '">'
     + '<defs><linearGradient id="commGrad" x1="0" x2="1">'
     + '<stop offset="0%" stop-color="#3AAA35"/>'
+    + '<stop offset="100%" stop-color="#4FA3C7"/></linearGradient>'
+    + '<linearGradient id="pubGrad" x1="0" x2="1">'
+    + '<stop offset="0%" stop-color="#3AAA35"/>'
     + '<stop offset="100%" stop-color="#4FA3C7"/></linearGradient></defs>';
   hi.values.forEach(v=>{
-    s += '<line x1="'+x(v)+'" x2="'+x(v)+'" y1="'+(P.t-14)+'" y2="'
-      + (H-P.b+6)+'" stroke="var(--line)" stroke-width="1"/>'
-      + '<text x="'+x(v)+'" y="'+(H-P.b+24)+'" text-anchor="middle" '
+    s += '<line x1="'+x(v)+'" x2="'+x(v)+'" y1="'+(P.t-6)+'" y2="'
+      + (H-P.b+8)+'" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="'+x(v)+'" y="'+(H-P.b+28)+'" text-anchor="middle" '
       + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
       + 'monospace">'+fmt(v,0)+'</text>';
   });
-  [["twh", ct.base_year, P.t, 1.0],
-   ["twh_proj", ct.proj_year, P.t + bh + gap, 1.0]].forEach(([key,yr,y0,op])=>{
+  [["twh", ct.base_year, y23], ["twh_proj", ct.proj_year, y34]]
+    .forEach(([key,yr,y0])=>{
     let acc = 0;
     ct.tiers.forEach(t=>{
       const v = t[key], faded = (key === "twh_proj" && t.held);
       const fill = t.key === "commercial" ? 'url(#commGrad)'
-                                          : COOL_COL[t.key];
+        : t.key === "public" ? 'url(#pubGrad)' : COOL_COL[t.key];
       s += '<rect x="'+x(acc)+'" y="'+y0+'" width="'+(x(acc+v)-x(acc))
         + '" height="'+bh+'" fill="'+fill+'"'
         + (faded ? ' opacity="0.4"' : '') + '/>';
       acc += v;
     });
-    s += '<text x="'+(P.l-12)+'" y="'+(y0+bh/2+5)+'" text-anchor="end" '
+    s += '<text x="'+(P.l-14)+'" y="'+(y0+bh/2+5)+'" text-anchor="end" '
       + 'font-size="14" font-weight="700" fill="#fff" '
       + 'font-family="IBM Plex Mono,monospace">'+esc(yr)+'</text>'
-      + '<text x="'+(x(acc)+10)+'" y="'+(y0+bh/2+5)+'" font-size="13" '
+      + '<text x="'+(x(acc)+12)+'" y="'+(y0+bh/2+5)+'" font-size="13" '
       + 'fill="var(--ink2)" font-family="IBM Plex Mono,monospace">'
       + fmt(acc,1)+' TWh</text>';
   });
-  // the band where the process/comfort boundary lies, marked on the
-  // 2023 bar - a band, because SEAI does not draw a line and nor do we
-  const b = ct.commercial_retail_band_twh, off = 2.6;   // dc + industry
-  s += '<rect x="'+x(off+b[0])+'" y="'+(P.t-8)+'" width="'
-    + (x(off+b[1])-x(off+b[0]))+'" height="'+(bh+16)
-    + '" fill="none" stroke="#fff" stroke-width="1.4" '
-    + 'stroke-dasharray="5 4"/>'
-    + '<text x="'+((x(off+b[0])+x(off+b[1]))/2)+'" y="'+(P.t-16)
-    + '" text-anchor="middle" font-size="12" fill="#fff" '
-    + 'font-family="Lato,sans-serif">the boundary Irish statistics '
-    + 'do not draw\u2020</text>';
-  // growth bracket
-  const y1 = P.t + bh + gap + bh + 16;
-  s += '<line x1="'+x(ct.total)+'" x2="'+x(ct.total_proj)+'" y1="'+y1
-    + '" y2="'+y1+'" stroke="#3AAA35" stroke-width="2"/>'
-    + '<text x="'+((x(ct.total)+x(ct.total_proj))/2)+'" y="'+(y1+18)
+  // BOTH mixed blocks carry a band. The tiers cut ACROSS the sectors:
+  // public is not comfort cooling, it is a hospital's imaging suites
+  // and an airport's equipment load sitting beside ward and terminal
+  // comfort under one roof.
+  const o = ct.offsets_twh || {};
+  [[ct.commercial_retail_band_twh, o.commercial, "commercial", 0],
+   [ct.public_process_band_twh, o.public, "public", 1]]
+   .forEach(([b, off, key, idx])=>{
+    if(!b || off == null) return;
+    const x0 = x(off + b[0]), x1 = x(off + b[1]);
+    s += '<rect x="'+x0+'" y="'+(y23-10)+'" width="'+Math.max(x1-x0,3)
+      + '" height="'+(bh+20)+'" fill="none" stroke="#fff" '
+      + 'stroke-width="1.4" stroke-dasharray="5 4"/>'
+      + '<line x1="'+((x0+x1)/2)+'" x2="'+((x0+x1)/2)+'" y1="'+(y23-10)
+      + '" y2="'+(P.t-34-idx*22)+'" stroke="var(--faint)" '
+      + 'stroke-width="1"/>'
+      + '<text x="'+((x0+x1)/2)+'" y="'+(P.t-38-idx*22)+'" '
+      + 'text-anchor="middle" font-size="12" fill="#fff" '
+      + 'font-family="Lato,sans-serif">Tier 0 | Tier 1 somewhere in here'
+      + ' \u2014 ' + key + '\u2020</text>';
+  });
+  // growth bracket, anchored to the two bar ends
+  const yb = y34 + bh + 20;
+  s += '<line x1="'+x(ct.total)+'" x2="'+x(ct.total_proj)+'" y1="'+yb
+    + '" y2="'+yb+'" stroke="#3AAA35" stroke-width="2"/>'
+    + '<line x1="'+x(ct.total)+'" x2="'+x(ct.total)+'" y1="'+(yb-6)
+    + '" y2="'+(yb+6)+'" stroke="#3AAA35" stroke-width="2"/>'
+    + '<line x1="'+x(ct.total_proj)+'" x2="'+x(ct.total_proj)+'" y1="'
+    + (yb-6)+'" y2="'+(yb+6)+'" stroke="#3AAA35" stroke-width="2"/>'
+    + '<text x="'+((x(ct.total)+x(ct.total_proj))/2)+'" y="'+(yb+22)
     + '" text-anchor="middle" font-size="12" fill="#3AAA35" '
     + 'font-family="Lato,sans-serif">all of the growth is data centres'
     + '</text>'
-    + '<text x="'+P.l+'" y="22" font-size="13" fill="#fff" '
+    + '<text x="'+P.l+'" y="24" font-size="13" fill="#fff" '
     + 'font-family="IBM Plex Mono,monospace">TWh of useful cooling a '
     + 'year \u00b7 data centres ' + fmt(ct.dc_share_pct,0) + '% \u2192 '
     + fmt(ct.dc_share_proj_pct,0) + '%</text>'
-    + '<text x="'+P.l+'" y="40" font-size="12" fill="var(--muted)" '
+    + '<text x="'+P.l+'" y="44" font-size="12" fill="var(--muted)" '
     + 'font-family="IBM Plex Mono,monospace">only the data centre block '
     + 'is projected \u00b7 the rest is held, not forecast</text>'
     + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
@@ -1684,32 +1707,43 @@ function coolTiers(ct){
     + '<span><span class="k" style="background:#1F4E5F"></span>data '
     + 'centres</span><span><span class="k" style="background:#5A6B64">'
     + '</span>industry</span><span><span class="k" style="background:'
-    + 'linear-gradient(90deg,#3AAA35,#4FA3C7)"></span>commercial \u2014 '
-    + 'refrigeration through to comfort</span><span><span class="k" '
-    + 'style="background:#4FA3C7"></span>public</span></div>';
+    + 'linear-gradient(90deg,#3AAA35,#4FA3C7)"></span>commercial and '
+    + 'public \u2014 process through to comfort</span></div>';
   box.innerHTML = leg + s
-    + '<div class="tier2out">Tier 2 \u2014 buildings that overheat with no '
-    + 'cooling at all. <b>Outside the bar</b>: a consumption survey cannot '
-    + 'count non-consumption. Grows with the climate, not the economy.'
-    + '</div>';
+    + '<div class="tier2out"><b>Tier 2 \u2014 comfort, unequipped.</b> '
+    + 'Buildings that overheat and have no cooling to draw. Outside every '
+    + 'figure on this bar, because a consumption survey cannot count '
+    + 'non-consumption. Grows with the climate, not the economy.</div>';
+  if(defs && ct.tier_defs){
+    defs.innerHTML = '<table class="caltab"><tbody>'
+      + ct.tier_defs.map(t =>
+          '<tr><td style="white-space:nowrap;color:#fff;font-weight:600">'
+          + esc(t.label) + '</td><td>' + esc(t.text) + '</td></tr>').join("")
+      + '</tbody></table>';
+  }
   if(note){
     note.textContent = "Ireland barely cools its buildings; it cools its "
-      + "machines. Three-quarters or more of this is process \u2014 data "
-      + "centres, industrial plant, and the refrigeration behind every "
-      + "supermarket aisle \u2014 running flat, year-round, growing with "
-      + "the economy rather than the weather. Comfort cooling exists in "
-      + "offices and shops with high internal gains, but Irish statistics "
-      + "do not separate it from refrigeration, and we could not measure "
-      + "it either: five methods of extracting a cooling signal from "
-      + "national electricity demand were tried and none identified one. "
-      + "So the boundary is a band, not a line, and it is unbounded above "
-      + "by anything we hold. Everything here is USEFUL COOLING. The heat "
-      + "those data centres reject is a different and far larger quantity "
-      + "\u2014 essentially their whole electricity draw, IT load "
-      + "included, because all of it leaves as heat \u2014 and Ireland's "
-      + "climate means much of it leaves without ever passing through a "
-      + "compressor. That is the part a network or a ground loop can take."
-      + " Source: " + esc(ct.source) + ".";
+      + "machines. Three-quarters or more of this is Tier 0 process \u2014 "
+      + "data centres, industrial plant, and the refrigeration behind "
+      + "every supermarket aisle \u2014 running flat, year-round, growing "
+      + "with the economy rather than the weather. THE TIERS CUT ACROSS "
+      + "SEAI'S SECTORS RATHER THAN ALIGNING WITH THEM: a hospital's "
+      + "imaging suites and an airport's equipment load are Tier 0, "
+      + "sitting beside ward and terminal comfort under one roof. That "
+      + "is not a caveat but the point \u2014 those are exactly the sites "
+      + "where one borefield can serve both, and where the seasonal "
+      + "balance it needs comes closest to striking itself. Irish "
+      + "statistics do not draw either boundary, and we could not measure "
+      + "the comfort tier either: five methods of extracting a cooling "
+      + "signal from national electricity demand were tried and none "
+      + "identified one. So both are bands, not lines. Everything here is "
+      + "USEFUL COOLING. The heat those data centres reject is a "
+      + "different and far larger quantity \u2014 essentially their whole "
+      + "electricity draw, IT load included, because all of it leaves as "
+      + "heat \u2014 and Ireland's climate means much of it leaves "
+      + "without ever passing through a compressor. That is the part a "
+      + "network or a ground loop can take. Source: " + esc(ct.source)
+      + ".";
   }
 }
 
@@ -3029,7 +3063,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.24.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.25.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
