@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.30.0"
+PIPELINE_VERSION = "5.31.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6357,12 +6357,45 @@ COOL_TIERS_2023 = [
 # refrigeration and shop comfort cooling off the same site. Offices and
 # education - 1,092 GWh - are the cleanest Tier 1 available: no
 # refrigeration argument is possible for them.
+# The activity split, from Figures 52/53 of the 2019 study. These are
+# HARD SEGMENTS, not a gradient: SEAI disaggregates commercial and
+# public by building activity and the totals reconcile with its sector
+# figures to within 0.1%, so the boundary can be drawn rather than
+# guessed.
+#
+# SEAI ATTRIBUTES RETAIL'S DOMINANCE ITSELF: "The cooling demand from
+# retail archetypes exceeds that of all other archetypes combined. This
+# points to the large amount of energy used for cooling in the retail
+# sector, which is likely attributable to refrigeration." That is a
+# sourced attribution, not our judgement, and it is why retail sits in
+# Tier 0.
+#
+# FIGURE 53 ADDS CONCENTRATION, which the totals alone conceal. Per
+# archetype: warehouse and storage 570 MWh - the highest of any
+# activity on ~150 buildings, which is what a cold store looks like -
+# against retail's 168 MWh spread across some 26,000. Education 305 and
+# hotel 377 are also intense per building and small in total.
+#
+# AND ONLY 62 OF 181 ARCHETYPES HAVE ANY COOLING DEMAND AT ALL. Most of
+# the Irish non-domestic stock has none, which is the Tier 2 condition
+# showing up inside SEAI's own model.
+#
+# tier: 0 process, 1 comfort, m genuinely mixed under one roof
 COOL_ACTIVITY_2019 = [
-    ("Retail", 4345, "process"), ("Office (commercial)", 765, "comfort"),
-    ("Hotel", 377, "mixed"), ("Restaurant/public house", 371, "process"),
-    ("Office (public)", 295, "comfort"), ("Healthcare", 241, "mixed"),
-    ("Warehouse and storage", 88, "process"), ("Education", 32, "comfort"),
+    ("Retail", 4345, 168, "comm", 0),
+    ("Restaurant/public house", 371, 50, "comm", 0),
+    ("Warehouse and storage", 88, 570, "comm", 0),
+    ("Hotel", 377, 377, "comm", "m"),
+    ("Healthcare", 241, 121, "pub", "m"),
+    ("Office (commercial)", 765, 101, "comm", 1),
+    ("Office (public)", 295, 205, "pub", 1),
+    ("Education", 32, 305, "pub", 1),
 ]
+# SEAI holds commercial and public cooling constant to 2050 at
+# archetype level - "the cooling demand for each archetype in the
+# commercial and public sectors between now and 2050 is therefore
+# assumed to be constant" - which is exactly the "held, not forecast"
+# treatment these bars already gave them, now sourced rather than ours.
 COOL_COMMERCIAL_RETAIL_BAND = (0.60, 0.85)   # inside retail, dagger
 COOL_PUBLIC_PROCESS_BAND = (0.25, 0.55)
 # THE TIERS CUT ACROSS SEAI'S SECTORS. A hospital's imaging suites,
@@ -6464,7 +6497,21 @@ def derive_cooling_tiers():
     for t in tiers:
         off[t["key"]] = round(run, 2)
         run += t["service_twh"]
-    act_tot = sum(v for _, v, _ in COOL_ACTIVITY_2019)
+    # Hard segments. Commercial and public are scaled SEPARATELY onto
+    # their own 2023 sector totals, because the two sectors did not
+    # grow at the same rate and one blended factor would misplace the
+    # boundary we are drawing.
+    sect = {"comm": 7.5, "pub": 0.5}
+    base = {g: sum(v for _, v, _, gg, _ in COOL_ACTIVITY_2019 if gg == g)
+            for g in sect}
+    eer_of = {"comm": 2.08, "pub": 2.50}
+    segs = []
+    for name, gwh, per, g, tier in COOL_ACTIVITY_2019:
+        svc = round(gwh / base[g] * sect[g], 2)
+        segs.append({"label": name, "service_twh": svc,
+                     "elec_twh": round(svc / eer_of[g], 2),
+                     "per_archetype_mwh": per, "sector": g, "tier": tier})
+    act_tot = sum(v for _, v, _, _, _ in COOL_ACTIVITY_2019)
     out = {
         "base_year": 2023, "proj_year": yr, "scope": COOL_SCOPE,
         "unit": "TWh", "tiers": tiers,
@@ -6482,11 +6529,13 @@ def derive_cooling_tiers():
         "public_process_band_twh": [
             round(0.5 * f, 2) for f in COOL_PUBLIC_PROCESS_BAND],
         "retail_share_of_commercial": 0.731,
-        "activity_2019": [{"label": n, "gwh": v, "group": g}
-                          for n, v, g in COOL_ACTIVITY_2019],
+        "segments": segs,
         "activity_total_gwh": act_tot,
-        "comfort_floor_gwh": sum(v for _, v, g in COOL_ACTIVITY_2019
-                                 if g == "comfort"),
+        "tier_totals_twh": {
+            str(t): round(sum(x["service_twh"] for x in segs
+                              if x["tier"] == t), 2)
+            for t in (0, 1, "m")},
+        "archetypes_with_cooling": [62, 181],
         "ni_all_twh": COOL_NI_ALL_TWH,
         "dc_cooling_share": COOL_DC_COOLING_SHARE,
         "tier_defs": [{"key": k, "label": lab, "text": txt}
@@ -6502,8 +6551,11 @@ def derive_cooling_tiers():
         f"(-{out['geo_saving_pct']}%); industry EER "
         f"{COOL_INDUSTRY_EER} is ours, the rest are SEAI's; retail is "
         f"{out['retail_share_of_commercial']*100:.1f}% of commercial "
-        f"and offices+education are a {out['comfort_floor_gwh']} GWh "
-        f"comfort floor")
+        f"and the activity split is HARD: Tier 0 "
+        f"{out['tier_totals_twh']['0']} TWh, mixed "
+        f"{out['tier_totals_twh']['m']}, Tier 1 "
+        f"{out['tier_totals_twh']['1']} TWh of the commercial and "
+        f"public sectors")
     return out
 
 
