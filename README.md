@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.24.0 / site 5.23.2.
+(Causeway Geothermal NI Ltd). Pipeline 5.25.0 / site 5.23.2.
 
 ## The premise
 
@@ -1149,6 +1149,31 @@ one step below `--ink`, and a guard asserts that every CSS variable used
 is declared — proven by deleting the declaration and watching the suite
 name it.
 
+**What the EirGrid series contain, and a withdrawn analysis (5.25.0).**
+`demandactual` is "the electricity production required to meet national
+electricity consumption" — so grid-connected solar is **already inside
+it** — and `solaractual` is "large scale solar farms… small scale
+embedded solar is not included". Adding one to the other is a double
+count, not a reconstruction. That is now written at the point of load
+and enforced by a test.
+
+**A cooling analysis was withdrawn because of it.** A diurnal separation
+of comfort from process cooling, ported from the UK sibling, appeared to
+work only after solar was added back — and that addition was the error.
+The UK's NESO demand series *excludes* embedded generation and must have
+it added once; porting the reasoning across manufactured a
+temperature-correlated signal in exactly the daylight hours where cooling
+would show. The same defect cost the UK site three published claims. All
+Irish figures derived from it are withdrawn.
+
+**The Irish problem is the reverse and has no fix in this data.** Roughly
+310 MW of small-scale embedded solar *is* invisible to `demandactual`,
+and no published series exists to add back — so Irish underlying demand
+is understated on bright days by an unknown and growing amount, biasing
+any daylight cooling estimate downward. Night-time estimators are
+unaffected, solar being zero, which is why a weekday/weekend night
+contrast is the route that survives.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1289,7 +1314,7 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 182 tests, no network
+python3 tests/test_synthetic.py   # 183 tests, no network
 node tests/test_vol.js            # 188 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
