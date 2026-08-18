@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.29.0 / site 5.26.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.30.0 / site 5.27.0.
 
 ## The premise
 
@@ -1293,6 +1293,37 @@ Setting it to `None` to fill in later broke the hero — `ANCHORS` is read
 at import time by code that runs first — so the value is stated in both
 places and a module-level assert fails the build if they diverge.
 
+**Data centres: an effective EER of 6, and out of the what-if (5.30.0 /
+site 5.27.0).** SEAI's own report explains why its figure cannot be
+used — for data centres it reports *electricity for cooling* rather than
+cooling delivered, "because there is little publicly available
+information regarding the efficiency of cooling techniques used in data
+centres", and it never models free cooling as a mechanism at all. Its
+0.4 TWh is PUE arithmetic; the 2025 Annex then divides that by the
+commercial sector's average, which it admits is borrowed.
+
+The heat removed from the white space is essentially everything except
+the cooling plant's own draw, and two routes agree on about six: 14% of
+electricity on cooling implies 5.5 TWh removed for 0.9, and the IT load
+at a measured Irish PUE of 1.15–1.25 gives the same. The data centre
+block on the service bar therefore triples, from 1.8 to 5.4 TWh — the
+largest single block in 2023, and over half of Irish cooling service by
+2034.
+
+**And data centres are excluded from the geothermal what-if entirely.**
+Ground cooling cannot beat free air in this climate: the competitor is
+not a running compressor but a fan moving 10 °C air. Nothing is
+displaced, so nothing is claimed — **the honest limit of geothermal
+cooling as a standalone proposition in Ireland.** Retail refrigeration,
+industrial process cooling and office comfort cooling stay in, because
+free cooling is a data centre design and not a supermarket one. The
+dividend falls from 17% to 11.8% as a result, and the case for a
+borefield rests on seasonal storage rather than cheaper cooling.
+
+A test asserts the *drawn geometry* honours the exclusion, not just the
+method text. The first version of that check passed with data centres
+put straight back in, because it only read the prose.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1434,7 +1465,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 205 front-end fixture checks
+node tests/test_vol.js            # 211 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
