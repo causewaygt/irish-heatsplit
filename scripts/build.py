@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.26.0"
+PIPELINE_VERSION = "5.27.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6268,6 +6268,38 @@ COOL_TIERS_2023 = [
 # The low end is a bare majority, the high end SEAI's separate finding
 # that retail is 72% of all cooling emissions.
 COOL_COMMERCIAL_RETAIL_BAND = (0.50, 0.72)
+# THE TIERS CUT ACROSS SEAI'S SECTORS. They do not align with them, and
+# an earlier version of this panel drew "public" as though it were
+# wholly comfort cooling. It is not: a hospital's imaging suites,
+# laboratory and blood refrigeration, mortuary and sterile services run
+# regardless of the weather and are Tier 0 by our own definition, as is
+# an airport's year-round equipment load. Only ward, terminal and
+# office comfort is Tier 1.
+#
+# That is not a caveat, it is the panel's point. The buildings where
+# Tier 0 and Tier 1 sit under one roof and one owner are exactly the
+# ones where a single borefield can serve both, and where the seasonal
+# balance a borefield needs comes closest to striking itself.
+#
+# The public band is WIDER in proportion than the commercial one
+# because there is no Irish source that splits it at all - SEAI's
+# retail attribution at least bounds commercial.
+COOL_PUBLIC_PROCESS_BAND = (0.25, 0.55)
+COOL_TIER_DEFS = [
+    ("tier0", "Tier 0 \u00b7 process",
+     "Runs regardless of the weather. Data centres, industrial plant, "
+     "retail and food refrigeration, cold stores \u2014 and inside "
+     "hospitals and airports, the imaging, laboratory, theatre and "
+     "equipment loads that do not stop in January."),
+    ("tier1", "Tier 1 \u00b7 comfort, equipped",
+     "Cooling delivered by installed plant in buildings that have it, "
+     "driven by weather and occupancy. Offices, shops and public "
+     "buildings with high internal gains."),
+    ("tier2", "Tier 2 \u00b7 comfort, unequipped",
+     "Buildings that overheat and have no cooling to draw. Outside "
+     "every consumption figure on this bar, because a consumption "
+     "survey cannot count non-consumption."),
+]
 # EirGrid contracted-demand trajectory: data centre electricity 9.4 TWh
 # in 2025 to 14.6 TWh in 2034, via CRU. 2023 was ~6.4 TWh (21% of 30.5),
 # so the block scales by 14.6/6.4. Currently CONTRACTED demand, not a
@@ -6297,9 +6329,22 @@ def derive_cooling_tiers():
     tot_p = round(sum(t["twh_proj"] for t in tiers), 1)
     band = [round(base["commercial"] * f, 1)
             for f in COOL_COMMERCIAL_RETAIL_BAND]
+    # where each mixed block starts along the bar, so the front end can
+    # place its band without re-deriving the stacking order
+    off = {}
+    run = 0.0
+    for k, _, v, _ in COOL_TIERS_2023:
+        off[k] = round(run, 2)
+        run += v
+    pband = [round(base["public"] * f, 2)
+             for f in COOL_PUBLIC_PROCESS_BAND]
     out = {"base_year": 2023, "proj_year": yr, "unit": "TWh useful cooling",
            "tiers": tiers, "total": tot, "total_proj": tot_p,
            "commercial_retail_band_twh": band,
+           "public_process_band_twh": pband,
+           "offsets_twh": off,
+           "tier_defs": [{"key": k, "label": lab, "text": txt}
+                         for k, lab, txt in COOL_TIER_DEFS],
            "dc_electricity_twh": [lo, hi],
            "dc_share_pct": round(100 * base["datacentres"] / tot, 1),
            "dc_share_proj_pct": round(
@@ -6309,7 +6354,9 @@ def derive_cooling_tiers():
     log(f"cooling tiers: {tot} TWh useful cooling in 2023, data centres "
         f"{out['dc_share_pct']}% -> {tot_p} TWh by {yr}, data centres "
         f"{out['dc_share_proj_pct']}% (only that block projected); "
-        f"commercial retail band {band[0]}-{band[1]} TWh \u2020")
+        f"commercial retail band {band[0]}-{band[1]} TWh, public "
+        f"process band {pband[0]}-{pband[1]} TWh \u2020 - the tiers cut "
+        f"ACROSS the sectors, they do not align with them")
     return out
 
 
