@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.30.0 / site 5.27.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.31.0 / site 5.28.0.
 
 ## The premise
 
@@ -1324,6 +1324,38 @@ A test asserts the *drawn geometry* honours the exclusion, not just the
 method text. The first version of that check passed with data centres
 put straight back in, because it only read the prose.
 
+**Hard activity segments, no gradient (5.31.0 / site 5.28.0).** Figures
+52 and 53 of the 2019 study disaggregate commercial and public cooling
+by building activity and reconcile with the sector totals to within
+0.1%, so the boundary is drawn rather than shaded. Ten hard-edged
+segments, coloured by tier and ordered process → mixed → comfort:
+retail 5.48 TWh, data centres 5.4, industry 2.4, commercial offices
+0.96, hotels 0.48, restaurants 0.47, public offices 0.26, healthcare
+0.21, warehousing 0.11, education 0.03. Across commercial and public
+that is **Tier 0 6.1 TWh, mixed 0.7, Tier 1 1.3**.
+
+**Retail's attribution is SEAI's, not ours.** The study states that
+cooling demand from retail archetypes exceeds all other archetypes
+combined and that this is likely attributable to refrigeration.
+
+**Figure 53 adds concentration, which the totals conceal.** Warehousing
+is the most cooling-intense activity per building on the list — 570 MWh
+per archetype, a cold store — and among the smallest in total, while
+retail's is spread across some 26,000 buildings. That column is carried
+in the method table.
+
+**Two findings from the same figure changed the panel.** SEAI's model
+finds only **62 of 181** non-domestic archetypes have any cooling demand
+at all, which is the Tier 2 condition appearing inside SEAI's own work
+and now cited in the Tier 2 box. And SEAI holds commercial and public
+cooling constant to 2050 at archetype level — so the "held, not
+forecast" treatment of those blocks is SEAI's own rather than our
+caution.
+
+Commercial and public are scaled separately onto their 2023 totals,
+because the two sectors did not grow at the same rate and one blended
+factor would misplace the boundary being drawn.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1465,7 +1497,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 211 front-end fixture checks
+node tests/test_vol.js            # 210 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
