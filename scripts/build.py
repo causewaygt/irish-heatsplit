@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.29.0"
+PIPELINE_VERSION = "5.30.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6296,6 +6296,37 @@ AGBONAYE = {
 #
 # So ONE judgement is needed, not three: an EER for industry.
 COOL_INDUSTRY_EER = 3.0          # dagger - see below
+# DATA CENTRES: an EFFECTIVE EER of ~6, not SEAI's borrowed 2.0.
+#
+# SEAI's own report says why 2.0 is wrong: for data centres it reports
+# ELECTRICITY for cooling rather than cooling delivered, "because there
+# is little publicly available information regarding the efficiency of
+# cooling techniques used in data centres". It never models free
+# cooling as a mechanism at all - its 0.4 TWh is PUE arithmetic, total
+# electricity times overhead, of which 70% assumed to be cooling. The
+# 2025 Annex then divides that by the COMMERCIAL sector's average,
+# which it admits is borrowed.
+#
+# But the heat removed from the white space is essentially everything
+# except the cooling plant's own draw. Two routes agree:
+#   6.4 TWh electricity, 14% on cooling -> 5.5 TWh removed / 0.9 = 6.1
+#   IT load at PUE 1.15-1.25            -> 5.1-5.6 / 0.9 = 5.7-6.2
+# In Ireland's climate that is what free cooling looks like in a
+# number: nearly all the heat leaves through economisers and dry
+# coolers with only fan and pump work behind it. Uptime Institute puts
+# a closed-loop adiabatic site in a cool climate on free cooling 90-95%
+# of the year; Microsoft reports mechanical cooling under 2% of the
+# year in Ireland; Digital Realty's Profile Park runs with no
+# compressor cooling at all.
+COOL_DC_EFFECTIVE_EER = 6.0
+# WHICH IS WHY DATA CENTRES ARE EXCLUDED FROM THE GEOTHERMAL WHAT-IF.
+# Ground cooling cannot beat free air in this climate: the competitor
+# is not a running compressor, it is a fan moving 10 degC air. Nothing
+# is displaced, so nothing is claimed. Retail refrigeration, industrial
+# process cooling and comfort cooling in offices are different - free
+# cooling is a data centre design, not a supermarket one - and they
+# stay in.
+COOL_WHATIF_EXCLUDE = ("datacentres",)
 # 3.0, bracketed by SEAI's own internal anchors rather than by an
 # outside source: commercial 2.08 and public 2.50 are SEAI's, and
 # process chillers run at steadier load and higher utilisation than a
@@ -6311,7 +6342,7 @@ COOL_INDUSTRY_EER = 3.0          # dagger - see below
 # cooling carries most hours - that argument belongs in the geothermal
 # section, not in a silent constant.
 COOL_TIERS_2023 = [
-    ("datacentres", "Data centres", 1.8, 0.9, "process"),
+    ("datacentres", "Data centres", None, 0.9, "process"),
     ("industry", "Industry", None, 0.8, "process"),
     ("commercial", "Commercial", 7.5, 3.6, "mixed"),
     ("public", "Public", 0.5, 0.2, "mixed"),
@@ -6403,7 +6434,12 @@ def derive_cooling_tiers():
     tiers = []
     for k, lab, svc, elec, grp in COOL_TIERS_2023:
         judged = svc is None
-        service = round(elec * COOL_INDUSTRY_EER, 2) if judged else svc
+        if judged:
+            eer_used = (COOL_DC_EFFECTIVE_EER if k == "datacentres"
+                        else COOL_INDUSTRY_EER)
+            service = round(elec * eer_used, 2)
+        else:
+            service = svc
         eer = round(service / elec, 2) if elec else None
         proj = round(service * factor, 2) if k == "datacentres" else service
         pel = round(elec * factor, 2) if k == "datacentres" else elec
@@ -6419,7 +6455,7 @@ def derive_cooling_tiers():
     # ground cooling, which still pumps but does not compress
     saved = 0.0
     for t in tiers:
-        if not t["eer"]:
+        if not t["eer"] or t["key"] in COOL_WHATIF_EXCLUDE:
             continue
         moved = COOL_WHATIF_SHARE * t["service_proj_twh"]
         saved += moved / t["eer"] - moved / COOL_GEO_EER
@@ -6438,6 +6474,8 @@ def derive_cooling_tiers():
         "geo_saving_pct": round(100 * saved / max(el34, 1e-9), 1),
         "geo_eer": COOL_GEO_EER, "whatif_share": COOL_WHATIF_SHARE,
         "industry_eer": COOL_INDUSTRY_EER,
+        "dc_eer": COOL_DC_EFFECTIVE_EER,
+        "whatif_excluded": list(COOL_WHATIF_EXCLUDE),
         "offsets_twh": off,
         "commercial_retail_band_twh": [
             round(7.5 * 0.731 * f, 2) for f in COOL_COMMERCIAL_RETAIL_BAND],
