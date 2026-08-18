@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.25.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.25.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1673,9 +1673,9 @@ function coolTiers(ct){
       + '" height="'+(bh+20)+'" fill="none" stroke="#fff" '
       + 'stroke-width="1.4" stroke-dasharray="5 4"/>'
       + '<line x1="'+((x0+x1)/2)+'" x2="'+((x0+x1)/2)+'" y1="'+(y23-10)
-      + '" y2="'+(P.t-34-idx*22)+'" stroke="var(--faint)" '
+      + '" y2="'+(P.t-14-idx*20)+'" stroke="var(--faint)" '
       + 'stroke-width="1"/>'
-      + '<text x="'+((x0+x1)/2)+'" y="'+(P.t-38-idx*22)+'" '
+      + '<text x="'+((x0+x1)/2)+'" y="'+(P.t-18-idx*20)+'" '
       + 'text-anchor="middle" font-size="12" fill="#fff" '
       + 'font-family="Lato,sans-serif">Tier 0 | Tier 1 somewhere in here'
       + ' \u2014 ' + key + '\u2020</text>';
@@ -1697,8 +1697,8 @@ function coolTiers(ct){
     + 'year \u00b7 data centres ' + fmt(ct.dc_share_pct,0) + '% \u2192 '
     + fmt(ct.dc_share_proj_pct,0) + '%</text>'
     + '<text x="'+P.l+'" y="44" font-size="12" fill="var(--muted)" '
-    + 'font-family="IBM Plex Mono,monospace">only the data centre block '
-    + 'is projected \u00b7 the rest is held, not forecast</text>'
+    + 'font-family="IBM Plex Mono,monospace">' + esc(ct.scope || 'Republic of Ireland')
+    + ' \u00b7 only the data centre block is projected, the rest' + ' is held, not forecast' + (ct.electricity_twh ? ' \u00b7 from ' + fmt(ct.electricity_twh,1) + ' TWh of electricity' : '') + '</text>'
     + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
     + ')" text-anchor="middle" font-size="13" font-weight="600" '
     + 'fill="#fff" font-family="Lato, sans-serif">TWh useful cooling'
@@ -3063,7 +3063,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.25.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.25.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
