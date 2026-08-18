@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.28.0 / site 5.25.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.29.0 / site 5.26.0.
 
 ## The premise
 
@@ -1257,6 +1257,42 @@ SEAI publications agree; I did not. Both panels now read one constant,
 The two boundary captions also moved clear of the header rows, with a
 test asserting they do.
 
+**Panel 4 rebuilt on a service basis, four bars (5.29.0 / site
+5.26.0).** Cooling delivered in 2023 and 2034, then the electricity that
+2034 service takes, then the same with a fifth of it on ground cooling.
+12.2 → 14.5 TWh of service; 6.65 TWh of electricity falling to 5.51 with
+the what-if, a **17% cut**. Bars 1–2 are what buildings receive, 3–4 what
+is bought, and the chart says so rather than leaving the shift to be
+noticed.
+
+**SEAI's cooling figures are a mixture of service and electricity, and
+the two reports mix them differently.** Commercial and public are
+service; industry is electricity, because SEAI states the passive/active
+boundary is unclear; data centres were electricity in the 2019 study and
+service in the 2025 one. Established by back-calculating each sector's
+electricity from its emissions bar — commercial, public, industry and
+agriculture all imply 317–324 gCO₂/kWh, the 2019 grid intensity, four
+sectors agreeing to 2%. Run the same test against the demand figure and
+the implied intensity runs 123 to 333, which is how we know that figure
+is not one quantity.
+
+**One EER is ours: industry at 3.0†**, bracketed by SEAI's own anchors
+(commercial 2.08, public 2.50) rather than an outside source, with
+Barth et al. (2025) on Manhattan at 3.5 as the upper marker. Data centres
+are not re-judged. The method, the sector table and the attribution of
+every EER are in a fold, not crowding the bars.
+
+**Retail is 73.1% of commercial cooling — sourced, not judged**, from the
+2019 study's activity split, which reconciles to its sector totals within
+0.1%. That replaces the band we carried, whose upper end turned out
+almost exactly right. Offices and education total 1,092 GWh and are the
+cleanest Tier 1 available.
+
+**And the data-centre cooling share is now asserted across both panels.**
+Setting it to `None` to fill in later broke the hero — `ANCHORS` is read
+at import time by code that runs first — so the value is stated in both
+places and a module-level assert fails the build if they diverge.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1398,7 +1434,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 207 front-end fixture checks
+node tests/test_vol.js            # 205 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
