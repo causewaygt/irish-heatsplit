@@ -199,9 +199,16 @@ function tickValuesReadable(svg, least, side){
   // left-anchored ticks could not see the dispatch-down chart's
   // percentage axis, and that axis stayed 12px muted through every
   // round of fixing.
+  // A horizontal bar chart's value axis runs along the BOTTOM, with
+  // middle-anchored ticks - neither left nor right. The predicate knew
+  // only vertical axes and would have skipped it silently.
   const t = side === "right"
     ? texts(svg).filter(x => !/text-anchor/.test(x.attr)
                              && !/rotate/.test(x.attr) && x.x > 880)
+    : side === "bottom"
+    ? texts(svg).filter(x => /text-anchor="middle"/.test(x.attr)
+                             && !/rotate/.test(x.attr) && x.y > 200
+                             && /^[\d.,]+$/.test(x.body.trim()))
     : texts(svg).filter(x => /text-anchor="end"/.test(x.attr));
   if(t.length < (least || 3)) return false;
   const bodies = t.map(x => x.body.trim()).filter(Boolean);
@@ -210,6 +217,23 @@ function tickValuesReadable(svg, least, side){
     const size = +(x.attr.match(/font-size="(\d+)"/) || [0,0])[1];
     return size >= 13 && !/var\(--muted\)/.test(x.attr);
   });
+}
+// EVERY AXIS THAT CARRIES NUMBERS MUST CARRY A NAME. The
+// dispatch-down chart drew right-hand tick values with nothing
+// labelling them for four rounds of "fix the axis labels", because
+// each predicate checked the labels that existed rather than counting
+// them against the axes that did. Count both sides.
+function everyAxisTitled(svg){
+  const t = texts(svg);
+  const leftTicks = t.some(x => /text-anchor="end"/.test(x.attr));
+  const rightTicks = t.some(x => !/text-anchor/.test(x.attr)
+                                 && !/rotate/.test(x.attr) && x.x > 880);
+  const titles = t.filter(x => /rotate\(-?90/.test(x.attr));
+  const leftTitle = titles.some(x => x.x < 200);
+  const rightTitle = titles.some(x => x.x > 800);
+  if(leftTicks && !leftTitle) return false;
+  if(rightTicks && !rightTitle) return false;
+  return leftTicks || rightTicks;
 }
 // Bars must use the height available: a chart drawn at a tenth of its
 // axis is a scale fault, not a small number.
@@ -525,6 +549,7 @@ const ssvg = svgAt(gp, 1);
 ok(gridlinesSpread(ssvg, 4), "the share chart's gridlines spread too");
 ok(axisLabelReadable(ssvg), "and the share chart's label is legible too");
 ok(tickValuesReadable(ssvg, 4), "and its tick values are legible");
+ok(everyAxisTitled(ssvg), "every axis with numbers on it is named");
 ok(noTextInsideBars(ssvg), "and no share label sits inside its bar");
 ok(usesItsAxis(ssvg, 0.5), "and the share bars use their axis");
 ok(/asked the other way round/.test(gp),
@@ -549,6 +574,7 @@ const gsvg = svgAt(gp, 0);
 ok(gridlinesSpread(gsvg, 4), "the gridlines are at distinct heights");
 ok(axisLabelReadable(gsvg), "its axis label clears the frame and is legible");
 ok(tickValuesReadable(gsvg, 4), "and its tick values are legible too");
+ok(everyAxisTitled(gsvg), "every axis with numbers on it is named");
 ok(noTextInsideBars(gsvg), "no label is drawn inside a bar");
 ok(usesItsAxis(gsvg, 0.5),
    "the bars use the height of the axis, not a corner of it");
@@ -615,6 +641,8 @@ ok(tickValuesReadable(svgAt(gc, 0), 3),
    "and the three-view chart's ticks are legible");
 ok(tickValuesReadable(svgAt(gc, 0), 3, "right"),
    "and its RIGHT electricity axis too - Panel 3 has two-axis charts");
+ok(everyAxisTitled(svgAt(gc, 0)),
+   "and both of its axes are named");
 ok(/the fifth via geothermal network/.test(DOM.gridLegend.innerHTML),
    "the legend says these are the what-if's fifth, not all of it");
 // the monthly view is the FALCON: a calendar year, each month the
@@ -692,6 +720,8 @@ ok(axisLabelReadable(dsvg), "and its axis label is legible");
 ok(tickValuesReadable(dsvg, 4), "and its tick values are legible");
 ok(tickValuesReadable(dsvg, 3, "right"),
    "and its RIGHT percentage axis carries legible values too");
+ok(everyAxisTitled(dsvg),
+   "and BOTH its axes are named, not just the left one");
 ok(noTextInsideBars(dsvg), "no dispatch-down label sits inside a bar");
 ok(usesItsAxis(dsvg, 0.5), "and its bars use the axis height");
 ok(/stroke-dasharray/.test(dc) && /share of available wind spilled/.test(dc),
@@ -731,6 +761,7 @@ const vsvg = svgAt(dv, 0);
 ok(gridlinesSpread(vsvg, 4), "the value chart's gridlines spread");
 ok(axisLabelReadable(vsvg, 88), "and its axis label is legible");
 ok(tickValuesReadable(vsvg, 4), "and its tick values are legible");
+ok(everyAxisTitled(vsvg), "every axis with numbers on it is named");
 ok(noTextInsideBars(vsvg), "no value label sits inside a bar");
 // The axis on this chart is scaled to the NAIVE comparator line, which
 // sits above the bars by construction - that gap is the finding. So
@@ -832,5 +863,75 @@ ok(/storage measured in months rather than hours/.test(oxn),
    "and the storage-duration discriminator is stated as the larger one");
 ok(/property of the route, not of the machine/.test(oxn),
    "framed as a property of the route rather than of the heat pump");
+
+// ---- every CSS variable used must be defined ----------------------
+// --ink2 was used in sixteen places and never declared. In CSS an
+// invalid var() makes the property inherit, which looks fine; in an
+// SVG fill attribute it falls back to BLACK, so axis ticks drawn in it
+// were black on a near-black background. Present in the markup,
+// invisible on the page, and passing every test that asked whether the
+// text existed. Nothing about the geometry was wrong - it was a
+// colour that did not exist.
+{
+  const declared = new Set(
+    [...html.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map(m => m[1]));
+  const used = new Set(
+    [...html.matchAll(/var\((--[a-z0-9-]+)/gi)].map(m => m[1]));
+  const missing = [...used].filter(v => !declared.has(v));
+  ok(missing.length === 0,
+     "every CSS variable used is defined" +
+     (missing.length ? " - missing: " + missing.join(", ") : ""));
+  // and the SVG charts must not paint text in a bare fallback
+  ok(!/fill="var\(--[a-z0-9-]+\)"[^>]*>\s*<\/text>/i.test(html),
+     "no chart text is painted with an empty fill");
+}
+
+// ---- Panel 4: what Ireland actually cools -------------------------
+["coolTiers","coolTiersNote"].forEach(k=>{DOM[k]=null; el(k);});
+coolTiers({base_year:2023, proj_year:2034, unit:"TWh useful cooling",
+  total:10.6, total_proj:12.9, commercial_retail_band_twh:[3.8,5.4],
+  dc_electricity_twh:[6.4,14.6], dc_share_pct:17.0, dc_share_proj_pct:31.8,
+  source:"SEAI Comprehensive Assessment Technical Annex 2025, Figure 7 "
+         + "(2023); EirGrid contracted demand via CRU",
+  tiers:[{key:"datacentres",label:"Data centres",twh:1.8,twh_proj:4.1,
+          group:"process",held:false},
+         {key:"industry",label:"Industry",twh:0.8,twh_proj:0.8,
+          group:"process",held:true},
+         {key:"commercial",label:"Commercial",twh:7.5,twh_proj:7.5,
+          group:"mixed",held:true},
+         {key:"public",label:"Public",twh:0.5,twh_proj:0.5,
+          group:"comfort",held:true}]});
+const ck = DOM.coolTiers.innerHTML;
+ok(!/NaN|undefined/.test(ck), "no NaN in the cooling tiers");
+const csvg = svgAt(ck, 0);
+ok(axisLabelReadable(csvg), "its axis label is legible");
+ok(tickValuesReadable(csvg, 4, "bottom"),
+   "and its bottom value axis carries legible ticks");
+ok((csvg.match(/<rect /g)||[]).length >= 8,
+   "two bars of four tiers, plus the boundary band");
+// ONLY the data centre block may be projected. If the held blocks were
+// ever quietly grown, the panel would produce its own conclusion.
+ok((csvg.match(/opacity="0.4"/g)||[]).length === 3,
+   "the three held blocks are drawn faded on the 2034 bar");
+ok(/held, not forecast/.test(csvg),
+   "and the chart says they are held rather than forecast");
+ok(/the boundary Irish statistics do not draw/.test(csvg),
+   "the process/comfort boundary is shown as a band, labelled");
+ok(/stroke-dasharray/.test(csvg), "and drawn dashed, not as a line");
+ok(/all of the growth is data centres/.test(csvg),
+   "the growth bracket names what is driving it");
+// Tier 2 must sit visibly outside the bar
+ok(/tier2out/.test(ck) && /Outside the bar/.test(ck),
+   "Tier 2 is outside the bar and says why");
+// the three quantities must not be conflated
+const cn = DOM.coolTiersNote.textContent;
+ok(/USEFUL COOLING/.test(cn) && /whole electricity draw/.test(cn),
+   "the note separates useful cooling from heat rejected");
+ok(/none identified one/.test(cn),
+   "and states that five methods failed to measure comfort cooling");
+["coolTiers","coolTiersNote"].forEach(k=>{DOM[k]=null; el(k);});
+coolTiers(null);
+ok(/coming build/.test(DOM.coolTiers.textContent),
+   "and the panel declines cleanly without the block");
 
 console.log(checks + " front-end fixture checks passed");
