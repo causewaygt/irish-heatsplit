@@ -51,7 +51,27 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.24.0"
+PIPELINE_VERSION = "5.25.0"
+# 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
+#   EirGrid's demandactual is "the electricity production required to
+#   meet national electricity consumption" - so grid-connected solar
+#   is ALREADY INSIDE it - and solaractual is "large scale solar farms
+#   ... small scale embedded solar is not included". Adding one to the
+#   other is a double count, NOT a reconstruction.
+#   The UK sibling's NESO series is the opposite case: its demand
+#   excludes embedded generation and must have it added back once.
+#   Porting that reasoning across manufactured a temperature signal in
+#   exactly the daylight hours where cooling would appear. It cost the
+#   UK three published claims and cost this site a withdrawn cooling
+#   analysis - a diurnal comfort/process separation that was entirely
+#   artefact.
+#   THE IRISH PROBLEM IS THE REVERSE AND HAS NO FIX IN THIS DATA:
+#   ~310 MW of small-scale embedded solar IS invisible to demandactual
+#   and no published series exists to add back, so Irish underlying
+#   demand is understated on bright days by an unknown and growing
+#   amount. Daylight cooling estimates are biased DOWN. Night-time
+#   estimators are unaffected, solar being zero - which is why the
+#   weekday/weekend night placebo is the route that survives.
 # 5.23.0: WORKED EXAMPLES of absorbing the constrained wind. A
 #   different kind of claim from every other panel - it sizes the SINK
 #   ("what scale of load would it take") rather than claiming a
@@ -6483,6 +6503,34 @@ FEEDS = {
 # walking. dateRange=year returns nothing - month chunks are the
 # mechanism. All-island scope, per the v7 grid-layer decision.
 HOURLY_SERIES = {
+    # WHAT THESE SERIES CONTAIN. Written here, at the point of load,
+    # because getting it wrong cost the UK sibling three published
+    # claims and cost this one an entire withdrawn analysis.
+    #
+    # demandactual - EirGrid's own words: "the electricity production
+    #   required to meet national electricity consumption, including
+    #   system losses, but net of generators' requirements." It is
+    #   met BY grid-connected generation, so grid solar and wind are
+    #   already inside it. It is NOT reduced by them.
+    #
+    # solaractual - "the total electricity production of large scale
+    #   solar farms on the system. Small scale embedded solar is NOT
+    #   included."
+    #
+    # THEREFORE: NEVER ADD solar_ai TO demand_ai. That is a double
+    # count, not a reconstruction. The UK's NESO series is the
+    # opposite case - its demand figure EXCLUDES embedded generation,
+    # so there it must be added back once. Ported reasoning does not
+    # survive the crossing.
+    #
+    # The Irish problem is the reverse and has no fix in this data:
+    # small-scale embedded solar (~310 MW, tens of thousands of roofs)
+    # IS invisible to demandactual and there is NO published series to
+    # add back. So Irish underlying demand is understated on bright
+    # days by an unknown and growing amount, which biases any DAYLIGHT
+    # cooling estimate downward. Night-time estimators are unaffected,
+    # because solar is zero - which is why the weekday/weekend night
+    # placebo is the route that survives.
     "demand_ai": ("demand", "ALL", "demandactual"),
     "wind_ai": ("wind", "ALL", "windactual"),
     "solar_ai": ("solar", "ALL", "solaractual"),
