@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.23.2
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.24.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -138,6 +138,11 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .hstats.overbars .hlab{max-width:260px;margin-left:auto;margin-right:auto}
 .hstat .hval.ok{color:var(--green)}
 .hstat .hval.over{color:var(--amber)}
+/* Tier 2 sits OUTSIDE the bar and must look outside it. */
+.tier2out{margin:10px 0 2px;padding:10px 14px;font-size:.86rem;
+  color:var(--muted);border:1px dashed var(--faint);
+  border-radius:8px}
+.tier2out b{color:var(--ink2)}
 .emit{margin:6px 0 10px}
 .emitrow{display:flex;align-items:center;gap:10px;margin:4px 0}
 .emitlab{flex:0 0 190px;text-align:right;color:var(--ink2);font-size:.82rem}
@@ -615,30 +620,18 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   </div>
 </section>
 
-<section id="gap" aria-labelledby="gap-h">
-  <h2 id="gap-h">The heat gap <span class="dag">†</span></h2>
+<section id="cooling" aria-labelledby="cooling-h">
+  <h2 id="cooling-h">4. The rising demand for cooling, and geothermal&rsquo;s
+    role</h2>
+  <p class="scopeline">Ireland barely cools its buildings. It cools its
+    machines a great deal &mdash; and that is the part that is growing.</p>
   <div class="panelbox">
-    <div class="seg" role="tablist" aria-label="Jurisdiction">
-      <button class="segbtn active" id="segAll" role="tab">All island</button>
-      <button class="segbtn" id="segNI" role="tab">NI</button>
-      <button class="segbtn" id="segROI" role="tab">ROI</button>
-    </div>
-    <div class="stat" style="background:none;border:none;padding:0 0 10px 0">
-      <div class="lab">Break-even seasonal performance vs the oil boiler</div>
-      <div class="big" id="gapStat">–</div>
-      <div class="sub" id="gapStatSub"></div>
-    </div>
-    <div id="gapPlot" class="plot" style="min-height:300px"></div>
+    <h3 class="foldh">What Ireland actually cools
+      <span class="sub">&mdash; eleven terawatt-hours a year, and where the
+      boundary between process and comfort is not drawn</span></h3>
+    <div id="coolTiers"></div>
+    <p class="note" id="coolTiersNote"></p>
   </div>
-  <p class="note" id="gapNote">Cost of one useful kWh of heat by route, at
-    live oil prices and standard tariffs<span class="dag">†</span>. The
-    air-source SPF is modelled from each jurisdiction's own climate –
-    HDD-weighted outdoor temperature through a Carnot-fraction COP with
-    defrost and hot-water shares<span class="dag">†</span>, calibrated to
-    field-trial medians – so it moves with the weather year, not the
-    brochure. Geothermal's stable source temperature is exactly why its SPF
-    escapes this ceiling. Time-of-use and night tariffs materially improve
-    the heat-pump case; this is the standard-tariff view.</p>
 </section>
 
 <section id="cool" aria-labelledby="cool-h">
@@ -1598,6 +1591,125 @@ function oddExamples(x){
       + 'heating season, so absorbing it needs storage measured in '
       + 'months rather than hours. That is a property of the route, '
       + 'not of the machine.';
+  }
+}
+
+// ------------------------------- Panel 4: what Ireland actually cools
+// Two bars on one axis. The 2034 bar projects the DATA CENTRE BLOCK
+// ONLY - the other three are carried forward and drawn faded, because
+// commercial cannot be projected while its two halves cannot be
+// separated today, and projecting it would produce the conclusion by
+// construction rather than by evidence.
+//
+// Everything on these bars is USEFUL COOLING. Heat rejected is a
+// different and much larger quantity - the whole facility electricity,
+// IT load included - and appears only in the note, in its own units.
+const COOL_COL = {datacentres:"#1F4E5F", industry:"#5A6B64",
+                  commercial:null, public:"#4FA3C7"};
+function coolTiers(ct){
+  const box = el("coolTiers"), note = el("coolTiersNote");
+  if(!box) return;
+  if(!ct || !ct.tiers){
+    box.textContent = "The cooling tiers arrive with a coming build.";
+    if(note) note.textContent = "";
+    return;
+  }
+  const W = 1000, H = 300, P = {t:58, r:20, b:56, l:82};
+  const hi = niceTicks(Math.max(ct.total, ct.total_proj) * 1.06, 4);
+  const x = v => P.l + (v / hi.top) * (W - P.l - P.r);
+  const bh = 44, gap = 34;
+  let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
+    + '" role="img" aria-label="Irish cooling demand by tier, '
+    + esc(ct.base_year) + ' and ' + esc(ct.proj_year) + '">'
+    + '<defs><linearGradient id="commGrad" x1="0" x2="1">'
+    + '<stop offset="0%" stop-color="#3AAA35"/>'
+    + '<stop offset="100%" stop-color="#4FA3C7"/></linearGradient></defs>';
+  hi.values.forEach(v=>{
+    s += '<line x1="'+x(v)+'" x2="'+x(v)+'" y1="'+(P.t-14)+'" y2="'
+      + (H-P.b+6)+'" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="'+x(v)+'" y="'+(H-P.b+24)+'" text-anchor="middle" '
+      + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
+      + 'monospace">'+fmt(v,0)+'</text>';
+  });
+  [["twh", ct.base_year, P.t, 1.0],
+   ["twh_proj", ct.proj_year, P.t + bh + gap, 1.0]].forEach(([key,yr,y0,op])=>{
+    let acc = 0;
+    ct.tiers.forEach(t=>{
+      const v = t[key], faded = (key === "twh_proj" && t.held);
+      const fill = t.key === "commercial" ? 'url(#commGrad)'
+                                          : COOL_COL[t.key];
+      s += '<rect x="'+x(acc)+'" y="'+y0+'" width="'+(x(acc+v)-x(acc))
+        + '" height="'+bh+'" fill="'+fill+'"'
+        + (faded ? ' opacity="0.4"' : '') + '/>';
+      acc += v;
+    });
+    s += '<text x="'+(P.l-12)+'" y="'+(y0+bh/2+5)+'" text-anchor="end" '
+      + 'font-size="14" font-weight="700" fill="#fff" '
+      + 'font-family="IBM Plex Mono,monospace">'+esc(yr)+'</text>'
+      + '<text x="'+(x(acc)+10)+'" y="'+(y0+bh/2+5)+'" font-size="13" '
+      + 'fill="var(--ink2)" font-family="IBM Plex Mono,monospace">'
+      + fmt(acc,1)+' TWh</text>';
+  });
+  // the band where the process/comfort boundary lies, marked on the
+  // 2023 bar - a band, because SEAI does not draw a line and nor do we
+  const b = ct.commercial_retail_band_twh, off = 2.6;   // dc + industry
+  s += '<rect x="'+x(off+b[0])+'" y="'+(P.t-8)+'" width="'
+    + (x(off+b[1])-x(off+b[0]))+'" height="'+(bh+16)
+    + '" fill="none" stroke="#fff" stroke-width="1.4" '
+    + 'stroke-dasharray="5 4"/>'
+    + '<text x="'+((x(off+b[0])+x(off+b[1]))/2)+'" y="'+(P.t-16)
+    + '" text-anchor="middle" font-size="12" fill="#fff" '
+    + 'font-family="Lato,sans-serif">the boundary Irish statistics '
+    + 'do not draw\u2020</text>';
+  // growth bracket
+  const y1 = P.t + bh + gap + bh + 16;
+  s += '<line x1="'+x(ct.total)+'" x2="'+x(ct.total_proj)+'" y1="'+y1
+    + '" y2="'+y1+'" stroke="#3AAA35" stroke-width="2"/>'
+    + '<text x="'+((x(ct.total)+x(ct.total_proj))/2)+'" y="'+(y1+18)
+    + '" text-anchor="middle" font-size="12" fill="#3AAA35" '
+    + 'font-family="Lato,sans-serif">all of the growth is data centres'
+    + '</text>'
+    + '<text x="'+P.l+'" y="22" font-size="13" fill="#fff" '
+    + 'font-family="IBM Plex Mono,monospace">TWh of useful cooling a '
+    + 'year \u00b7 data centres ' + fmt(ct.dc_share_pct,0) + '% \u2192 '
+    + fmt(ct.dc_share_proj_pct,0) + '%</text>'
+    + '<text x="'+P.l+'" y="40" font-size="12" fill="var(--muted)" '
+    + 'font-family="IBM Plex Mono,monospace">only the data centre block '
+    + 'is projected \u00b7 the rest is held, not forecast</text>'
+    + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + ')" text-anchor="middle" font-size="13" font-weight="600" '
+    + 'fill="#fff" font-family="Lato, sans-serif">TWh useful cooling'
+    + '</text></svg>';
+  const leg = '<div class="legend">'
+    + '<span><span class="k" style="background:#1F4E5F"></span>data '
+    + 'centres</span><span><span class="k" style="background:#5A6B64">'
+    + '</span>industry</span><span><span class="k" style="background:'
+    + 'linear-gradient(90deg,#3AAA35,#4FA3C7)"></span>commercial \u2014 '
+    + 'refrigeration through to comfort</span><span><span class="k" '
+    + 'style="background:#4FA3C7"></span>public</span></div>';
+  box.innerHTML = leg + s
+    + '<div class="tier2out">Tier 2 \u2014 buildings that overheat with no '
+    + 'cooling at all. <b>Outside the bar</b>: a consumption survey cannot '
+    + 'count non-consumption. Grows with the climate, not the economy.'
+    + '</div>';
+  if(note){
+    note.textContent = "Ireland barely cools its buildings; it cools its "
+      + "machines. Three-quarters or more of this is process \u2014 data "
+      + "centres, industrial plant, and the refrigeration behind every "
+      + "supermarket aisle \u2014 running flat, year-round, growing with "
+      + "the economy rather than the weather. Comfort cooling exists in "
+      + "offices and shops with high internal gains, but Irish statistics "
+      + "do not separate it from refrigeration, and we could not measure "
+      + "it either: five methods of extracting a cooling signal from "
+      + "national electricity demand were tried and none identified one. "
+      + "So the boundary is a band, not a line, and it is unbounded above "
+      + "by anything we hold. Everything here is USEFUL COOLING. The heat "
+      + "those data centres reject is a different and far larger quantity "
+      + "\u2014 essentially their whole electricity draw, IT load "
+      + "included, because all of it leaves as heat \u2014 and Ireland's "
+      + "climate means much of it leaves without ever passing through a "
+      + "compressor. That is the part a network or a ground loop can take."
+      + " Source: " + esc(ct.source) + ".";
   }
 }
 
@@ -2897,6 +3009,7 @@ fetch('data.json').then(r=>{
   ddPanel(GDD);
   ddValue(GDD);
   oddExamples((D.derived||{}).odd_examples || null);
+  coolTiers((D.derived||{}).cooling_tiers || null);
   gridPanel(GTH);
   drawGridViews(GGV);
   const hero=(D.derived||{}).hero;
@@ -2916,7 +3029,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.23.2 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.24.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
