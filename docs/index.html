@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.27.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.28.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1612,6 +1612,28 @@ function oddExamples(x){
 // IT load included - and appears only in the note, in its own units.
 const COOL_COL = {datacentres:"#1F4E5F", industry:"#5A6B64",
                   commercial:null, public:"#4FA3C7"};
+// Hard segments, ordered process -> mixed -> comfort. No gradient: the
+// activity split is sourced and reconciles, so the boundary is drawn.
+const COOL_TIER_COL = {0:"#1F4E5F", m:"#C98F4F", 1:"#4FA3C7"};
+function coolSegs(ct){
+  const out = [];
+  ct.tiers.forEach(t=>{
+    if(t.key === "datacentres" || t.key === "industry")
+      out.push({label:t.label, tier:0, key:t.key,
+                s:t.service_twh, sp:t.service_proj_twh,
+                e:t.elec_twh, ep:t.elec_proj_twh, eer:t.eer,
+                skip:(ct.whatif_excluded||[]).indexOf(t.key)>=0});
+  });
+  (ct.segments||[]).forEach(g=>{
+    out.push({label:g.label, tier:g.tier, key:g.label,
+              s:g.service_twh, sp:g.service_twh,
+              e:g.elec_twh, ep:g.elec_twh,
+              eer:g.service_twh/Math.max(g.elec_twh,1e-9), skip:false,
+              per:g.per_archetype_mwh});
+  });
+  const rank = {0:0, m:1, 1:2};
+  return out.sort((a,b)=> rank[a.tier]-rank[b.tier] || b.s-a.s);
+}
 function coolTiers(ct){
   const box = el("coolTiers"), note = el("coolTiersNote"),
         defs = el("coolTierDefs"), meth = el("coolMethod");
@@ -1622,25 +1644,20 @@ function coolTiers(ct){
     if(defs) defs.innerHTML = ""; if(meth) meth.innerHTML = "";
     return;
   }
-  const W = 1000, H = 400, P = {t:96, r:22, b:58, l:96};
-  const hi = niceTicks(ct.service_proj_twh * 1.06, 4);
+  const segs = coolSegs(ct);
+  const W = 1000, H = 470, P = {t:150, r:22, b:58, l:96};
+  const hi = niceTicks(ct.service_proj_twh * 1.04, 4);
   const x = v => P.l + (v / hi.top) * (W - P.l - P.r);
   const bh = 40, gap = 20, grpGap = 26;
-  // Bars 1-2 are SERVICE, bars 3-4 are ELECTRICITY. Same axis, same
-  // units, different quantities - the shift is the argument, so it is
-  // banded and labelled rather than left for a reader to notice.
   const rows = [
-    {key:"service_twh", lab:ct.base_year, tot:ct.service_twh, grp:0},
-    {key:"service_proj_twh", lab:ct.proj_year, tot:ct.service_proj_twh, grp:0},
-    {key:"elec_proj_twh", lab:ct.proj_year, tot:ct.elec_proj_twh, grp:1},
-    {key:"geo", lab:ct.proj_year, tot:ct.elec_proj_geo_twh, grp:1},
+    {k:"s",  lab:ct.base_year, grp:0},
+    {k:"sp", lab:ct.proj_year, grp:0},
+    {k:"ep", lab:ct.proj_year, grp:1},
+    {k:"geo",lab:ct.proj_year, grp:1},
   ];
   let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
-    + '" role="img" aria-label="Irish cooling service and the '
-    + 'electricity it takes">'
-    + '<defs><linearGradient id="commGrad" x1="0" x2="1">'
-    + '<stop offset="0%" stop-color="#3AAA35"/>'
-    + '<stop offset="100%" stop-color="#4FA3C7"/></linearGradient></defs>';
+    + '" role="img" aria-label="Irish cooling by activity, service and '
+    + 'the electricity it takes">';
   hi.values.forEach(v=>{
     s += '<line x1="'+x(v)+'" x2="'+x(v)+'" y1="'+(P.t-8)+'" y2="'
       + (H-P.b+8)+'" stroke="var(--line)" stroke-width="1"/>'
@@ -1648,40 +1665,49 @@ function coolTiers(ct){
       + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
       + 'monospace">'+fmt(v,0)+'</text>';
   });
-  let y = P.t;
+  let y = P.t, first = null;
   rows.forEach((r,ri)=>{
     if(ri && r.grp !== rows[ri-1].grp) y += grpGap;
     let acc = 0;
-    ct.tiers.forEach(t=>{
+    segs.forEach(g=>{
       let v;
-      if(r.key === "geo"){
-        // data centres are excluded: in this climate ground cooling
-        // displaces nothing, because the competitor is a fan moving
-        // 10 degC air rather than a running compressor
-        const skip = (ct.whatif_excluded||[]).indexOf(t.key) >= 0;
-        const moved = ct.whatif_share * t.service_proj_twh;
-        v = (t.eer && !skip)
-          ? (t.elec_proj_twh - moved/t.eer + moved/ct.geo_eer)
-          : t.elec_proj_twh;
-      } else { v = t[r.key]; }
-      const faded = (r.key !== "service_twh" && t.held);
-      const fill = (t.key === "commercial" || t.key === "public")
-        ? 'url(#commGrad)' : COOL_COL[t.key];
+      if(r.k === "geo"){
+        const moved = ct.whatif_share * g.sp;
+        v = (g.eer && !g.skip)
+          ? (g.ep - moved/g.eer + moved/ct.geo_eer) : g.ep;
+      } else { v = g[r.k]; }
+      const faded = (r.k !== "s" && g.key !== "datacentres");
       s += '<rect x="'+x(acc)+'" y="'+y+'" width="'
-        + Math.max(x(acc+v)-x(acc),0)+'" height="'+bh+'" fill="'+fill+'"'
-        + (faded ? ' opacity="0.4"' : '') + '/>';
+        + Math.max(x(acc+v)-x(acc),0)+'" height="'+bh
+        + '" fill="'+COOL_TIER_COL[g.tier]+'" stroke="var(--bg)" '
+        + 'stroke-width="1"'+(faded?' opacity="0.45"':'')+'/>';
+      if(r.k === "s"){ g._x0 = acc; g._x1 = acc + v; }
       acc += v;
     });
+    if(r.k === "s") first = segs.map(g=>({g:g, y:y}));
     s += '<text x="'+(P.l-14)+'" y="'+(y+bh/2+5)+'" text-anchor="end" '
       + 'font-size="13" font-weight="700" fill="#fff" '
       + 'font-family="IBM Plex Mono,monospace">'+esc(r.lab)+'</text>'
       + '<text x="'+(x(acc)+12)+'" y="'+(y+bh/2+5)+'" font-size="13" '
       + 'fill="var(--ink2)" font-family="IBM Plex Mono,monospace">'
-      + fmt(acc,1)+(r.key==="geo"?' TWh \u00b7 with geothermal':' TWh')
+      + fmt(acc,1)+(r.k==="geo"?' TWh \u00b7 with geothermal':' TWh')
       + '</text>';
     r.y = y; y += bh + gap;
   });
-  // the two group labels, in the gutter
+  // leader lines and labels for every segment wide enough to name
+  let lane = 0;
+  segs.forEach(g=>{
+    const w = x(g._x1) - x(g._x0);
+    if(w < 12) return;
+    const cx = (x(g._x0) + x(g._x1)) / 2;
+    const ly = P.t - 14 - (lane % 4) * 24;
+    lane++;
+    s += '<line x1="'+cx+'" x2="'+cx+'" y1="'+(P.t-4)+'" y2="'+(ly+4)
+      + '" stroke="var(--faint)" stroke-width="1"/>'
+      + '<text x="'+cx+'" y="'+ly+'" text-anchor="middle" font-size="11" '
+      + 'fill="#fff" font-family="Lato,sans-serif">'+esc(g.label)
+      + ' ' + fmt(g.s,2) + '</text>';
+  });
   s += '<text x="26" y="'+(rows[1].y+bh)+'" transform="rotate(-90 26 '
     + (rows[1].y+bh)+')" text-anchor="middle" font-size="13" '
     + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
@@ -1690,7 +1716,6 @@ function coolTiers(ct){
     + (rows[3].y+bh)+')" text-anchor="middle" font-size="13" '
     + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
     + 'electricity bought</text>';
-  // the dividend
   const yb = rows[3].y + bh + 14;
   s += '<line x1="'+x(ct.elec_proj_geo_twh)+'" x2="'+x(ct.elec_proj_twh)
     + '" y1="'+yb+'" y2="'+yb+'" stroke="#3AAA35" stroke-width="2"/>'
@@ -1699,26 +1724,29 @@ function coolTiers(ct){
     + 'font-family="Lato,sans-serif">\u2212' + fmt(ct.geo_saving_twh,2)
     + ' TWh, ' + fmt(ct.geo_saving_pct,0) + '% less electricity</text>'
     + '<text x="'+P.l+'" y="24" font-size="13" fill="#fff" '
-    + 'font-family="IBM Plex Mono,monospace">'
-    + esc(ct.scope) + ' \u00b7 TWh a year</text>'
-    + '<text x="'+P.l+'" y="44" font-size="12" fill="var(--muted)" '
-    + 'font-family="IBM Plex Mono,monospace">only the data centre block '
-    + 'is projected, the rest is held, not forecast</text>'
-    + '<text x="'+P.l+'" y="62" font-size="12" fill="var(--muted)" '
-    + 'font-family="IBM Plex Mono,monospace">bars 3 and 4 are a '
-    + 'different quantity \u2014 what is bought, not what is delivered'
-    + '</text></svg>';
+    + 'font-family="IBM Plex Mono,monospace">'+esc(ct.scope)
+    + ' \u00b7 TWh a year</text>'
+    + '<text x="'+P.l+'" y="42" font-size="12" fill="var(--muted)" '
+    + 'font-family="IBM Plex Mono,monospace">only data centres are '
+    + 'projected \u00b7 SEAI holds the rest constant to 2050</text>'
+    + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + ')" text-anchor="middle" font-size="13" font-weight="600" '
+    + 'fill="#fff" font-family="Lato, sans-serif">TWh</text></svg>';
+  const tt = ct.tier_totals_twh || {};
   box.innerHTML = '<div class="legend">'
-    + '<span><span class="k" style="background:#1F4E5F"></span>data '
-    + 'centres</span><span><span class="k" style="background:#5A6B64">'
-    + '</span>industry</span><span><span class="k" style="background:'
-    + 'linear-gradient(90deg,#3AAA35,#4FA3C7)"></span>commercial and '
-    + 'public \u2014 process through to comfort</span></div>' + s
+    + '<span><span class="k" style="background:#1F4E5F"></span>Tier 0 '
+    + '\u00b7 process</span><span><span class="k" style="background:'
+    + '#C98F4F"></span>mixed under one roof</span><span><span class="k" '
+    + 'style="background:#4FA3C7"></span>Tier 1 \u00b7 comfort</span>'
+    + '</div>' + s
     + '<div class="tier2out"><b>Tier 2 \u2014 comfort, unequipped.</b> '
     + 'Buildings that overheat and have no cooling to draw. Outside '
-    + 'every figure on these bars, because a consumption survey cannot '
-    + 'count non-consumption. Grows with the climate, not the economy.'
-    + '</div>';
+    + 'every figure on these bars. SEAI\u2019s own model finds only '
+    + (ct.archetypes_with_cooling||[62,181])[0] + ' of '
+    + (ct.archetypes_with_cooling||[62,181])[1] + ' non-domestic '
+    + 'archetypes have any cooling demand at all \u2014 most of the '
+    + 'stock is already in this tier. Grows with the climate, not the '
+    + 'economy.</div>';
   if(defs && ct.tier_defs){
     defs.innerHTML = '<table class="caltab"><tbody>'
       + ct.tier_defs.map(t =>
@@ -1728,16 +1756,17 @@ function coolTiers(ct){
   }
   if(note){
     note.textContent = "Ireland barely cools its buildings; it cools its "
-      + "machines. Three-quarters of this is Tier 0 process, running flat "
-      + "and year-round, growing with the economy rather than the "
-      + "weather \u2014 and every terawatt-hour of growth to "
-      + ct.proj_year + " is data centres. The tiers cut across SEAI's "
-      + "sectors rather than aligning with them: a hospital's imaging "
-      + "suites and an airport's equipment load are Tier 0, sitting "
-      + "beside ward and terminal comfort under one roof. That is the "
-      + "point rather than a caveat \u2014 those are the sites where one "
-      + "borefield can serve both. Method, sources and the one EER that "
-      + "is ours are in the fold below.";
+      + "machines. Retail alone is more than every other building "
+      + "activity combined, and SEAI attributes that to refrigeration. "
+      + "Across commercial and public buildings the split is Tier 0 "
+      + fmt(tt["0"],1) + " TWh, Tier 1 " + fmt(tt["1"],1) + " TWh, with "
+      + fmt(tt["m"],1) + " TWh genuinely mixed under one roof \u2014 "
+      + "hotels and hospitals, where imaging suites and kitchen "
+      + "refrigeration sit beside ward and bedroom comfort. Those are "
+      + "the sites where one borefield can serve both, which is why the "
+      + "mixing is the point rather than a caveat. Every terawatt-hour "
+      + "of growth to " + ct.proj_year + " is data centres. Method and "
+      + "the two judgements in these figures are in the fold below.";
   }
   if(meth){
     const t = ct.tiers.map(r =>
@@ -1745,79 +1774,90 @@ function coolTiers(ct){
       + '</td><td>' + fmt(r.elec_twh,2) + '</td><td>' + fmt(r.eer,2)
       + (r.eer_is_ours ? ' \u2020' : '') + '</td><td>'
       + (r.eer_is_ours ? 'ours' : 'SEAI') + '</td></tr>').join("");
+    const a = (ct.segments||[]).map(g =>
+      '<tr><td>' + esc(g.label) + '</td><td>' + fmt(g.service_twh,2)
+      + '</td><td>' + fmt(g.per_archetype_mwh,0) + '</td><td>'
+      + (g.tier === 0 ? "Tier 0" : g.tier === 1 ? "Tier 1" : "mixed")
+      + '</td></tr>').join("");
     meth.innerHTML =
       '<p>SEAI\u2019s published cooling figures are a <b>mixture of '
-      + 'service and electricity</b>, and the two reports mix them '
+      + 'service and electricity</b>, and its two reports mix them '
       + 'differently. Commercial and public are cooling delivered; '
       + 'industry is electricity, because SEAI states the boundary '
       + '\u201cbetween passive heat loss and active cooling requiring '
       + 'energy input is unclear\u201d. Data centres were electricity in '
-      + 'the 2019 study and are service in the 2025 one. These bars put '
+      + 'the 2019 study and service in the 2025 one. These bars put '
       + 'every sector on the same basis.</p>'
       + '<p>The mixture was established by back-calculating each '
       + 'sector\u2019s electricity from its emissions: commercial, '
       + 'public, industry and agriculture all imply 317\u2013324 '
       + 'gCO\u2082/kWh, which is the 2019 grid intensity. Four sectors '
       + 'agreeing to within 2% shows the emissions and energy tables are '
-      + 'one model. Run the same test against the demand figure instead '
-      + 'and the implied intensity runs 123 to 333 \u2014 which is how '
-      + 'we know that figure is not one quantity.</p>'
+      + 'one model. Run the same test against the demand figure and the '
+      + 'implied intensity runs 123 to 333 \u2014 which is how we know '
+      + 'that figure is not one quantity.</p>'
       + '<table class="caltab"><thead><tr><th>Sector</th>'
       + '<th>Service TWh</th><th>Electricity TWh</th><th>EER</th>'
       + '<th>Whose</th></tr></thead><tbody>' + t + '</tbody></table>'
-      + '<p><b>One EER is ours: industry at ' + fmt(ct.industry_eer,1)
-      + '\u2020.</b> It is bracketed by SEAI\u2019s own anchors rather '
-      + 'than an outside source \u2014 commercial 2.08 and public 2.50 '
-      + 'are SEAI\u2019s, and process chillers run at steadier load and '
-      + 'higher utilisation than a commercial fleet full of part-load '
-      + 'and older plant. The upper marker is Barth et al. (2025), which '
-      + 'quantifies Manhattan at 10.0 TWh of cooling on 2.82 TWh of '
-      + 'electricity, an EER of 3.5. Data centres are not re-judged: '
-      + 'the 2025 Annex carries them at 2.00 and overriding a published '
-      + 'service figure would be a larger claim than converting a sector '
-      + 'SEAI declined to convert at all. We think 2.00 is low for an '
-      + 'Irish fleet where free cooling carries most hours, and that '
-      + 'argument belongs below rather than in a silent constant.</p>'
-      + '<p><b>Data centres carry an effective EER of '
-      + fmt(ct.dc_eer,0) + '\u2020, not the 2.00 the 2025 Annex '
-      + 'implies.</b> SEAI\u2019s own report says why: for data centres '
-      + 'it reports electricity for cooling rather than cooling '
-      + 'delivered, \u201cbecause there is little publicly available '
-      + 'information regarding the efficiency of cooling techniques used '
-      + 'in data centres\u201d, and it never models free cooling as a '
-      + 'mechanism at all. But the heat removed from the white space is '
-      + 'essentially everything except the cooling plant\u2019s own '
-      + 'draw, and two routes agree on about six: 14% of electricity on '
-      + 'cooling implies 5.5 TWh removed for 0.9, and the IT load at a '
-      + 'measured Irish PUE of 1.15\u20131.25 gives the same. In this '
-      + 'climate that is what free cooling looks like as a number \u2014 '
-      + 'nearly all the heat leaves through economisers and dry coolers '
-      + 'with only fan and pump work behind it.</p>'
-      + '<p><b>Which is why data centres are excluded from the what-if.</b> '
-      + 'Ground cooling cannot beat free air here: the competitor is not '
-      + 'a running compressor, it is a fan moving 10\u202f\u00b0C air. '
-      + 'Nothing is displaced, so nothing is claimed \u2014 and that is '
-      + 'the honest limit of geothermal cooling as a standalone '
+      + '<p><b>Two EERs are ours.</b> Industry at '
+      + fmt(ct.industry_eer,1) + '\u2020, bracketed by SEAI\u2019s own '
+      + 'anchors rather than an outside source \u2014 commercial 2.08 '
+      + 'and public 2.50 are SEAI\u2019s, and process chillers run at '
+      + 'steadier load and higher utilisation than a commercial fleet '
+      + 'full of part-load and older plant; Barth et al. (2025) put '
+      + 'Manhattan at 3.5.</p>'
+      + '<p>And <b>data centres at an effective EER of ' + fmt(ct.dc_eer,0)
+      + '\u2020</b>, not the 2.00 the 2025 Annex implies. SEAI\u2019s own '
+      + 'report says why: for data centres it reports electricity for '
+      + 'cooling rather than cooling delivered, \u201cbecause there is '
+      + 'little publicly available information regarding the efficiency '
+      + 'of cooling techniques used in data centres\u201d, and it never '
+      + 'models free cooling as a mechanism at all. But the heat removed '
+      + 'from the white space is essentially everything except the '
+      + 'cooling plant\u2019s own draw, and two routes agree on about '
+      + 'six: 14% of electricity on cooling implies 5.5 TWh removed for '
+      + '0.9, and the IT load at a measured Irish PUE of 1.15\u20131.25 '
+      + 'gives the same. In this climate that is what free cooling looks '
+      + 'like as a number.</p>'
+      + '<p><b>Which is why data centres are excluded from the '
+      + 'what-if.</b> Ground cooling cannot beat free air here: the '
+      + 'competitor is not a running compressor, it is a fan moving '
+      + '10\u202f\u00b0C air. Nothing is displaced, so nothing is claimed '
+      + '\u2014 the honest limit of geothermal cooling as a standalone '
       + 'proposition in Ireland. Retail refrigeration, industrial '
-      + 'process cooling and comfort cooling in offices are different: '
-      + 'free cooling is a data centre design, not a supermarket one, '
-      + 'and they stay in. The case for a borefield here is seasonal '
-      + 'storage, not cheaper cooling.</p>'
+      + 'process cooling and office comfort cooling stay in, because '
+      + 'free cooling is a data centre design and not a supermarket '
+      + 'one. The case for a borefield here is seasonal storage, not '
+      + 'cheaper cooling.</p>'
+      + '<p><b>The activity split is hard, not judged.</b> Figures 52 '
+      + 'and 53 of the 2019 study disaggregate commercial and public by '
+      + 'building activity and reconcile with the sector totals to '
+      + 'within 0.1%. SEAI attributes retail\u2019s dominance itself: '
+      + 'the cooling demand from retail archetypes exceeds that of all '
+      + 'other archetypes combined, which it says is likely attributable '
+      + 'to refrigeration. Commercial and public are scaled separately '
+      + 'onto their own 2023 totals, because the two did not grow at the '
+      + 'same rate. The per-archetype column is what the totals conceal: '
+      + 'warehousing is the most cooling-intense activity per building '
+      + 'of any on the list and among the smallest in total \u2014 a '
+      + 'cold store \u2014 while retail\u2019s is spread across some '
+      + '26,000 buildings.</p>'
+      + '<table class="caltab"><thead><tr><th>Activity</th>'
+      + '<th>Service TWh</th><th>MWh per archetype</th><th>Tier</th>'
+      + '</tr></thead><tbody>' + a + '</tbody></table>'
       + '<p><b>The what-if</b> moves ' + fmt(ct.whatif_share*100,0)
-      + '% of each sector\u2019s ' + ct.proj_year + ' service onto direct '
-      + 'ground cooling at an effective EER of ' + fmt(ct.geo_eer,0)
-      + '\u2020 \u2014 circulation only, no compressor. That is '
-      + 'deliberately conservative: what pumping sits inside the '
-      + 'boundary is not settled, the same objection the UK sibling\u2019s '
-      + 'peer review raised against its network performance factor.</p>'
-      + '<p><b>Retail is ' + fmt(ct.retail_share_of_commercial*100,1)
-      + '% of commercial cooling</b>, sourced from the 2019 study\u2019s '
-      + 'activity split, which reconciles with its sector totals to '
-      + 'within 0.1%. Offices and education total '
-      + fmt(ct.comfort_floor_gwh,0) + ' GWh and are the cleanest Tier 1 '
-      + 'available \u2014 no refrigeration argument is possible for '
-      + 'them. Northern Ireland is not in these bars: SEAI is '
-      + 'Republic-only, and our own all-island figure carries about '
+      + '% of each remaining sector\u2019s ' + ct.proj_year + ' service '
+      + 'onto direct ground cooling at an effective EER of '
+      + fmt(ct.geo_eer,0) + '\u2020 \u2014 circulation only, no '
+      + 'compressor. Deliberately conservative: what pumping sits inside '
+      + 'that boundary is not settled, the same objection the UK '
+      + 'sibling\u2019s peer review raised against its network '
+      + 'performance factor.</p>'
+      + '<p>Only data centres are projected. SEAI holds commercial and '
+      + 'public cooling constant to 2050 at archetype level, so the '
+      + '\u201cheld, not forecast\u201d treatment of those blocks is '
+      + 'SEAI\u2019s own. Northern Ireland is not in these bars: SEAI is '
+      + 'Republic-only, and our all-island figure carries about '
       + fmt(ct.ni_all_twh,1) + ' TWh for the North as a single '
       + 'undivided anchor, because DfE publishes no cooling line and NI '
       + 'is not separable inside UK statistics.</p>'
@@ -3141,7 +3181,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.27.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.28.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
