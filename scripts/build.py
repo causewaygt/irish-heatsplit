@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.25.0"
+PIPELINE_VERSION = "5.26.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6243,6 +6243,76 @@ AGBONAYE = {
 }
 
 
+# Irish cooling by tier. SEAI Comprehensive Assessment Technical Annex
+# (ERM for SEAI, May 2026), Figure 7, 2023 base - USEFUL COOLING, not
+# electricity. Superseded the 2022 National Heat Study's 7.5 TWh.
+#
+# THREE QUANTITIES THAT MUST NOT BE CONFLATED, because two of them
+# differ by a factor of eight on the same page:
+#   - cooling ELECTRICITY: what runs the plant (~10% of data centre
+#     electricity, per SEAI)
+#   - USEFUL COOLING: what the plant removes. This bar, throughout.
+#   - HEAT REJECTED: essentially the WHOLE facility electricity, IT
+#     load included, because all of it leaves as heat. This is the
+#     recoverable resource and it is reported separately, in its own
+#     units, never on this bar.
+COOL_TIERS_2023 = [
+    ("datacentres", "Data centres", 1.8, "process"),
+    ("industry", "Industry", 0.8, "process"),
+    ("commercial", "Commercial", 7.5, "mixed"),
+    ("public", "Public", 0.5, "comfort"),
+]
+# The commercial line is majority RETAIL REFRIGERATION by SEAI's own
+# account, so it spans the process/comfort boundary. SEAI does not draw
+# that boundary and neither do we: the panel shows a BAND, not a line.
+# The low end is a bare majority, the high end SEAI's separate finding
+# that retail is 72% of all cooling emissions.
+COOL_COMMERCIAL_RETAIL_BAND = (0.50, 0.72)
+# EirGrid contracted-demand trajectory: data centre electricity 9.4 TWh
+# in 2025 to 14.6 TWh in 2034, via CRU. 2023 was ~6.4 TWh (21% of 30.5),
+# so the block scales by 14.6/6.4. Currently CONTRACTED demand, not a
+# growth assumption - but it predates the CRU's 2025 connection policy
+# (80% additional renewables, six-year glide path), so it may prove high.
+COOL_DC_GROWTH = (6.4, 14.6, 2034)
+
+
+def derive_cooling_tiers():
+    """
+    Irish cooling by tier, 2023 and a 2034 projection.
+
+    ONLY THE DATA CENTRE BLOCK IS PROJECTED. Industry, commercial and
+    public are carried forward unchanged and labelled as held, not
+    forecast - because commercial cannot be projected when its two
+    halves cannot be separated today, and projecting it would produce
+    this panel's conclusion by construction rather than by evidence.
+    """
+    base = {k: v for k, _, v, _ in COOL_TIERS_2023}
+    lo, hi, yr = COOL_DC_GROWTH
+    factor = hi / lo
+    tiers = [{"key": k, "label": lab, "twh": v, "group": g,
+              "twh_proj": round(v * factor, 1) if k == "datacentres" else v,
+              "held": k != "datacentres"}
+             for k, lab, v, g in COOL_TIERS_2023]
+    tot = round(sum(t["twh"] for t in tiers), 1)
+    tot_p = round(sum(t["twh_proj"] for t in tiers), 1)
+    band = [round(base["commercial"] * f, 1)
+            for f in COOL_COMMERCIAL_RETAIL_BAND]
+    out = {"base_year": 2023, "proj_year": yr, "unit": "TWh useful cooling",
+           "tiers": tiers, "total": tot, "total_proj": tot_p,
+           "commercial_retail_band_twh": band,
+           "dc_electricity_twh": [lo, hi],
+           "dc_share_pct": round(100 * base["datacentres"] / tot, 1),
+           "dc_share_proj_pct": round(
+               100 * base["datacentres"] * factor / tot_p, 1),
+           "source": "SEAI Comprehensive Assessment Technical Annex 2025, "
+                     "Figure 7 (2023); EirGrid contracted demand via CRU"}
+    log(f"cooling tiers: {tot} TWh useful cooling in 2023, data centres "
+        f"{out['dc_share_pct']}% -> {tot_p} TWh by {yr}, data centres "
+        f"{out['dc_share_proj_pct']}% (only that block projected); "
+        f"commercial retail band {band[0]}-{band[1]} TWh \u2020")
+    return out
+
+
 def derive_odd_examples(dd, anchors=None):
     """
     What scale of load it would take to absorb Northern Ireland's
@@ -7151,6 +7221,10 @@ def main():
     except Exception as exc:
         log(f"heat emissions: failed ({exc.__class__.__name__}) - "
             "the rest of the panel is unaffected")
+    try:
+        derived["cooling_tiers"] = derive_cooling_tiers()
+    except Exception as exc:
+        log(f"cooling tiers: failed ({exc.__class__.__name__})")
     try:
         dd = derive_dispatch_down()
         if dd:
