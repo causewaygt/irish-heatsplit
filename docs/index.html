@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.26.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.27.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1655,9 +1655,14 @@ function coolTiers(ct){
     ct.tiers.forEach(t=>{
       let v;
       if(r.key === "geo"){
+        // data centres are excluded: in this climate ground cooling
+        // displaces nothing, because the competitor is a fan moving
+        // 10 degC air rather than a running compressor
+        const skip = (ct.whatif_excluded||[]).indexOf(t.key) >= 0;
         const moved = ct.whatif_share * t.service_proj_twh;
-        v = t.eer ? (t.elec_proj_twh - moved/t.eer + moved/ct.geo_eer)
-                  : t.elec_proj_twh;
+        v = (t.eer && !skip)
+          ? (t.elec_proj_twh - moved/t.eer + moved/ct.geo_eer)
+          : t.elec_proj_twh;
       } else { v = t[r.key]; }
       const faded = (r.key !== "service_twh" && t.held);
       const fill = (t.key === "commercial" || t.key === "public")
@@ -1773,6 +1778,31 @@ function coolTiers(ct){
       + 'SEAI declined to convert at all. We think 2.00 is low for an '
       + 'Irish fleet where free cooling carries most hours, and that '
       + 'argument belongs below rather than in a silent constant.</p>'
+      + '<p><b>Data centres carry an effective EER of '
+      + fmt(ct.dc_eer,0) + '\u2020, not the 2.00 the 2025 Annex '
+      + 'implies.</b> SEAI\u2019s own report says why: for data centres '
+      + 'it reports electricity for cooling rather than cooling '
+      + 'delivered, \u201cbecause there is little publicly available '
+      + 'information regarding the efficiency of cooling techniques used '
+      + 'in data centres\u201d, and it never models free cooling as a '
+      + 'mechanism at all. But the heat removed from the white space is '
+      + 'essentially everything except the cooling plant\u2019s own '
+      + 'draw, and two routes agree on about six: 14% of electricity on '
+      + 'cooling implies 5.5 TWh removed for 0.9, and the IT load at a '
+      + 'measured Irish PUE of 1.15\u20131.25 gives the same. In this '
+      + 'climate that is what free cooling looks like as a number \u2014 '
+      + 'nearly all the heat leaves through economisers and dry coolers '
+      + 'with only fan and pump work behind it.</p>'
+      + '<p><b>Which is why data centres are excluded from the what-if.</b> '
+      + 'Ground cooling cannot beat free air here: the competitor is not '
+      + 'a running compressor, it is a fan moving 10\u202f\u00b0C air. '
+      + 'Nothing is displaced, so nothing is claimed \u2014 and that is '
+      + 'the honest limit of geothermal cooling as a standalone '
+      + 'proposition in Ireland. Retail refrigeration, industrial '
+      + 'process cooling and comfort cooling in offices are different: '
+      + 'free cooling is a data centre design, not a supermarket one, '
+      + 'and they stay in. The case for a borefield here is seasonal '
+      + 'storage, not cheaper cooling.</p>'
       + '<p><b>The what-if</b> moves ' + fmt(ct.whatif_share*100,0)
       + '% of each sector\u2019s ' + ct.proj_year + ' service onto direct '
       + 'ground cooling at an effective EER of ' + fmt(ct.geo_eer,0)
@@ -3111,7 +3141,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.26.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.27.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
