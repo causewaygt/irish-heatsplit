@@ -3944,6 +3944,41 @@ def test_dispatch_down_series_and_its_heat_conversion():
     assert groups["trans"] == "constraint" and groups["snsp"] == "curtailment"
 
 
+def test_demand_series_is_never_reconstructed_with_solar():
+    """EirGrid's demandactual is production required to meet
+    consumption, so grid-connected solar is ALREADY INSIDE it;
+    solaractual is large-scale farms only. Adding one to the other is
+    a double count, not a reconstruction.
+
+    The UK sibling's NESO series is the opposite case - its demand
+    EXCLUDES embedded generation and must have it added back once -
+    and porting that reasoning across manufactured a temperature
+    signal in exactly the daylight hours where cooling would appear.
+    It cost three published UK claims and one withdrawn Irish
+    analysis. The rule is enforced here rather than left in a comment.
+    """
+    import build as B, inspect, re
+    src = inspect.getsource(B)
+    # the definition must state what the series contain
+    assert "NEVER ADD solar_ai" in src
+    assert "embedded solar is NOT" in src or "embedded solar" in src
+    # and no code may actually do it. Use a CHARACTER WINDOW, not a
+    # line or a statement split: the first version matched both names
+    # on one line, the second split on statements - and a dict
+    # comprehension whose continuation line begins with "for" was cut
+    # in half by the splitter and walked through both. A window makes
+    # no assumption about how the expression is laid out.
+    bad = []
+    for m in re.finditer(r"demand_ai", src):
+        lo = max(0, m.start() - 200)
+        win = src[lo:m.start() + 200]
+        if "NEVER ADD" in win or "HOURLY_SERIES" in win:
+            continue
+        if "solar_ai" in win and "+" in win:
+            bad.append(" ".join(win.split())[:140])
+    assert not bad, f"demand may be reconstructed with solar: {bad}"
+
+
 def test_hdd_year_gate_and_base_scan():
     """Four lines that catch the class of error the UK sibling hit: an
     annual quantity that silently stopped spanning a year while every
