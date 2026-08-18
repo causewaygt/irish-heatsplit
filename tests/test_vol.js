@@ -887,12 +887,20 @@ ok(/property of the route, not of the machine/.test(oxn),
 }
 
 // ---- Panel 4: what Ireland actually cools -------------------------
-["coolTiers","coolTiersNote"].forEach(k=>{DOM[k]=null; el(k);});
+["coolTiers","coolTiersNote","coolTierDefs"].forEach(k=>{DOM[k]=null; el(k);});
 coolTiers({base_year:2023, proj_year:2034, unit:"TWh useful cooling",
   total:10.6, total_proj:12.9, commercial_retail_band_twh:[3.8,5.4],
   dc_electricity_twh:[6.4,14.6], dc_share_pct:17.0, dc_share_proj_pct:31.8,
   source:"SEAI Comprehensive Assessment Technical Annex 2025, Figure 7 "
          + "(2023); EirGrid contracted demand via CRU",
+  public_process_band_twh:[0.12,0.28],
+  offsets_twh:{datacentres:0.0, industry:1.8, commercial:2.6, public:10.1},
+  tier_defs:[{key:"tier0",label:"Tier 0 \u00b7 process",
+              text:"Runs regardless of the weather."},
+             {key:"tier1",label:"Tier 1 \u00b7 comfort, equipped",
+              text:"Delivered by installed plant."},
+             {key:"tier2",label:"Tier 2 \u00b7 comfort, unequipped",
+              text:"No cooling to draw."}],
   tiers:[{key:"datacentres",label:"Data centres",twh:1.8,twh_proj:4.1,
           group:"process",held:false},
          {key:"industry",label:"Industry",twh:0.8,twh_proj:0.8,
@@ -915,13 +923,26 @@ ok((csvg.match(/opacity="0.4"/g)||[]).length === 3,
    "the three held blocks are drawn faded on the 2034 bar");
 ok(/held, not forecast/.test(csvg),
    "and the chart says they are held rather than forecast");
-ok(/the boundary Irish statistics do not draw/.test(csvg),
-   "the process/comfort boundary is shown as a band, labelled");
-ok(/stroke-dasharray/.test(csvg), "and drawn dashed, not as a line");
+// BOTH mixed blocks must carry a band. The tiers cut ACROSS SEAI's
+// sectors, and an earlier version drew "public" as though it were
+// wholly comfort - which would have put a hospital's imaging suites
+// and an airport's equipment load in the comfort tier.
+ok((csvg.match(/Tier 0 \| Tier 1 somewhere in here/g)||[]).length === 2,
+   "both the commercial AND public blocks carry a boundary band");
+ok(/commercial\u2020|commercial†/.test(csvg) && /public/.test(csvg),
+   "and each band names the sector it sits in");
+ok((csvg.match(/stroke-dasharray/g)||[]).length >= 2,
+   "both drawn dashed, not as lines");
+ok(/TIERS CUT ACROSS/.test(DOM.coolTiersNote.textContent),
+   "the note says the tiers do not align with the sectors");
+ok(/Tier 0/.test(DOM.coolTierDefs.innerHTML)
+   && /Tier 1/.test(DOM.coolTierDefs.innerHTML)
+   && /Tier 2/.test(DOM.coolTierDefs.innerHTML),
+   "all three tiers are defined on the page");
 ok(/all of the growth is data centres/.test(csvg),
    "the growth bracket names what is driving it");
 // Tier 2 must sit visibly outside the bar
-ok(/tier2out/.test(ck) && /Outside the bar/.test(ck),
+ok(/tier2out/.test(ck) && /Outside every\s+figure on this bar/.test(ck),
    "Tier 2 is outside the bar and says why");
 // the three quantities must not be conflated
 const cn = DOM.coolTiersNote.textContent;
@@ -929,7 +950,7 @@ ok(/USEFUL COOLING/.test(cn) && /whole electricity draw/.test(cn),
    "the note separates useful cooling from heat rejected");
 ok(/none identified one/.test(cn),
    "and states that five methods failed to measure comfort cooling");
-["coolTiers","coolTiersNote"].forEach(k=>{DOM[k]=null; el(k);});
+["coolTiers","coolTiersNote","coolTierDefs"].forEach(k=>{DOM[k]=null; el(k);});
 coolTiers(null);
 ok(/coming build/.test(DOM.coolTiers.textContent),
    "and the panel declines cleanly without the block");
