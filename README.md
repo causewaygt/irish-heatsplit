@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.27.0 / site 5.25.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.28.0 / site 5.25.1.
 
 ## The premise
 
@@ -1232,6 +1232,31 @@ structure. Chart layout fixed: two caption rows above the plot with
 leader lines to their bands, and the growth bracket anchored to the two
 bar ends with end caps.
 
+**Panel 4 reconciled against Panel 1 (5.28.0 / site 5.25.1).** Panel 1
+reports 6.3 TWh of purchased electricity for cooling; Panel 4 reports
+10.6 TWh of useful cooling. Both are right and they are different
+quantities, so the chart now states the electricity equivalent — 5.5 TWh,
+an implied EER of 1.9 — beside the service.
+
+**And the bar is now labelled Republic of Ireland.** SEAI's Figure 7 is
+Republic-only; Panel 1 is all-island and carries about 1.2 TWh for
+Northern Ireland as a single undivided anchor. There is no NI equivalent
+to split it with: DfE publishes total electricity with no cooling or
+data-centre line, and NI is not separable inside UK ECUK. Unlabelled, a
+reader comparing the two panels would conclude the numbers disagree when
+they cover different territories.
+
+**A correction I nearly shipped.** I twice reported SEAI's current
+data-centre cooling share as ~10%, and would have changed Panel 1's 14%
+to match. The comment in the cold-economy census caught it: 0.9 TWh is a
+2023 quantity and 2023 data-centre electricity was ~6.4 TWh, so the share
+is 14% — my 10% was a 2023 numerator over a 2025 denominator. The two
+SEAI publications agree; I did not. Both panels now read one constant,
+`COOL_DC_COOLING_SHARE`, so they cannot diverge again.
+
+The two boundary captions also moved clear of the header rows, with a
+test asserting they do.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1373,7 +1398,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 204 front-end fixture checks
+node tests/test_vol.js            # 207 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
