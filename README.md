@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.26.0 / site 5.24.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.27.0 / site 5.25.0.
 
 ## The premise
 
@@ -1208,6 +1208,30 @@ Ireland much of it leaves without ever passing through a compressor.
 width — a consumption survey cannot count non-consumption — and grows
 with the climate rather than the economy.
 
+**The tiers cut across the sectors (5.27.0 / site 5.25.0).** The first
+version of Panel 4 drew SEAI's "public" block as though it were wholly
+comfort cooling. It is not — a hospital's imaging suites, laboratory and
+blood refrigeration, mortuary and sterile services run regardless of the
+weather, as does an airport's year-round equipment load, and all of that
+is Tier 0 by our own definition. Only ward, terminal and office comfort
+is Tier 1.
+
+So **both** mixed blocks now carry a dashed boundary band, and the panel
+states that the tiers cut across SEAI's sectors rather than aligning with
+them. The public band is proportionally wider than the commercial one
+because no Irish source splits it at all, where SEAI's retail
+attribution at least bounds commercial.
+
+**That is the panel's point rather than a caveat.** The buildings where
+Tier 0 and Tier 1 sit under one roof and one owner are exactly the sites
+where a single borefield can serve both, and where the seasonal balance
+it needs comes closest to striking itself.
+
+All three tiers are now defined on the page, matching the UK sibling's
+structure. Chart layout fixed: two caption rows above the plot with
+leader lines to their bands, and the growth bracket anchored to the two
+bar ends with end caps.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1349,7 +1373,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 201 front-end fixture checks
+node tests/test_vol.js            # 204 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
