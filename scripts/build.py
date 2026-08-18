@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.27.0"
+PIPELINE_VERSION = "5.28.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -855,7 +855,8 @@ ANCHORS = {
     # CORRECTION 6 Aug 2026 (SEAI National Heat Study, Report 1):
     # the census previously carried TOTAL data-centre electricity as
     # cold-economy cooling load. It is not: SEAI finds cooling is
-    # ~14% of data-centre electricity, the balance being IT load that
+    # ~14% of data-centre electricity (SEAI; see the share note in the
+    # cold-economy anchors), the balance being IT load that
     # BECOMES heat rather than removing it. The DC line is now priced
     # at its cooling share; the heat it rejects is unchanged, so the
     # rejection and service factors rise to match (see below) and the
@@ -896,7 +897,19 @@ ANCHORS = {
         "delivered_mwh_per_dwelling": 9.0,
     },
     "cool": {"dc_share_of_roi_elec": 0.22, "dc_share_2028": 0.29,
-             "dc_cooling_share": 0.14,     # SEAI NHS Report 1
+             # HELD AT 0.14, and the reasoning is recorded because it
+             # was nearly changed on a misreading. SEAI's 2025
+             # Comprehensive Assessment states data-centre cooling of
+             # 0.9 TWh; read against its 2025 ELECTRICITY figure of 9+
+             # TWh that looks like ~10%, but the 0.9 is a 2023 quantity
+             # and 2023 data-centre electricity was ~6.4 TWh - which
+             # implies 14%, matching the 2022 archetypes. The two SEAI
+             # publications agree; the 10% was a 2023 numerator over a
+             # 2025 denominator. Resolve against the archetype table
+             # before moving this.
+             # reads COOL_DC_COOLING_SHARE so the two panels cannot
+             # diverge; the reasoning above is why it is 0.14
+             "dc_cooling_share": None,     # set below from the constant
              "roi_elec_twh": 31.0,
              "loads_twh": {"dc": None,          # computed: share x elec
                            # Cold-economy load census, TWh/yr of electricity. DC from CSO
@@ -939,6 +952,13 @@ ANCHORS = {
              # electricity = 1/0.14 ~ 7.1. Physical output preserved
              # across the 6 Aug 2026 correction; only the purchased
              # side moved.
+             # dc is COUPLED to dc_cooling_share and must move with it:
+             # essentially ALL data-centre electricity leaves as heat,
+             # so heat rejected = cooling electricity / cooling share,
+             # i.e. dc = 1 / dc_cooling_share. 7.1 is 1/0.14. Changing
+             # one without the other silently loses or invents rejected
+             # heat, and the suite asserts the identity - it caught
+             # exactly that on 18 Aug 2026.
              "rejection_factor": {"dc": 7.1, "refrigeration": 2.5,
                                   # Heat-rejection factors: kWh of heat rejected per kWh of
     # electricity drawn - approximately (COP + 1) for vapour
@@ -6256,12 +6276,25 @@ AGBONAYE = {
 #     load included, because all of it leaves as heat. This is the
 #     recoverable resource and it is reported separately, in its own
 #     units, never on this bar.
+# REPUBLIC OF IRELAND ONLY. SEAI's assessment does not cover Northern
+# Ireland, and no NI equivalent exists: DfE publishes total electricity
+# with no cooling line, and NI is not separable inside UK ECUK. Our own
+# cold-economy census carries NI as a single undivided 1.2 TWh dagger.
+# Labelling this bar "island" would put it in apparent conflict with
+# panel 1, which IS all-island.
+#
+# Both columns are carried because panel 1 reports PURCHASED ENERGY and
+# this bar reports USEFUL COOLING - roughly a factor of two apart, and
+# a reader seeing 6.3 on one and 10.6 on the other will otherwise
+# assume one of them is wrong.
 COOL_TIERS_2023 = [
-    ("datacentres", "Data centres", 1.8, "process"),
-    ("industry", "Industry", 0.8, "process"),
-    ("commercial", "Commercial", 7.5, "mixed"),
-    ("public", "Public", 0.5, "comfort"),
+    # key, label, useful cooling TWh, final energy TWh, tier group
+    ("datacentres", "Data centres", 1.8, 0.9, "process"),
+    ("industry", "Industry", 0.8, 0.8, "process"),
+    ("commercial", "Commercial", 7.5, 3.6, "mixed"),
+    ("public", "Public", 0.5, 0.2, "comfort"),
 ]
+COOL_NI_TWH = 1.2      # dagger, undivided - see the cold-economy census
 # The commercial line is majority RETAIL REFRIGERATION by SEAI's own
 # account, so it spans the process/comfort boundary. SEAI does not draw
 # that boundary and neither do we: the panel shows a BAND, not a line.
@@ -6306,6 +6339,31 @@ COOL_TIER_DEFS = [
 # growth assumption - but it predates the CRU's 2025 connection policy
 # (80% additional renewables, six-year glide path), so it may prove high.
 COOL_DC_GROWTH = (6.4, 14.6, 2034)
+# SEAI's current data-centre cooling share, from the 2025 Comprehensive
+# Assessment. The cold-economy census (Panel 1) carried 14% from the
+# 2022 National Heat Study; SEAI now uses ~10%. Both panels read this
+# constant so they cannot diverge again.
+# 0.14, NOT 0.10. I twice reported SEAI's current share as ~10%, from
+# its 2023 cooling figure of 0.9 TWh read against its 2025 ELECTRICITY
+# figure of 9+ TWh. That is a 2023 numerator over a 2025 denominator:
+# 2023 data-centre electricity was ~6.4 TWh, so 0.9 TWh is 14% - which
+# matches the 2022 archetype table. The two SEAI publications agree.
+# The cold-economy census already carried this and recorded the
+# reasoning; both panels now read one constant.
+COOL_DC_COOLING_SHARE = 0.14
+# ROI ONLY. SEAI Figure 7 is Republic-only, and there is no Northern
+# Ireland equivalent: DfE publishes total NI electricity with no cooling
+# line and no data-centre line, and NI is not separable inside UK ECUK.
+# Our own cold-economy census carries the whole NI cold economy as a
+# single undivided anchor, so the island figure on Panel 1 includes it
+# while this bar does not. Label the bar, or a reader comparing panels
+# concludes the numbers disagree when they cover different territories.
+COOL_NI_ALL_TWH = 1.2
+COOL_SCOPE = "Republic of Ireland"
+
+# One constant, two panels. ANCHORS is defined above this point, so the
+# cold-economy census takes its value here rather than duplicating it.
+ANCHORS["cool"]["dc_cooling_share"] = COOL_DC_COOLING_SHARE
 
 
 def derive_cooling_tiers():
@@ -6318,13 +6376,15 @@ def derive_cooling_tiers():
     halves cannot be separated today, and projecting it would produce
     this panel's conclusion by construction rather than by evidence.
     """
-    base = {k: v for k, _, v, _ in COOL_TIERS_2023}
+    base = {k: v for k, _, v, _, _ in COOL_TIERS_2023}
+    fe = {k: f for k, _, _, f, _ in COOL_TIERS_2023}
     lo, hi, yr = COOL_DC_GROWTH
     factor = hi / lo
     tiers = [{"key": k, "label": lab, "twh": v, "group": g,
+              "final_twh": f,
               "twh_proj": round(v * factor, 1) if k == "datacentres" else v,
               "held": k != "datacentres"}
-             for k, lab, v, g in COOL_TIERS_2023]
+             for k, lab, v, f, g in COOL_TIERS_2023]
     tot = round(sum(t["twh"] for t in tiers), 1)
     tot_p = round(sum(t["twh_proj"] for t in tiers), 1)
     band = [round(base["commercial"] * f, 1)
@@ -6333,12 +6393,27 @@ def derive_cooling_tiers():
     # place its band without re-deriving the stacking order
     off = {}
     run = 0.0
-    for k, _, v, _ in COOL_TIERS_2023:
+    for k, _, v, _, _ in COOL_TIERS_2023:
         off[k] = round(run, 2)
         run += v
     pband = [round(base["public"] * f, 2)
              for f in COOL_PUBLIC_PROCESS_BAND]
+    # SEAI Figure 7's final-energy column, so the panel can state the
+    # electricity equivalent beside the service. Panel 1 shows purchased
+    # ELECTRICITY and this bar shows USEFUL COOLING; without both, a
+    # reader sees 6.3 against 10.6 and assumes one is wrong.
+    elec = {"datacentres": 0.9, "industry": 0.8,
+            "commercial": 3.6, "public": 0.2}
+    elec_tot = round(sum(elec.values()), 1)
     out = {"base_year": 2023, "proj_year": yr, "unit": "TWh useful cooling",
+           "scope": COOL_SCOPE,
+           "electricity_twh": elec_tot,
+           "implied_eer": round(tot / max(elec_tot, 1e-9), 2),
+           "ni_all_twh": COOL_NI_ALL_TWH,
+           "dc_cooling_share": COOL_DC_COOLING_SHARE,
+           "scope": "Republic of Ireland",
+           "ni_twh": COOL_NI_TWH,
+           "final_total": round(sum(fe.values()), 1),
            "tiers": tiers, "total": tot, "total_proj": tot_p,
            "commercial_retail_band_twh": band,
            "public_process_band_twh": pband,
