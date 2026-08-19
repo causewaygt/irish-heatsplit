@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.33.0 / site 5.30.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.33.0 / site 5.31.0.
 
 ## The premise
 
@@ -1414,6 +1414,19 @@ The label-collision test is **written but unproven**: reverting to
 index-cycled lanes does not reproduce a clash on the test fixture,
 though it did on the live figures.
 
+**One colour per sector, grouped by tier (site 5.31.0).** Ten segments
+were sharing three tier colours, so adjacent same-tier blocks merged
+into one shape — and when the data centre block more than doubles
+between the 2023 and 2034 bars, the changed proportions read as
+reordering. **Nothing was reordering:** `coolSegs` sorts once on the
+2023 value and all four bars share that array.
+
+Each sector now has its own colour within a tier family — cool tones for
+Tier 0 process, ambers for the mixed pair, violets for Tier 1 comfort —
+in lighter tones throughout, since the previous petrol and slate sat too
+close to the panel background to separate. The legend groups the ten
+sectors under their three tier headings.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1555,7 +1568,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 215 front-end fixture checks
+node tests/test_vol.js            # 217 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
