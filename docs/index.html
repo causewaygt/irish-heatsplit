@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.30.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.31.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -139,6 +139,13 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .hstat .hval.ok{color:var(--green)}
 .hstat .hval.over{color:var(--amber)}
 /* Tier 2 sits OUTSIDE the bar and must look outside it. */
+/* Cooling legend: ten sectors in three tier groups. */
+.coolleg{display:flex;flex-wrap:wrap;gap:10px 26px;margin:4px 0 10px}
+.coolleg-grp{display:flex;flex-direction:column;gap:3px}
+.coolleg-h{font-family:'Lato',sans-serif;font-size:.74rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.07em;color:#fff}
+.coolleg-i{display:flex;align-items:center;gap:6px;font-size:.8rem;
+  color:var(--ink2)}
 .tier2out{margin:10px 0 2px;padding:10px 14px;font-size:.86rem;
   color:var(--muted);border:1px dashed var(--faint);
   border-radius:8px}
@@ -1614,7 +1621,29 @@ const COOL_COL = {datacentres:"#1F4E5F", industry:"#5A6B64",
                   commercial:null, public:"#4FA3C7"};
 // Hard segments, ordered process -> mixed -> comfort. No gradient: the
 // activity split is sourced and reconciles, so the boundary is drawn.
-const COOL_TIER_COL = {0:"#1F4E5F", m:"#C98F4F", 1:"#4FA3C7"};
+// ONE COLOUR PER SECTOR, in three tier families. Ten segments sharing
+// three colours made adjacent same-tier blocks merge into one shape,
+// and when the data centre block more than doubles between bars the
+// changed proportions read as reordering - they are not: the sort keys
+// on the 2023 value for every bar, so the order is identical
+// throughout.
+//
+// Light tones throughout: the previous petrol and slate sat too close
+// to the panel background to separate.
+const COOL_TIER_FAM = {
+  0: {label:"Tier 0 \u00b7 process", cols:["#6FA8C7","#8FC7B8","#A8C98F",
+                                           "#C7D9A8","#DCE8C4"]},
+  m: {label:"mixed under one roof", cols:["#E8B86D","#F0D19A"]},
+  1: {label:"Tier 1 \u00b7 comfort", cols:["#C9A8D9","#DCC4E8","#EFDFF5"]},
+};
+function coolColours(segs){
+  const seen = {0:0, m:0, 1:0}, out = {};
+  segs.forEach(g=>{
+    const f = COOL_TIER_FAM[g.tier];
+    out[g.key] = f.cols[Math.min(seen[g.tier]++, f.cols.length-1)];
+  });
+  return out;
+}
 function coolSegs(ct){
   const out = [];
   ct.tiers.forEach(t=>{
@@ -1645,6 +1674,7 @@ function coolTiers(ct){
     return;
   }
   const segs = coolSegs(ct);
+  const COL = coolColours(segs);
   const W = 1000, H = 470, P = {t:150, r:22, b:58, l:96};
   const hi = niceTicks(ct.service_proj_twh * 1.04, 4);
   const x = v => P.l + (v / hi.top) * (W - P.l - P.r);
@@ -1679,7 +1709,7 @@ function coolTiers(ct){
       const faded = (r.k !== "s" && g.key !== "datacentres");
       s += '<rect x="'+x(acc)+'" y="'+y+'" width="'
         + Math.max(x(acc+v)-x(acc),0)+'" height="'+bh
-        + '" fill="'+COOL_TIER_COL[g.tier]+'" stroke="var(--bg)" '
+        + '" fill="'+COL[g.key]+'" stroke="var(--bg)" '
         + 'stroke-width="1"'+(faded?' opacity="0.7"':'')+'/>';
       if(r.k === "s"){ g._x0 = acc; g._x1 = acc + v; }
       acc += v;
@@ -1744,12 +1774,21 @@ function coolTiers(ct){
     + ')" text-anchor="middle" font-size="13" font-weight="600" '
     + 'fill="#fff" font-family="Lato, sans-serif">TWh</text></svg>';
   const tt = ct.tier_totals_twh || {};
-  box.innerHTML = '<div class="legend">'
-    + '<span><span class="k" style="background:#1F4E5F"></span>Tier 0 '
-    + '\u00b7 process</span><span><span class="k" style="background:'
-    + '#C98F4F"></span>mixed under one roof</span><span><span class="k" '
-    + 'style="background:#4FA3C7"></span>Tier 1 \u00b7 comfort</span>'
-    + '</div>' + s
+  // Legend GROUPED BY TIER, sectors named under each - ten swatches in
+  // three families, so a reader can find any block on the bar.
+  let leg = '<div class="coolleg">';
+  [0, "m", 1].forEach(t=>{
+    const f = COOL_TIER_FAM[t];
+    const mine = segs.filter(g=>g.tier === t);
+    if(!mine.length) return;
+    leg += '<div class="coolleg-grp"><span class="coolleg-h">'
+      + f.label + '</span>'
+      + mine.map(g=>'<span class="coolleg-i"><span class="k" '
+          + 'style="background:'+COL[g.key]+'"></span>'
+          + esc(g.label)+'</span>').join("") + '</div>';
+  });
+  leg += '</div>';
+  box.innerHTML = leg + s
     + '<div class="tier2out"><b>Tier 2 \u2014 comfort, unequipped.</b> '
     + 'Buildings that overheat and have no cooling to draw. Outside '
     + 'every figure on these bars. SEAI\u2019s own model finds only '
@@ -3208,7 +3247,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.30.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.31.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
