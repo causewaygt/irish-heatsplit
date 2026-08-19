@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.34.0 / site 5.33.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.34.0 / site 5.34.0.
 
 ## The premise
 
@@ -1470,6 +1470,20 @@ differs by sector** — for a shop the fifth means cooling converted, for
 a data centre it means a heat offtake added to what already leaves.
 Tallaght did not change how that site cools.
 
+**The Cold Economy panel is gone (site 5.34.0)**, made redundant by
+Panel 4 — its cooling figures now appear there on a service basis with
+the tier structure and the method behind them.
+
+**And the rejection chart's layout is fixed.** Raising the top padding
+for the DATA CENTRES IN header left the bars at their old y, so the
+header printed straight through the first one; and the row labels were
+31 monospace characters at 13px against a 250-unit gutter, which clipped
+the leading S off the viewBox. Bars are now positioned from the padding
+rather than hard-coded, the gutter is 320, and the labels are 12px. Two
+tests assert the header clears the bars and the labels fit inside the
+viewBox — proven by restoring both old values together, which is what it
+took to reproduce the clipping.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1611,7 +1625,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 184 tests, no network
-node tests/test_vol.js            # 233 front-end fixture checks
+node tests/test_vol.js            # 235 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
