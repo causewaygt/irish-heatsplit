@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.33.0"
+PIPELINE_VERSION = "5.34.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6494,6 +6494,82 @@ COOL_GEO_EER = 15.0
 COOL_WHATIF_SHARE = 0.20
 
 
+# Heat REJECTED, and what a store can recover of it.
+#
+# Everything that goes into cooling comes out as heat: the service
+# removed from the space PLUS the electricity that drove the removal.
+# For a data centre there is no cooling service in that sense - the
+# whole facility draw leaves as heat, IT load included.
+#
+# THE TWO SOURCES BANK DIFFERENTLY, and that is the panel's point.
+# Comfort cooling rejects ONLY in summer, exactly when nothing wants
+# heat, so without a store every unit is lost. Process refrigeration
+# and data centres reject CONTINUOUSLY - the winter half can go
+# straight into a network, as Tallaght already does, and it is only the
+# summer half that strands. A store therefore does not merely bank
+# summer heat: it lifts annual utilisation of a continuous source from
+# roughly half to nearly all. That is the multiplicative effect.
+COOL_SUMMER_FRACTION = 0.50   # dagger - Oct-Mar is the heating season
+COOL_UTES_ROUNDTRIP = 0.70    # dagger - literature range 0.50-0.80
+COOL_UTES_RANGE = (0.50, 0.80)
+
+
+def derive_heat_rejected(ct, anchors=None):
+    """
+    A fifth of Irish cooling, as heat rejected and heat recovered.
+
+    Data centres ARE included here, unlike the cooling what-if in the
+    bars above. There the question was whether ground cooling displaces
+    a compressor, and in this climate it does not. Here the question is
+    what happens to the heat, and a data centre rejects it whether it
+    used a compressor or a fan.
+    """
+    a = anchors or ANCHORS
+    share = COOL_WHATIF_SHARE
+    rows = []
+    for t in ct["tiers"]:
+        if t["key"] == "datacentres":
+            # the whole facility draw leaves as heat, not just the
+            # cooling block - IT load included
+            dc_elec = COOL_DC_GROWTH[0]
+            rej = dc_elec
+            cont = True
+            lab = "Data centres"
+        else:
+            rej = t["service_twh"] + t["elec_twh"]
+            cont = t["key"] != "public"
+            lab = t["label"]
+        rows.append({"key": t["key"], "label": lab,
+                     "rejected_twh": round(rej, 2), "continuous": cont,
+                     "summer_twh": round(
+                         rej * (COOL_SUMMER_FRACTION if cont else 1.0), 2)})
+    banked = sum(r["summer_twh"] for r in rows) * share
+    rec = banked * COOL_UTES_ROUNDTRIP
+    lo, hi = COOL_UTES_RANGE
+    ni_heat = (a["roi"]["residential_heat_twh"]
+               + a["roi"]["services_heat_twh"]) * 1000 \
+        * a.get("delivered_over_input_roi", 0.8225)
+    out = {"share": share, "rows": rows,
+           "rejected_twh": round(sum(r["rejected_twh"] for r in rows)
+                                 * share, 2),
+           "banked_twh": round(banked, 2),
+           "recovered_twh": round(rec, 2),
+           "recovered_range_twh": [round(banked * lo, 2),
+                                   round(banked * hi, 2)],
+           "roundtrip": COOL_UTES_ROUNDTRIP,
+           "roundtrip_range": list(COOL_UTES_RANGE),
+           "summer_fraction": COOL_SUMMER_FRACTION,
+           "share_of_roi_heat_pct": round(100 * rec * 1000
+                                          / max(ni_heat, 1), 1)}
+    log(f"heat rejected: a fifth rejects {out['rejected_twh']} TWh, of "
+        f"which {out['banked_twh']} TWh strands in summer; at a "
+        f"{int(COOL_UTES_ROUNDTRIP*100)}% round trip "
+        f"{out['recovered_twh']} TWh returns for winter heating - "
+        f"{out['share_of_roi_heat_pct']}% of the Republic's building "
+        f"heat")
+    return out
+
+
 def derive_cooling_tiers():
     """
     Four bars, and the units change halfway - which is the point.
@@ -7529,6 +7605,8 @@ def main():
             "the rest of the panel is unaffected")
     try:
         derived["cooling_tiers"] = derive_cooling_tiers()
+        derived["heat_rejected"] = derive_heat_rejected(
+            derived["cooling_tiers"])
     except Exception as exc:
         log(f"cooling tiers: failed ({exc.__class__.__name__})")
     try:
