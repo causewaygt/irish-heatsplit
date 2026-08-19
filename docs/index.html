@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.33.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.34.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -650,65 +650,6 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <div class="foldbody" id="coolMethod"></div>
     </details>
   </div>
-</section>
-
-<section id="cool" aria-labelledby="cool-h">
-  <h2 id="cool-h">The cold economy <span class="dag">†</span></h2>
-  <div class="split2">
-    <div class="panelbox">
-      <div class="grid4" style="grid-template-columns:1fr 1fr">
-        <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Island electricity spent on cooling</div>
-          <div class="big" id="coolShare">–</div>
-          <div class="sub" id="coolShareSub"></div>
-        </div>
-        <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Heat rejected, every year</div>
-          <div class="big" id="coolWaste">–</div>
-          <div class="sub" id="coolWasteSub"></div>
-        </div>
-        <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Produced when demand is low</div>
-          <div class="big" id="coolStranded">–</div>
-          <div class="sub">of a flat supply, against this site's own
-            degree-day record – the seasonal-storage wedge</div>
-        </div>
-        <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Irish heat served by heat networks today</div>
-          <div class="big" id="coolDH">–</div>
-          <div class="sub">IrDEA – against a National Heat Study potential
-            above 50%</div>
-        </div>
-      </div>
-      <div class="iotitle" style="margin-top:14px">The loads – TWh of electricity<span class="dag">†</span></div>
-      <div class="iorow"><div class="iolab" id="coolLoadLab">–</div>
-        <div class="iotrack" id="coolLoadBar"></div></div>
-    </div>
-    <div class="panelbox"><div id="coolPlot" class="plot" style="min-height:300px"></div></div>
-  </div>
-  <p class="note">Ireland's cooling story is bigger than its data
-    centres – it is the cold economy of a food-export island. Server halls
-    are the largest single load, but beside them run the cold chain that
-    the dairy, meat and pharma economy is built on – nine billion litres
-    of milk cooled from 37 °C every year before breakfast trade is even
-    counted – plus process cooling and a summer sliver of comfort
-    cooling, now shaped by this site's own live overheating record when a
-    season of it exists<span class="dag">†</span>. Every one of these
-    loads rejects heat – refrigeration rejects more heat than the
-    electricity it draws – and almost all of it rejects year-round while
-    heat demand follows the weather: the chart shows both shapes with
-    annual totals matched. The winter deficit and summer surplus are the
-    same energy in the wrong season, and moving heat across seasons is
-    what aquifer thermal energy storage exists to do. Tallaght has proven
-    the loop since 2023, boosting data-centre heat to 80&#8202;°C for public
-    buildings and homes; the Heat Bill advanced by Cabinet builds the
-    framework, and the EU Energy Efficiency Directive already requires
-    facilities above 1&#8202;MW to assess and implement waste-heat recovery
-    unless certified infeasible. EGEC's 2025 market report expects thermal
-    storage among the fastest-growing flexibility technologies of the
-    late decade, names data-centre cold storage as a UTES application,
-    and counts large-scale projects across Denmark, Germany, Austria, the
-    Netherlands and Finland – the island has yet to build its first.</p>
 </section>
 
 <section id="geo" aria-labelledby="geo-h">
@@ -1681,7 +1622,7 @@ function heatReject(hr){
     return;
   }
   const bank = hr.banked_twh * 1000, rec = hr.recovered_twh * 1000;
-  const W = 1000, H = 154, P = {t:40, r:150, b:16, l:250};
+  const W = 1000, H = 168, P = {t:44, r:150, b:16, l:320};
   const hi = bank * 1.02;
   const w = v => (v / hi) * (W - P.l - P.r);
   let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
@@ -1694,11 +1635,12 @@ function heatReject(hr){
     + '<text x="'+P.l+'" y="20" font-size="12" fill="#6FA8C7" '
     + 'font-family="IBM Plex Mono,monospace">DATA CENTRES IN \u2014 a '
     + 'fifth of the heat Ireland rejects, whatever moved it</text>';
-  [["SUMMER \u00b7 HEAT REJECTED TO STORE", bank, 'url(#bankHatch)', 20],
-   ["WINTER \u00b7 RECOVERED FOR HEATING", rec, '#3AAA35', 68]]
+  [["SUMMER \u00b7 HEAT REJECTED TO STORE", bank, 'url(#bankHatch)',
+    P.t + 8],
+   ["WINTER \u00b7 RECOVERED FOR HEATING", rec, '#3AAA35', P.t + 62]]
    .forEach(([lab, v, fill, y])=>{
-    s += '<text x="'+(P.l-16)+'" y="'+(y+24)+'" text-anchor="end" '
-      + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
+    s += '<text x="'+(P.l-18)+'" y="'+(y+22)+'" text-anchor="end" '
+      + 'font-size="12" fill="var(--ink2)" font-family="IBM Plex Mono,'
       + 'monospace">'+lab+'</text>'
       + '<rect x="'+P.l+'" y="'+y+'" width="'+w(hi)+'" height="34" '
       + 'fill="none" stroke="var(--line)" stroke-width="1"/>'
@@ -3344,7 +3286,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.33.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.34.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
