@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.32.0"
+PIPELINE_VERSION = "5.33.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6575,7 +6575,21 @@ def derive_cooling_tiers():
         "retail_share_of_commercial": 0.731,
         "segments": segs,
         "activity_total_gwh": act_tot,
+        # THE WHOLE BAR, not just the activity segments. This
+        # previously summed segs only, so it reported Tier 0 as 6.06
+        # and silently left out data centres and industry - both Tier
+        # 0, and between them more than half of it. The note beneath
+        # the chart was worded "across commercial and public", so it
+        # was not false, but the headline tier split was nowhere on
+        # the page and the published figure invited the wrong reading.
         "tier_totals_twh": {
+            str(t): round(
+                sum(x["service_twh"] for x in segs if x["tier"] == t)
+                + sum(x["service_twh"] for x in tiers
+                      if t == 0 and x["key"] in ("datacentres", "industry")),
+                2)
+            for t in (0, 1, "m")},
+        "tier_totals_segments_twh": {
             str(t): round(sum(x["service_twh"] for x in segs
                               if x["tier"] == t), 2)
             for t in (0, 1, "m")},
@@ -6595,11 +6609,13 @@ def derive_cooling_tiers():
         f"(-{out['geo_saving_pct']}%); industry EER "
         f"{COOL_INDUSTRY_EER} is ours, the rest are SEAI's; retail is "
         f"{out['retail_share_of_commercial']*100:.1f}% of commercial "
-        f"and the activity split is HARD: Tier 0 "
+        f"and the activity split is HARD. WHOLE BAR: Tier 0 "
         f"{out['tier_totals_twh']['0']} TWh, mixed "
         f"{out['tier_totals_twh']['m']}, Tier 1 "
-        f"{out['tier_totals_twh']['1']} TWh of the commercial and "
-        f"public sectors")
+        f"{out['tier_totals_twh']['1']} TWh; of which commercial and "
+        f"public alone are {out['tier_totals_segments_twh']['0']} / "
+        f"{out['tier_totals_segments_twh']['m']} / "
+        f"{out['tier_totals_segments_twh']['1']}")
     return out
 
 
