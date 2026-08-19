@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.31.0"
+PIPELINE_VERSION = "5.32.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -1002,8 +1002,42 @@ ANCHORS = {
     # cooling genuinely delivers an effective EER above 6, and SEAI
     # models data centres in a separate sheet at 14% cooling share,
     # which our census already follows.
+    # COOLING SERVICE FACTORS - the EER at which each load converts
+    # electricity into delivered cooling. Panel 1 and Panel 4 read the
+    # SAME figures; a module-level assert below fails the build if they
+    # drift apart. Each is sourced or reasoned, and one is weak:
+    #
+    #   dc 6.1  - the arithmetic, not a judgement: 14% of data centre
+    #             electricity on cooling means 5.5 TWh of heat removed
+    #             for 0.9 TWh, and the IT load at a measured Irish PUE
+    #             of 1.15-1.25 gives the same. In this climate that is
+    #             free cooling expressed as a number.
+    #   refrigeration / comfort 2.07 - SEAI's own commercial ratio,
+    #             7.5 TWh of service on 3.6 TWh of electricity.
+    #   process 3.0 - OURS, dagger. Was 2.2, which put industrial
+    #             process chillers barely above part-load office air
+    #             conditioning; process plant runs steady, high-
+    #             utilisation duty, which is where chillers perform
+    #             best. Bracketed by SEAI's own anchors (2.08
+    #             commercial, 2.50 public) with Barth et al. (2025)
+    #             putting Manhattan at 3.5. Note it cuts both ways: a
+    #             higher figure enlarges the service bar but SHRINKS
+    #             the geothermal what-if, because less electricity is
+    #             displaced per unit of service moved.
+    #   public 2.50 - SEAI's own, 0.5 TWh of service on 0.2 of
+    #             electricity. Used by the cooling panel only: this
+    #             panel slices FUNCTIONALLY (refrigeration, process,
+    #             comfort) where that one slices by SEAI SECTOR, so
+    #             public comfort cooling is inside "comfort" here and
+    #             has nothing of its own to attach to. That is a
+    #             difference of cut, not a drift.
+    #   ni_all 2.07 - THE WEAKEST FIGURE HERE, dagger. The commercial
+    #             ratio applied to an entire jurisdiction with no
+    #             split, because DfE publishes no cooling line and NI
+    #             is not separable inside UK statistics.
     "cooling_service_factor": {"dc": 6.1, "refrigeration": 2.07,
-                                        "process": 2.2, "comfort": 2.07,
+                                        "process": 3.0, "comfort": 2.07,
+                                        "public": 2.50,
                                         "ni_all": 2.07}},
 }
 
@@ -6295,7 +6329,11 @@ AGBONAYE = {
 # than total thermal energy removed".
 #
 # So ONE judgement is needed, not three: an EER for industry.
-COOL_INDUSTRY_EER = 3.0          # dagger - see below
+# Both panels read ANCHORS["cool"]["cooling_service_factor"], where
+# each figure is documented. Mirrored here as named constants so the
+# cooling derivation reads plainly, with an assert below that fails the
+# build if the two ever drift apart.
+COOL_INDUSTRY_EER = ANCHORS["cool"]["cooling_service_factor"]["process"]
 # DATA CENTRES: an EFFECTIVE EER of ~6, not SEAI's borrowed 2.0.
 #
 # SEAI's own report says why 2.0 is wrong: for data centres it reports
@@ -6318,7 +6356,7 @@ COOL_INDUSTRY_EER = 3.0          # dagger - see below
 # of the year; Microsoft reports mechanical cooling under 2% of the
 # year in Ireland; Digital Realty's Profile Park runs with no
 # compressor cooling at all.
-COOL_DC_EFFECTIVE_EER = 6.0
+COOL_DC_EFFECTIVE_EER = ANCHORS["cool"]["cooling_service_factor"]["dc"]
 # WHICH IS WHY DATA CENTRES ARE EXCLUDED FROM THE GEOTHERMAL WHAT-IF.
 # Ground cooling cannot beat free air in this climate: the competitor
 # is not a running compressor, it is a fan moving 10 degC air. Nothing
@@ -6347,6 +6385,12 @@ COOL_TIERS_2023 = [
     ("commercial", "Commercial", 7.5, 3.6, "mixed"),
     ("public", "Public", 0.5, 0.2, "mixed"),
 ]
+_sf = ANCHORS["cool"]["cooling_service_factor"]
+assert abs(7.5 / 3.6 - _sf["comfort"]) < 0.02, (
+    "Panel 1's comfort/refrigeration factor no longer matches SEAI's "
+    "commercial ratio")
+assert abs(0.5 / 0.2 - _sf["public"]) < 0.02, (
+    "Panel 1's public factor no longer matches SEAI's public ratio")
 # Retail is 73.1% of commercial cooling - SOURCED, from Figure 13 of
 # the 2019 study, which disaggregates commercial and public by building
 # activity and reconciles to Figure 8 within 0.1%. Retail 4,345 GWh of
