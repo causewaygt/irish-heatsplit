@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.28.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.29.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1799,13 +1799,28 @@ function coolTiers(ct){
       + '<table class="caltab"><thead><tr><th>Sector</th>'
       + '<th>Service TWh</th><th>Electricity TWh</th><th>EER</th>'
       + '<th>Whose</th></tr></thead><tbody>' + t + '</tbody></table>'
-      + '<p><b>Two EERs are ours.</b> Industry at '
-      + fmt(ct.industry_eer,1) + '\u2020, bracketed by SEAI\u2019s own '
-      + 'anchors rather than an outside source \u2014 commercial 2.08 '
-      + 'and public 2.50 are SEAI\u2019s, and process chillers run at '
-      + 'steadier load and higher utilisation than a commercial fleet '
-      + 'full of part-load and older plant; Barth et al. (2025) put '
-      + 'Manhattan at 3.5.</p>'
+      + '<p><b>One EER is ours: industrial process at '
+      + fmt(ct.industry_eer,1) + '\u2020.</b> It is bracketed by '
+      + 'SEAI\u2019s own anchors rather than an outside source \u2014 '
+      + 'commercial 2.08 and public 2.50 are both SEAI\u2019s \u2014 '
+      + 'with Barth et al. (2025) putting Manhattan at 3.5 as the '
+      + 'ceiling. Process plant runs steady, high-utilisation duty, '
+      + 'which is where chillers perform best, so it should sit above a '
+      + 'commercial fleet full of part-load and older plant. It cuts '
+      + 'both ways: a higher figure enlarges the service bars but '
+      + 'SHRINKS the geothermal what-if, because less electricity is '
+      + 'displaced per unit of service moved.</p>'
+      + '<p>These are the same factors the energy-balance panel uses; '
+      + 'both read one set of constants and the build refuses to '
+      + 'publish if they drift apart. The two panels CUT the same '
+      + 'quantity differently, which is not a drift: this one slices '
+      + 'by SEAI sector, the other functionally into refrigeration, '
+      + 'process and comfort, so public comfort cooling sits inside '
+      + '\u201ccomfort\u201d there and has its own sourced factor '
+      + 'here. That panel is also all-island and trailing twelve '
+      + 'months where these bars are the Republic in '
+      + esc(ct.base_year) + ', so its cooling figure is the larger of '
+      + 'the two.</p>'
       + '<p>And <b>data centres at an effective EER of ' + fmt(ct.dc_eer,0)
       + '\u2020</b>, not the 2.00 the 2025 Annex implies. SEAI\u2019s own '
       + 'report says why: for data centres it reports electricity for '
@@ -3181,7 +3196,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.28.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.29.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
