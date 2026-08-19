@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.29.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.30.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -1680,7 +1680,7 @@ function coolTiers(ct){
       s += '<rect x="'+x(acc)+'" y="'+y+'" width="'
         + Math.max(x(acc+v)-x(acc),0)+'" height="'+bh
         + '" fill="'+COOL_TIER_COL[g.tier]+'" stroke="var(--bg)" '
-        + 'stroke-width="1"'+(faded?' opacity="0.45"':'')+'/>';
+        + 'stroke-width="1"'+(faded?' opacity="0.7"':'')+'/>';
       if(r.k === "s"){ g._x0 = acc; g._x1 = acc + v; }
       acc += v;
     });
@@ -1695,25 +1695,36 @@ function coolTiers(ct){
     r.y = y; y += bh + gap;
   });
   // leader lines and labels for every segment wide enough to name
-  let lane = 0;
-  segs.forEach(g=>{
-    const w = x(g._x1) - x(g._x0);
-    if(w < 12) return;
-    const cx = (x(g._x0) + x(g._x1)) / 2;
-    const ly = P.t - 14 - (lane % 4) * 24;
-    lane++;
-    s += '<line x1="'+cx+'" x2="'+cx+'" y1="'+(P.t-4)+'" y2="'+(ly+4)
+  // Lanes are assigned by MEASURED OVERLAP, not by index. Cycling
+  // lane = i % 4 put "Industry 2.4" straight through
+  // "Restaurant/public house 0.47" whenever two narrow blocks sat
+  // adjacent, because two labels three lanes apart can still collide
+  // if the one between them is wide.
+  const laneEnd = [-1e9, -1e9, -1e9, -1e9];
+  segs.filter(g => (x(g._x1) - x(g._x0)) >= 10)
+      .map(g => ({g:g, cx:(x(g._x0)+x(g._x1))/2,
+                  w:(esc(g.label)+' '+fmt(g.s,2)).length * 5.6}))
+      .sort((a,b)=>a.cx-b.cx)
+      .forEach(o=>{
+    let ln = 0;
+    while(ln < 4 && o.cx - o.w/2 < laneEnd[ln] + 8) ln++;
+    if(ln === 4) return;                       // no room: table only
+    laneEnd[ln] = o.cx + o.w/2;
+    const ly = P.t - 16 - ln * 22;
+    s += '<line x1="'+o.cx+'" x2="'+o.cx+'" y1="'+(P.t-6)+'" y2="'+(ly+5)
       + '" stroke="var(--faint)" stroke-width="1"/>'
-      + '<text x="'+cx+'" y="'+ly+'" text-anchor="middle" font-size="11" '
-      + 'fill="#fff" font-family="Lato,sans-serif">'+esc(g.label)
-      + ' ' + fmt(g.s,2) + '</text>';
+      + '<text x="'+o.cx+'" y="'+ly+'" text-anchor="middle" '
+      + 'font-size="11" fill="#fff" font-family="Lato,sans-serif">'
+      + esc(o.g.label) + ' ' + fmt(o.g.s,2) + '</text>';
   });
-  s += '<text x="26" y="'+(rows[1].y+bh)+'" transform="rotate(-90 26 '
-    + (rows[1].y+bh)+')" text-anchor="middle" font-size="13" '
+  // Group labels at x=52, clear of the axis title at x=22. They were
+  // both at 26 and overprinted each other.
+  s += '<text x="52" y="'+(rows[0].y+bh+gap/2)+'" transform="rotate(-90 52 '
+    + (rows[0].y+bh+gap/2)+')" text-anchor="middle" font-size="13" '
     + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
     + 'cooling delivered</text>'
-    + '<text x="26" y="'+(rows[3].y+bh)+'" transform="rotate(-90 26 '
-    + (rows[3].y+bh)+')" text-anchor="middle" font-size="13" '
+    + '<text x="52" y="'+(rows[2].y+bh+gap/2)+'" transform="rotate(-90 52 '
+    + (rows[2].y+bh+gap/2)+')" text-anchor="middle" font-size="13" '
     + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
     + 'electricity bought</text>';
   const yb = rows[3].y + bh + 14;
@@ -1729,7 +1740,7 @@ function coolTiers(ct){
     + '<text x="'+P.l+'" y="42" font-size="12" fill="var(--muted)" '
     + 'font-family="IBM Plex Mono,monospace">only data centres are '
     + 'projected \u00b7 SEAI holds the rest constant to 2050</text>'
-    + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + '<text x="22" y="'+(H/2)+'" transform="rotate(-90 22 '+(H/2)
     + ')" text-anchor="middle" font-size="13" font-weight="600" '
     + 'fill="#fff" font-family="Lato, sans-serif">TWh</text></svg>';
   const tt = ct.tier_totals_twh || {};
@@ -1756,10 +1767,11 @@ function coolTiers(ct){
   }
   if(note){
     note.textContent = "Ireland barely cools its buildings; it cools its "
-      + "machines. Retail alone is more than every other building "
-      + "activity combined, and SEAI attributes that to refrigeration. "
-      + "Across commercial and public buildings the split is Tier 0 "
-      + fmt(tt["0"],1) + " TWh, Tier 1 " + fmt(tt["1"],1) + " TWh, with "
+      + "machines. Of " + fmt(ct.service_twh,1) + " TWh of cooling "
+      + "delivered in the Republic, Tier 0 process is "
+      + fmt(tt["0"],1) + " TWh \u2014 " + fmt(100*tt["0"]/ct.service_twh,0)
+      + "% \u2014 against Tier 1 comfort at " + fmt(tt["1"],1)
+      + " TWh, or " + fmt(100*tt["1"]/ct.service_twh,0) + "%, with "
       + fmt(tt["m"],1) + " TWh genuinely mixed under one roof \u2014 "
       + "hotels and hospitals, where imaging suites and kitchen "
       + "refrigeration sit beside ward and bedroom comfort. Those are "
@@ -3196,7 +3208,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.29.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.30.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
