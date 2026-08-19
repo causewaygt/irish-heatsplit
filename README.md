@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.32.0 / site 5.29.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.33.0 / site 5.30.0.
 
 ## The premise
 
@@ -1389,6 +1389,31 @@ why it is worth trusting: a higher EER enlarges the service bars but
 shrinks the geothermal what-if, because less electricity is displaced
 per unit of service moved.
 
+**The tier totals covered only half the bar (5.33.0 / site 5.30.0).**
+`tier_totals_twh` summed the activity segments alone, reporting Tier 0
+as 6.06 TWh and silently omitting data centres and industry — both
+Tier 0, and between them more than half of it. The note beneath the
+chart was worded "across commercial and public", so it was not false,
+but the headline split was nowhere on the page.
+
+**The Republic's cooling service, 2023, in full: Tier 0 process 13.95
+TWh (88%), mixed under one roof 0.69 (4%), Tier 1 comfort 1.25 (8%).**
+That now leads the note. The segment-only figures are still published
+separately for the activity table. **Tier 2 remains unquantified** —
+Irish prevalence evidence exists but converting it to terawatt-hours
+needs a thermal response coefficient with no Irish equivalent.
+
+**Three chart faults fixed.** The rotated group labels sat at the same
+x as the axis title and overprinted it. Segment labels were assigned to
+lanes by index, so two narrow blocks either side of a wide one could
+overlap — lanes are now assigned by measured overlap. And the faded
+projection bars washed the tier colours together at 0.45 opacity, now
+0.7.
+
+The label-collision test is **written but unproven**: reverting to
+index-cycled lanes does not reproduce a clash on the test fixture,
+though it did on the live figures.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1530,7 +1555,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 212 front-end fixture checks
+node tests/test_vol.js            # 215 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
