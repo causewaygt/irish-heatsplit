@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.31.0 / site 5.28.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.32.0 / site 5.29.0.
 
 ## The premise
 
@@ -1356,6 +1356,39 @@ Commercial and public are scaled separately onto their 2023 totals,
 because the two sectors did not grow at the same rate and one blended
 factor would misplace the boundary being drawn.
 
+**One set of cooling service factors, read by both panels (5.32.0 /
+site 5.29.0).** The energy-balance panel and the cooling panel were
+using different EERs for the same sectors. They now read one set of
+constants and the build refuses to publish if they drift:
+
+- **data centres 6.1** — arithmetic, not judgement: 14% of data centre
+  electricity on cooling means 5.5 TWh of heat removed for 0.9, and the
+  IT load at a measured Irish PUE of 1.15–1.25 gives the same
+- **refrigeration and comfort 2.07** — SEAI's own commercial ratio
+- **public 2.50** — SEAI's own, replacing the commercial ratio that had
+  been substituted for a sector with its own
+- **industrial process 3.0†** — ours, raised from 2.2, which put process
+  chillers barely above part-load office air conditioning
+- **Northern Ireland 2.07†** — the weakest figure here, the commercial
+  ratio applied to a whole jurisdiction with no split
+
+**That moves the energy-balance panel's cooling delivered from 16.9 to
+17.5 TWh**, from the process change alone.
+
+**The two panels cut the same quantity differently, which is not a
+drift.** The cooling panel slices by SEAI sector; the energy-balance
+panel slices functionally into refrigeration, process and comfort — so
+public comfort cooling sits inside "comfort" there and has its own
+sourced factor here. That panel is also all-island and trailing twelve
+months where the cooling bars are the Republic in 2023, so its figure is
+the larger of the two. All of this is in the method fold, not appended
+as a change note.
+
+**And the industrial figure cuts against our own argument**, which is
+why it is worth trusting: a higher EER enlarges the service bars but
+shrinks the geothermal what-if, because less electricity is displaced
+per unit of service moved.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1497,7 +1530,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 210 front-end fixture checks
+node tests/test_vol.js            # 212 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
