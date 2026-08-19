@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.33.0 / site 5.31.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.34.0 / site 5.33.0.
 
 ## The premise
 
@@ -1427,6 +1427,49 @@ in lighter tones throughout, since the previous petrol and slate sat too
 close to the panel background to separate. The legend groups the ten
 sectors under their three tier headings.
 
+**And the heat it rejects (5.34.0 / site 5.32.0).** A second sub-panel:
+what a fifth of Irish cooling rejects, what strands in summer, and what
+a store returns in winter. **4,280 GWh rejected, 2,210 GWh stranded,
+1,550 GWh recovered at a 70% round trip† — 6.1% of the Republic's
+building heat.** The literature range of 50–80% puts recovery between
+1,110 and 1,770 GWh.
+
+**Data centres are included here, unlike the cooling what-if above**,
+and the distinction matters. There the question was whether ground
+cooling displaces a compressor, and in this climate it does not. Here
+the question is what happens to the heat, and a data centre rejects it
+whether a compressor or a fan moved it. Their rejection is the **whole
+facility draw, IT load included**, because all of it leaves as heat.
+
+**The two sources bank differently, and that is the panel's argument.**
+Comfort cooling rejects only in summer, so without a store every unit is
+lost. Data centres, industry and refrigeration reject *continuously* —
+the winter half can go straight into a network, as Tallaght already does
+with a Dublin data centre, and only the summer half strands. So a store
+does not merely bank summer heat: **it lifts annual utilisation of a
+continuous source from roughly half to nearly all.** That is the
+multiplicative effect, and it is what an air-source network structurally
+cannot do.
+
+Treating continuous sources as summer-only would inflate the recovered
+figure by about 29%, so the conservative treatment is also the correct
+one — which is why a test pins it, proven by mutation.
+
+**Data centres labelled IN and OUT on the charts themselves (site
+5.33.0).** The two sub-panels use different populations and the note
+had said "that same fifth", which was wrong. The cooling chart now
+carries **DATA CENTRES OUT of the geothermal what-if — free air already
+does the cooling**; the rejection chart carries **DATA CENTRES IN — a
+fifth of the heat Ireland rejects, whatever moved it**.
+
+The rejection note opens by declaring it is a different fifth and why:
+above, the question is whether ground cooling displaces a compressor,
+and in this climate it does not; here, the question is where the heat
+goes, and a data centre rejects it either way. **The intervention also
+differs by sector** — for a shop the fifth means cooling converted, for
+a data centre it means a heat offtake added to what already leaves.
+Tallaght did not change how that site cools.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1567,8 +1610,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 183 tests, no network
-node tests/test_vol.js            # 217 front-end fixture checks
+python3 tests/test_synthetic.py   # 184 tests, no network
+node tests/test_vol.js            # 233 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
