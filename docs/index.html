@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.31.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.33.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -639,6 +639,11 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <div id="coolTiers"></div>
     <div id="coolTierDefs"></div>
     <p class="note" id="coolTiersNote"></p>
+    <h3 class="foldh">And the heat it rejects
+      <span class="sub">&mdash; banked in summer, recovered in
+      winter</span></h3>
+    <div id="heatReject"></div>
+    <p class="note" id="heatRejectNote"></p>
     <details class="fold">
       <summary>How these figures are built, and the one judgement in
         them</summary>
@@ -1663,6 +1668,88 @@ function coolSegs(ct){
   const rank = {0:0, m:1, 1:2};
   return out.sort((a,b)=> rank[a.tier]-rank[b.tier] || b.s-a.s);
 }
+// -------------------- and the heat it rejects, banked and recovered
+// Two bars in GWh: what strands in summer, and what a store returns in
+// winter. Hatched above because it is available and currently thrown
+// away; solid below because it is delivered heat.
+function heatReject(hr){
+  const box = el("heatReject"), note = el("heatRejectNote");
+  if(!box) return;
+  if(!hr || !hr.banked_twh){
+    box.textContent = "The rejection figures arrive with a coming build.";
+    if(note) note.textContent = "";
+    return;
+  }
+  const bank = hr.banked_twh * 1000, rec = hr.recovered_twh * 1000;
+  const W = 1000, H = 154, P = {t:40, r:150, b:16, l:250};
+  const hi = bank * 1.02;
+  const w = v => (v / hi) * (W - P.l - P.r);
+  let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
+    + '" role="img" aria-label="Heat rejected to store in summer and '
+    + 'recovered in winter">'
+    + '<defs><pattern id="bankHatch" width="10" height="10" '
+    + 'patternTransform="rotate(45)" patternUnits="userSpaceOnUse">'
+    + '<rect width="10" height="10" fill="#0b0d0d"/>'
+    + '<rect width="5" height="10" fill="#3AAA35"/></pattern></defs>'
+    + '<text x="'+P.l+'" y="20" font-size="12" fill="#6FA8C7" '
+    + 'font-family="IBM Plex Mono,monospace">DATA CENTRES IN \u2014 a '
+    + 'fifth of the heat Ireland rejects, whatever moved it</text>';
+  [["SUMMER \u00b7 HEAT REJECTED TO STORE", bank, 'url(#bankHatch)', 20],
+   ["WINTER \u00b7 RECOVERED FOR HEATING", rec, '#3AAA35', 68]]
+   .forEach(([lab, v, fill, y])=>{
+    s += '<text x="'+(P.l-16)+'" y="'+(y+24)+'" text-anchor="end" '
+      + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
+      + 'monospace">'+lab+'</text>'
+      + '<rect x="'+P.l+'" y="'+y+'" width="'+w(hi)+'" height="34" '
+      + 'fill="none" stroke="var(--line)" stroke-width="1"/>'
+      + '<rect x="'+P.l+'" y="'+y+'" width="'+w(v)+'" height="34" '
+      + 'fill="'+fill+'"/>'
+      + '<text x="'+(P.l+w(hi)+14)+'" y="'+(y+24)+'" font-size="14" '
+      + 'font-weight="700" fill="#fff" font-family="IBM Plex Mono,'
+      + 'monospace">'+fmt(v,0)+' GWh</text>';
+  });
+  box.innerHTML = s + '</svg>';
+  if(note){
+    const cont = (hr.rows||[]).filter(r=>r.continuous)
+      .map(r=>r.label.toLowerCase()).join(", ");
+    note.innerHTML = '<b>A different fifth from the bars above.</b> '
+      + 'There data centres are OUT, because ground cooling '
+      + 'displaces nothing in a climate where free air already does '
+      + 'the work. Here they are IN, because the question is not how '
+      + 'the cooling is delivered but where the heat goes \u2014 and '
+      + 'a data centre rejects it either way. For a shop this fifth '
+      + 'means cooling converted; for a data centre it means a heat '
+      + 'offtake added to what already leaves. Tallaght did not '
+      + 'change how that site cools.<br><br>Over a year this fifth '
+      + 'rejects <b>'
+      + fmt(hr.rejected_twh*1000,0) + ' GWh</b> of heat \u2014 the '
+      + 'cooling delivered plus the electricity that drove it, and for '
+      + 'data centres the whole facility draw, IT load included, '
+      + 'because all of it leaves as heat. <b>'
+      + fmt(hr.banked_twh*1000,0) + ' GWh</b> of that strands in '
+      + 'summer, and at a ' + fmt(hr.roundtrip*100,0) + '% round trip'
+      + '<span class="dag">\u2020</span> <b>'
+      + fmt(hr.recovered_twh*1000,0) + ' GWh</b> comes back for winter '
+      + 'heating \u2014 ' + fmt(hr.share_of_roi_heat_pct,1) + '% of the '
+      + 'Republic\u2019s building heat. The literature range of '
+      + fmt(hr.roundtrip_range[0]*100,0) + '\u2013'
+      + fmt(hr.roundtrip_range[1]*100,0) + '% puts it between '
+      + fmt(hr.recovered_range_twh[0]*1000,0) + ' and '
+      + fmt(hr.recovered_range_twh[1]*1000,0) + ' GWh.'
+      + '<br><br><b>The two sources bank differently, and that is the '
+      + 'point.</b> Comfort cooling rejects heat ONLY in summer, exactly '
+      + 'when nothing wants it, so without a store every unit is lost. '
+      + 'But ' + cont + ' reject continuously: the winter half can go '
+      + 'straight into a network, as Tallaght already does with a '
+      + 'Dublin data centre, and only the summer half strands. So a '
+      + 'store does not merely bank summer heat \u2014 it lifts annual '
+      + 'utilisation of a continuous source from roughly half to nearly '
+      + 'all. That is the multiplicative effect, and it is the one '
+      + 'thing an air-source network structurally cannot do: it rejects '
+      + 'the same heat to the air with nowhere to put it.';
+  }
+}
+
 function coolTiers(ct){
   const box = el("coolTiers"), note = el("coolTiersNote"),
         defs = el("coolTierDefs"), meth = el("coolMethod");
@@ -1770,6 +1857,15 @@ function coolTiers(ct){
     + '<text x="'+P.l+'" y="42" font-size="12" fill="var(--muted)" '
     + 'font-family="IBM Plex Mono,monospace">only data centres are '
     + 'projected \u00b7 SEAI holds the rest constant to 2050</text>'
+    // DATA CENTRES OUT here, IN on the rejection panel below.
+    // Different questions, different populations: this asks
+    // whether ground cooling displaces a compressor and in this
+    // climate it does not; that one asks where the heat goes,
+    // and a data centre rejects it either way.
+    + '<text x="'+P.l+'" y="60" font-size="12" fill="#E8B86D" '
+    + 'font-family="IBM Plex Mono,monospace">DATA CENTRES OUT of '
+    + 'the geothermal what-if \u2014 free air already does the '
+    + 'cooling</text>'
     + '<text x="22" y="'+(H/2)+'" transform="rotate(-90 22 '+(H/2)
     + ')" text-anchor="middle" font-size="13" font-weight="600" '
     + 'fill="#fff" font-family="Lato, sans-serif">TWh</text></svg>';
@@ -3228,6 +3324,7 @@ fetch('data.json').then(r=>{
   ddValue(GDD);
   oddExamples((D.derived||{}).odd_examples || null);
   coolTiers((D.derived||{}).cooling_tiers || null);
+  heatReject((D.derived||{}).heat_rejected || null);
   gridPanel(GTH);
   drawGridViews(GGV);
   const hero=(D.derived||{}).hero;
@@ -3247,7 +3344,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.31.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.33.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
