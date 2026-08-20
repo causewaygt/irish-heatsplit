@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.36.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.36.2
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -2959,142 +2959,7 @@ function gasCalLine(D){
     ' \u2013 outside the 0.90\u20131.10 gate, disclosed: '+c.note);
 }
 
-function heatGap(D){
-  const hg=(D.derived||{}).heat_gap;
-  if(!hg){
-    el('gapStat').textContent='\u2013';
-    el('gapPlot').textContent='Waiting for the first build with live oil prices.';
-    return;
-  }
-  const cats=['Oil boiler 82%\u2020','Gas boiler 85%\u2020',
-              'Air-source heat pump\u2020',
-              'Geothermal SPF '+hg.geo_spf+'\u2020'];
-  const vals=j=>[j.oil_boiler,j.gas_boiler,j.ashp,j.geothermal_spf40];
-  const fx=hg.fx_eur_gbp||0.855;
-  const perBarColors=[CLR.faint,CLR.petrol,CLR.teal,CLR.green];
 
-  function render(state){
-    ['segAll','segNI','segROI'].forEach(id=>el(id).classList.remove('active'));
-    let traces, ytitle;
-    if(state==='ni'){
-      el('segNI').classList.add('active');
-      traces=[{x:cats,y:vals(hg.ni),type:'bar',
-        marker:{color:perBarColors},
-        text:vals(hg.ni).map(v=>fmt(v,1)+'p'),textposition:'outside',
-        textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
-      ytitle='pence per useful kWh';
-      el('gapStat').textContent='SPF '+fmt(hg.ni.breakeven_spf_vs_oil,2);
-      el('gapStatSub').textContent='NI \u2013 above this, electric heat beats '+
-        'untaxed kerosene. ASHP models at SPF '+fmt(hg.ni.ashp_spf,2)+
-        ' in the NI climate\u2020. Oil at '+
-        fmt(hg.ni.inputs.oil_per_litre,1)+' p/L, tariff '+
-        fmt(hg.ni.inputs.electricity_per_kwh*100,1)+' p/kWh\u2020';
-    } else if(state==='roi'){
-      el('segROI').classList.add('active');
-      traces=[{x:cats,y:vals(hg.roi),type:'bar',
-        marker:{color:perBarColors},
-        text:vals(hg.roi).map(v=>fmt(v,1)+'c'),textposition:'outside',
-        textfont:{family:'IBM Plex Mono',color:CLR.muted}}];
-      ytitle='cent per useful kWh';
-      el('gapStat').textContent='SPF '+fmt(hg.roi.breakeven_spf_vs_oil,2);
-      el('gapStatSub').textContent='ROI \u2013 the climate-modelled ASHP (SPF '+
-        fmt(hg.roi.ashp_spf,2)+'\u2020) sits at the margin of this. Oil at '+
-        fmt(hg.roi.inputs.oil_per_litre,1)+' c/L, tariff '+
-        fmt(hg.roi.inputs.electricity_per_kwh*100,1)+' c/kWh\u2020';
-    } else {
-      el('segAll').classList.add('active');
-      traces=[
-        {x:cats,y:vals(hg.ni).map(v=>v/fx),type:'bar',name:'NI',
-         marker:{color:CLR.amber},
-         text:vals(hg.ni).map(v=>fmt(v/fx,1)+'c'),textposition:'outside',
-         textfont:{family:'IBM Plex Mono',size:10,color:CLR.muted}},
-        {x:cats,y:vals(hg.roi),type:'bar',name:'ROI',
-         marker:{color:CLR.green},
-         text:vals(hg.roi).map(v=>fmt(v,1)+'c'),textposition:'outside',
-         textfont:{family:'IBM Plex Mono',size:10,color:CLR.muted}}];
-      ytitle='euro cent per useful kWh (ECB rate)';
-      el('gapStat').textContent='SPF '+fmt(hg.ni.breakeven_spf_vs_oil,2)+
-        ' (NI) \u00b7 '+fmt(hg.roi.breakeven_spf_vs_oil,2)+' (ROI)';
-      el('gapStatSub').textContent='Same fuel, same physics \u2013 the signal '+
-        'flips at the border. ASHP climate SPF: NI '+fmt(hg.ni.ashp_spf,2)+
-        ', ROI '+fmt(hg.roi.ashp_spf,2)+'\u2020';
-    }
-    Plotly.newPlot('gapPlot',traces,Object.assign(plb(),{
-      barmode:'group',
-      xaxis:Object.assign(plb().xaxis,{type:'category'}),
-      yaxis:Object.assign(plb().yaxis,{title:ytitle,rangemode:'tozero'}),
-      legend:{orientation:'h',y:1.12},
-      margin:{l:56,r:20,t:30,b:60},
-    }),CONF);
-  }
-  el('segAll').onclick=()=>render('all');
-  el('segNI').onclick=()=>render('ni');
-  el('segROI').onclick=()=>render('roi');
-  render('all');
-}
-
-function coolSide(D){
-  const c=(D.derived||{}).cool;
-  if(!c){el('coolPlot').textContent='Waiting for a season of degree-day data.';return}
-  el('coolShare').textContent='\u2248 '+fmt(c.cooling_elec_twh,0)+' TWh\u2020';
-  el('coolShareSub').textContent='data centres the largest single load: '+
-    fmt(c.dc_share_pct,0)+'% of ROI electricity (CSO), '+
-    fmt(c.dc_share_2028_pct,0)+'% by 2028';
-  el('coolWaste').textContent='\u2248 '+fmt(c.heat_rejected_twh,0)+' TWh\u2020';
-  el('coolWasteSub').textContent=fmt(c.reject_vs_island_residential_pct,0)+
-    '% of island residential heat demand \u2013 refrigeration rejects '+
-    'more heat than its electricity';
-  el('coolStranded').textContent=fmt(c.stranded_summer_pct,0)+' %';
-  el('coolDH').textContent='< '+fmt(c.dh_share_pct,0)+' %';
-
-  // load split mini-bar
-  const L=c.loads_twh||{};
-  const order=[['dc','Data centres',CLR.teal],
-    ['refrigeration','Cold chain','#5BA4CF'],
-    ['process','Process','#8a5a3b'],
-    ['comfort','Comfort',CLR.amber],
-    ['ni_all','NI\u2020','#5c6f76']];
-  const tot=c.cooling_elec_twh||1;
-  el('coolLoadLab').textContent=fmt(tot,1)+' TWh';
-  el('coolLoadBar').innerHTML=order.map(o=>{
-    const v=L[o[0]]||0; if(v<=0) return '';
-    const w=100*v/tot;
-    return '<div class="ioseg" style="width:'+w.toFixed(1)+
-      '%;background:'+o[2]+'" title="'+o[1]+' '+fmt(v,1)+' TWh">'+
-      (w>12?o[1]+' '+fmt(v,1):'')+'</div>';
-  }).join('');
-
-  const hdd=((D.feeds||{}).hdd||{}).hdd_island||{};
-  const odh=((D.feeds||{}).hdd||{}).odh26_island||{};
-  const days=Object.keys(hdd).sort().slice(-365);
-  if(days.length<60) return;
-  const wk=[],wd=[],wo=[];let acc=0,oacc=0,cnt=0,tot2=0,otot=0;
-  days.forEach(d=>{tot2+=hdd[d];otot+=(odh[d]||0)});
-  days.forEach((d,i)=>{acc+=hdd[d];oacc+=(odh[d]||0);cnt++;
-    if(cnt===7||i===days.length-1){wd.push(d);wk.push(acc);wo.push(oacc);acc=0;oacc=0;cnt=0}});
-  const weeks=wk.length;
-  const dem=wk.map(v=>tot2>0?100*v/tot2:0);
-  const comfortShare=(L.comfort||0)/tot, flatShare=1-comfortShare;
-  const sup=wd.map((d,i)=>{
-    let s=100*flatShare/weeks;
-    if(c.comfort_shaped_by_odh&&otot>0)
-      s+=100*comfortShare*(0.3/weeks+0.7*wo[i]/otot);
-    else s+=100*comfortShare/weeks;
-    return s;
-  });
-  Plotly.newPlot('coolPlot',[
-    {x:wd,y:dem,name:'Heat demand shape (HDD, weekly)',mode:'lines',
-     fill:'tozeroy',line:{color:CLR.petrol,width:1.6},
-     fillcolor:'rgba(31,78,95,.35)'},
-    {x:wd,y:sup,name:'Cooling heat rejection'+
-     (c.comfort_shaped_by_odh?' (comfort by live ODH\u2020)':' (\u2248flat)'),
-     mode:'lines',line:{color:CLR.amber,width:2,dash:'dash'}},
-  ],Object.assign(plb(),{
-    yaxis:Object.assign(plb().yaxis,{title:'% of annual total / week',
-      rangemode:'tozero'}),
-    legend:{orientation:'h',y:1.14},
-  }),CONF);
-}
 
 // -------------------------------- Panel 5: geothermal, now and next
 // Replaces "the empty bar", which reported a register without ever
@@ -3442,13 +3307,11 @@ fetch('data.json').then(r=>{
   costPanel(expandHistory((D.derived||{}).heat_cost_series));
   oilTicker(D.feeds||{}, ((D.feeds||{}).ecb_fx||{}).eur_gbp, D.events);
   gasEngine(D.feeds||{}, D.derived);
-  heatGap(D);
   gasCalLine(D);
-  coolSide(D);
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.36.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.36.2 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
