@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.36.0"
+PIPELINE_VERSION = "5.37.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5223,6 +5223,14 @@ def derive_geo_targets(anchors=None, geo=None):
              "source": "NI Energy Strategy, DfE 2021",
              "achieved_gwh": GEO_NI_EE_ACHIEVED_GWH},
         ],
+        # The Republic's own comparison. Target-setting is a
+        # jurisdictional act, so the panel has no all-island view: each
+        # side is measured against what its own government committed to.
+        "roi_vs_dh": {
+            "fifth_twh": round(share * roi_del, 2),
+            "dh_target_twh": 2.7,
+            "multiple": round(share * roi_del / 2.7, 1),
+        },
         "ni_energy_saved": {
             "target_gwh": GEO_NI_EE_TARGET_GWH,
             "achieved_gwh": GEO_NI_EE_ACHIEVED_GWH,
