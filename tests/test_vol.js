@@ -886,23 +886,33 @@ ok(/property of the route, not of the machine/.test(oxn),
      "no chart text is painted with an empty fill");
 }
 
-// ---- Panel 4: four bars, and the units change halfway ------------
-["coolTiers","coolTiersNote","coolTierDefs","coolMethod"]
+// ---- Panel 4: hard activity segments, four bars -------------------
+["coolTiers","coolTiersNote","coolTierDefs","coolMethod","coolSub"]
   .forEach(k=>{DOM[k]=null; el(k);});
 const CT = {base_year:2023, proj_year:2034, scope:"Republic of Ireland",
-  unit:"TWh", service_twh:12.2, service_proj_twh:14.5,
-  elec_proj_twh:6.65, elec_proj_geo_twh:5.51, geo_saving_twh:1.14,
-  geo_saving_pct:17.1, geo_eer:15.0, whatif_share:0.2, industry_eer:3.0,
-  retail_share_of_commercial:0.731, comfort_floor_gwh:1092,
-  ni_all_twh:1.2, dc_cooling_share:0.14,
-  offsets_twh:{datacentres:0, industry:1.8, commercial:4.2, public:11.7},
-  source:"SEAI Comprehensive Assessment Technical Annex 2025",
+  unit:"TWh", service_twh:15.8, service_proj_twh:22.7,
+  elec_proj_twh:6.65, elec_proj_geo_twh:5.87, geo_saving_twh:0.78,
+  geo_saving_pct:11.8, geo_eer:15.0, whatif_share:0.2, industry_eer:3.0,
+  dc_eer:6.0, whatif_excluded:["datacentres"],
+  archetypes_with_cooling:[62,181], ni_all_twh:1.2,
+  tier_totals_twh:{"0":13.95,"1":1.25,"m":0.69},
+  tier_totals_segments_twh:{"0":6.06,"1":1.25,"m":0.69},
+  source:"SEAI National Heat Study Figures 52-53; Technical Annex 2025",
   tier_defs:[{key:"tier0",label:"Tier 0 \u00b7 process",text:"Runs regardless."},
              {key:"tier1",label:"Tier 1 \u00b7 comfort, equipped",text:"Installed plant."},
              {key:"tier2",label:"Tier 2 \u00b7 comfort, unequipped",text:"No cooling to draw."}],
+  segments:[
+    {label:"Retail",service_twh:5.48,elec_twh:2.63,per_archetype_mwh:168,sector:"comm",tier:0},
+    {label:"Restaurant/public house",service_twh:0.47,elec_twh:0.23,per_archetype_mwh:50,sector:"comm",tier:0},
+    {label:"Warehouse and storage",service_twh:0.11,elec_twh:0.05,per_archetype_mwh:570,sector:"comm",tier:0},
+    {label:"Hotel",service_twh:0.48,elec_twh:0.23,per_archetype_mwh:377,sector:"comm",tier:"m"},
+    {label:"Healthcare",service_twh:0.21,elec_twh:0.08,per_archetype_mwh:121,sector:"pub",tier:"m"},
+    {label:"Office (commercial)",service_twh:0.96,elec_twh:0.46,per_archetype_mwh:101,sector:"comm",tier:1},
+    {label:"Office (public)",service_twh:0.26,elec_twh:0.10,per_archetype_mwh:205,sector:"pub",tier:1},
+    {label:"Education",service_twh:0.03,elec_twh:0.01,per_archetype_mwh:305,sector:"pub",tier:1}],
   tiers:[{key:"datacentres",label:"Data centres",group:"process",
-          service_twh:1.8,elec_twh:0.9,eer:2.0,eer_is_ours:false,
-          service_proj_twh:4.11,elec_proj_twh:2.05,held:false},
+          service_twh:5.4,elec_twh:0.9,eer:6.0,eer_is_ours:true,
+          service_proj_twh:12.32,elec_proj_twh:2.05,held:false},
          {key:"industry",label:"Industry",group:"process",
           service_twh:2.4,elec_twh:0.8,eer:3.0,eer_is_ours:true,
           service_proj_twh:2.4,elec_proj_twh:0.8,held:true},
@@ -918,41 +928,209 @@ ok(!/NaN|undefined/.test(ck), "no NaN in the cooling bars");
 ok(axisLabelReadable(csvg), "its axis labels are legible");
 ok(tickValuesReadable(csvg, 4, "bottom"),
    "and its bottom value axis carries legible ticks");
-ok((csvg.match(/<rect /g)||[]).length === 16,
-   "four bars of four sectors");
-// THE UNITS CHANGE HALFWAY and the chart must say so
+// HARD SEGMENTS, NOT A GRADIENT. The activity split is sourced and
+// reconciles, so the boundary is drawn rather than implied.
+ok(!/linearGradient/.test(csvg),
+   "no gradient - the boundary is drawn, not shaded");
+ok((csvg.match(/<rect /g)||[]).length === 40,
+   "ten activity segments across four bars");
+ok(/Retail 5\.48/.test(csvg) && /Office \(commercial\) 0\.96/.test(csvg),
+   "segments are labelled with their activity and figure");
+// Segments too narrow to label on the chart - warehousing is 0.11 TWh
+// on a 24 TWh axis, about four pixels - are carried in the method
+// table instead rather than crowded onto the bar.
+ok(!/Warehouse and storage/.test(csvg)
+   && /Warehouse and storage/.test(DOM.coolMethod.innerHTML),
+   "segments too narrow to label appear in the method table instead");
+// tier colouring must be by TIER, not by sector
+// ONE COLOUR PER SECTOR, in three tier families. Ten segments sharing
+// three colours made adjacent same-tier blocks merge into one shape,
+// and the changed proportions between bars read as reordering.
+{
+  const fills = [...csvg.matchAll(/<rect [^>]*fill="(#[0-9A-Fa-f]{6})"/g)]
+    .map(m => m[1]);
+  const uniq = new Set(fills);
+  ok(uniq.size === 10, "ten distinct sector colours, one per segment");
+  // and the SAME colour in the same order on every bar - the order is
+  // sorted on the 2023 value throughout, so nothing reverses
+  const perBar = [fills.slice(0,10), fills.slice(10,20),
+                  fills.slice(20,30), fills.slice(30,40)];
+  // NOTE: structurally guaranteed today, because coolSegs sorts once
+  // and all four bars share that array. It guards a future change that
+  // sorts per bar, and cannot be proven by mutation against the
+  // current code.
+  ok(perBar.every(b => b.join() === perBar[0].join()),
+     "the colour sequence is identical on all four bars");
+}
+ok(/Tier 0 \u00b7 process|Tier 0 · process/.test(ck)
+   && /mixed under one roof/.test(ck) && /Tier 1/.test(ck),
+   "the legend groups the sectors under their tiers");
+ok(/coolleg-grp/.test(ck) && /Data centres<\/span>/.test(ck)
+   && /Retail<\/span>/.test(ck),
+   "and names every sector inside its group");
+// the units change halfway
 ok(/cooling delivered/.test(csvg) && /electricity bought/.test(csvg),
    "the two groups are named - service above, electricity below");
-ok(/different quantity/.test(csvg),
-   "and the shift is stated, not left to be noticed");
 ok(/% less electricity/.test(csvg),
    "the geothermal dividend is marked between bars 3 and 4");
-// only the data centre block may be projected
-ok((csvg.match(/opacity="0.4"/g)||[]).length === 9,
-   "the held blocks are faded on all three projected bars");
-// THE ONE JUDGEMENT must be visible and attributed
+// Tier 2 now carries SEAI's own archetype finding
+ok(/62 of 181/.test(ck),
+   "Tier 2 cites SEAI's own count of archetypes with any cooling");
+// THE HEADLINE SPLIT MUST COVER THE WHOLE BAR. tier_totals_twh once
+// summed the activity segments only, reporting Tier 0 as 6.06 and
+// silently omitting data centres and industry - both Tier 0, and
+// between them more than half of it.
+ok(/Tier 0 process is 13\.9|Tier 0 process is 14/.test(
+     DOM.coolTiersNote.textContent),
+   "the note gives the whole-bar Tier 0, not just the segments");
+ok(/88%/.test(DOM.coolTiersNote.textContent)
+   && /8%/.test(DOM.coolTiersNote.textContent),
+   "and both tiers as a share of the total");
+// LABELS MUST NOT COLLIDE. Lanes were cycled by index, so two narrow
+// blocks either side of a wide one overprinted each other.
+{
+  const lab = texts(csvg).filter(t => /\d\.\d\d$/.test(t.body.trim()));
+  const byLane = {};
+  lab.forEach(t => { (byLane[Math.round(t.y)] ||= []).push(t); });
+  let clash = false;
+  Object.values(byLane).forEach(row => {
+    row.sort((a,b)=>a.x-b.x);
+    for(let i=1;i<row.length;i++){
+      const halfA = row[i-1].body.length*2.8, halfB = row[i].body.length*2.8;
+      if(row[i].x - halfB < row[i-1].x + halfA) clash = true;
+    }
+  });
+  // NOTE: unproven by mutation. Reverting to index-cycled lanes does
+  // not reproduce a clash on THIS fixture, though it did on the live
+  // figures. The check is correct in principle and currently untested
+  // against a real failure.
+  ok(!clash, "no two segment labels overlap on the same lane");
+}
+// the method fold
 const cm = DOM.coolMethod.innerHTML;
-ok(/One EER is ours: industry at 3/.test(cm),
-   "the method fold names the single EER that is ours");
-ok(/ours<\/td>/.test(cm) && /SEAI<\/td>/.test(cm),
-   "and the table attributes every sector's EER");
-ok(/317\u2013324|317–324/.test(cm),
-   "the emissions cross-check that established the mixture is shown");
-ok(/73\.1% of commercial/.test(cm),
-   "retail's share is given as sourced, not judged");
-ok(/1092 GWh|1,092 GWh/.test(cm),
-   "and offices plus education as the comfort floor");
-ok(/Northern Ireland is not in these bars/.test(cm),
-   "the NI exclusion is stated in the method");
-ok(/Tier 0/.test(DOM.coolTierDefs.innerHTML)
-   && /Tier 2/.test(DOM.coolTierDefs.innerHTML),
-   "all three tiers are defined on the page");
-ok(!/back-calculating/.test(DOM.coolTiersNote.textContent),
-   "the method is in the fold, not crowding the bars");
+// ONE judgement, not two: the data centre factor is arithmetic
+// (5.5 TWh removed for 0.9) and the commercial and public factors are
+// SEAI's own ratios. Only industrial process is ours.
+ok(/One EER is ours: industrial process/.test(cm),
+   "the method fold names the single judgement");
+ok(/enlarges the service bars but SHRINKS the geothermal what-if/.test(cm),
+   "and says the judgement cuts against our own argument");
+ok(/both read one set of constants/.test(cm)
+   && /CUT the same quantity differently/.test(cm),
+   "the reconciliation with the energy-balance panel is in the fold");
+ok(/effective EER of 6/.test(cm) && /never models free cooling/.test(cm),
+   "the data centre EER is stated with why SEAI's cannot be used");
+ok(/data centres are excluded from the what-if/i.test(cm)
+   && /fan moving 10/.test(cm), "the exclusion is stated with its reason");
+// AND IT MUST BE ON THE CHART, not only in the fold. The two
+// sub-panels use different populations and a reader comparing them
+// needs to see which without opening anything.
+ok(/DATA CENTRES OUT of the geothermal what-if/.test(csvg),
+   "the cooling chart says data centres are OUT, on its face");
+ok(/borefield in data centres is seasonal storage, not cheaper cooling/
+     .test(cm),
+   "and the case is put where it actually rests");
+// the sub-heading total must come from the payload, not be typed: it
+// said "eleven terawatt-hours" long after the figure reached 15.9
+ok(DOM.coolSub.innerHTML.indexOf(CT.service_twh + " terawatt-hours")
+     >= 0,
+   "the sub-heading takes its total from the payload, not typed text");
+ok(/activity split is hard, not judged/i.test(cm)
+   && /exceeds that of all other archetypes combined/.test(cm),
+   "retail's attribution is quoted to SEAI, not asserted by us");
+ok(/MWh per archetype/.test(cm) && /26,000 buildings/.test(cm),
+   "the concentration column from Figure 53 is carried and explained");
+ok(/holds commercial and public cooling constant to 2050/.test(cm),
+   "and the held-not-forecast treatment is attributed to SEAI");
+// AND THE CHART MUST HONOUR THE EXCLUSION - not just the prose
+{
+  const rs = rects(csvg).filter(r => r.w > 0);
+  const b3 = rs.slice(20, 30), b4 = rs.slice(30, 40);
+  // segments are ordered tier-then-size, so retail leads and data
+  // centres sit second - find by position rather than assume first
+  ok(Math.abs(b3[1].w - b4[1].w) < 0.5,
+     "the data centre block is identical on bars 3 and 4 - excluded");
+  ok(b4[0].w < b3[0].w - 0.5,
+     "while retail does shrink, so the what-if is still applied");
+}
 ["coolTiers","coolTiersNote","coolTierDefs","coolMethod"]
   .forEach(k=>{DOM[k]=null; el(k);});
 coolTiers(null);
 ok(/coming build/.test(DOM.coolTiers.textContent),
    "and the panel declines cleanly without the block");
+
+// ---- and the heat it rejects --------------------------------------
+["heatReject","heatRejectNote"].forEach(k=>{DOM[k]=null; el(k);});
+heatReject({share:0.2, banked_twh:2.21, recovered_twh:1.55,
+  rejected_twh:4.28, roundtrip:0.70, roundtrip_range:[0.5,0.8],
+  recovered_range_twh:[1.11,1.77], summer_fraction:0.5,
+  share_of_roi_heat_pct:6.1,
+  rows:[{key:"datacentres",label:"Data centres",rejected_twh:6.4,
+         continuous:true,summer_twh:3.2},
+        {key:"industry",label:"Industry",rejected_twh:3.2,
+         continuous:true,summer_twh:1.6},
+        {key:"commercial",label:"Commercial",rejected_twh:11.1,
+         continuous:true,summer_twh:5.55},
+        {key:"public",label:"Public",rejected_twh:0.7,
+         continuous:false,summer_twh:0.7}]});
+const hj = DOM.heatReject.innerHTML, hn = DOM.heatRejectNote.innerHTML;
+ok(!/NaN|undefined/.test(hj + hn), "no NaN in the rejection panel");
+ok(/2,210 GWh/.test(hj) && /1,550 GWh/.test(hj),
+   "both bars carry their figure");
+ok(/bankHatch/.test(hj),
+   "the summer bar is hatched - available and currently thrown away");
+// LAYOUT. The header was added at y=20 while the bars kept their old
+// y of 20, so it printed straight through the first bar; and the row
+// labels were 31 monospace characters at 13px against a 250-unit
+// gutter, which clipped the leading S off the viewBox.
+{
+  const hsvg = svgAt(hj, 0);
+  const hdr = texts(hsvg).filter(t => /DATA CENTRES IN/.test(t.body))[0];
+  const bars = rects(hsvg).filter(r => r.h > 20);
+  ok(hdr && bars.length && hdr.y + 4 < Math.min(...bars.map(r=>r.y)),
+     "the header sits above the bars, not through them");
+  const rows = texts(hsvg).filter(t => /REJECTED TO STORE|RECOVERED/.test(t.body));
+  ok(rows.length === 2 && rows.every(t => {
+       const size = +(t.attr.match(/font-size="(\d+)"/)||[0,12])[1];
+       return t.x - t.body.length * size * 0.6 > 0;
+     }), "the row labels fit inside the viewBox, not clipped at the left");
+}
+// the recovered bar must be SHORTER than the banked one, at 70%
+{
+  const rs = rects(hj).filter(r => r.w > 1 && r.h > 20);
+  const filled = rs.filter(r => r.w < 590);
+  ok(filled.length >= 2 && filled[1].w < filled[0].w,
+     "the recovered bar is shorter than the banked one");
+}
+// DATA CENTRES ARE IN, unlike the cooling what-if above
+ok(/whole facility draw, IT load included/.test(hn),
+   "data centre rejection is the whole draw, not the cooling block");
+// THE MULTIPLICATIVE POINT is what makes this Irish rather than a port
+ok(/reject continuously/.test(hn) && /only the summer half strands/.test(hn),
+   "the note distinguishes continuous sources from summer-only ones");
+ok(/roughly half to nearly all/.test(hn),
+   "and states the multiplicative effect a store has on a continuous source");
+ok(/Tallaght/.test(hn), "citing the scheme that already does it");
+// THE OTHER HALF OF THE PAIR: in here, out above, and the note must
+// say why rather than leaving "that same fifth" to mislead.
+ok(/DATA CENTRES IN/.test(hj),
+   "the rejection chart says data centres are IN, on its face");
+ok(/A different fifth from the bars above/.test(hn),
+   "and the note declares it is a different fifth, not the same one");
+ok(/for a data centre it means a heat offtake added/.test(hn),
+   "explaining that the intervention differs by sector");
+// the Tallaght sentence moved out of the opening paragraph in
+// editing; it still appears later, where the continuous sources are
+// described
+ok(/Tallaght already does with a Dublin data centre/.test(hn),
+   "Tallaght is cited where continuous rejection is explained");
+ok(/air-source network structurally cannot do/.test(hn),
+   "and what the alternative cannot do");
+ok(/50\u201380%|50–80%/.test(hn),
+   "the round-trip range is given, not just the central figure");
+["heatReject","heatRejectNote"].forEach(k=>{DOM[k]=null; el(k);});
+heatReject(null);
+ok(/coming build/.test(DOM.heatReject.textContent),
+   "and it declines cleanly without the block");
 
 console.log(checks + " front-end fixture checks passed");
