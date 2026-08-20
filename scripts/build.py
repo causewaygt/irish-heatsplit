@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.38.0"
+PIPELINE_VERSION = "5.40.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -1082,43 +1082,70 @@ FEED_FLAGS = {
 # (Ireland, Blake, Pasquali, Dunphy & Hunter Williams) - sourced.
 # Corrections welcome at contact@causewaygt.com.
 GEO = {
+    # Northern Ireland register, Causeway Energies, circulating for
+    # comment among NI practitioners as at 20 Aug 2026. Ten documented
+    # systems at or above 45 kW.
+    #
+    # EFFECTIVE, NOT NAMEPLATE. The register carries both, and the gap
+    # matters: 532 kW of heating was built and 460 kW is delivered, so
+    # 14% of installed capacity never reached the building. Our earlier
+    # anchors took nameplate and missed three failures entirely, which
+    # made the record look better than it is - five of seven confirmed,
+    # against two clean operational systems of ten.
     "ni_register": [
-        {"id": "R1", "site": "McClay Library, QUB", "year": 2009,
-         "kw": None, "duty": "cooling", "type": "closed vertical",
+        {"id": "R1", "site": "R1", "year": 2009, "kw": None,
+         "kw_nameplate": None, "duty": "cooling",
          "status": "candidate - unconfirmed", "confirmed": False},
-        {"id": "R2", "site": "Lyric Theatre, Belfast", "year": 2011,
-         "kw": 120, "duty": "cooling", "type": "open single-well",
-         "status": "operational - minor issues", "confirmed": True,
-         "note": "120 kW demand-inferred, not metered"},
-        {"id": "R3", "site": "Giant's Causeway Visitor Centre", "year": 2012,
-         "kw": 72, "duty": "heating", "type": "horizontal mat",
+        {"id": "R2", "site": "R2", "year": 2011, "kw": 120,
+         "kw_nameplate": None, "duty": "cooling",
+         "status": "operational - minor issues", "confirmed": True},
+        {"id": "R3", "site": "R3", "year": 2012, "kw": 72,
+         "kw_nameplate": 72, "duty": "heating",
          "status": "operational", "confirmed": True},
-        {"id": "R4", "site": "Girdwood Community Hub, Belfast", "year": 2016,
-         "kw": 108, "duty": "heating", "type": "hybrid vertical + slinky",
-         "status": "operational - impaired (~60% of 180 kW design)",
-         "confirmed": True},
-        {"id": "R5", "site": "QUB School of Biological Sciences", "year": 2018,
-         "kw": 0, "duty": "cooling", "type": "open doublet",
-         "status": "never commissioned (design flow set-point error)",
-         "confirmed": True},
-        {"id": "R7", "site": "QUB Business School Student Hub", "year": 2023,
-         "kw": 280, "duty": "heating + DHW",
-         "type": "closed vertical, 40 x 125 m, Sherwood Sandstone",
+        {"id": "R4", "site": "R4", "year": 2016, "kw": 108,
+         "kw_nameplate": 180, "duty": "heating",
+         "status": "operational - impaired", "confirmed": True},
+        {"id": "R5", "site": "R5", "year": 2018, "kw": 0,
+         "kw_nameplate": None, "duty": "cooling",
+         "status": "never commissioned", "confirmed": True},
+        {"id": "R6", "site": "R6", "year": 2023, "kw": 280,
+         "kw_nameplate": 280, "duty": "heating + DHW",
          "status": "operational", "confirmed": True},
-        {"id": "R8", "site": "UU Jordanstown HPSC", "year": None,
-         "kw": None, "duty": "heating", "type": "GSHP",
-         "status": "unconfirmed", "confirmed": False},
+        {"id": "R7", "site": "R7", "year": None, "kw": 0,
+         "kw_nameplate": None, "duty": None,
+         "status": "dead - completion failure", "confirmed": True},
+        {"id": "R8", "site": "R8", "year": None, "kw": 0,
+         "kw_nameplate": None, "duty": None,
+         "status": "inoperable", "confirmed": True},
+        {"id": "R9", "site": "R9", "year": None, "kw": 0,
+         "kw_nameplate": None, "duty": None,
+         "status": "never completed", "confirmed": True},
+        {"id": "R10", "site": "R10", "year": None, "kw": None,
+         "kw_nameplate": None, "duty": "heating",
+         "status": "candidate - unconfirmed", "confirmed": False},
     ],
-    "ni_exclusions": [
-        {"site": "Randalstown", "kw": 44, "detail": "2 x 22 kW",
-         "source": "Ryan Daly, Jul 2026"},
-        {"site": "Strabane", "kw": 18, "detail": "3 x 6 kW Ecogeo Lite "
-         "(+3 x 9 kW ASHP out of scope)", "source": "Ryan Daly, Jul 2026"},
-    ],
-    "ni_domestic": {"low": 500, "high": 700,
-                    "note": ("MCS ~386-450 certified plus pre-certification "
-                             "era estimate - Causeway triangulation, "
-                             "dagger")},
+    # Site names are deliberately NOT held here. The register is out
+    # for comment and the site must not publish its entries; keeping
+    # the names out of the payload makes that structural rather than a
+    # matter of remembering.
+    "ni_register_totals": {
+        "documented": 10, "operational_clean": 2, "operational_any": 4,
+        "failed": 4, "unconfirmed": 2,
+        "delivered_heating_kw": 460, "delivered_cooling_kw": 120,
+        "nameplate_heating_kw": 532, "heating_shortfall_kw": 72,
+    },
+    # 386 MCS-registered units at 10-12 kW, per the register's small
+    # tier. Previously carried as 500-700, a triangulation with no
+    # stated basis that put NI's total more than a megawatt too high.
+    # MCS-registered domestic only: it excludes non-MCS installs, and
+    # NI has no domestic RHI, so this is a floor rather than a count.
+    "ni_domestic": {"units": 386, "kw_each": (10, 12),
+                    "mw_low": 3.5, "mw_high": 4.5,
+                    "note": ("386 MCS-registered small ground and water "
+                             "source units, March 2023, at 10-12 kW "
+                             "assumed mean output - a floor, since it "
+                             "excludes non-MCS installs and NI has no "
+                             "domestic RHI")},
     # 224.4 and 291.9, matching EGC 2025 Table 4 exactly. Previously
     # carried as 225 and 293 - rounded somewhere between the source and
     # this file, and ours should be the source's numbers.
@@ -1132,8 +1159,11 @@ GEO = {
             "gshp_share_of_hp_market_pct": 4,
             "source": ("WGC2026 Country Update: Ireland - Ireland, Blake, "
                        "Pasquali, Dunphy & Hunter Williams, June 2026")},
-    "per_capita_w": {"roi": 42, "ni": 3,
-                     "note": "installed Wth per person - NI dagger"},
+    # DERIVED below from capacity and population, not typed. Carried
+    # as a literal until 20 Aug 2026, when re-anchoring NI from 6.6 to
+    # 4.5 MWth left the 3 W figure stale - the same trap as the
+    # "eleven terawatt-hours" sub-heading on the cooling panel.
+    "per_capita_w": {"note": "installed Wth per person, derived"},
     "population_m": {"roi": 5.3, "ni": 1.92},   # dagger, mid-2026
     "eflh_h": 2000,   # equivalent full-load heating hours - dagger
     # European reference points, installed GSHP Wth per person -
@@ -1194,7 +1224,14 @@ GEO = {
         "dhc_systems": 434, "dhc_gwth": 6.0,
         "dhc_rank": "second-largest renewable source for district heat",
         "source": "EGEC Geothermal Market Report 2025, Key Findings"},
-    "ni_capacity_mwth_est": 6.6,   # >60 kW register + domestic - dagger
+    # 4.5 MWth: 0.46 MW of DELIVERED large-tier heating plus the
+    # midpoint of the 3.5-4.5 MW domestic tier. Previously 6.6, which
+    # took nameplate rather than effective capacity and a 500-700 unit
+    # domestic estimate - about 40% too high, and flattering in the
+    # same direction as every other error found this week. Cooling
+    # capacity (120 kW) is excluded: this figure is compared against
+    # heat demand.
+    "ni_capacity_mwth_est": 4.5,
     "island_today_twh": 0.30,
     "pipeline": [
         "GEMINI (EUR 20m, PEACEPLUS): 3 shallow demos Sligo + Belfast "
@@ -5171,6 +5208,13 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
 # chart. SHARED WITH THE UK SIBLING and identical to its NAT_HEAT_TWH:
 # France ~350 TWh (IEA / Heat Roadmap order), Netherlands ~115 TWh,
 # Sweden ~80 TWh (Swedish Energy Agency / ODYSSEE). Estimates, daggered.
+# Per-capita watts, computed from the anchors above rather than typed,
+# so re-anchoring a capacity cannot leave the headline stale.
+GEO["per_capita_w"]["roi"] = round(
+    GEO["roi"]["capacity_mwth"] * 1e6 / (GEO["population_m"]["roi"] * 1e6))
+GEO["per_capita_w"]["ni"] = round(
+    GEO["ni_capacity_mwth_est"] * 1e6 / (GEO["population_m"]["ni"] * 1e6))
+
 GEO_NAT_HEAT_TWH = {"France": 350.0, "Netherlands": 115.0, "Sweden": 80.0}
 # The register's inclusion threshold. Both exclusions sit below it -
 # Randalstown 44 kW, Strabane 18 kW - which is what fixes it at 45.
@@ -5178,9 +5222,15 @@ GEO_NI_REGISTER_KW = 45
 GEO_SOURCES = {
     "roi": "WGC2026 Country Update: Ireland \u2014 Ireland, Blake, "
            "Pasquali, Dunphy & Hunter Williams, June 2026",
+    # The register is Causeway's own compilation, currently OUT FOR
+    # COMMENT among Northern Ireland practitioners rather than
+    # published. The site cites it as a source and reports totals
+    # derived from it; it does not reproduce the entries, and should
+    # not until the review closes.
     "ni_register": "Causeway Energies register of Northern Ireland "
-                   "ground-source schemes above 45 kW, compiled "
-                   "site by site",
+                   "ground-source schemes above 45 kW, compiled site "
+                   "by site and currently circulating for comment "
+                   "among Northern Ireland practitioners",
     "ni_domestic": "MCS certification records, ~386\u2013450 units, plus "
                    "a pre-certification estimate \u2014 Causeway "
                    "triangulation",
@@ -5402,6 +5452,7 @@ def derive_geo_hardware(anchors=None, geo=None):
         "ni_register_confirmed": len([r for r in g["ni_register"]
                                       if r["confirmed"]]),
         "ni_register_total": len(g["ni_register"]),
+        "ni_register_totals": g["ni_register_totals"],
         "ni_domestic": g["ni_domestic"],
     }
     log(f"geo hardware: island {inst:.0f} MWth installed against a "
