@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.35.0 / site 5.36.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.35.0 / site 5.36.1.
 
 ## The premise
 
@@ -1500,7 +1500,10 @@ of a bare comparison; and the Tallaght sentence dropped from the opening
 paragraph of the rejection note, where it now appears only in the
 passage on continuous rejection.
 
-**Panel 5 rebuilt: geothermal, now and next (5.35.0 / site 5.36.0).**
+**Panel 5 rebuilt: geothermal, now and next (5.35.0 / site 5.36.1).**
+Scope line: "ROI has started, NI's deployment to date is negligible. And
+neither has set a target."
+
 Replaces "the empty bar", which reported a register without placing it
 against anything. Three sub-panels on the UK sibling's shape, but the
 Irish story differs in two ways and the panel leads with both.
