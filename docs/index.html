@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.37.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.38.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -657,10 +657,12 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   <p class="scopeline">ROI has started, NI&rsquo;s deployment to date is
     negligible. And neither has set a target.</p>
   <div class="panelbox">
+<!-- No all-island view here. Setting a target is a jurisdictional
+         act, so each side is measured against what its own government
+         committed to, and the two are never averaged. -->
     <div class="costctl costjur" id="geoCtl">
       <span>WHERE</span>
-      <button data-geojur="all" aria-pressed="true">ALL ISLAND</button>
-      <button data-geojur="roi">REPUBLIC OF IRELAND</button>
+      <button data-geojur="roi" aria-pressed="true">REPUBLIC OF IRELAND</button>
       <button data-geojur="ni">NORTHERN IRELAND</button>
     </div>
     <h3 class="foldh">Nobody has set a target
@@ -2976,7 +2978,7 @@ function gasCalLine(D){
 // The toggle is the point. Spelling the ROI/NI contrast out in copy
 // reads as an argument being made at the reader; letting them switch
 // between the two makes the same point and lets them find it.
-let GEOJUR = "all";
+let GEOJUR = "roi";
 function geoPanel(D){
   const g = (D||{}).geo || {};
   GEOD = g;
@@ -2994,8 +2996,7 @@ document.querySelectorAll("[data-geojur]").forEach(b=>{
               geoCalib(GEOD.hardware); }
   });
 });
-const GEOJUR_LABEL = {all:"the island", roi:"the Republic",
-                      ni:"Northern Ireland"};
+const GEOJUR_LABEL = {roi:"the Republic", ni:"Northern Ireland"};
 
 function geoTargets(t){
   const box = el("geoTargets"), note = el("geoTargetsNote");
@@ -3004,28 +3005,47 @@ function geoTargets(t){
     box.textContent = "The targets block arrives with a coming build.";
     if(note) note.textContent = ""; return;
   }
-  const ni = t.ni_energy_saved || {};
+  // Targets are jurisdictional, so only that side's are shown. The
+  // zero is common to both and stays whichever way the toggle sits.
+  const ni = t.ni_energy_saved || {}, rd = t.roi_vs_dh || {};
+  const mine = t.nearest.filter(n => n.jur.toLowerCase() === GEOJUR);
+  const where = GEOJUR_LABEL[GEOJUR] || "";
   let s = '<div class="hstats">'
     + '<div class="hstat"><div class="hval" style="color:#C98F4F">0</div>'
-    + '<div class="hlab">geothermal deployment targets set by either '
-    + 'jurisdiction. Both treat it as a licensing question</div></div>'
-    + '<div class="hstat"><div class="hval">'
-    + fmt(ni.saved_pct ? ni.saved_pct.gshp : 0,0)
-    + '<span style="font-size:.5em">\u2013</span>'
-    + fmt(ni.saved_pct ? ni.saved_pct.network : 0,0)
-    + '<span style="font-size:.5em">%</span></div><div class="hlab">'
-    + 'of Northern Ireland\u2019s entire 2030 energy-saving target, from '
-    + 'a fifth of its building heat alone</div></div>'
-    + '<div class="hstat"><div class="hval" style="color:#C98F4F">'
-    + fmt(ni.achieved_pct,1) + '<span style="font-size:.5em">%</span>'
-    + '</div><div class="hlab">of that target delivered by March 2025 '
-    + '\u00b7 ' + fmt(ni.achieved_gwh,0) + ' GWh of '
-    + fmt(ni.target_gwh,0) + '</div></div></div>';
-  s += '<table class="caltab"><thead><tr><th>Where</th><th>Nearest '
-    + 'quantified target</th><th>By</th><th>What it actually covers</th>'
-    + '</tr></thead><tbody>'
-    + t.nearest.map(n =>
-        '<tr><td>' + esc(n.jur) + '</td><td><b>'
+    + '<div class="hlab">geothermal deployment targets set in ' + where
+    + '. It is treated as a licensing question, not a deployment one'
+    + '</div></div>';
+  if(GEOJUR === "ni"){
+    s += '<div class="hstat"><div class="hval">'
+      + fmt(ni.saved_pct ? ni.saved_pct.gshp : 0,0)
+      + '<span style="font-size:.5em">\u2013</span>'
+      + fmt(ni.saved_pct ? ni.saved_pct.network : 0,0)
+      + '<span style="font-size:.5em">%</span></div><div class="hlab">'
+      + 'of the entire 2030 energy-saving target, from a fifth of '
+      + 'building heat alone</div></div>'
+      + '<div class="hstat"><div class="hval" style="color:#C98F4F">'
+      + fmt(ni.achieved_pct,1) + '<span style="font-size:.5em">%</span>'
+      + '</div><div class="hlab">of that target delivered by March 2025 '
+      + '\u00b7 ' + fmt(ni.achieved_gwh,0) + ' GWh of '
+      + fmt(ni.target_gwh,0) + '</div></div>';
+  } else {
+    s += '<div class="hstat"><div class="hval">' + fmt(rd.multiple,1)
+      + '<span style="font-size:.5em">x</span></div><div class="hlab">'
+      + 'the district heating target for 2030. A fifth of the '
+      + 'Republic\u2019s building heat is ' + fmt(rd.fifth_twh,1)
+      + ' TWh against a ' + fmt(rd.dh_target_twh,1)
+      + ' TWh target for all heat sources</div></div>'
+      + '<div class="hstat"><div class="hval">680'
+      + '<span style="font-size:.5em">k</span></div><div class="hlab">'
+      + 'heat pumps by 2030, air and ground source together \u00b7 no '
+      + 'ground-source share is reserved within it</div></div>';
+  }
+  s += '</div>';
+  s += '<table class="caltab"><thead><tr><th>Nearest quantified target'
+    + '</th><th>By</th><th>What it actually covers</th></tr></thead>'
+    + '<tbody>'
+    + mine.map(n =>
+        '<tr><td><b>'
         + (n.unit === "units" ? fmt(n.value,0) + ' ' + esc(n.unit)
                               : fmt(n.value,1) + ' ' + esc(n.unit))
         + '</b> \u2014 ' + esc(n.label) + '</td><td>' + esc(n.year)
@@ -3033,24 +3053,32 @@ function geoTargets(t){
     + '</tbody></table>';
   box.innerHTML = s;
   if(note){
-    note.textContent = "No jurisdiction on this island has set a "
-      + "geothermal deployment target. The Republic's 2023 policy "
-      + "statement and its forthcoming Bill are a licensing and "
-      + "regulatory framework; Northern Ireland consulted on the same "
-      + "in May 2026, with no grants and no target attached. So the "
-      + "fifth has nothing of its own to be measured against, and the "
-      + "table gives the nearest quantified targets it could contribute "
-      + "to \u2014 none of which reserves any share for geothermal. "
-      + "Northern Ireland's is the one that fits the mechanism: it "
-      + "counts energy SAVED, and a heat pump saves purchased energy by "
-      + "construction, turning "
-      + fmt(ni.counterfactual_input_twh,2) + " TWh of combustion input "
-      + "into " + fmt(ni.whatif_delivered_twh,2) + " TWh delivered. Two "
-      + "cautions: that target covers buildings AND industry, so this "
-      + "is a share of the whole rather than of a heat sub-target; and "
-      + "the saving is against combustion at Northern Ireland's current "
-      + "efficiency \u2014 against an air-source heat pump it would be "
-      + "far smaller.";
+    note.textContent = (GEOJUR === "ni"
+      ? "Northern Ireland has set no renewable heat target of any kind, "
+        + "and RED III\u2019s heating sub-targets do not bind it. Its "
+        + "energy-saving target is the one quantified commitment "
+        + "geothermal can be measured against, and it suits the "
+        + "mechanism: the target counts energy SAVED, and a heat pump "
+        + "saves purchased energy by construction, turning "
+        + fmt(ni.counterfactual_input_twh,2) + " TWh of combustion "
+        + "input into " + fmt(ni.whatif_delivered_twh,2) + " TWh "
+        + "delivered. Two cautions: it covers buildings AND industry, "
+        + "so this is a share of the whole rather than of a heat "
+        + "sub-target; and the saving is against combustion at current "
+        + "efficiency \u2014 against an air-source heat pump it would "
+        + "be far smaller."
+      : "The Republic has quantified targets for district heating and "
+        + "for heat pumps, and geothermal could contribute to both, but "
+        + "neither reserves any share for it. The 2023 policy statement "
+        + "and the Bill that follows are a licensing and regulatory "
+        + "framework rather than a deployment commitment. So the fifth "
+        + "has nothing of its own to be measured against, and against "
+        + "what does exist it is large: "
+        + fmt(rd.fifth_twh,1) + " TWh of heat is "
+        + fmt(rd.multiple,1) + " times the entire district heating "
+        + "target for 2030.")
+      + " No jurisdiction on this island has set a geothermal "
+      + "deployment target.";
   }
 }
 
@@ -3064,7 +3092,9 @@ function geoHardware(h){
     if(note) note.textContent = ""; return;
   }
   const pp = h.per_person_W || {};
-  const J = (GEOJUR !== "all" && h.jur) ? h.jur[GEOJUR] : null;
+  // No all-island branch: the toggle offers two jurisdictions and
+  // nothing else, so J is always present unless the payload is old.
+  const J = (h.jur || {})[GEOJUR] || null;
   const inst = J ? J.installed_MWth : h.island_total_MWth;
   const wi = J ? J.whatif_MWth : h.whatif_MWth;
   const mult = J ? J.multiple : h.multiple;
@@ -3076,8 +3106,7 @@ function geoHardware(h){
     + (GEOJUR === "roi" ? ' \u00b7 ' + fmt(h.roi_units,0) + ' systems'
        : GEOJUR === "ni" ? ' \u00b7 register above '
          + fmt(h.register_threshold_kw,0) + ' kW plus a domestic estimate'
-       : ' \u00b7 Republic ' + fmt(h.island_gshp_MWth,0)
-         + ', North ' + fmt(h.island_ni_MWth,1))
+       : '')
     + '<span class="dag">\u2020</span></div></div>'
     + '<div class="hstat"><div class="hval">'
     + (J ? fmt(J.per_person_W,0) : fmt(pp.roi,0)
@@ -3166,13 +3195,10 @@ function geoHardware(h){
           + "installed. The register records failures alongside "
           + "successes: one scheme was never commissioned, another runs "
           + "at about 60% of design."
-      : fmt(h.island_total_MWth,0) + " MWth across the island, at "
-        + fmt(pp.roi,0) + " thermal watts per person in the Republic and "
-        + fmt(pp.ni,0) + " in the North. Sweden runs " + fmt(pp.sweden,0)
-        + " W and sold " + fmt(sales["Sweden"],0) + " units in 2025 "
-        + "against Ireland\u2019s " + fmt(sales["Ireland"],0)
-        + ", on a population twice the size. Toggle between the two "
-        + "jurisdictions above.");
+      : "Sweden runs " + fmt(pp.sweden,0) + " W and sold "
+        + fmt(sales["Sweden"],0) + " units in 2025 against "
+        + "Ireland\u2019s " + fmt(sales["Ireland"],0) + ", on a "
+        + "population twice the size.");
   }
 }
 
@@ -3188,7 +3214,7 @@ function geoCalib(h){
     if(note) note.textContent = ""; if(meth) meth.innerHTML = ""; return;
   }
   // the home row swaps with the toggle; the comparators do not
-  const jj = (GEOJUR !== "all" && h.jur) ? h.jur[GEOJUR] : null;
+  const jj = (h.jur || {})[GEOJUR] || null;
   const rows = jj
     ? [{name:(GEOJUR==="roi"?"Republic of Ireland":"Northern Ireland"),
         national_heat_TWh:jj.national_heat_TWh, share_pct:jj.share_pct}]
@@ -3374,7 +3400,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.37.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.38.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
