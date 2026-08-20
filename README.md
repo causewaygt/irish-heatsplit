@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.34.0 / site 5.34.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.34.0 / site 5.35.0.
 
 ## The premise
 
@@ -1484,6 +1484,22 @@ tests assert the header clears the bars and the labels fit inside the
 viewBox — proven by restoring both old values together, which is what it
 took to reproduce the clipping.
 
+**Panel 4 copy edits (site 5.35.0).** Nine changes from a review pass on
+the extracted text. The substantive one: the sub-heading still read
+"eleven terawatt-hours a year" from when the total was 10.6 — it is 15.9
+— so the figure is now **taken from the payload rather than typed**, and
+a test fails if it is ever hard-coded again. That is the third stale
+number this panel has carried, and the first with a guard against it.
+
+The rest: "round trip efficiency" rather than "round trip"; the first
+method paragraph names the 2023 National Heat Study as its source; "the
+candid limit" rather than "the honest limit"; "the case for a borefield
+**in data centres**"; "only data centres are projected **to grow**";
+Panel 2 named explicitly with the Northern Ireland gap stated in place
+of a bare comparison; and the Tallaght sentence dropped from the opening
+paragraph of the rejection note, where it now appears only in the
+passage on continuous rejection.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1625,7 +1641,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 184 tests, no network
-node tests/test_vol.js            # 235 front-end fixture checks
+node tests/test_vol.js            # 236 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
