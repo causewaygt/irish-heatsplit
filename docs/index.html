@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.36.2
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.37.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -657,6 +657,12 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   <p class="scopeline">ROI has started, NI&rsquo;s deployment to date is
     negligible. And neither has set a target.</p>
   <div class="panelbox">
+    <div class="costctl costjur" id="geoCtl">
+      <span>WHERE</span>
+      <button data-geojur="all" aria-pressed="true">ALL ISLAND</button>
+      <button data-geojur="roi">REPUBLIC OF IRELAND</button>
+      <button data-geojur="ni">NORTHERN IRELAND</button>
+    </div>
     <h3 class="foldh">Nobody has set a target
       <span class="sub">&mdash; what the fifth can be measured against
       instead</span></h3>
@@ -2967,12 +2973,29 @@ function gasCalLine(D){
 // shape - but the Irish story is different in two ways and the panel
 // leads with both: NOBODY HAS SET A TARGET, and the Republic's bar is
 // not empty. The interesting gap on this island is internal.
+// The toggle is the point. Spelling the ROI/NI contrast out in copy
+// reads as an argument being made at the reader; letting them switch
+// between the two makes the same point and lets them find it.
+let GEOJUR = "all";
 function geoPanel(D){
   const g = (D||{}).geo || {};
+  GEOD = g;
   geoTargets(g.targets);
   geoHardware(g.hardware);
   geoCalib(g.hardware);
 }
+let GEOD = null;
+document.querySelectorAll("[data-geojur]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    GEOJUR = b.dataset.geojur;
+    document.querySelectorAll("[data-geojur]").forEach(x=>
+      x.setAttribute("aria-pressed", String(x === b)));
+    if(GEOD){ geoTargets(GEOD.targets); geoHardware(GEOD.hardware);
+              geoCalib(GEOD.hardware); }
+  });
+});
+const GEOJUR_LABEL = {all:"the island", roi:"the Republic",
+                      ni:"Northern Ireland"};
 
 function geoTargets(t){
   const box = el("geoTargets"), note = el("geoTargetsNote");
@@ -3041,32 +3064,44 @@ function geoHardware(h){
     if(note) note.textContent = ""; return;
   }
   const pp = h.per_person_W || {};
+  const J = (GEOJUR !== "all" && h.jur) ? h.jur[GEOJUR] : null;
+  const inst = J ? J.installed_MWth : h.island_total_MWth;
+  const wi = J ? J.whatif_MWth : h.whatif_MWth;
+  const mult = J ? J.multiple : h.multiple;
+  const where = GEOJUR_LABEL[GEOJUR] || "the island";
   let s = '<div class="hstats">'
-    + '<div class="hstat"><div class="hval">' + fmt(h.island_total_MWth,0)
+    + '<div class="hstat"><div class="hval">' + fmt(inst,1)
     + '<span style="font-size:.5em"> MWth</span></div><div class="hlab">'
-    + 'installed on the island today \u00b7 Republic '
-    + fmt(h.island_gshp_MWth,0) + ' MWth across ' + fmt(h.roi_units,0)
-    + ' systems, North ' + fmt(h.island_ni_MWth,1)
+    + 'installed in ' + where + ' today'
+    + (GEOJUR === "roi" ? ' \u00b7 ' + fmt(h.roi_units,0) + ' systems'
+       : GEOJUR === "ni" ? ' \u00b7 register above '
+         + fmt(h.register_threshold_kw,0) + ' kW plus a domestic estimate'
+       : ' \u00b7 Republic ' + fmt(h.island_gshp_MWth,0)
+         + ', North ' + fmt(h.island_ni_MWth,1))
     + '<span class="dag">\u2020</span></div></div>'
-    + '<div class="hstat"><div class="hval">' + fmt(pp.roi,0)
-    + '<span style="font-size:.5em"> vs </span>' + fmt(pp.ni,0)
+    + '<div class="hstat"><div class="hval">'
+    + (J ? fmt(J.per_person_W,0) : fmt(pp.roi,0)
+         + '<span style="font-size:.5em"> vs </span>' + fmt(pp.ni,0))
     + '<span style="font-size:.5em"> W</span></div><div class="hlab">'
-    + 'thermal watts per person, Republic against North \u2014 a '
-    + fmt(h.internal_gap,0) + '-fold gap inside one island. Sweden runs '
-    + fmt(pp.sweden,0) + ' W<span class="dag">\u2020</span></div></div>'
+    + (J ? 'thermal watts per person' : 'thermal watts per person, '
+         + 'Republic against North')
+    + ' \u00b7 Sweden runs ' + fmt(pp.sweden,0) + ' W, France '
+    + fmt(pp.france,0) + '<span class="dag">\u2020</span></div></div>'
     + '<div class="hstat"><div class="hval" style="color:#3AAA35">'
-    + fmt(h.whatif_MWth/1000,1) + '<span style="font-size:.5em"> GWth</span>'
+    + fmt(wi/1000,1) + '<span style="font-size:.5em"> GWth</span>'
     + '</div><div class="hlab">the 20% what-if in hardware, at '
     + fmt(h.eflh,0) + ' equivalent full-load hours<span class="dag">'
-    + '\u2020</span> \u00b7 ' + fmt(h.multiple,1)
+    + '\u2020</span> \u00b7 ' + fmt(mult,1)
     + 'x what is installed</div></div></div>';
 
-  const rows = [{name:"Ireland", gshp:h.island_gshp_MWth,
-                 deep:h.island_ni_MWth, home:true}]
+  const rows = [{name:(GEOJUR==="roi"?"Republic of Ireland"
+                       :GEOJUR==="ni"?"Northern Ireland":"Ireland"),
+                 gshp:(J?J.installed_MWth:h.island_gshp_MWth),
+                 deep:(J?0:h.island_ni_MWth), home:true}]
     .concat(h.comparators.map(c=>({name:c.name, gshp:c.gshp_MWth,
                                    deep:c.deep_MWth, home:false})));
   const W = 1000, H = 260, P = {t:52, r:22, b:52, l:88};
-  const t = niceTicks(Math.max(h.whatif_MWth,
+  const t = niceTicks(Math.max(wi,
     ...rows.map(r=>r.gshp+r.deep)) * 1.04 / 1000, 4);
   const x = v => P.l + (v / (t.top*1000)) * (W - P.l - P.r);
   const bw = (W-P.l-P.r)/rows.length, iw = Math.min(110, bw*0.5);
@@ -3087,12 +3122,12 @@ function geoHardware(h){
   rows.forEach((r,i)=>{
     const cx = P.l + bw*i + bw/2, x0 = cx - iw/2, tot = r.gshp + r.deep;
     if(r.home){
-      s += '<rect x="'+x0+'" y="'+y(h.whatif_MWth)+'" width="'+iw
-        + '" height="'+(y(0)-y(h.whatif_MWth))+'" fill="url(#wiHatch)"/>'
-        + '<text x="'+cx+'" y="'+(y(h.whatif_MWth)-8)+'" '
+      s += '<rect x="'+x0+'" y="'+y(wi)+'" width="'+iw
+        + '" height="'+(y(0)-y(wi))+'" fill="url(#wiHatch)"/>'
+        + '<text x="'+cx+'" y="'+(y(wi)-8)+'" '
         + 'text-anchor="middle" font-size="12" fill="#3AAA35" '
         + 'font-family="IBM Plex Mono,monospace">the 20% what-if '
-        + fmt(h.whatif_MWth/1000,1) + ' GWth\u2020</text>';
+        + fmt(wi/1000,1) + ' GWth\u2020</text>';
     }
     s += '<rect x="'+x0+'" y="'+y(tot)+'" width="'+iw+'" height="'
       + Math.max(0,y(0)-y(tot))+'" fill="'+(r.home?"#3AAA35":"#5A6B64")+'"/>'
@@ -3111,18 +3146,33 @@ function geoHardware(h){
   box.innerHTML = s;
   if(note){
     const sales = h.sales_2025 || {};
-    note.textContent = "The Republic is not the empty bar Britain is. "
-      + fmt(h.island_gshp_MWth,0) + " MWth across " + fmt(h.roi_units,0)
-      + " systems puts it at " + fmt(pp.roi,0) + " thermal watts per "
-      + "person, ahead of France at " + fmt(pp.france,0) + " and roughly "
-      + "three times the United Kingdom. Northern Ireland runs "
-      + fmt(pp.ni,0) + " W. That " + fmt(h.internal_gap,0)
-      + "-fold gap inside one island, between two jurisdictions sharing "
-      + "a grid and a geology, is the finding this panel exists for \u2014 "
-      + "and it is not explained by resource. Sweden at "
-      + fmt(pp.sweden,0) + " W shows the ceiling: it sold "
-      + fmt(sales["Sweden"],0) + " units in 2025 against Ireland\u2019s "
-      + fmt(sales["Ireland"],0) + ", on a population twice the size.";
+    // Stated once, per jurisdiction, without editorialising the
+    // comparison - the toggle carries it. Switching between the two
+    // makes the gap obvious and lets the reader find it rather than be
+    // told about it.
+    note.textContent = (
+      (GEOJUR === "roi" && J)
+        ? fmt(h.island_gshp_MWth,0) + " MWth across " + fmt(h.roi_units,0)
+          + " systems, at " + fmt(pp.roi,0) + " thermal watts per person "
+          + "\u2014 ahead of France at " + fmt(pp.france,0) + " and "
+          + "roughly three times the United Kingdom. The what-if is "
+          + fmt(J.multiple,1) + " times what is installed."
+      : (GEOJUR === "ni" && J)
+        ? fmt(h.island_ni_MWth,1) + " MWth on a register of "
+          + fmt(h.ni_register_confirmed,0) + " confirmed schemes above "
+          + fmt(h.register_threshold_kw,0) + " kW, plus a domestic "
+          + "estimate, at " + fmt(pp.ni,0) + " thermal watts per person. "
+          + "The what-if is " + fmt(J.multiple,0) + " times what is "
+          + "installed. The register records failures alongside "
+          + "successes: one scheme was never commissioned, another runs "
+          + "at about 60% of design."
+      : fmt(h.island_total_MWth,0) + " MWth across the island, at "
+        + fmt(pp.roi,0) + " thermal watts per person in the Republic and "
+        + fmt(pp.ni,0) + " in the North. Sweden runs " + fmt(pp.sweden,0)
+        + " W and sold " + fmt(sales["Sweden"],0) + " units in 2025 "
+        + "against Ireland\u2019s " + fmt(sales["Ireland"],0)
+        + ", on a population twice the size. Toggle between the two "
+        + "jurisdictions above.");
   }
 }
 
@@ -3137,7 +3187,13 @@ function geoCalib(h){
     box.textContent = "The calibration arrives with a coming build.";
     if(note) note.textContent = ""; if(meth) meth.innerHTML = ""; return;
   }
-  const rows = sh.countries;
+  // the home row swaps with the toggle; the comparators do not
+  const jj = (GEOJUR !== "all" && h.jur) ? h.jur[GEOJUR] : null;
+  const rows = jj
+    ? [{name:(GEOJUR==="roi"?"Republic of Ireland":"Northern Ireland"),
+        national_heat_TWh:jj.national_heat_TWh, share_pct:jj.share_pct}]
+        .concat(sh.countries.slice(1))
+    : sh.countries;
   const W = 1000, H = 260, P = {t:46, r:22, b:52, l:88};
   const t = niceTicks(Math.max(sh.whatif_pct,
     ...rows.map(r=>r.share_pct)) * 1.06, 4);
@@ -3211,15 +3267,22 @@ function geoCalib(h){
       + '(IEA / ODYSSEE / Heat Roadmap order). The delivered-versus-'
       + 'input mismatch of roughly 15\u201320% is accepted at this '
       + 'precision and stated rather than hidden.</p>'
+      + '<p><b>Where each figure comes from.</b> The Republic: '
+      + esc((h.sources||{}).roi || "") + '. Northern Ireland: '
+      + esc((h.sources||{}).ni_register || "") + ' \u2014 '
+      + fmt(h.ni_register_confirmed,0) + ' confirmed of '
+      + fmt(h.ni_register_total,0) + ' entries, the threshold fixed at '
+      + fmt(h.register_threshold_kw,0) + ' kW by its two exclusions at '
+      + '44 and 18 kW. Domestic units: '
+      + esc((h.sources||{}).ni_domestic || "") + '. Comparators: '
+      + esc((h.sources||{}).comparators || "") + '.</p>'
       + '<p><b>The Northern Ireland capacity is the weakest figure '
-      + 'here.</b> It is a site-by-site register \u2014 the Lyric '
-      + 'Theatre, Giant\u2019s Causeway, Girdwood, two QUB '
-      + 'installations \u2014 with two unconfirmed candidates, plus a '
-      + 'domestic estimate of 500\u2013700 units triangulated from an '
-      + 'MCS count of roughly 386\u2013450. The register records '
-      + 'failures as well as successes: one QUB system was never '
-      + 'commissioned owing to a design flow set-point error, and '
-      + 'Girdwood runs at about 60% of its 180 kW design.</p>';
+      + 'here</b>, and the register records failures alongside '
+      + 'successes: one QUB system was never commissioned owing to a '
+      + 'design flow set-point error, and Girdwood runs at about 60% of '
+      + 'its 180 kW design. Two entries \u2014 the McClay Library and '
+      + 'UU Jordanstown \u2014 remain unconfirmed candidates and carry '
+      + 'no capacity.</p>';
   }
 }
 
@@ -3311,7 +3374,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.36.2 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.37.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
