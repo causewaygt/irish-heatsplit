@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.34.0"
+PIPELINE_VERSION = "5.35.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5138,6 +5138,170 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
     return out
 
 
+# Comparator national buildings heat, input basis, for the calibrated
+# chart. SHARED WITH THE UK SIBLING and identical to its NAT_HEAT_TWH:
+# France ~350 TWh (IEA / Heat Roadmap order), Netherlands ~115 TWh,
+# Sweden ~80 TWh (Swedish Energy Agency / ODYSSEE). Estimates, daggered.
+GEO_NAT_HEAT_TWH = {"France": 350.0, "Netherlands": 115.0, "Sweden": 80.0}
+# NI Energy Strategy "The Path to Net Zero Energy" (DfE, Dec 2021): a
+# 25% reduction in energy use from buildings and industry by 2030,
+# expressed as 8,000 GWh of savings. It is the ONLY quantified energy
+# target in Northern Ireland that geothermal can be measured against -
+# there is no NI renewable heat target of any kind, and RED III's
+# heating sub-targets do not bind NI.
+#
+# It also suits the mechanism: the target counts energy SAVED, and a
+# heat pump saves purchased energy by construction. Delivery stands at
+# 90 GWh of 8,000 as at March 2025 - 1% - on about GBP 107m spent since
+# 2020 (NI Audit Office, 21 Oct 2025).
+GEO_NI_EE_TARGET_GWH = 8000.0
+GEO_NI_EE_ACHIEVED_GWH = 90.0
+
+
+def derive_geo_targets(anchors=None, geo=None):
+    """
+    What published policy the 20% what-if can be measured against.
+
+    THE FINDING IS THAT ALMOST NOTHING EXISTS. Neither jurisdiction has
+    set a geothermal deployment target of any kind; both treat it as a
+    licensing matter. So the what-if is placed against the nearest
+    quantified targets that geothermal could contribute to, each
+    labelled with what it actually covers.
+    """
+    a = anchors or ANCHORS
+    g = geo or GEO
+    roi_del = (a["roi"]["residential_heat_twh"]
+               + a["roi"]["services_heat_twh"]) \
+        * a.get("delivered_over_input_roi", 0.8225)
+    ni_del = (a["ni"]["residential_heat_twh"]
+              + a["ni"]["services_heat_twh"]) \
+        * a.get("delivered_over_input_ni", 0.8375)
+    ni_in = a["ni"]["residential_heat_twh"] + a["ni"]["services_heat_twh"]
+    share = 0.20
+    # NI: a fifth of delivered heat, as energy SAVED against combustion
+    d = share * ni_del
+    comb = d / (ni_del / ni_in)
+    saved = {k: round((comb - d / v) * 1000, 0) for k, v in
+             (("gshp", SPF_ANCHORS["gshp"]),
+              ("network", NETWORK_MODEL["ni"]["spf"]))}
+    out = {
+        "geothermal_targets": [],          # the point: this is empty
+        "roi_delivered_twh": round(roi_del, 1),
+        "ni_delivered_twh": round(ni_del, 1),
+        "island_delivered_twh": round(roi_del + ni_del, 1),
+        "whatif_share": share,
+        "nearest": [
+            {"jur": "ROI", "label": "District heating",
+             "value": 2.7, "unit": "TWh/yr", "year": 2030,
+             "status": "government commitment",
+             "covers": "all heat sources, no geothermal share",
+             "source": "Climate Action Plan 2025"},
+            {"jur": "ROI", "label": "Heat pumps installed",
+             "value": 680000, "unit": "units", "year": 2030,
+             "status": "government commitment",
+             "covers": "air and ground source, no ground-source share",
+             "source": "Climate Action Plan 2025"},
+            {"jur": "NI", "label": "Energy saved, buildings and industry",
+             "value": GEO_NI_EE_TARGET_GWH, "unit": "GWh", "year": 2030,
+             "status": "strategy target",
+             "covers": "all savings measures, buildings AND industry",
+             "source": "NI Energy Strategy, DfE 2021",
+             "achieved_gwh": GEO_NI_EE_ACHIEVED_GWH},
+        ],
+        "ni_energy_saved": {
+            "target_gwh": GEO_NI_EE_TARGET_GWH,
+            "achieved_gwh": GEO_NI_EE_ACHIEVED_GWH,
+            "achieved_pct": round(100 * GEO_NI_EE_ACHIEVED_GWH
+                                  / GEO_NI_EE_TARGET_GWH, 1),
+            "whatif_delivered_twh": round(d, 2),
+            "counterfactual_input_twh": round(comb, 2),
+            "saved_gwh": saved,
+            "saved_pct": {k: round(100 * v / GEO_NI_EE_TARGET_GWH, 0)
+                          for k, v in saved.items()},
+        },
+    }
+    log(f"geo targets: NO geothermal deployment target exists in either "
+        f"jurisdiction. Nearest quantified NI target is "
+        f"{GEO_NI_EE_TARGET_GWH:.0f} GWh saved by 2030, at "
+        f"{out['ni_energy_saved']['achieved_pct']}% delivered; a fifth "
+        f"of NI heat on geothermal would save "
+        f"{saved['gshp']:.0f}-{saved['network']:.0f} GWh, or "
+        f"{out['ni_energy_saved']['saved_pct']['gshp']:.0f}-"
+        f"{out['ni_energy_saved']['saved_pct']['network']:.0f}% of it")
+    return out
+
+
+def derive_geo_hardware(anchors=None, geo=None):
+    """
+    The empty bar: installed hardware against the 20% what-if, and the
+    same fleets as a share of each country's OWN buildings heat.
+
+    Comparator constants are the UK sibling's, unchanged - EGC 2025
+    country updates (Sanner et al., Tables 3-4, end-2024), GSHP fleet
+    plus deep direct use. The Netherlands' deep capacity is almost
+    entirely greenhouse heat rather than buildings, which the note says.
+
+    THE IRISH BAR IS NOT AS EMPTY AS BRITAIN'S, and the panel should
+    not pretend otherwise: the Republic runs 42 W per person against
+    the UK's 13 and France's 34, on 20,128 installed systems. Northern
+    Ireland runs 3 W. The interesting gap on this island is internal.
+    """
+    a = anchors or ANCHORS
+    g = geo or GEO
+    eflh = g["eflh_h"]
+    roi_del = (a["roi"]["residential_heat_twh"]
+               + a["roi"]["services_heat_twh"]) \
+        * a.get("delivered_over_input_roi", 0.8225)
+    ni_del = (a["ni"]["residential_heat_twh"]
+              + a["ni"]["services_heat_twh"]) \
+        * a.get("delivered_over_input_ni", 0.8375)
+    isl_del = roi_del + ni_del
+    # input basis for the calibrated shares, matching the UK sibling's
+    # convention; the delivered-vs-input mismatch is stated on the page
+    isl_in = (a["roi"]["residential_heat_twh"] + a["roi"]["services_heat_twh"]
+              + a["ni"]["residential_heat_twh"]
+              + a["ni"]["services_heat_twh"])
+    inst = g["roi"]["capacity_mwth"] + g["ni_capacity_mwth_est"]
+    whatif = 0.20 * isl_del * 1e6 / eflh
+    comps = [{"name": k, "gshp_MWth": v["shallow"], "deep_MWth": v["deep"]}
+             for k, v in g["reference_mwth"].items()]
+    shares = [{"name": "Ireland", "national_heat_TWh": round(isl_in, 0),
+               "share_pct": round(100 * inst * eflh / 1e6 / isl_in, 2)}]
+    for c in comps:
+        tot = c["gshp_MWth"] + c["deep_MWth"]
+        nat = GEO_NAT_HEAT_TWH[c["name"]]
+        shares.append({"name": c["name"], "national_heat_TWh": nat,
+                       "share_pct": round(100 * tot * eflh / 1e6 / nat, 1)})
+    pc = g["per_capita_w"]
+    out = {
+        "island_gshp_MWth": g["roi"]["capacity_mwth"],
+        "island_ni_MWth": g["ni_capacity_mwth_est"],
+        "island_total_MWth": round(inst, 1),
+        "whatif_MWth": round(whatif, 0),
+        "multiple": round(whatif / max(inst, 1e-9), 1),
+        "eflh": eflh,
+        "delivered_heat_TWh": round(isl_del, 1),
+        "roi_units": g["roi"]["units"],
+        "per_person_W": {"roi": pc["roi"], "ni": pc["ni"],
+                         "sweden": g["reference_w_pp"]["Sweden"],
+                         "france": g["reference_w_pp"]["France"],
+                         "netherlands": g["reference_w_pp"]["Netherlands"]},
+        "internal_gap": round(pc["roi"] / max(pc["ni"], 1e-9), 0),
+        "sales_2025": g["egec_2025"]["ghp_sales_2025"],
+        "comparators": comps,
+        "share_of_national_heat": {"countries": shares, "whatif_pct": 20.0},
+    }
+    log(f"geo hardware: island {inst:.0f} MWth installed against a "
+        f"{whatif:.0f} MWth what-if - {out['multiple']}x. Per person ROI "
+        f"{pc['roi']} W, NI {pc['ni']} W, an internal gap of "
+        f"{out['internal_gap']:.0f}x; Sweden "
+        f"{g['reference_w_pp']['Sweden']} W. Island fleet serves "
+        f"{shares[0]['share_pct']}% of its own buildings heat against "
+        f"Sweden's "
+        f"{[c for c in shares if c['name'] == 'Sweden'][0]['share_pct']}%")
+    return out
+
+
 def derive_geo_percap(anchors=None, geo=None):
     """
     Ground-source Wth per person - installed today vs the capacity the
@@ -7664,7 +7828,9 @@ def main():
         "feeds": feeds,
         "derived": derived,
         "events": EVENTS,
-        "geo": {**GEO, "percap": derive_geo_percap()},
+        "geo": {**GEO, "percap": derive_geo_percap(),
+                "hardware": derive_geo_hardware(),
+                "targets": derive_geo_targets()},
         "why_heat": WHY_HEAT,
         "notes": ("Feed statuses - ok: fetched and current; lagging: fetched, "
                   "source publishes on a lag; stale: fetch failed, previous "
