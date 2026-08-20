@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.34.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.35.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -634,8 +634,8 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     machines a great deal &mdash; and that is the part that is growing.</p>
   <div class="panelbox">
     <h3 class="foldh">What Ireland actually cools
-      <span class="sub">&mdash; eleven terawatt-hours a year, and where the
-      boundary between process and comfort is not drawn</span></h3>
+      <span class="sub" id="coolSub">&mdash; dominated by process
+      cooling</span></h3>
     <div id="coolTiers"></div>
     <div id="coolTierDefs"></div>
     <p class="note" id="coolTiersNote"></p>
@@ -1661,15 +1661,16 @@ function heatReject(hr){
       + 'the cooling is delivered but where the heat goes \u2014 and '
       + 'a data centre rejects it either way. For a shop this fifth '
       + 'means cooling converted; for a data centre it means a heat '
-      + 'offtake added to what already leaves. Tallaght did not '
-      + 'change how that site cools.<br><br>Over a year this fifth '
+      + 'offtake added to what already leaves.<br><br>Over a year this '
+      + 'fifth '
       + 'rejects <b>'
       + fmt(hr.rejected_twh*1000,0) + ' GWh</b> of heat \u2014 the '
       + 'cooling delivered plus the electricity that drove it, and for '
       + 'data centres the whole facility draw, IT load included, '
       + 'because all of it leaves as heat. <b>'
       + fmt(hr.banked_twh*1000,0) + ' GWh</b> of that strands in '
-      + 'summer, and at a ' + fmt(hr.roundtrip*100,0) + '% round trip'
+      + 'summer, and at a ' + fmt(hr.roundtrip*100,0)
+      + '% round trip efficiency'
       + '<span class="dag">\u2020</span> <b>'
       + fmt(hr.recovered_twh*1000,0) + ' GWh</b> comes back for winter '
       + 'heating \u2014 ' + fmt(hr.share_of_roi_heat_pct,1) + '% of the '
@@ -1704,6 +1705,9 @@ function coolTiers(ct){
   }
   const segs = coolSegs(ct);
   const COL = coolColours(segs);
+  const sub = el("coolSub");
+  if(sub) sub.innerHTML = '\u2014 ' + fmt(ct.service_twh,1)
+    + ' terawatt-hours a year, dominated by process cooling';
   const W = 1000, H = 470, P = {t:150, r:22, b:58, l:96};
   const hi = niceTicks(ct.service_proj_twh * 1.04, 4);
   const x = v => P.l + (v / hi.top) * (W - P.l - P.r);
@@ -1869,7 +1873,8 @@ function coolTiers(ct){
       + (g.tier === 0 ? "Tier 0" : g.tier === 1 ? "Tier 1" : "mixed")
       + '</td></tr>').join("");
     meth.innerHTML =
-      '<p>SEAI\u2019s published cooling figures are a <b>mixture of '
+      '<p>SEAI\u2019s published cooling figures in the 2023 National '
+      + 'Heat Study are a <b>mixture of '
       + 'service and electricity</b>, and its two reports mix them '
       + 'differently. Commercial and public are cooling delivered; '
       + 'industry is electricity, because SEAI states the boundary '
@@ -1906,10 +1911,10 @@ function coolTiers(ct){
       + 'by SEAI sector, the other functionally into refrigeration, '
       + 'process and comfort, so public comfort cooling sits inside '
       + '\u201ccomfort\u201d there and has its own sourced factor '
-      + 'here. That panel is also all-island and trailing twelve '
-      + 'months where these bars are the Republic in '
-      + esc(ct.base_year) + ', so its cooling figure is the larger of '
-      + 'the two.</p>'
+      + 'here. Panel 2 is also all-island and trailing twelve months '
+      + 'where these bars are the Republic in ' + esc(ct.base_year)
+      + ', so its cooling figure is the larger of the two \u2014 there '
+      + 'is no equivalent Northern Ireland data.</p>'
       + '<p>And <b>data centres at an effective EER of ' + fmt(ct.dc_eer,0)
       + '\u2020</b>, not the 2.00 the 2025 Annex implies. SEAI\u2019s own '
       + 'report says why: for data centres it reports electricity for '
@@ -1927,12 +1932,12 @@ function coolTiers(ct){
       + 'what-if.</b> Ground cooling cannot beat free air here: the '
       + 'competitor is not a running compressor, it is a fan moving '
       + '10\u202f\u00b0C air. Nothing is displaced, so nothing is claimed '
-      + '\u2014 the honest limit of geothermal cooling as a standalone '
+      + '\u2014 the candid limit of geothermal cooling as a standalone '
       + 'proposition in Ireland. Retail refrigeration, industrial '
       + 'process cooling and office comfort cooling stay in, because '
       + 'free cooling is a data centre design and not a supermarket '
-      + 'one. The case for a borefield here is seasonal storage, not '
-      + 'cheaper cooling.</p>'
+      + 'one. The case for a borefield in data centres is seasonal '
+      + 'storage, not cheaper cooling.</p>'
       + '<p><b>The activity split is hard, not judged.</b> Figures 52 '
       + 'and 53 of the 2019 study disaggregate commercial and public by '
       + 'building activity and reconcile with the sector totals to '
@@ -1957,8 +1962,8 @@ function coolTiers(ct){
       + 'that boundary is not settled, the same objection the UK '
       + 'sibling\u2019s peer review raised against its network '
       + 'performance factor.</p>'
-      + '<p>Only data centres are projected. SEAI holds commercial and '
-      + 'public cooling constant to 2050 at archetype level, so the '
+      + '<p>Only data centres are projected to grow. SEAI holds '
+      + 'commercial and public cooling constant to 2050 at archetype level, so the '
       + '\u201cheld, not forecast\u201d treatment of those blocks is '
       + 'SEAI\u2019s own. Northern Ireland is not in these bars: SEAI is '
       + 'Republic-only, and our all-island figure carries about '
@@ -3286,7 +3291,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.34.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.35.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
