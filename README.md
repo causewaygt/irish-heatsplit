@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.37.0 / site 5.38.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.38.0 / site 5.39.0.
 
 ## The premise
 
@@ -1605,6 +1605,45 @@ heat, against 1.1% delivered.**
 The zero — no geothermal deployment target — is common to both and
 stands whichever way the toggle sits.
 
+**The 2,000-hour load factor is gone; the calibration now uses reported
+output (5.38.0 / site 5.39.0).** EGC 2025's Country Update Summary
+(Sanner et al., Table 4) reports units, capacity, annual production
+**and** full-load hours for every country. The convention we had been
+using was wrong for all of them, and wrong in opposite directions:
+
+| | full-load hours | our 2,000-hour error |
+|---|---|---|
+| Netherlands | 1,095 | overstated by 83% |
+| **Ireland** | **1,301** | **overstated by 54%** |
+| United Kingdom | 1,661 | overstated by 20% |
+| France | 2,072 | about right |
+| **Sweden** | **3,498** | **understated by 43%** |
+
+**Both errors flattered Ireland**, which is how it survived. The
+calibrated shares change from Ireland 1.06% / Sweden 20.4% to **Ireland
+0.67% / Sweden 35.50%** — the gap widens from 19x to 53x, and Sweden's
+existing fleet now sits well above the 20% what-if rather than level
+with it.
+
+**The what-if itself grew.** At Ireland's real 1,301 hours, serving a
+fifth of heat needs **5,568 MWth, not 3,622** — 24x what is installed
+rather than 15.7x. Per jurisdiction: 17x in the Republic, 254x in the
+North. A purpose-built network would run more hours than a domestic
+retrofit fleet, and the panel says so rather than assuming it.
+
+**Two anchor corrections.** The Republic is **224.4 MWth and 291.9
+GWh**, matching the source exactly, where we had carried 225 and 293.
+Northern Ireland has no published output, so its capacity is converted
+at Ireland's own load hours and flagged as derived rather than reported.
+
+A test now reconciles every published share against reported output and
+fails if a load factor reappears — proven by restoring the 2,000-hour
+convention, which returns Sweden to 20.42%.
+
+**This affects the UK sibling**, which carries the same 2,000-hour
+convention and the same Sweden 20.4% figure. Its United Kingdom row
+should be 1,661 hours, not 2,000.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1745,8 +1784,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 185 tests, no network
-node tests/test_vol.js            # 265 front-end fixture checks
+python3 tests/test_synthetic.py   # 186 tests, no network
+node tests/test_vol.js            # 267 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
