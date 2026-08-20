@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.37.0"
+PIPELINE_VERSION = "5.38.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -1119,8 +1119,11 @@ GEO = {
                     "note": ("MCS ~386-450 certified plus pre-certification "
                              "era estimate - Causeway triangulation, "
                              "dagger")},
-    "roi": {"capacity_mwth": 225, "heat_gwh": 293, "cooling_gwh": 11.9,
-            "units": 20128, "new_2024_mwth": 7.4, "proj_2028_mwth": 261,
+    # 224.4 and 291.9, matching EGC 2025 Table 4 exactly. Previously
+    # carried as 225 and 293 - rounded somewhere between the source and
+    # this file, and ours should be the source's numbers.
+    "roi": {"capacity_mwth": 224.4, "heat_gwh": 291.9,
+            "cooling_gwh": 11.9, "units": 20128, "new_2024_mwth": 7.4, "proj_2028_mwth": 261,
             "deep_plants": 0,
             # sector shares per WGC2026 text (approximate - sum > 100 in
             # the source; presented as reported)
@@ -1138,6 +1141,32 @@ GEO = {
     # dagger: Sweden 8.12 GWth/10.5m; NL 2.49 GWth/17.8m (ATES-heavy);
     # France 2.29 GWth/68m.
     "reference_w_pp": {"Sweden": 773, "Netherlands": 140, "France": 34},
+    # REPORTED ANNUAL OUTPUT, not derived from a load-hour convention.
+    # EGC 2025 Country Update Summary (Sanner, Antics, Baresi,
+    # Urchueguia & Dumas), Table 4: Ground Source Heat Pump Use in
+    # Europe in 2024 - units, capacity, production and the full-load
+    # hours the source itself calculates from them.
+    #
+    # THE 2,000-HOUR CONVENTION WAS WRONG FOR EVERY COUNTRY, and wrong
+    # in opposite directions: it overstated Ireland by 54% and
+    # understated Sweden by 43%, so the gap between them was drawn
+    # roughly 2.7 times narrower than it is. Both errors flattered
+    # Ireland. Using reported output removes the assumption entirely.
+    "reference_output": {
+        "Ireland": {"units": 20128, "mwth": 224.4, "gwh": 291.9,
+                    "flh": 1301},
+        "Sweden": {"units": 690000, "mwth": 8120.0, "gwh": 28400.0,
+                   "flh": 3498},
+        "Netherlands": {"units": 163169, "mwth": 2486.0, "gwh": 2722.0,
+                        "flh": 1095},
+        "France": {"units": 209021, "mwth": 2293.0, "gwh": 4750.0,
+                   "flh": 2072},
+        "United Kingdom": {"units": 55210, "mwth": 861.0, "gwh": 1430.0,
+                           "flh": 1661},
+    },
+    "reference_output_source": (
+        "EGC 2025 Country Update Summary, Sanner et al., Table 4: "
+        "Ground Source Heat Pump Use in Europe in 2024"),
     # Comparator installed capacity, MWth - EGC 2025 country updates
     # (data year 2024), replacing the older WGC2023-lineage values on
     # 27 Jul 2026 audit: Sweden had understated ~18% (8,120 shallow,
@@ -5285,16 +5314,34 @@ def derive_geo_hardware(anchors=None, geo=None):
               + a["ni"]["residential_heat_twh"]
               + a["ni"]["services_heat_twh"])
     inst = g["roi"]["capacity_mwth"] + g["ni_capacity_mwth_est"]
-    whatif = 0.20 * isl_del * 1e6 / eflh
+    # THE WHAT-IF USES IRELAND'S OWN LOAD HOURS, not a European
+    # convention. Irish systems run 1,301 full-load hours against a
+    # European average of 2,420, so serving a fifth of heat needs MORE
+    # capacity here, not less - the hardware requirement rises by about
+    # half against the old 2,000-hour figure. That is the conservative
+    # direction and against our own interest, which is why it is right.
+    # A purpose-built network would run more hours than a domestic
+    # retrofit fleet; the panel says so rather than assuming it.
+    flh = g["reference_output"]["Ireland"]["flh"]
+    whatif = 0.20 * isl_del * 1e6 / flh
     comps = [{"name": k, "gshp_MWth": v["shallow"], "deep_MWth": v["deep"]}
              for k, v in g["reference_mwth"].items()]
+    # REPORTED OUTPUT, no load-hour convention. Each country's GSHP
+    # fleet delivered a stated number of GWh in 2024, and that against
+    # its own buildings heat is the comparison - like for like, with
+    # the largest assumption in this panel removed.
+    ro = g["reference_output"]
     shares = [{"name": "Ireland", "national_heat_TWh": round(isl_in, 0),
-               "share_pct": round(100 * inst * eflh / 1e6 / isl_in, 2)}]
+               "output_gwh": ro["Ireland"]["gwh"],
+               "flh": ro["Ireland"]["flh"],
+               "share_pct": round(100 * ro["Ireland"]["gwh"] / 1000
+                                  / isl_in, 2)}]
     for c in comps:
-        tot = c["gshp_MWth"] + c["deep_MWth"]
         nat = GEO_NAT_HEAT_TWH[c["name"]]
+        o = ro[c["name"]]
         shares.append({"name": c["name"], "national_heat_TWh": nat,
-                       "share_pct": round(100 * tot * eflh / 1e6 / nat, 1)})
+                       "output_gwh": o["gwh"], "flh": o["flh"],
+                       "share_pct": round(100 * o["gwh"] / 1000 / nat, 2)})
     pc = g["per_capita_w"]
     # PER JURISDICTION, so the panel can toggle. The contrast between
     # the two is then something the reader finds by switching rather
@@ -5308,14 +5355,23 @@ def derive_geo_hardware(anchors=None, geo=None):
             ("ni", g["ni_capacity_mwth_est"], ni_del,
              a["ni"]["residential_heat_twh"]
              + a["ni"]["services_heat_twh"])):
-        wi = 0.20 * del_twh * 1e6 / eflh
+        wi = 0.20 * del_twh * 1e6 / flh
         jur[k] = {
             "installed_MWth": round(cap, 1),
             "whatif_MWth": round(wi, 0),
             "multiple": round(wi / max(cap, 1e-9), 1),
             "delivered_TWh": round(del_twh, 1),
             "national_heat_TWh": round(in_twh, 1),
-            "share_pct": round(100 * cap * eflh / 1e6 / in_twh, 2),
+            # ROI uses its REPORTED output; NI has none published, so
+            # its capacity is converted at Ireland's own load hours and
+            # flagged as derived rather than reported.
+            "output_gwh": (g["reference_output"]["Ireland"]["gwh"]
+                           if k == "roi" else round(cap * flh / 1000, 1)),
+            "output_reported": k == "roi",
+            "share_pct": round(
+                100 * ((g["reference_output"]["Ireland"]["gwh"]
+                        if k == "roi" else cap * flh / 1000) / 1000)
+                / in_twh, 2),
             "per_person_W": pc[k],
             "units": g["roi"]["units"] if k == "roi" else None,
             "population_m": g["population_m"][k],
@@ -5328,6 +5384,9 @@ def derive_geo_hardware(anchors=None, geo=None):
         "whatif_MWth": round(whatif, 0),
         "multiple": round(whatif / max(inst, 1e-9), 1),
         "eflh": eflh,
+        "flh_ireland": flh,
+        "flh_europe_avg": 2420,
+        "output_source": g["reference_output_source"],
         "delivered_heat_TWh": round(isl_del, 1),
         "roi_units": g["roi"]["units"],
         "per_person_W": {"roi": pc["roi"], "ni": pc["ni"],
