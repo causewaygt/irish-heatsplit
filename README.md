@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.34.0 / site 5.35.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.35.0 / site 5.36.0.
 
 ## The premise
 
@@ -1500,6 +1500,42 @@ of a bare comparison; and the Tallaght sentence dropped from the opening
 paragraph of the rejection note, where it now appears only in the
 passage on continuous rejection.
 
+**Panel 5 rebuilt: geothermal, now and next (5.35.0 / site 5.36.0).**
+Replaces "the empty bar", which reported a register without placing it
+against anything. Three sub-panels on the UK sibling's shape, but the
+Irish story differs in two ways and the panel leads with both.
+
+**Nobody has set a target.** Neither jurisdiction has set a geothermal
+deployment target of any kind — the Republic's 2023 policy statement and
+forthcoming Bill are a licensing regime, and Northern Ireland consulted
+on the same in May 2026 with no grants and no target. **A test keeps
+that list empty**, so the claim on the page cannot quietly become false;
+anything new belongs in the "nearest targets" table with what it covers
+stated.
+
+**The nearest quantified target that fits is Northern Ireland's**, and it
+fits the mechanism rather than the technology: the Energy Strategy counts
+**8,000 GWh of energy saved by 2030**, and a heat pump saves purchased
+energy by construction. A fifth of NI building heat on geothermal would
+save **1,928–2,164 GWh, or 24–27% of that entire target** — against
+**90 GWh, 1.1%, delivered by March 2025** on about £107m spent since 2020
+(NI Audit Office, October 2025). Two caveats are on the page: the target
+covers buildings *and* industry, and the saving is against combustion,
+not against an air-source heat pump.
+
+**And the Irish bar is not as empty as Britain's.** The Republic runs
+**42 thermal watts per person** across 20,128 systems — ahead of France
+at 34 and roughly three times the UK — while Northern Ireland runs 3 W.
+**That fourteen-fold gap inside one island, between two jurisdictions
+sharing a grid and a geology, is what the panel exists for**, and it is
+not explained by resource. Island-wide the fleet serves 1.06% of
+buildings heat against Sweden's 20.4% — which is about the share this
+site's what-if proposes.
+
+Comparator constants are the UK sibling's unchanged (EGC 2025 country
+updates, Tables 3–4, end-2024) and the calibrated shares reconcile with
+it exactly: Sweden 20.4%, Netherlands 5.0%, France 1.7%.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1640,8 +1676,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 184 tests, no network
-node tests/test_vol.js            # 236 front-end fixture checks
+python3 tests/test_synthetic.py   # 185 tests, no network
+node tests/test_vol.js            # 255 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
