@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.38.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.39.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -3118,9 +3118,9 @@ function geoHardware(h){
     + fmt(pp.france,0) + '<span class="dag">\u2020</span></div></div>'
     + '<div class="hstat"><div class="hval" style="color:#3AAA35">'
     + fmt(wi/1000,1) + '<span style="font-size:.5em"> GWth</span>'
-    + '</div><div class="hlab">the 20% what-if in hardware, at '
-    + fmt(h.eflh,0) + ' equivalent full-load hours<span class="dag">'
-    + '\u2020</span> \u00b7 ' + fmt(mult,1)
+    + '</div><div class="hlab">the 20% what-if in hardware, at the '
+    + fmt(h.flh_ireland,0) + ' full-load hours Irish systems actually '
+    + 'run \u00b7 ' + fmt(mult,0)
     + 'x what is installed</div></div></div>';
 
   const rows = [{name:(GEOJUR==="roi"?"Republic of Ireland"
@@ -3167,7 +3167,7 @@ function geoHardware(h){
   s += '<text x="'+P.l+'" y="22" font-size="13" fill="#fff" '
     + 'font-family="IBM Plex Mono,monospace">installed thermal capacity, '
     + 'GWth \u00b7 the three on the right are not scenarios, they are '
-    + 'fleets that exist\u2020</text>'
+    + 'fleets that exist</text>'
     + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
     + ')" text-anchor="middle" font-size="13" font-weight="600" '
     + 'fill="#fff" font-family="Lato, sans-serif">GWth installed'
@@ -3242,7 +3242,7 @@ function geoCalib(h){
       + (home?"#3AAA35":"#5A6B64")+'"/>'
       + '<text x="'+cx+'" y="'+(y(r.share_pct)-8)+'" text-anchor="middle" '
       + 'font-size="13" font-weight="700" fill="#fff" '
-      + 'font-family="IBM Plex Mono,monospace">'+fmt(r.share_pct,1)
+      + 'font-family="IBM Plex Mono,monospace">'+fmt(r.share_pct,2)
       + '%</text>'
       + '<text x="'+cx+'" y="'+(H-22)+'" text-anchor="middle" '
       + 'font-size="13" fill="var(--ink2)" font-family="Lato,sans-serif">'
@@ -3253,8 +3253,10 @@ function geoCalib(h){
     + 'stroke-dasharray="8 5"/>'
     + '<text x="'+P.l+'" y="22" font-size="13" fill="#3AAA35" '
     + 'font-family="IBM Plex Mono,monospace">\u2014 \u2014  the 20% '
-    + 'what-if \u00b7 Sweden\u2019s existing fleet already serves about '
-    + 'that share</text>'
+    + 'what-if \u00b7 Sweden already serves well over it</text>'
+    + '<text x="'+P.l+'" y="40" font-size="12" fill="var(--muted)" '
+    + 'font-family="IBM Plex Mono,monospace">reported output, not '
+    + 'capacity times an assumed load factor</text>'
     + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
     + ')" text-anchor="middle" font-size="13" font-weight="600" '
     + 'fill="#fff" font-family="Lato, sans-serif">% of national buildings '
@@ -3400,7 +3402,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.38.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.39.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
