@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.35.0 / site 5.36.2.
+(Causeway Geothermal NI Ltd). Pipeline 5.36.0 / site 5.37.0.
 
 ## The premise
 
@@ -1559,6 +1559,35 @@ element and watching it name the element.
 That is the second defect this week caused by the harness being more
 forgiving than the browser; the first was `--ink2` resolving to black.
 
+**Panel 5 gets a jurisdiction toggle, and the copy stops asserting the
+contrast (5.36.0 / site 5.37.0).** All island, Republic, North. The
+figures move with it: the what-if is **11.3x installed in the Republic
+and 165x in the North**, and each jurisdiction's fleet is drawn against
+its own buildings heat — 1.46% against 0.10%. The note no longer spells
+the gap out; switching between the two makes the same point and lets the
+reader find it.
+
+**Every source is now credited in the method fold**, which previously
+said "a site-by-site register" as though it had appeared from nowhere
+and never credited the Republic's figures at all:
+
+- Republic: **WGC2026 Country Update: Ireland** — Ireland, Blake,
+  Pasquali, Dunphy & Hunter Williams, June 2026
+- Northern Ireland: **Causeway Energies' own register of schemes above
+  45 kW**, compiled site by site — 5 confirmed of 7 entries, with the
+  threshold fixed at 45 kW by its two exclusions at 44 and 18 kW
+- Domestic units: **MCS certification records**, ~386–450, plus a
+  pre-certification estimate
+- Comparators: EGC 2025 country updates, shared with the UK sibling
+
+**Two test lessons.** `GEOJUR` had to be added to the harness shim — the
+same eval-scope trap as before, since the shim only exposes variables
+that existed when it was written. And the first version of the toggle
+test asserted the *note mentioned a toggle*, which proves nothing; it now
+renders all three views and requires the figures to differ. Proven by
+making the toggle inert — which also exposed two unguarded `J`
+dereferences that would have thrown in the browser.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1700,7 +1729,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 185 tests, no network
-node tests/test_vol.js            # 256 front-end fixture checks
+node tests/test_vol.js            # 266 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
