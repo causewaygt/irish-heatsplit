@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.35.0 / site 5.36.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.35.0 / site 5.36.2.
 
 ## The premise
 
@@ -1539,6 +1539,26 @@ Comparator constants are the UK sibling's unchanged (EGC 2025 country
 updates, Tables 3–4, end-2024) and the calibrated shares reconcile with
 it exactly: Sweden 20.4%, Netherlands 5.0%, France 1.7%.
 
+**Panel 5 was rendering empty, and the cause was two panels removed
+earlier (site 5.36.2).** `heatGap` and `coolSide` were still being
+called for markup deleted when Panel 4 replaced the heat gap and the
+cold economy. In the browser `el()` returns **null** for a missing id,
+so the first `.textContent` on one threw and killed every renderer
+after it in the boot sequence — `geoPanel` among them. Seventeen
+elements were affected.
+
+**Neither suite could see it.** The fixture harness's `el()`
+manufactures a stub object rather than returning null, so the renderers
+ran happily in the tests and died in the browser. A new check compares
+every `el()` the script calls against the ids the markup actually
+defines, allowing an absence only where the call site guards it — the
+`const h1 = el('h1Win'); if (h1)` pattern, which two call sites already
+used and the rest did not. Proven by pointing a renderer at a deleted
+element and watching it name the element.
+
+That is the second defect this week caused by the harness being more
+forgiving than the browser; the first was `--ink2` resolving to black.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1680,7 +1700,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 185 tests, no network
-node tests/test_vol.js            # 255 front-end fixture checks
+node tests/test_vol.js            # 256 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
