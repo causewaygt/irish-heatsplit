@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.39.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.41.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -3187,14 +3187,22 @@ function geoHardware(h){
           + "roughly three times the United Kingdom. The what-if is "
           + fmt(J.multiple,1) + " times what is installed."
       : (GEOJUR === "ni" && J)
-        ? fmt(h.island_ni_MWth,1) + " MWth on a register of "
-          + fmt(h.ni_register_confirmed,0) + " confirmed schemes above "
-          + fmt(h.register_threshold_kw,0) + " kW, plus a domestic "
-          + "estimate, at " + fmt(pp.ni,0) + " thermal watts per person. "
-          + "The what-if is " + fmt(J.multiple,0) + " times what is "
-          + "installed. The register records failures alongside "
-          + "successes: one scheme was never commissioned, another runs "
-          + "at about 60% of design."
+        ? fmt(h.island_ni_MWth,1) + " MWth, at " + fmt(pp.ni,0)
+          + " thermal watts per person, and the what-if is "
+          + fmt(J.multiple,0) + " times it. Most of that capacity is "
+          + "domestic: of "
+          + fmt((h.ni_register_totals||{}).documented,0) + " documented "
+          + "schemes above " + fmt(h.register_threshold_kw,0)
+          + " kW, only "
+          + fmt((h.ni_register_totals||{}).operational_clean,0)
+          + " run cleanly, "
+          + fmt((h.ni_register_totals||{}).failed,0)
+          + " failed outright, and of the "
+          + fmt((h.ni_register_totals||{}).nameplate_heating_kw,0)
+          + " kW of heating built, "
+          + fmt((h.ni_register_totals||{}).delivered_heating_kw,0)
+          + " kW is delivered. The capacity is not just small \u2014 a "
+          + "seventh of what was installed never reached a building."
       : "Sweden runs " + fmt(pp.sweden,0) + " W and sold "
         + fmt(sales["Sweden"],0) + " units in 2025 against "
         + "Ireland\u2019s " + fmt(sales["Ireland"],0) + ", on a "
@@ -3263,15 +3271,25 @@ function geoCalib(h){
     + 'heat</text></svg>';
   box.innerHTML = s;
   if(note){
+    // The running-hours clause lives HERE rather than in the method
+    // fold, because it answers the question a reader actually has at
+    // this chart - why is the bar so short - rather than the question
+    // of how the figure was computed.
     note.textContent = "Taking population out of it. Each country\u2019s "
-      + "installed fleet at " + fmt(h.eflh,0) + " equivalent full-load "
-      + "hours, as a share of its own buildings heat. Ireland\u2019s "
-      + fmt(rows[0].share_pct,1) + "% sits below France and far below "
-      + "Sweden \u2014 whose existing fleet already serves roughly the "
-      + "share this site\u2019s what-if proposes, which is the scale "
+      + "reported annual output against its own buildings heat, with no "
+      + "load-factor assumption anywhere in it. "
+      + fmt(rows[0].share_pct,2) + "% sits below France and far below "
+      + "Sweden, whose existing fleet already serves well over the "
+      + "share this site\u2019s what-if proposes \u2014 the scale "
       + "argument in one picture: the fifth is unremarkable somewhere "
       + "that started, and large only because this island mostly has "
-      + "not.";
+      + "not. Part of the gap is fewer systems and part is how hard "
+      + "each works: Irish ground-source systems run "
+      + fmt(h.flh_ireland,0) + " full-load hours a year against a "
+      + "European average of " + fmt(h.flh_europe_avg,0)
+      + " and Sweden\u2019s 3,498. A mild maritime climate gives a "
+      + "short heating season, and systems sized for a cold snap spend "
+      + "most of the year well below capacity.";
   }
   if(meth){
     meth.innerHTML =
@@ -3295,6 +3313,17 @@ function geoCalib(h){
       + '(IEA / ODYSSEE / Heat Roadmap order). The delivered-versus-'
       + 'input mismatch of roughly 15\u201320% is accepted at this '
       + 'precision and stated rather than hidden.</p>'
+      + '<p><b>Load hours are reported, not assumed.</b> The '
+      + 'calibration divides each country\u2019s reported annual output '
+      + 'by its own buildings heat, so no load factor enters it. Where '
+      + 'one is needed \u2014 for the what-if, and for Northern '
+      + 'Ireland, which publishes no output \u2014 the figure is '
+      + 'Ireland\u2019s own ' + fmt(h.flh_ireland,0) + ' full-load '
+      + 'hours rather than a European convention. The European average '
+      + 'is ' + fmt(h.flh_europe_avg,0) + ', and the spread across the '
+      + 'comparators runs from the Netherlands at 1,095 to Sweden at '
+      + '3,498, so a single convention would misprice every one of '
+      + 'them. Source: ' + esc(h.output_source || "") + '.</p>'
       + '<p><b>Where each figure comes from.</b> The Republic: '
       + esc((h.sources||{}).roi || "") + '. Northern Ireland: '
       + esc((h.sources||{}).ni_register || "") + ' \u2014 '
@@ -3307,10 +3336,11 @@ function geoCalib(h){
       + '<p><b>The Northern Ireland capacity is the weakest figure '
       + 'here</b>, and the register records failures alongside '
       + 'successes: one QUB system was never commissioned owing to a '
-      + 'design flow set-point error, and Girdwood runs at about 60% of '
-      + 'its 180 kW design. Two entries \u2014 the McClay Library and '
-      + 'UU Jordanstown \u2014 remain unconfirmed candidates and carry '
-      + 'no capacity.</p>';
+      + 'design flow set-point error, and another runs at about 60% '
+      + 'of its design capacity. Two further entries remain '
+      + 'unconfirmed candidates and carry no capacity. Individual '
+      + 'sites are not listed here while the register is out for '
+      + 'comment.</p>';
   }
 }
 
@@ -3402,7 +3432,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.39.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.41.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
