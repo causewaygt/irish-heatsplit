@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.38.0 / site 5.39.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.40.0 / site 5.41.0.
 
 ## The premise
 
@@ -1644,6 +1644,59 @@ convention, which returns Sweden to 20.42%.
 convention and the same Sweden 20.4% figure. Its United Kingdom row
 should be 1,661 hours, not 2,000.
 
+**Running hours explained at the chart, not in the fold (5.39.0 / site
+5.40.0).** The calibration note now says why Ireland's bar is short:
+partly fewer systems, partly that each runs **1,301 full-load hours a
+year against a European average of 2,420 and Sweden's 3,498** — a mild
+maritime climate gives a short heating season, and systems sized for a
+cold snap spend most of the year below capacity. That answers the
+question a reader has looking at a short bar; the fold answers how the
+figure was computed, which is a different question.
+
+The fold gains a paragraph on load hours: the calibration assumes none,
+and where one is needed — the what-if, and Northern Ireland, which
+publishes no output — it is Ireland's own rather than a European
+convention. The spread from the Netherlands' 1,095 to Sweden's 3,498 is
+given, because it is what makes a single convention untenable.
+
+**The Northern Ireland register is cited but not reproduced.** It is
+Causeway's own compilation and currently circulating for comment among
+Northern Ireland practitioners, so the source line says so and the fold
+reports failure patterns without naming sites. **A test fails if any
+register entry appears on the page**, listing the leak — proven by
+naming one.
+
+**Northern Ireland re-anchored on the register (5.40.0 / site
+5.41.0).** Our figure was **6.6 MWth and should be 4.5** — about 40%
+too high, and flattering in the same direction as everything else found
+this week. Three faults compounded:
+
+- **Nameplate rather than effective capacity.** The register carries
+  both: 532 kW of large-tier heating was built and **460 kW is
+  delivered**, so a seventh never reached a building.
+- **A domestic estimate with no basis.** 500–700 units became **386
+  MCS-registered** at 10–12 kW, or 3.5–4.5 MW. That alone was over a
+  megawatt.
+- **Three failures missing.** Our list held seven entries, five
+  confirmed; the register holds **ten, of which two run cleanly and
+  four failed outright**. Our version made the record look better than
+  it is.
+
+**Per-capita watts are now derived, not typed.** NI falls from 3 W to
+**2 W**, and the internal gap widens from 14x to **21x**. Carrying it
+as a literal is what left it stale — the same trap as the "eleven
+terawatt-hours" sub-heading.
+
+**The delivery record is now the NI headline**, because it is sharper
+than the small number: of ten documented schemes, two run cleanly, four
+failed, and 532 kW built delivers 460.
+
+**Site names are kept out of the payload entirely**, not just off the
+page — the register carries `R1`–`R10` and no names, so the review
+period is protected structurally rather than by remembering. Tests pin
+the effective basis, the register's internal arithmetic, and the
+absence of names.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1784,8 +1837,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 186 tests, no network
-node tests/test_vol.js            # 267 front-end fixture checks
+python3 tests/test_synthetic.py   # 187 tests, no network
+node tests/test_vol.js            # 276 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
