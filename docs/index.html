@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.35.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.36.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -653,66 +653,33 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </section>
 
 <section id="geo" aria-labelledby="geo-h">
-  <h2 id="geo-h">Geothermal – the empty bar</h2>
-  <div class="split2">
-    <div class="panelbox">
-      <div class="grid4" style="grid-template-columns:1fr 1fr">
-        <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">ROI ground-source, end 2025</div>
-          <div class="big" id="geoROI">–</div>
-          <div class="sub" id="geoROIsub"></div>
-        </div>
-        <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">NI ground-source, ever</div>
-          <div class="big" id="geoNI">–</div>
-          <div class="sub" id="geoNIsub"></div>
-        </div>
-        <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Per person</div>
-          <div class="big" id="geoCap">–</div>
-          <div class="sub" id="geoCapSub">installed ground-source thermal
-            watts<span class="dag">†</span></div>
-        </div>
-        <div class="stat" style="background:none;border:none;padding:0">
-          <div class="lab">Deeper geothermal</div>
-          <div class="big" id="geoDeep">–</div>
-          <div class="sub">operating plants island-wide – Grangegorman 2 km
-            drills late 2027 (GEMINI); CAFRE doublet consented</div>
-        </div>
-      </div>
-    </div>
-    <div class="panelbox">
-      <div id="geoPlot" class="plot" style="min-height:300px"></div>
-    </div>
+  <h2 id="geo-h">5. Irish geothermal: now, next and benchmarks</h2>
+  <p class="scopeline">The Republic started. The North did not. And
+    neither has set a target.</p>
+  <div class="panelbox">
+    <h3 class="foldh">Nobody has set a target
+      <span class="sub">&mdash; what the fifth can be measured against
+      instead</span></h3>
+    <div id="geoTargets"></div>
+    <p class="note" id="geoTargetsNote"></p>
+
+    <h3 class="foldh">The empty bar
+      <span class="sub">&mdash; installed hardware against the 20%
+      what-if</span></h3>
+    <div id="geoHardware"></div>
+    <p class="note" id="geoHardwareNote"></p>
+
+    <h3 class="foldh">The same fleets, calibrated
+      <span class="sub">&mdash; share of each country&rsquo;s own
+      buildings heat</span></h3>
+    <div id="geoCalib"></div>
+    <p class="note" id="geoCalibNote"></p>
+    <details class="fold">
+      <summary>What the bars price, and where the comparators come
+        from</summary>
+      <div class="foldbody" id="geoMethod"></div>
+    </details>
   </div>
-  <p class="note">The chart prices the what-if strip in hardware, in
-    installed thermal megawatts: the solid green base of each island bar is
-    ground-source capacity operating today; the pale stack is what serving
-    20% of delivered buildings heat requires at 2,000 equivalent full-load
-    hours<span class="dag">†</span>. Today's entire island stock is the
-    sliver at the base – NI's barely renders. The three bars on the right
-    are not scenarios but installed reality elsewhere: Sweden's
-    ground-source fleet alone is nearly twice the island's whole what-if
-    requirement, while the Netherlands and France add a second layer the
-    island has none of – deeper geothermal, the Dutch doublet fleet and the
-    Paris Basin networks<span class="dag">†</span>. NI needs the most new
-    capacity relative to its size precisely because it is the most
-    oil-heated; its documented track record above 60 kW – every system
-    named, dated and statused in data.json, including one never
-    commissioned through a design error and one running at 60% through an
-    installation error – totals ≈0.6 MWth<span class="dag">†</span>. ROI's
-    market grew fast to 2009, stalled, and is now 85% residential with
-    ground-source at 4% of heat-pump sales – in a European market that
-    grew 10% in 2025 to 123,000 units sold, a stock of 2.55 million
-    ground-source heat pumps already heating 10.6 million people, and
-    geothermal now the second-largest renewable source for district heat
-    (EGEC Market Report 2025). The island's gap is widening in flow as
-    well as stock. The Permo-Triassic Sherwood
-    Sandstone beneath Northern Ireland can supply heat at town scale
-    (Todd et al., <em>Geoenergy</em>, 2026 –
-    <a href="https://doi.org/10.1144/geoenergy2025-057">10.1144/geoenergy2025-057</a>).
-    ROI anchors: WGC2026 Country Update. Corrections welcome at
-    <a href="mailto:contact@causewaygt.com">contact@causewaygt.com</a>.</p>
 </section>
 
 <section id="why" aria-labelledby="why-h">
@@ -3129,76 +3096,266 @@ function coolSide(D){
   }),CONF);
 }
 
+// -------------------------------- Panel 5: geothermal, now and next
+// Replaces "the empty bar", which reported a register without ever
+// placing it against anything. Three sub-panels, on the UK sibling's
+// shape - but the Irish story is different in two ways and the panel
+// leads with both: NOBODY HAS SET A TARGET, and the Republic's bar is
+// not empty. The interesting gap on this island is internal.
 function geoPanel(D){
-  const g=(D||{}).geo;
-  if(!g){el('geoPlot').textContent='Register arrives with the next pipeline build.';return}
-  const roi=g.roi||{};
-  el('geoROI').textContent=fmt(roi.capacity_mwth,0)+' MWth';
-  el('geoROIsub').textContent=fmt(roi.units,0)+' systems \u00b7 '+
-    fmt(roi.heat_gwh,0)+' GWh/yr heat \u00b7 WGC2026 country update';
-  el('geoNI').textContent='\u2248 0.6 MWth\u2020';
-  el('geoNIsub').textContent='>60 kW register \u00b7 plus '+
-    fmt((g.ni_domestic||{}).low,0)+'\u2013'+fmt((g.ni_domestic||{}).high,0)+
-    '\u2020 domestic units';
-  const pc=g.per_capita_w||{};
-  el('geoCap').textContent=fmt(pc.roi,0)+' W vs '+fmt(pc.ni,0)+' W\u2020';
-  const eg=g.egec_2025;
-  if(eg&&eg.ghp_sales_2025){
-    el('geoCapSub').innerHTML='installed thermal watts per person\u2020 \u00b7 '+
-      'and still compounding: 2025 sales Ireland '+
-      fmt(eg.ghp_sales_2025['Ireland'],0)+' vs Sweden '+
-      fmt(eg.ghp_sales_2025['Sweden'],0)+' units (EGEC)';
-  }
-  el('geoDeep').textContent=String((roi.deep_plants!=null?roi.deep_plants:0));
+  const g = (D||{}).geo || {};
+  geoTargets(g.targets);
+  geoHardware(g.hardware);
+  geoCalib(g.hardware);
+}
 
-  const p=g.percap;
-  if(!p){el('geoPlot').textContent='Per-capita block arrives with the next build.';return}
-  const island=['ROI','NI\u2020','All island'];
-  const cur=[p.roi.current_mwth,p.ni.current_mwth,p.island.current_mwth];
-  const need=[p.roi.whatif_mwth,p.ni.whatif_mwth,p.island.whatif_mwth];
-  const gap=need.map((n,i)=>Math.max(0,n-cur[i]));
-  const ref=g.reference_mwth||{};
-  const refNames=Object.keys(ref);
-  const cats=island.concat(refNames.map(n=>n+'\u2020'));
-  const pad=a=>a.concat(refNames.map(()=>0));
-  const shallowRef=island.map(()=>0).concat(refNames.map(n=>ref[n].shallow||0));
-  const deepRef=island.map(()=>0).concat(refNames.map(n=>ref[n].deep||0));
-  const curAll=cur.concat(refNames.map(()=>0));
-  const ann=[];
-  island.forEach((c,i)=>{
-    ann.push({x:c,y:need[i],text:'\u2192 '+fmt(need[i],0)+' MWth\u2020',
-      showarrow:false,yanchor:'bottom',
-      font:{family:'IBM Plex Mono',size:10,color:CLR.muted}});
-    ann.push({x:c,y:cur[i],text:fmt(cur[i],cur[i]<10?1:0),
-      showarrow:false,yanchor:'top',yshift:-2,
-      font:{family:'IBM Plex Mono',size:10,color:CLR.green}});
+function geoTargets(t){
+  const box = el("geoTargets"), note = el("geoTargetsNote");
+  if(!box) return;
+  if(!t || !t.nearest){
+    box.textContent = "The targets block arrives with a coming build.";
+    if(note) note.textContent = ""; return;
+  }
+  const ni = t.ni_energy_saved || {};
+  let s = '<div class="hstats">'
+    + '<div class="hstat"><div class="hval" style="color:#C98F4F">0</div>'
+    + '<div class="hlab">geothermal deployment targets set by either '
+    + 'jurisdiction. Both treat it as a licensing question</div></div>'
+    + '<div class="hstat"><div class="hval">'
+    + fmt(ni.saved_pct ? ni.saved_pct.gshp : 0,0)
+    + '<span style="font-size:.5em">\u2013</span>'
+    + fmt(ni.saved_pct ? ni.saved_pct.network : 0,0)
+    + '<span style="font-size:.5em">%</span></div><div class="hlab">'
+    + 'of Northern Ireland\u2019s entire 2030 energy-saving target, from '
+    + 'a fifth of its building heat alone</div></div>'
+    + '<div class="hstat"><div class="hval" style="color:#C98F4F">'
+    + fmt(ni.achieved_pct,1) + '<span style="font-size:.5em">%</span>'
+    + '</div><div class="hlab">of that target delivered by March 2025 '
+    + '\u00b7 ' + fmt(ni.achieved_gwh,0) + ' GWh of '
+    + fmt(ni.target_gwh,0) + '</div></div></div>';
+  s += '<table class="caltab"><thead><tr><th>Where</th><th>Nearest '
+    + 'quantified target</th><th>By</th><th>What it actually covers</th>'
+    + '</tr></thead><tbody>'
+    + t.nearest.map(n =>
+        '<tr><td>' + esc(n.jur) + '</td><td><b>'
+        + (n.unit === "units" ? fmt(n.value,0) + ' ' + esc(n.unit)
+                              : fmt(n.value,1) + ' ' + esc(n.unit))
+        + '</b> \u2014 ' + esc(n.label) + '</td><td>' + esc(n.year)
+        + '</td><td>' + esc(n.covers) + '</td></tr>').join("")
+    + '</tbody></table>';
+  box.innerHTML = s;
+  if(note){
+    note.textContent = "No jurisdiction on this island has set a "
+      + "geothermal deployment target. The Republic's 2023 policy "
+      + "statement and its forthcoming Bill are a licensing and "
+      + "regulatory framework; Northern Ireland consulted on the same "
+      + "in May 2026, with no grants and no target attached. So the "
+      + "fifth has nothing of its own to be measured against, and the "
+      + "table gives the nearest quantified targets it could contribute "
+      + "to \u2014 none of which reserves any share for geothermal. "
+      + "Northern Ireland's is the one that fits the mechanism: it "
+      + "counts energy SAVED, and a heat pump saves purchased energy by "
+      + "construction, turning "
+      + fmt(ni.counterfactual_input_twh,2) + " TWh of combustion input "
+      + "into " + fmt(ni.whatif_delivered_twh,2) + " TWh delivered. Two "
+      + "cautions: that target covers buildings AND industry, so this "
+      + "is a share of the whole rather than of a heat sub-target; and "
+      + "the saving is against combustion at Northern Ireland's current "
+      + "efficiency \u2014 against an air-source heat pump it would be "
+      + "far smaller.";
+  }
+}
+
+// Installed hardware against the what-if, and against installed
+// reality elsewhere. Not scenarios: these are fleets that exist.
+function geoHardware(h){
+  const box = el("geoHardware"), note = el("geoHardwareNote");
+  if(!box) return;
+  if(!h || !h.comparators){
+    box.textContent = "The hardware block arrives with a coming build.";
+    if(note) note.textContent = ""; return;
+  }
+  const pp = h.per_person_W || {};
+  let s = '<div class="hstats">'
+    + '<div class="hstat"><div class="hval">' + fmt(h.island_total_MWth,0)
+    + '<span style="font-size:.5em"> MWth</span></div><div class="hlab">'
+    + 'installed on the island today \u00b7 Republic '
+    + fmt(h.island_gshp_MWth,0) + ' MWth across ' + fmt(h.roi_units,0)
+    + ' systems, North ' + fmt(h.island_ni_MWth,1)
+    + '<span class="dag">\u2020</span></div></div>'
+    + '<div class="hstat"><div class="hval">' + fmt(pp.roi,0)
+    + '<span style="font-size:.5em"> vs </span>' + fmt(pp.ni,0)
+    + '<span style="font-size:.5em"> W</span></div><div class="hlab">'
+    + 'thermal watts per person, Republic against North \u2014 a '
+    + fmt(h.internal_gap,0) + '-fold gap inside one island. Sweden runs '
+    + fmt(pp.sweden,0) + ' W<span class="dag">\u2020</span></div></div>'
+    + '<div class="hstat"><div class="hval" style="color:#3AAA35">'
+    + fmt(h.whatif_MWth/1000,1) + '<span style="font-size:.5em"> GWth</span>'
+    + '</div><div class="hlab">the 20% what-if in hardware, at '
+    + fmt(h.eflh,0) + ' equivalent full-load hours<span class="dag">'
+    + '\u2020</span> \u00b7 ' + fmt(h.multiple,1)
+    + 'x what is installed</div></div></div>';
+
+  const rows = [{name:"Ireland", gshp:h.island_gshp_MWth,
+                 deep:h.island_ni_MWth, home:true}]
+    .concat(h.comparators.map(c=>({name:c.name, gshp:c.gshp_MWth,
+                                   deep:c.deep_MWth, home:false})));
+  const W = 1000, H = 260, P = {t:52, r:22, b:52, l:88};
+  const t = niceTicks(Math.max(h.whatif_MWth,
+    ...rows.map(r=>r.gshp+r.deep)) * 1.04 / 1000, 4);
+  const x = v => P.l + (v / (t.top*1000)) * (W - P.l - P.r);
+  const bw = (W-P.l-P.r)/rows.length, iw = Math.min(110, bw*0.5);
+  s += '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
+    + '" role="img" aria-label="Installed geothermal capacity against '
+    + 'the 20% what-if"><defs><pattern id="wiHatch" width="9" height="9" '
+    + 'patternTransform="rotate(45)" patternUnits="userSpaceOnUse">'
+    + '<rect width="9" height="9" fill="#0b0d0d"/>'
+    + '<rect width="4" height="9" fill="#3AAA35"/></pattern></defs>';
+  const y = v => P.t + (1 - v/(t.top*1000))*(H-P.t-P.b);
+  t.values.forEach(v=>{
+    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(v*1000)+'" y2="'
+      + y(v*1000)+'" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="'+(P.l-10)+'" y="'+(y(v*1000)+5)+'" text-anchor="end" '
+      + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
+      + 'monospace">'+fmt(v,1)+'</text>';
   });
-  refNames.forEach(n=>{
-    const tot=(ref[n].shallow||0)+(ref[n].deep||0);
-    ann.push({x:n+'\u2020',y:tot,text:fmt(tot,0)+' MWth\u2020',
-      showarrow:false,yanchor:'bottom',
-      font:{family:'IBM Plex Mono',size:10,color:CLR.muted}});
+  rows.forEach((r,i)=>{
+    const cx = P.l + bw*i + bw/2, x0 = cx - iw/2, tot = r.gshp + r.deep;
+    if(r.home){
+      s += '<rect x="'+x0+'" y="'+y(h.whatif_MWth)+'" width="'+iw
+        + '" height="'+(y(0)-y(h.whatif_MWth))+'" fill="url(#wiHatch)"/>'
+        + '<text x="'+cx+'" y="'+(y(h.whatif_MWth)-8)+'" '
+        + 'text-anchor="middle" font-size="12" fill="#3AAA35" '
+        + 'font-family="IBM Plex Mono,monospace">the 20% what-if '
+        + fmt(h.whatif_MWth/1000,1) + ' GWth\u2020</text>';
+    }
+    s += '<rect x="'+x0+'" y="'+y(tot)+'" width="'+iw+'" height="'
+      + Math.max(0,y(0)-y(tot))+'" fill="'+(r.home?"#3AAA35":"#5A6B64")+'"/>'
+      + '<text x="'+cx+'" y="'+(H-22)+'" text-anchor="middle" '
+      + 'font-size="13" fill="var(--ink2)" font-family="Lato,sans-serif">'
+      + esc(r.name)+(r.home?'':'\u2020')+'</text>';
   });
-  Plotly.newPlot('geoPlot',[
-    {x:cats,y:curAll,type:'bar',name:'ground source, installed',
-     marker:{color:CLR.green}},
-    {x:cats,y:shallowRef,type:'bar',name:'ground source, installed (comparators)\u2020',
-     marker:{color:CLR.green2},showlegend:false},
-    {x:cats,y:deepRef,type:'bar',name:'deeper geothermal, installed\u2020',
-     marker:{color:CLR.petrol}},
-    {x:cats,y:pad(gap),type:'bar',name:'the 20% what-if\u2020',
-     marker:{color:'rgba(47,143,140,.30)',
-       pattern:{shape:'/',fgcolor:'rgba(47,143,140,.55)',size:6}}},
-  ],Object.assign(plb(),{
-    barmode:'stack',
-    xaxis:Object.assign(plb().xaxis,{type:'category',
-      categoryorder:'array',categoryarray:cats}),
-    yaxis:Object.assign(plb().yaxis,{
-      title:'installed capacity \u2013 MWth',rangemode:'tozero'}),
-    legend:{orientation:'h',y:1.16},
-    margin:{l:60,r:24,t:40,b:44},
-    annotations:ann,
-  }),CONF);
+  s += '<text x="'+P.l+'" y="22" font-size="13" fill="#fff" '
+    + 'font-family="IBM Plex Mono,monospace">installed thermal capacity, '
+    + 'GWth \u00b7 the three on the right are not scenarios, they are '
+    + 'fleets that exist\u2020</text>'
+    + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + ')" text-anchor="middle" font-size="13" font-weight="600" '
+    + 'fill="#fff" font-family="Lato, sans-serif">GWth installed'
+    + '</text></svg>';
+  box.innerHTML = s;
+  if(note){
+    const sales = h.sales_2025 || {};
+    note.textContent = "The Republic is not the empty bar Britain is. "
+      + fmt(h.island_gshp_MWth,0) + " MWth across " + fmt(h.roi_units,0)
+      + " systems puts it at " + fmt(pp.roi,0) + " thermal watts per "
+      + "person, ahead of France at " + fmt(pp.france,0) + " and roughly "
+      + "three times the United Kingdom. Northern Ireland runs "
+      + fmt(pp.ni,0) + " W. That " + fmt(h.internal_gap,0)
+      + "-fold gap inside one island, between two jurisdictions sharing "
+      + "a grid and a geology, is the finding this panel exists for \u2014 "
+      + "and it is not explained by resource. Sweden at "
+      + fmt(pp.sweden,0) + " W shows the ceiling: it sold "
+      + fmt(sales["Sweden"],0) + " units in 2025 against Ireland\u2019s "
+      + fmt(sales["Ireland"],0) + ", on a population twice the size.";
+  }
+}
+
+// The same fleets against each country's OWN buildings heat, so size
+// is taken out of the comparison.
+function geoCalib(h){
+  const box = el("geoCalib"), note = el("geoCalibNote"),
+        meth = el("geoMethod");
+  if(!box) return;
+  const sh = h && h.share_of_national_heat;
+  if(!sh){
+    box.textContent = "The calibration arrives with a coming build.";
+    if(note) note.textContent = ""; if(meth) meth.innerHTML = ""; return;
+  }
+  const rows = sh.countries;
+  const W = 1000, H = 260, P = {t:46, r:22, b:52, l:88};
+  const t = niceTicks(Math.max(sh.whatif_pct,
+    ...rows.map(r=>r.share_pct)) * 1.06, 4);
+  const y = v => P.t + (1 - v/t.top)*(H-P.t-P.b);
+  const bw = (W-P.l-P.r)/rows.length, iw = Math.min(110, bw*0.5);
+  let s = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H
+    + '" role="img" aria-label="Installed fleets as a share of each '
+    + 'country\u2019s own buildings heat">';
+  t.values.forEach(v=>{
+    s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(v)+'" y2="'+y(v)
+      + '" stroke="var(--line)" stroke-width="1"/>'
+      + '<text x="'+(P.l-10)+'" y="'+(y(v)+5)+'" text-anchor="end" '
+      + 'font-size="13" fill="var(--ink2)" font-family="IBM Plex Mono,'
+      + 'monospace">'+fmt(v,0)+'%</text>';
+  });
+  rows.forEach((r,i)=>{
+    const cx = P.l + bw*i + bw/2, x0 = cx - iw/2, home = i === 0;
+    s += '<rect x="'+x0+'" y="'+y(r.share_pct)+'" width="'+iw+'" height="'
+      + Math.max(0,y(0)-y(r.share_pct))+'" fill="'
+      + (home?"#3AAA35":"#5A6B64")+'"/>'
+      + '<text x="'+cx+'" y="'+(y(r.share_pct)-8)+'" text-anchor="middle" '
+      + 'font-size="13" font-weight="700" fill="#fff" '
+      + 'font-family="IBM Plex Mono,monospace">'+fmt(r.share_pct,1)
+      + '%</text>'
+      + '<text x="'+cx+'" y="'+(H-22)+'" text-anchor="middle" '
+      + 'font-size="13" fill="var(--ink2)" font-family="Lato,sans-serif">'
+      + esc(r.name)+(home?'':'\u2020')+'</text>';
+  });
+  s += '<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(sh.whatif_pct)
+    + '" y2="'+y(sh.whatif_pct)+'" stroke="#3AAA35" stroke-width="2" '
+    + 'stroke-dasharray="8 5"/>'
+    + '<text x="'+P.l+'" y="22" font-size="13" fill="#3AAA35" '
+    + 'font-family="IBM Plex Mono,monospace">\u2014 \u2014  the 20% '
+    + 'what-if \u00b7 Sweden\u2019s existing fleet already serves about '
+    + 'that share</text>'
+    + '<text x="26" y="'+(H/2)+'" transform="rotate(-90 26 '+(H/2)
+    + ')" text-anchor="middle" font-size="13" font-weight="600" '
+    + 'fill="#fff" font-family="Lato, sans-serif">% of national buildings '
+    + 'heat</text></svg>';
+  box.innerHTML = s;
+  if(note){
+    note.textContent = "Taking population out of it. Each country\u2019s "
+      + "installed fleet at " + fmt(h.eflh,0) + " equivalent full-load "
+      + "hours, as a share of its own buildings heat. Ireland\u2019s "
+      + fmt(rows[0].share_pct,1) + "% sits below France and far below "
+      + "Sweden \u2014 whose existing fleet already serves roughly the "
+      + "share this site\u2019s what-if proposes, which is the scale "
+      + "argument in one picture: the fifth is unremarkable somewhere "
+      + "that started, and large only because this island mostly has "
+      + "not.";
+  }
+  if(meth){
+    meth.innerHTML =
+      '<p>The what-if bar prices the 20% strip in <b>hardware</b>: what '
+      + 'serving a fifth of delivered buildings heat requires in '
+      + 'installed thermal capacity at ' + fmt(h.eflh,0)
+      + ' equivalent full-load hours<span class="dag">\u2020</span> '
+      + '\u2014 ' + fmt(h.whatif_MWth/1000,1) + ' GWth against '
+      + fmt(h.island_total_MWth,0) + ' MWth installed, a factor of '
+      + fmt(h.multiple,1) + '. The three bars on the right are not '
+      + 'scenarios but installed reality elsewhere<span class="dag">'
+      + '\u2020</span>.</p>'
+      + '<p><b>Comparator capacities are the UK sibling\u2019s, '
+      + 'unchanged</b> \u2014 EGC 2025 country updates (Sanner et al., '
+      + 'Tables 3\u20134, end-2024), ground-source fleet plus deep '
+      + 'direct use. The Netherlands\u2019 deep capacity is almost '
+      + 'entirely greenhouse heat rather than buildings. National heat '
+      + 'anchors for the calibration are input-basis estimates<span '
+      + 'class="dag">\u2020</span>: Ireland live from this model, '
+      + 'France of order 350 TWh, the Netherlands 115, Sweden 80 '
+      + '(IEA / ODYSSEE / Heat Roadmap order). The delivered-versus-'
+      + 'input mismatch of roughly 15\u201320% is accepted at this '
+      + 'precision and stated rather than hidden.</p>'
+      + '<p><b>The Northern Ireland capacity is the weakest figure '
+      + 'here.</b> It is a site-by-site register \u2014 the Lyric '
+      + 'Theatre, Giant\u2019s Causeway, Girdwood, two QUB '
+      + 'installations \u2014 with two unconfirmed candidates, plus a '
+      + 'domestic estimate of 500\u2013700 units triangulated from an '
+      + 'MCS count of roughly 386\u2013450. The register records '
+      + 'failures as well as successes: one QUB system was never '
+      + 'commissioned owing to a design flow set-point error, and '
+      + 'Girdwood runs at about 60% of its 180 kW design.</p>';
+  }
 }
 
 
@@ -3291,7 +3448,7 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.35.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.36.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
