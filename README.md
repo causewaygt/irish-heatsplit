@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.36.0 / site 5.37.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.37.0 / site 5.38.0.
 
 ## The premise
 
@@ -1588,6 +1588,23 @@ renders all three views and requires the figures to differ. Proven by
 making the toggle inert — which also exposed two unguarded `J`
 dereferences that would have thrown in the browser.
 
+**Panel 5 loses its all-island view (5.37.0 / site 5.38.0).** Setting a
+target is a jurisdictional act, so the two sides are never averaged:
+the toggle offers the Republic and the North and nothing else, defaulting
+to the Republic. A test fails if an all-island option is ever restored.
+
+**Each side is now measured against its own government's commitments.**
+The targets table shows only that jurisdiction's, and each has its own
+headline figure. The Republic: a fifth of its building heat is 5.1 TWh,
+**1.9 times the entire 2030 district heating target** of 2.7 TWh — a
+target that covers all heat sources and reserves nothing for geothermal,
+alongside 680,000 heat pumps with no ground-source share. The North:
+**24–27% of its whole energy-saving target from a fifth of building
+heat, against 1.1% delivered.**
+
+The zero — no geothermal deployment target — is common to both and
+stands whichever way the toggle sits.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1729,7 +1746,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 185 tests, no network
-node tests/test_vol.js            # 266 front-end fixture checks
+node tests/test_vol.js            # 265 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
