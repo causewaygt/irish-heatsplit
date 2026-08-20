@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.35.0"
+PIPELINE_VERSION = "5.36.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5143,6 +5143,21 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
 # France ~350 TWh (IEA / Heat Roadmap order), Netherlands ~115 TWh,
 # Sweden ~80 TWh (Swedish Energy Agency / ODYSSEE). Estimates, daggered.
 GEO_NAT_HEAT_TWH = {"France": 350.0, "Netherlands": 115.0, "Sweden": 80.0}
+# The register's inclusion threshold. Both exclusions sit below it -
+# Randalstown 44 kW, Strabane 18 kW - which is what fixes it at 45.
+GEO_NI_REGISTER_KW = 45
+GEO_SOURCES = {
+    "roi": "WGC2026 Country Update: Ireland \u2014 Ireland, Blake, "
+           "Pasquali, Dunphy & Hunter Williams, June 2026",
+    "ni_register": "Causeway Energies register of Northern Ireland "
+                   "ground-source schemes above 45 kW, compiled "
+                   "site by site",
+    "ni_domestic": "MCS certification records, ~386\u2013450 units, plus "
+                   "a pre-certification estimate \u2014 Causeway "
+                   "triangulation",
+    "comparators": "EGC 2025 country updates (Sanner et al., Tables "
+                   "3\u20134, end-2024) \u2014 shared with the UK sibling",
+}
 # NI Energy Strategy "The Path to Net Zero Energy" (DfE, Dec 2021): a
 # 25% reduction in energy use from buildings and industry by 2030,
 # expressed as 8,000 GWh of savings. It is the ONLY quantified energy
@@ -5273,7 +5288,32 @@ def derive_geo_hardware(anchors=None, geo=None):
         shares.append({"name": c["name"], "national_heat_TWh": nat,
                        "share_pct": round(100 * tot * eflh / 1e6 / nat, 1)})
     pc = g["per_capita_w"]
+    # PER JURISDICTION, so the panel can toggle. The contrast between
+    # the two is then something the reader finds by switching rather
+    # than something the copy asserts at them - which is a stronger way
+    # to make it and a less partisan one.
+    jur = {}
+    for k, cap, del_twh, in_twh in (
+            ("roi", g["roi"]["capacity_mwth"], roi_del,
+             a["roi"]["residential_heat_twh"]
+             + a["roi"]["services_heat_twh"]),
+            ("ni", g["ni_capacity_mwth_est"], ni_del,
+             a["ni"]["residential_heat_twh"]
+             + a["ni"]["services_heat_twh"])):
+        wi = 0.20 * del_twh * 1e6 / eflh
+        jur[k] = {
+            "installed_MWth": round(cap, 1),
+            "whatif_MWth": round(wi, 0),
+            "multiple": round(wi / max(cap, 1e-9), 1),
+            "delivered_TWh": round(del_twh, 1),
+            "national_heat_TWh": round(in_twh, 1),
+            "share_pct": round(100 * cap * eflh / 1e6 / in_twh, 2),
+            "per_person_W": pc[k],
+            "units": g["roi"]["units"] if k == "roi" else None,
+            "population_m": g["population_m"][k],
+        }
     out = {
+        "jur": jur,
         "island_gshp_MWth": g["roi"]["capacity_mwth"],
         "island_ni_MWth": g["ni_capacity_mwth_est"],
         "island_total_MWth": round(inst, 1),
@@ -5290,6 +5330,12 @@ def derive_geo_hardware(anchors=None, geo=None):
         "sales_2025": g["egec_2025"]["ghp_sales_2025"],
         "comparators": comps,
         "share_of_national_heat": {"countries": shares, "whatif_pct": 20.0},
+        "register_threshold_kw": GEO_NI_REGISTER_KW,
+        "sources": GEO_SOURCES,
+        "ni_register_confirmed": len([r for r in g["ni_register"]
+                                      if r["confirmed"]]),
+        "ni_register_total": len(g["ni_register"]),
+        "ni_domestic": g["ni_domestic"],
     }
     log(f"geo hardware: island {inst:.0f} MWth installed against a "
         f"{whatif:.0f} MWth what-if - {out['multiple']}x. Per person ROI "
