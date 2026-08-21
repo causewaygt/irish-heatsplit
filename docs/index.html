@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.42.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.43.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -146,24 +146,23 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
   text-transform:uppercase;letter-spacing:.07em;color:#fff}
 .coolleg-i{display:flex;align-items:center;gap:6px;font-size:.8rem;
   color:var(--ink2)}
-/* Under-construction watermark, Panel 6. The panel renders real
-   figures but the appraisal is half built - the electrification stage
-   is unpriced, cooling is absent and nothing is discounted - so the
-   whole section carries a mark that cannot be missed or mistaken for
-   decoration. pointer-events:none so it never blocks the toggle. */
-#vfm{position:relative;overflow:hidden}
-#vfm .wipmark{position:absolute;inset:0;pointer-events:none;z-index:5;
-  display:flex;align-items:center;justify-content:center;
-  overflow:hidden}
-#vfm .wipmark span{font-family:'Lato',sans-serif;font-weight:900;
-  font-size:clamp(2.6rem,9vw,7rem);letter-spacing:.06em;
-  white-space:nowrap;transform:rotate(-28deg);
-  color:rgba(201,143,79,.16);
-  -webkit-text-stroke:2px rgba(201,143,79,.28);
-  text-transform:uppercase}
-@media (max-width:640px){
-  #vfm .wipmark span{-webkit-text-stroke-width:1px}
-}
+/* Panel 6 is COVERED on the public site. The figures are real but
+   the appraisal is half built - the electrification stage is unpriced,
+   cooling is absent, nothing is discounted, and the long-run variable
+   cost is borrowed. So the panel's contents are hidden entirely and
+   replaced by a plain notice, rather than shown behind a watermark
+   that a reader might look past.
+
+   The working copy - docs/panel6.html - renders the same panel from
+   the same payload with the cover off, so the appraisal can be
+   developed offline until the results are ready to be seen. */
+#vfm .wipcover{border:1px dashed var(--faint);border-radius:10px;
+  padding:56px 24px;text-align:center;background:#0e1111}
+#vfm .wipcover b{display:block;font-family:'Lato',sans-serif;
+  font-weight:900;font-size:clamp(1.4rem,4.5vw,2.4rem);
+  letter-spacing:.08em;text-transform:uppercase;color:#C98F4F;
+  margin-bottom:10px}
+#vfm .wipcover span{color:var(--muted);font-size:.88rem}
 .tier2out{margin:10px 0 2px;padding:10px 14px;font-size:.86rem;
   color:var(--muted);border:1px dashed var(--faint);
   border-radius:8px}
@@ -709,40 +708,14 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </section>
 
 <section id="vfm" aria-labelledby="vfm-h">
-  <div class="wipmark" aria-hidden="true"><span>Under Construction</span></div>
   <h2 id="vfm-h">6. Value for money &mdash; geothermal against an
     air-source-led network</h2>
-  <p class="scopeline">Not whether to build networks. The Republic has
-    committed to that. Only what sits at the head of them.</p>
-  <div class="panelbox">
-    <!-- Targets are jurisdictional, so no all-island view here
-         either. Same rule as Panel 5. -->
-    <div class="costctl costjur" id="vfmCtl">
-      <span>WHERE</span>
-      <button data-vfmjur="roi" aria-pressed="true">REPUBLIC OF IRELAND</button>
-      <button data-vfmjur="ni">NORTHERN IRELAND</button>
-    </div>
-    <h3 class="foldh">Two stages, never summed
-      <span class="sub">&mdash; electrify first, then choose the heat
-      source</span></h3>
-    <div id="vfmStages"></div>
-    <p class="note" id="vfmStagesNote"></p>
-
-    <h3 class="foldh">What the subsurface earns
-      <span class="sub">&mdash; per year, against an air-source
-      network</span></h3>
-    <div id="vfmStreams"></div>
-    <p class="note" id="vfmStreamsNote"></p>
-
-    <h3 class="foldh">And what the operators assume
-      <span class="sub">&mdash; a flat heat-pump COP, out to
-      2050</span></h3>
-    <div id="vfmTes"></div>
-    <p class="note" id="vfmTesNote"></p>
-    <details class="fold">
-      <summary>How this is built, and what is still missing</summary>
-      <div class="foldbody" id="vfmMethod"></div>
-    </details>
+  <!-- COVERED. The panel is built and renders from the payload, but
+       the appraisal is half finished and the figures would mislead.
+       docs/panel6.html is the working copy with the cover off. -->
+  <div class="wipcover">
+    <b>Under construction</b>
+    <span>This panel is being built.</span>
   </div>
 </section>
 
@@ -3042,6 +3015,12 @@ let VFMJUR = "roi";
 let VFMD = null;
 function vfmPanel(D){
   VFMD = (D||{}).derived && D.derived.vfm ? D.derived.vfm : null;
+  // On the public page the panel is COVERED, so these containers do
+  // not exist. Each renderer returns early when its box is missing -
+  // el() gives null there, and reaching for .innerHTML on null would
+  // throw and kill every renderer after this one in the boot sequence.
+  // That is exactly what blanked Panel 5 when two earlier panels were
+  // removed and their renderers left behind.
   vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD);
 }
 document.querySelectorAll("[data-vfmjur]").forEach(b=>{
@@ -3727,7 +3706,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.42.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.43.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
