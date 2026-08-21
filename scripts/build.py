@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.41.0"
+PIPELINE_VERSION = "5.42.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5506,10 +5506,16 @@ VFM_JUR_MODEL = {
 # which it attributes to different geology and an emerging market.
 # Ireland is emerging and is not the Netherlands, so the Dutch figure
 # is a best-case FLOOR and the Danish is the better central analogue.
+# EVERY FIGURE ON A HEATING BASIS. Herrmann quotes all of them per kW
+# of COMBINED heating and cooling, so each doubles for a balanced
+# system. An earlier version corrected the Dutch plateau and then took
+# the Danish figure UNCORRECTED, which halved the shallow central,
+# collapsed the increment from about 1,000 to 119 EUR/kW and produced
+# a 1.4-year payback. The implausible answer is what caught it.
 VFM_SHALLOW_EUR_KW = {
-    "dutch_floor": 600.0,      # 300 combined -> ~600 heating basis
-    "central": 1000.0,         # Danish, emerging market, non-sand
-    "high": 1400.0,
+    "dutch_floor": 600.0,      # 300 combined -> 600 heating
+    "central": 1878.0,         # Danish 939 combined -> 1,878 heating
+    "high": 2400.0,
     "source": "Herrmann et al. 2026, RSER 226:116202, 133 ATES "
               "systems; 300 EUR/kW combined heating and cooling above "
               "2 MW, restated to a heating basis; Danish subset near "
@@ -5531,9 +5537,25 @@ VFM_SHALLOW_EUR_KW = {
 VFM_DEEP_GBP_KW = {"low": 1550.0, "high": 2179.0, "mid": 1865.0,
                    "source": "Todd et al., Geoenergy, Table 5, seven "
                              "Permo-Triassic doublet cases"}
+# LEARNING APPLIES TO THE DEEP FIGURE ONLY, and the asymmetry is
+# deliberate but worth stating: Todd et al. is explicitly
+# first-of-a-kind, while Herrmann's Danish systems are installed
+# outturn from a market that already exists. So the deep figure is
+# discounted and the shallow one is not.
+#
+# The consequence is that deep at nth-of-a-kind (EUR 1,527/kW) comes in
+# BELOW shallow on the Danish basis (EUR 1,878/kW), which makes the
+# North's blend cheaper per kW than the Republic's pure-shallow one -
+# and, with SPF 5.0 against 4.0, gives it the shorter payback. That is
+# a real consequence of the inputs rather than an error, but it turns
+# on a learning rate applied to one side and not the other, so it is
+# the first thing to test if the result is challenged.
 VFM_FOAK_LEARNING = {"reduction": 0.30, "range": (0.25, 0.40),
+                     "applies_to": "deep only",
                      "note": "5-10% per capacity doubling over ~7 "
-                             "doublings to a 500-1,250 MW programme"}
+                             "doublings to a 500-1,250 MW programme; "
+                             "NOT applied to the shallow figure, which "
+                             "is installed Danish outturn"}
 # AIR-SOURCE COUNTERFACTUAL. Danish Energy Agency technology catalogue
 # via PyPSA, and HIR Hamburg. The DEA boundary is the complete energy
 # centre - heat pump, air evaporators, civil works, buildings, grid
