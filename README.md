@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.41.0 / site 5.42.1.
+(Causeway Geothermal NI Ltd). Pipeline 5.42.0 / site 5.43.0.
 
 ## The premise
 
@@ -1697,6 +1697,33 @@ period is protected structurally rather than by remembering. Tests pin
 the effective basis, the register's internal arithmetic, and the
 absence of names.
 
+**Panel 6 is COVERED on the public page (5.42.0 / site 5.43.0).** The
+watermark was too easy to look past, so the panel's contents are hidden
+entirely behind a plain "Under construction" notice. Its containers are
+absent, so nothing renders behind the cover and no figure leaks; the
+renderers return early on a missing box, which a test verifies.
+
+**docs/panel6.html is the working copy** — the SAME renderer and the
+SAME payload with the cover off, generated from the pipeline so the two
+cannot drift. Marked noindex, with a banner stating every figure is
+provisional.
+
+**And it caught a scope error of my own.** The working copy rendered a
+1.4-year payback. Herrmann quotes every ATES figure per kW of COMBINED
+heating and cooling; I corrected the Dutch plateau (300 → 600) and
+then took the Danish figure UNCORRECTED at 1,000. That halved the
+shallow central and collapsed the increment from about 1,000 to
+119 EUR/kW. Corrected to 1,878, the increments are **+997 EUR/kW in the
+Republic and +857 in the North**, and the paybacks **12.0 and 7.2
+years** — simple and undiscounted. Nothing in either suite caught
+it; the implausible answer did. A test now pins the heating basis.
+
+**One asymmetry recorded rather than resolved:** the 30% learning
+reduction applies to the deep figure and not the shallow one, because
+Todd et al. is first-of-a-kind while Herrmann's Danish systems are
+installed outturn. That is why deep at nth comes in below shallow, and
+why the North's blend is cheaper per kW than the Republic's.
+
 **Panel 6 carries an Under Construction watermark (site 5.42.1)** —
 diagonal, full-width, across the whole section. The figures on it are
 real, which is precisely why the mark matters: a reader could otherwise
@@ -1881,8 +1908,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 194 tests, no network
-node tests/test_vol.js            # 297 front-end fixture checks
+python3 tests/test_synthetic.py   # 195 tests, no network
+node tests/test_vol.js            # 296 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
