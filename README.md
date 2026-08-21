@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.40.0 / site 5.41.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.41.0 / site 5.42.0.
 
 ## The premise
 
@@ -1697,6 +1697,42 @@ period is protected structurally rather than by remembering. Tests pin
 the effective basis, the register's internal arithmetic, and the
 absence of names.
 
+**Panel 6 renders, wholly offline (5.41.0 / site 5.42.0).** Every input
+is an anchor, a published constant or a cross-panel read — no feed
+touches it. Three sub-panels and a jurisdiction toggle with no
+all-island view, since target-setting is jurisdictional.
+
+**Two stages, never summed.** BAU to an air-source network is the
+electrification decision, where capacity is a COST because electrifying
+heat adds winter peak. Air-source to geothermal is the subsurface
+increment, where capacity is a BENEFIT. Summing them would let the
+subsurface bank the carbon saving any heat pump delivers. The split
+also puts the stage this site advocates on the side least exposed to
+price forecasting, because both its routes are electric.
+
+**Carbon does not carry this panel, and the operators' own scenarios
+are why.** On Tomorrow's Energy Scenarios the Irish power system
+reaches net zero from 2040 in two of four scenarios and turns
+carbon-negative after, so the carbon value of an efficiency gain is
+near zero within a decade. What remains is running cost (€42.4m and
+£26.7m a year) and avoided capacity (€13.9m and £7.6m) — neither of
+which decays.
+
+**And the operators plan on a flat heat-pump COP.** Air 2.6, ground
+2.94, applied to 2050. Searching all twenty-four sheets of their
+databook for seasonal, SCOP, weather, temperature, degree, peak heat,
+coincidence or diversity returns nothing. The omission cuts both ways:
+a flat 2.6 understates air-source peak draw and a flat 2.94 understates
+the ground-source advantage. Our own air-source figure is *higher* than
+theirs, so the gap is not manufactured by depressing the counterfactual.
+
+**The fold says what is missing**, which is a lot: the electrification
+stage is unpriced, cooling is absent, nothing is discounted, and the
+long-run variable cost is borrowed from the UK sibling because the
+Infrastructure Guidelines name no Irish energy price series. The
+payback shown is simple and undiscounted, and is labelled as not a
+benefit-cost ratio.
+
 Two things this does not claim. The heat-pump hot-water figures are MCS
 design defaults, not field measurements: the Electrification of Heat
 trial did not meter hot water separately, so no field hot-water SPF
@@ -1837,8 +1873,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 187 tests, no network
-node tests/test_vol.js            # 276 front-end fixture checks
+python3 tests/test_synthetic.py   # 194 tests, no network
+node tests/test_vol.js            # 292 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
