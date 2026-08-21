@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.41.0 / site 5.42.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.41.0 / site 5.42.1.
 
 ## The premise
 
@@ -1697,6 +1697,14 @@ period is protected structurally rather than by remembering. Tests pin
 the effective basis, the register's internal arithmetic, and the
 absence of names.
 
+**Panel 6 carries an Under Construction watermark (site 5.42.1)** —
+diagonal, full-width, across the whole section. The figures on it are
+real, which is precisely why the mark matters: a reader could otherwise
+take an unpriced electrification stage, absent cooling and an
+undiscounted payback for a finished appraisal. It is `aria-hidden` and
+`pointer-events:none`, so it neither reaches a screen reader nor blocks
+the jurisdiction toggle beneath it. A test fails if it is removed.
+
 **Panel 6 renders, wholly offline (5.41.0 / site 5.42.0).** Every input
 is an anchor, a published constant or a cross-panel read — no feed
 touches it. Three sub-panels and a jurisdiction toggle with no
@@ -1874,7 +1882,7 @@ footer alongside the build time.
 ```
 pip install requests openpyxl
 python3 tests/test_synthetic.py   # 194 tests, no network
-node tests/test_vol.js            # 292 front-end fixture checks
+node tests/test_vol.js            # 297 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
