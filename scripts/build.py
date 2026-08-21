@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.40.0"
+PIPELINE_VERSION = "5.41.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -4858,7 +4858,12 @@ def derive_ashp_spf(hdd_daily: dict, anchors=None):
             lift = 5.0
         return p["carnot_fraction"] * (flow_c + 273.15) / lift * derate
 
-    space = cop(t_src, p["flow_c"], p["defrost_derate"])
+    # defrost_factor is the site's own Gaussian, centred on the 2 C
+    # frost band - NOT the flat defrost_derate anchor, which applied a
+    # 10% penalty as a STEP across 0-7 C and switched it off entirely
+    # below zero, so modelled COP rose as it got colder. Both the cost
+    # panel and this now use the same curve.
+    space = cop(t_src, p["flow_c"], defrost_factor(t_src))
     dhw = cop(p["dhw_source_c"], p["dhw_flow_c"])
     sh = p["dhw_share"]
     spf = 1.0 / ((1 - sh) / space + sh / dhw)
@@ -4984,7 +4989,7 @@ def derive_grid_views(store, anchors=None):
     def cop_at(t):
         lift = max(5.0, p["flow_c"] - t)
         return p["carnot_fraction"] * (p["flow_c"] + 273.15) / lift \
-            * p["defrost_derate"]
+            * defrost_factor(t)
 
     def row(keys):
         """Mean MW across the keys, plus each route's what-if draw."""
@@ -5062,7 +5067,7 @@ def derive_tightest_hour(store, feeds=None, anchors=None):
     def cop_at(t):
         lift = max(5.0, p["flow_c"] - t)
         return p["carnot_fraction"] * (p["flow_c"] + 273.15) / lift \
-            * p["defrost_derate"]
+            * defrost_factor(t)
 
     # resistive share of useful heat, from the fuel shares
     res = 0.0
@@ -5250,6 +5255,809 @@ GEO_SOURCES = {
 # 2020 (NI Audit Office, 21 Oct 2025).
 GEO_NI_EE_TARGET_GWH = 8000.0
 GEO_NI_EE_ACHIEVED_GWH = 90.0
+
+
+# ---------------------------------------------------------------- VFM
+# Panel 6: value for money. Two counterfactuals, two jurisdictions, two
+# appraisal rulebooks, and every shared quantity READ from the panels
+# that already publish it rather than restated here. Restating is how
+# the data-centre cooling share and the geothermal EERs drifted between
+# panels twice this week; asserts below fail the build if they diverge.
+VFM_COUNTERFACTUALS = ("bau", "ashp")
+# BAU is the incumbent the sector actually runs on - oil-dominated in
+# Northern Ireland, mixed in the Republic. ASHP is the electrified
+# alternative. THEY GIVE OPPOSITE SIGNS ON CAPACITY, which is the
+# single thing most likely to be misread:
+#   against BAU  geothermal ADDS electrical peak, because the load was
+#                not electric at all
+#   against ASHP geothermal SAVES peak, because it draws the same heat
+#                at a higher SPF
+# Panel 3 measures this directly at the binding hour. Any capacity
+# benefit therefore belongs to the ASHP lever alone and must never be
+# shown against BAU.
+VFM_CAPACITY_APPLIES_TO = ("ashp",)
+
+# All-island SEM capacity auction outturn, EUR per MW-year, de-rated.
+# THE SINGLE LARGEST DIVERGENCE FROM THE UK SIBLING, which uses a
+# GB-derived composite of about GBP 75/kW/yr. The SEM is one all-island
+# market and clears several times higher.
+VFM_SEM_CAPACITY = {
+    "t4_2028_29": 149960.0,      # auction 20 Dec 2024, final 16 Jan 2025
+    "t4_2029_30": 135499.99,     # auction 26 Mar 2026, provisional 14 Apr
+    "t1_2025_26": 90000.0,       # auction 22 May 2025, final 1 Jul 2025
+    "net_cone_2028_29": 113355.0,   # SEM Committee parameters
+    "existing_cap_price_cap": 55678.0,   # 0.5x Net CONE - the low case
+    "source": "SEMO capacity auction reports; SEM Committee parameters",
+}
+# GB, for the reconciliation note only - never used in an Irish figure.
+VFM_GB_CAPACITY_GBP_KW = {"t4_2028_29": 60.00, "t4_2029_30": 27.10}
+
+# Two rulebooks, and they differ in ways that change the answer.
+VFM_APPRAISAL = {
+    "roi": {
+        "name": "Infrastructure Guidelines, DPENDR, Dec 2023",
+        "discount": "4% real, flat",
+        "discount_flat_pct": 4.0,
+        "carbon_eur_t": {2024: 322, 2030: 408, 2040: 604, 2050: 890},
+        "carbon_basis": "shadow price, constant 2018 euro, "
+                        "target-consistent TIMES-Ireland",
+        "sppf_pct": 130.0,       # applies to the EXCHEQUER-funded share
+        "spl_pct": (80.0, 100.0),
+        "optimism_bias": "no national table - UK Mott MacDonald as a "
+                         "flagged proxy",
+    },
+    "ni": {
+        "name": "Better Business Cases NI, on HM Treasury Green Book",
+        "discount": "declining STPR: 3.5% to yr 30, 3.0% to 75, "
+                    "2.5% thereafter",
+        "discount_declining": ((30, 3.5), (75, 3.0), (None, 2.5)),
+        "carbon_basis": "DESNZ carbon values",
+        "optimism_bias": "Mott MacDonald, 66% upper bound for "
+                         "non-standard civil engineering",
+        "overlays": "Section 75 equality, Rural Needs Act (NI) 2016, "
+                    "Climate Change Act (NI) 2022",
+    },
+}
+# THE CARBON TAX IS A TRANSFER, the shadow price is the resource cost,
+# and they are never added. The tax appears only in the private
+# bill-saving view, flagged as a transfer, exactly as network charges,
+# levies, supplier margin and VAT do.
+VFM_TRANSFERS = ("carbon tax", "network charges", "policy levies",
+                 "supplier margin", "VAT")
+
+# The one number the island does not publish. Every available figure is
+# a European or GB proxy, and it defines one whole end of the
+# counterfactual lever - so it is carried as a RANGE and flagged, not
+# picked.
+VFM_ASHP_ENERGY_CENTRE_EUR_KWTH = {
+    "low": 856.25,    # PyPSA technology-data 2030, central air heat pump
+    "high": 906.10,   # HIR Hamburg Research Institute, EUR2020
+    "gb_bracket_gbp_kw": (500.0, 800.0),   # CIBSE Journal
+    "spf_range": (2.8, 3.6),
+    "flow_c": (70, 90),
+    "note": "NO Irish or Northern Irish outturn is published. This is "
+            "the highest-value data gap in the whole appraisal.",
+}
+
+
+# The scenario Panel 6 prices. NOT the fifth the rest of the site
+# prices, and the difference is an order of magnitude - so it is named
+# differently everywhere it appears.
+#
+#   Panels 1-4  a fifth of ALL delivered building heat: 5.07 TWh in the
+#               Republic, 2.18 in the North. A scale argument.
+#   Panel 6     a fifth of the DISTRICT HEATING scenario: 0.54 and 0.23
+#               TWh. An appraisal question, answerable against the two
+#               rulebooks, inside a commitment already made.
+#
+# The Republic's 2.7 TWh by 2030 is a government commitment under the
+# Climate Action Plan - "up to", and running at roughly 20-32% of
+# trajectory, so the outturn case matters as much as the target.
+#
+# NORTHERN IRELAND HAS NO DISTRICT HEATING TARGET AT ALL. Its 1.16 TWh
+# is what it WOULD have at the Republic's proportion of building heat
+# (10.7%). That is lent ambition, not policy, and the panel says so as
+# the point rather than as a caveat: the only way to give the North a
+# number here is to borrow the South's.
+VFM_DH_SCENARIO = {
+    "roi_target_twh": 2.7,
+    "roi_target_year": 2030,
+    "roi_source": "Climate Action Plan 2025, up to 2.7 TWh by 2030",
+    "roi_delivery_pct": (20.0, 32.0),   # projected share of trajectory
+    "ni_basis": "lent - the Republic's share of building heat applied "
+                "to Northern Ireland, which has set no target",
+    # NO FIFTH INSIDE THE SCENARIO. The comparison is the WHOLE network
+    # scenario supplied by geothermal against the SAME network supplied
+    # by air-source, as the UK sibling does. The scenario is itself a
+    # small fraction of building heat - 10.7% in the Republic - so
+    # applying a further fifth would price something negligible.
+    #
+    # An earlier version took 20% of the scenario, giving 540 GWh, and
+    # confused the site-wide what-if with the appraisal question. They
+    # are different: the fifth elsewhere on the site is a scale
+    # argument about all Irish heat; this is an appraisal of how one
+    # committed programme is supplied.
+    "network_load_hours": 4000,
+}
+
+
+# TWO STAGES, NEVER SUMMED.
+#
+#   Stage 1  BAU -> air-source network. The ELECTRIFICATION decision.
+#            Carbon and fuel benefits, network and connection capital,
+#            and a capacity COST, because electrifying heat adds winter
+#            peak.
+#   Stage 2  air-source network -> geothermal. THE SUBSURFACE
+#            INCREMENT. Distribution and connections are common to both
+#            and cancel. What remains is the SPF gain, a capacity
+#            BENEFIT at SEM prices, the cooling increment, and the
+#            subsurface capital and its risk.
+#
+# Reported separately because summing them would let geothermal bank
+# the carbon saving of moving off oil and gas - most of which ANY heat
+# pump delivers. The split leaves the subsurface to be judged on what
+# it actually adds.
+#
+# It also settles the capacity sign structurally rather than by rule: a
+# cost in stage 1, a benefit in stage 2, which is where the arithmetic
+# puts it without anyone having to remember.
+VFM_STAGES = ("electrify", "subsurface")
+
+# The two jurisdictions differ by BLEND, not by kind. Both run open
+# loop and standing column wells in ATES and BTES modes, both assume
+# some waste heat recovery and storage, and the North adds a deeper
+# Permo-Triassic HSA component on top. Source temperatures follow:
+# 16.0 C in the Republic, 19.6 C once the deep fraction is blended in.
+# Both figures are already on the site in NETWORK_MODEL and are read
+# from there.
+#
+# TWO DIFFERENT RISKS, WHICH AN EARLIER VERSION CONFLATED:
+#
+#   SUCCESS RATE is pre-FID. Money spent on prospects that never reach
+#   close, spread over the ones that do. A shallow scheme that tests
+#   poorly gets REDESIGNED - more wells, different spacing, a bigger
+#   store - so the spend converts into capex rather than being written
+#   off. A deep doublet can die at the drill bit: if the reservoir is
+#   not there at 2 km, no redesign recovers it. So the shallow fraction
+#   runs at full success and the deep fraction does not.
+#
+#   SHORTFALL is post-commissioning. A built scheme underdelivering
+#   against design - an aquifer yielding less than tested, thermal
+#   breakthrough between wells, a store losing more than modelled, or,
+#   specific to these blends, WASTE HEAT THAT DOES NOT ARRIVE in the
+#   volume assumed. That last is not geological at all. BOTH
+#   jurisdictions carry it; the North's range is wider and its default
+#   higher because the deep fraction is the harder part to predict.
+#
+# The blend weight is the UK sibling's 40% deep. No reason to vary it
+# yet, and if it moves it moves in both jurisdictions together.
+VFM_DEEP_WEIGHT = 0.40
+VFM_SUBSURFACE_CLASSES = {
+    "shallow": {"devex_pct": 0.04, "success": 1.00,
+                "note": "open loop, standing column wells, ATES and "
+                        "BTES with waste heat recovery and storage - "
+                        "pre-FID spend reduces design uncertainty "
+                        "rather than mitigating a project-killing risk"},
+    "deep": {"devex_pct": 0.10, "success": 0.80,
+             "note": "Permo-Triassic hot sedimentary aquifer doublet - "
+                     "found, not installed, and can be written off"},
+}
+VFM_JUR_MODEL = {
+    "roi": {
+        "class": "open loop and standing column wells, ATES and BTES, "
+                 "with waste heat recovery and storage",
+        "deep_weight": 0.0,
+        "shortfall_default": 0.10,
+        "shortfall_range": (0.0, 0.30),
+    },
+    "ni": {
+        "class": "the same, with a deeper Permo-Triassic HSA "
+                 "component blended in",
+        "deep_weight": VFM_DEEP_WEIGHT,
+        "shortfall_default": 0.15,
+        "shortfall_range": (0.0, 0.45),
+    },
+}
+
+
+# THE SUBSURFACE INCREMENT, the lever the whole panel turns on.
+#
+# Energy centre and subsurface over the air-source alternative, per kW
+# of installed capacity at the reference sizing. DISTRIBUTION AND
+# CONNECTIONS ARE COMMON TO BOTH ROUTES AND CANCEL - same mains, same
+# trenching, same heat interface units - which is why this reduces to
+# one number rather than two full cost stacks.
+#
+# The UK sibling carries GBP 14/kW on a 6-26 range. Ireland differs in
+# both directions and the two effects partly offset:
+#
+#   UPWARD   no legacy oil and gas subsurface data of the kind that
+#            de-risks British prospects, and a far smaller supply chain
+#            - 20,128 systems in the Republic and a handful above 45 kW
+#            in the North, against 55,210 in Britain. Mobilisation is a
+#            larger share of a small programme.
+#   DOWNWARD the Republic's blend is entirely shallow, where the UK's
+#            is 40% intermediate doublet. Shallow plant is cheaper per
+#            kW than a 2 km doublet.
+#
+# So the Republic sits below the UK's central figure and the North at
+# roughly it, since the North IS the UK's blend on the same play.
+# Currency: euro throughout, converted at the ECB rate the site already
+# fetches, so the two panels can be compared.
+# UNIT CAPITAL, ALL ON ONE BASIS: per kW of HEATING capacity, plant
+# boundary (energy centre inclusive, distribution exclusive), EUR.
+# Getting these onto a common basis is the whole difficulty - a bare
+# ground loop set against a complete air-source energy centre produces
+# a spuriously negative increment, which an earlier version of this
+# model did produce.
+#
+# SHALLOW. Herrmann et al. 2026, RSER 226:116202, 133 ATES systems.
+# Headline is 300 EUR/kW above 2 MW, but that is PER KW OF COMBINED
+# HEATING AND COOLING - the paper adds an equivalent cooling capacity
+# where only heating was stated - so on a heating basis a balanced
+# system is about DOUBLE, near 600 EUR/kW. Scope is a whole ground
+# system including heat pumps and surface plant, running from the
+# wellhead to the building or heating station, so distribution is
+# outside it. EUR2022.
+#
+# BUT THE DATASET IS 77% DUTCH, and the Netherlands has unconsolidated
+# sand aquifers, a mature drilling supply chain and a national resource
+# risk fund. The paper's own Danish systems run near 1,000 EUR/kW,
+# which it attributes to different geology and an emerging market.
+# Ireland is emerging and is not the Netherlands, so the Dutch figure
+# is a best-case FLOOR and the Danish is the better central analogue.
+VFM_SHALLOW_EUR_KW = {
+    "dutch_floor": 600.0,      # 300 combined -> ~600 heating basis
+    "central": 1000.0,         # Danish, emerging market, non-sand
+    "high": 1400.0,
+    "source": "Herrmann et al. 2026, RSER 226:116202, 133 ATES "
+              "systems; 300 EUR/kW combined heating and cooling above "
+              "2 MW, restated to a heating basis; Danish subset near "
+              "1,000 EUR/kW taken as the Irish central",
+}
+# DEEP. Todd et al., Geoenergy, Table 5, seven Permo-Triassic doublet
+# cases from 10 to 1,800 m. GBP 1,550-2,179 per kW installed thermal,
+# itemised into borehole heat exchanger, heat pump, ancillaries and
+# development - a FULL installed cost including surface plant, so it is
+# already on the same basis as the shallow and air-source figures.
+# Notably FLAT with depth: the deepest case costs about the same per kW
+# as the shallowest, because COP rises from 2.76 to 14.5.
+#
+# FIRST OF A KIND. A 500-1,250 MW programme is not first-of-a-kind by
+# its end. Published learning rates for geothermal district heating run
+# 5% per capacity doubling (conventional) to 10% (drilling-dominated),
+# which over roughly seven doublings gives a 30-50% reduction. Carried
+# at 30% as the conservative end.
+VFM_DEEP_GBP_KW = {"low": 1550.0, "high": 2179.0, "mid": 1865.0,
+                   "source": "Todd et al., Geoenergy, Table 5, seven "
+                             "Permo-Triassic doublet cases"}
+VFM_FOAK_LEARNING = {"reduction": 0.30, "range": (0.25, 0.40),
+                     "note": "5-10% per capacity doubling over ~7 "
+                             "doublings to a 500-1,250 MW programme"}
+# AIR-SOURCE COUNTERFACTUAL. Danish Energy Agency technology catalogue
+# via PyPSA, and HIR Hamburg. The DEA boundary is the complete energy
+# centre - heat pump, air evaporators, civil works, buildings, grid
+# connection, commissioning - delivered to the nearest district heating
+# network, so distribution is outside it and VAT is excluded. Same
+# basis as both geothermal figures.
+VFM_AIRSOURCE_EUR_KW = {"low": 856.25, "high": 906.10, "mid": 881.18,
+                        "source": "PyPSA technology-data 2030 central "
+                                  "air heat pump (Danish Energy Agency "
+                                  "catalogue) and HIR Hamburg"}
+GBP_EUR = 1.17
+
+# CARBON: TWO PRICES THAT MUST NEVER BE ADDED.
+#
+# The site already holds CARBON_STEPS - the Finance Act 2020 carbon TAX
+# trajectory, EUR 26 to 100 a tonne. That is a TRANSFER: money moving
+# from a household to the exchequer. It belongs in the bill panels,
+# where it does, and in Panel 6's private view flagged as a transfer.
+# It is NOT a resource benefit.
+#
+# The RESOURCE cost of a tonne emitted is the shadow price, and the two
+# jurisdictions publish different ones on different bases. Adding tax
+# to shadow price would double-count: the tax is a policy instrument
+# that partially internalises the very damage the shadow price
+# measures.
+#
+# ROI: Infrastructure Guidelines (DPENDR, Dec 2023), constant 2018
+# euro, target-consistent on a TIMES-Ireland basis. NI: DESNZ carbon
+# values, which are on a different basis again - a traded/non-traded
+# convergence rather than a target-consistent shadow price - so the two
+# columns are NOT directly comparable and the panel says so.
+VFM_SHADOW_CARBON = {
+    "roi": {2024: 322.0, 2030: 408.0, 2040: 604.0, 2050: 890.0,
+            "unit": "EUR/tCO2e, constant 2018 euro",
+            "source": "Infrastructure Guidelines, DPENDR, Dec 2023, "
+                      "target-consistent TIMES-Ireland basis"},
+    "ni": {2024: 277.0, 2050: 398.0,
+           "unit": "GBP/tCO2e",
+           "source": "DESNZ carbon values, as the UK sibling uses"},
+}
+
+
+def vfm_shadow_carbon(jur, year):
+    """Shadow price of carbon, interpolated. NOT the carbon tax."""
+    t = VFM_SHADOW_CARBON[jur]
+    yrs = sorted(k for k in t if isinstance(k, int))
+    if year <= yrs[0]:
+        return t[yrs[0]]
+    if year >= yrs[-1]:
+        return t[yrs[-1]]
+    for i in range(1, len(yrs)):
+        if year <= yrs[i]:
+            a, b = yrs[i - 1], yrs[i]
+            f = (year - a) / (b - a)
+            return t[a] + f * (t[b] - t[a])
+    return t[yrs[-1]]
+
+
+# THE OPERATORS' OWN PLANNING BASIS, and the gap in it.
+#
+# EirGrid and SONI's Tomorrow's Energy Scenarios 2023 databook, IE
+# Demand sheet, Table 6.4, gives TWO NUMBERS: air source 2.6, ground
+# source 2.94. That is the entire heat-pump treatment. Searching all
+# twenty-four sheets for "seasonal", "SCOP", "weather", "temperature",
+# "degree", "peak heat", "coincidence" or "diversity" returns NOTHING.
+#
+# So a flat COP is applied as a divisor from heat demand to electricity
+# demand, in four scenarios, out to 2050 - with no stated source
+# temperature, flow temperature or season, and no treatment of what
+# happens on the coldest evening. That same demand forecast feeds the
+# capacity requirement the SEM auction procures against.
+#
+# THE OMISSION CUTS BOTH WAYS, which is why it is worth stating rather
+# than merely disagreeing with. A flat 2.6 UNDERSTATES air-source peak
+# draw, because real units do worse when it is cold and damp - our own
+# model puts an Irish air-source unit at 2.32 at the tightest hour, 12%
+# more peak demand than a flat 2.6 implies. And a flat 2.94
+# UNDERSTATES the ground-source advantage, because ground source does
+# not degrade at all. The planning basis therefore underestimates both
+# the problem and the solution.
+#
+# OUR FIGURES ARE NOT THE SAME MACHINES. 2.94 is fair for a domestic
+# ground-source unit. NETWORK_MODEL's 4.0 and 5.0 are network scale -
+# low flow temperatures, a stable source, and in the North a warmer
+# Permo-Triassic source. The panel says so explicitly rather than
+# leaving a reviewer to assume we have simply inflated TES.
+VFM_TES_COP = {
+    "air_source": 2.6, "ground_source": 2.94,
+    "table": "Tomorrow's Energy Scenarios 2023 databook, IE Demand, "
+             "Table 6.4",
+    "seasonal_treatment": None,
+    "peak_treatment": None,
+    "searched": ("seasonal", "SCOP", "weather", "temperature", "degree",
+                 "peak heat", "coincidence", "diversity"),
+    "note": "two numbers, no stated conditions, applied flat to 2050",
+}
+# TES's own carbon path, from the same databook - Tables 7.11 and 7.12,
+# megatonnes, against annual demand from Figure 6.1. Ireland's average
+# intensity in Self-Sustaining is +14 g/kWh in 2035 and NEGATIVE
+# thereafter, because the scenarios reach a carbon-negative power
+# system. That all but extinguishes the carbon stream in this panel
+# within a decade, and it is the operators' own forecast.
+VFM_TES_CARBON = {
+    "ie_mt": {"self_sustaining": {2035: 0.98, 2040: -0.70,
+                                  2045: -0.74, 2050: -1.24},
+              "gas_evolution": {2035: 1.13, 2040: 0.50,
+                                2045: 0.0, 2050: 0.0},
+              "constrained_growth": {2035: 2.49, 2040: 1.63,
+                                     2045: 0.97, 2050: -0.40}},
+    "ni_mt": {"self_sustaining": {2035: 0.15, 2040: -0.33,
+                                  2045: -0.39, 2050: -0.59}},
+    "ie_avg_g_kwh_ss": {2035: 14.1, 2040: -8.6, 2045: -8.9, 2050: -14.7},
+    "source": "TES 2023 databook, Tables 7.11 and 7.12 with Figure 6.1",
+    "caveat": "AVERAGE intensity, not marginal. A saved kilowatt-hour "
+              "displaces the marginal generator, which may still be gas "
+              "when the annual total is negative - and the negative "
+              "totals imply removals whose accounting treatment "
+              "matters. Marginal is the right basis and TES does not "
+              "publish it.",
+}
+
+
+# RUNNING COST: TWO PRICES, AND THE GAP BETWEEN THEM IS TRANSFERS.
+#
+# The RESOURCE saving is the long-run variable cost of the electricity
+# not generated - fuel, carbon and variable operating cost on the
+# marginal plant. That is what the Green Book and the Infrastructure
+# Guidelines both want, and it is what society actually saves.
+#
+# The BILL saving is the retail price, which the site already derives
+# per jurisdiction and sector. The difference between the two is
+# network charges, policy levies, supplier margin and VAT - all
+# TRANSFERS under both rulebooks. The UK sibling found roughly half its
+# private return was exactly these, so the resource figure is
+# materially smaller than the bill and the panel reports both,
+# separately labelled, never summed.
+#
+# LRVC is a dagger. Neither jurisdiction publishes a long-run variable
+# cost series for electricity, so it is anchored on the wholesale
+# element of the retail price - and the SEM's own energy market is the
+# closest observable, though it contains scarcity rent that a long-run
+# cost does not.
+# Long-run variable cost, p/kWh, on the UK sibling's own anchor years.
+# NORTHERN IRELAND USES THESE DIRECTLY - it is the same market for
+# appraisal purposes and the Green Book applies. THE REPUBLIC IS
+# PINNED TO THE EURO EQUIVALENT for now, which is a placeholder with a
+# reason rather than a source: the Infrastructure Guidelines name no
+# national energy price series at all, so there is nothing Irish to
+# use, and a neighbouring market's published figure beats a number
+# invented here.
+#
+# IT REPLACES EUR 95, WHICH I ASSERTED. That figure had no derivation
+# - the note claimed it was anchored on retail and SEM prices but it
+# was not computed from either. It sat below the Irish wholesale
+# average of EUR 113.83 (2025, kilowatt.ie, the series the
+# dispatch-down work already uses) and a third below the UK's own
+# figure, with nothing supporting the position. Running cost is the
+# largest DURABLE stream in this panel - carbon collapses within a
+# decade - so the whole answer scales linearly with it.
+#
+# STILL TO DO: build it from the marginal plant. Fuel plus carbon plus
+# variable O&M on Irish gas generation is computable from the gas
+# price this site already fetches, a CCGT efficiency and a carbon
+# price. That would make it derived and testable rather than borrowed.
+VFM_LRVC_YEARS = (2026, 2030, 2035, 2040, 2045, 2050, 2055, 2060)
+VFM_LRVC_P_KWH = (14.306, 12.530, 12.763, 12.695, 12.565,
+                  12.273, 12.273, 12.273)
+VFM_LRVC_SOURCE = ("UK Heat Split sibling, long-run variable cost "
+                   "series on its own anchor years; NI direct, ROI "
+                   "pinned to the euro equivalent pending an Irish "
+                   "derivation")
+
+
+def vfm_lrvc(year, jur):
+    """LRVC interpolated. GBP/MWh for NI, EUR/MWh for ROI."""
+    ys, vs = VFM_LRVC_YEARS, VFM_LRVC_P_KWH
+    if year <= ys[0]:
+        v = vs[0]
+    elif year >= ys[-1]:
+        v = vs[-1]
+    else:
+        v = vs[-1]
+        for i in range(1, len(ys)):
+            if year <= ys[i]:
+                f = (year - ys[i - 1]) / (ys[i] - ys[i - 1])
+                v = vs[i - 1] + f * (vs[i] - vs[i - 1])
+                break
+    gbp_mwh = v * 10.0
+    return gbp_mwh * (GBP_EUR if jur == "roi" else 1.0)
+
+
+VFM_LRVC_EUR_MWH = {"central": round(vfm_lrvc(2030, "roi"), 1),
+                    "low": round(vfm_lrvc(2050, "roi"), 1),
+                    "high": round(vfm_lrvc(2026, "roi"), 1),
+                    "note": VFM_LRVC_SOURCE}
+
+
+# ENERGY PRICE FORECASTS. A sixty-year appraisal cannot run on today's
+# prices, and each rulebook names its own source:
+#
+#   NI   DESNZ energy price projections, required by the Green Book.
+#        Published as low/central/high paths to 2050 in real terms.
+#   ROI  the Infrastructure Guidelines name NO national series. SEAI's
+#        National Energy Projections are the fallback the evidence base
+#        recommends, and they are a modelling output rather than an
+#        appraisal price set - so the Republic's price path is a
+#        weaker input than the North's, which is the opposite of the
+#        usual asymmetry on this site.
+#
+# TODAY'S PRICES COME FROM THE COST PANEL, not from a second
+# derivation. derive_heat_cost_series already computes the daily cost
+# of a useful kWh by route, per jurisdiction, on live feeds - so
+# Panel 6 reads that and the two panels cannot disagree about what
+# heat costs. What Panel 6 adds is the forward path and the transfer
+# split.
+VFM_PRICE_FORECAST = {
+    "ni": {"source": "DESNZ energy price projections",
+           "status": "published appraisal price set, Green Book "
+                     "requires it",
+           "paths": ("low", "central", "high")},
+    "roi": {"source": "SEAI National Energy Projections",
+            "status": "FALLBACK - the Infrastructure Guidelines name "
+                      "no national energy price series, so this is a "
+                      "modelling output pressed into appraisal use",
+            "paths": ("central",)},
+    "today_from": "derive_heat_cost_series - the cost panel's own "
+                  "daily cost of a useful kWh by route",
+}
+# THE TWO STAGES NEED DIFFERENT PRICES, which is why the stage split
+# matters for more than presentation:
+#
+#   Stage 1  BAU -> air-source network. Needs a FUEL price (gas in the
+#            Republic's networked areas, oil across much of the North)
+#            AND an electricity price. The saving is fuel avoided less
+#            electricity drawn, so it turns on the RATIO between two
+#            forecasts - and that ratio is the single most uncertain
+#            thing in the electrification case.
+#   Stage 2  air-source -> geothermal. BOTH ROUTES ARE ELECTRIC, so
+#            the price level largely cancels and only the SPF gap
+#            matters. That makes the subsurface stage far more robust
+#            to price forecasting than the electrification stage.
+#
+# Worth stating on the panel: the stage we are advocating is the one
+# least exposed to the forecast nobody can make.
+VFM_STAGE_PRICES = {
+    "electrify": ("fuel", "electricity"),
+    "subsurface": ("electricity",),
+}
+
+
+def derive_vfm_running(anchors=None):
+    """
+    The running-cost saving of the subsurface stage: electricity not
+    drawn because the SPF is higher, valued twice.
+
+    THIS IS NOW THE DURABLE STREAM. Carbon all but vanishes within a
+    decade on the operators' own scenarios; capacity does not decay but
+    is modest; this one runs for the whole sixty years and grows with
+    the heat load.
+    """
+    a = anchors or ANCHORS
+    c = derive_vfm_carbon(a)
+    out = {"lrvc_eur_mwh": dict(VFM_LRVC_EUR_MWH), "jur": {}}
+    for k, v in c["jur"].items():
+        saved_mwh = v["elec_saved_twh"] * 1e6
+        res = {lab: round(saved_mwh * VFM_LRVC_EUR_MWH[lab] / 1e6, 1)
+               for lab in ("low", "central", "high")}
+        out["jur"][k] = {
+            "elec_saved_twh": v["elec_saved_twh"],
+            "resource_eur_m_yr": res,
+            "transfers_excluded": list(VFM_TRANSFERS),
+        }
+    log("vfm running: subsurface stage saves "
+        + "; ".join(f"{k.upper()} EUR "
+                    f"{v['resource_eur_m_yr']['central']}m a year at "
+                    f"LRVC (range "
+                    f"{v['resource_eur_m_yr']['low']}-"
+                    f"{v['resource_eur_m_yr']['high']})"
+                    for k, v in out["jur"].items())
+        + " - RESOURCE cost, transfers excluded; the bill saving is "
+          "larger and is reported separately")
+    return out
+
+
+def derive_vfm_carbon(anchors=None):
+    """
+    Carbon saved by the SUBSURFACE STAGE ONLY - geothermal against an
+    air-source network, both electric.
+
+    Stage one, moving off oil and gas, saves far more carbon - but any
+    heat pump delivers that, and crediting it here would let the
+    subsurface bank the electrification benefit. So this stage counts
+    only the electricity NOT drawn because the SPF is higher, at the
+    grid intensity of the year in question.
+
+    GRID INTENSITY IS THE WHOLE STORY AND IT IS FALLING. On a
+    decarbonising grid the carbon value of an efficiency gain shrinks
+    every year - by 2050 an all-renewable grid makes it nearly zero.
+    That cuts against our own argument and the panel should say so.
+    """
+    a = anchors or ANCHORS
+    s = derive_vfm_scenario(a)
+    out = {"stage": "subsurface", "jur": {}}
+    for k, v in s["jur"].items():
+        net = v["network_twh"]
+        spf_geo = NETWORK_MODEL[k]["spf"]
+        spf_as = SPF_ANCHORS["ashp"]
+        # electricity saved per year, TWh
+        saved = net / spf_as - net / spf_geo
+        out["jur"][k] = {
+            "network_twh": net,
+            "elec_ashp_twh": round(net / spf_as, 3),
+            "elec_geo_twh": round(net / spf_geo, 3),
+            "elec_saved_twh": round(saved, 3),
+            "saved_pct": round(100 * saved / (net / spf_as), 1),
+        }
+    log(f"vfm carbon: subsurface stage saves "
+        + "; ".join(f"{k.upper()} {v['elec_saved_twh']} TWh of "
+                    f"electricity a year ({v['saved_pct']}%)"
+                    for k, v in out["jur"].items())
+        + " - valued at the shadow price, NOT the carbon tax, and "
+          "shrinking as the grid decarbonises")
+    return out
+
+
+def derive_vfm_increment(anchors=None):
+    """
+    The subsurface increment over an air-source network, per kW of
+    heating capacity, blended by each jurisdiction's deep fraction.
+
+    DISTRIBUTION AND CONNECTIONS CANCEL - same mains, same trenching,
+    same heat interface units whichever source feeds them - which is
+    why this reduces to one number rather than two cost stacks.
+
+    The UK sibling carries GBP 875/kW here and it does not reconcile:
+    a geothermal plant near GBP 1,200/kW less an air-source energy
+    centre near GBP 750/kW, with distribution cancelling, gives about
+    GBP 450/kW. GBP 875 credits air-source at only about GBP 325/kW,
+    so it OVERSTATES geothermal's incremental capital - conservative,
+    and against their own interest, but it should be a range rather
+    than a default. Ours is computed from both sides so the netting is
+    visible.
+    """
+    asc = VFM_AIRSOURCE_EUR_KW["mid"]
+    deep_eur = VFM_DEEP_GBP_KW["mid"] * GBP_EUR
+    deep_nth = deep_eur * (1 - VFM_FOAK_LEARNING["reduction"])
+    out = {"air_source_eur_kw": asc,
+           "shallow_eur_kw": dict(VFM_SHALLOW_EUR_KW),
+           "deep_eur_kw": {"foak": round(deep_eur, 0),
+                           "nth": round(deep_nth, 0),
+                           "learning": VFM_FOAK_LEARNING["reduction"]},
+           "jur": {}}
+    for k, m in VFM_JUR_MODEL.items():
+        w = m["deep_weight"]
+        row = {}
+        for lab, sh in (("floor", VFM_SHALLOW_EUR_KW["dutch_floor"]),
+                        ("central", VFM_SHALLOW_EUR_KW["central"]),
+                        ("high", VFM_SHALLOW_EUR_KW["high"])):
+            for dl, dp in (("foak", deep_eur), ("nth", deep_nth)):
+                blend = (1 - w) * sh + w * dp
+                row[f"{lab}_{dl}"] = {
+                    "blend_eur_kw": round(blend, 0),
+                    "increment_eur_kw": round(blend - asc, 0)}
+        out["jur"][k] = {"deep_weight": w, "cases": row,
+                         "central": row["central_nth"]}
+    log(f"vfm increment: air-source {asc:.0f} EUR/kW; shallow "
+        f"{VFM_SHALLOW_EUR_KW['dutch_floor']:.0f} Dutch floor to "
+        f"{VFM_SHALLOW_EUR_KW['central']:.0f} Irish central; deep "
+        f"{deep_eur:.0f} FOAK, {deep_nth:.0f} at nth. Central "
+        f"increments: ROI "
+        f"{out['jur']['roi']['central']['increment_eur_kw']:+.0f}, NI "
+        f"{out['jur']['ni']['central']['increment_eur_kw']:+.0f} "
+        f"EUR/kW")
+    return out
+
+
+def derive_vfm_stages(anchors=None, geo=None):
+    """
+    The two-stage structure and the levers each jurisdiction is
+    entitled to.
+
+    Nothing is priced here - this publishes the SHAPE, so the front end
+    and the tests agree on what the stages are and which levers belong
+    where before any number is attached.
+    """
+    a = anchors or ANCHORS
+    C = VFM_SUBSURFACE_CLASSES
+    out = {"stages": list(VFM_STAGES), "jur": {},
+           "classes": C, "deep_weight": VFM_DEEP_WEIGHT}
+    for k, m in VFM_JUR_MODEL.items():
+        nm = NETWORK_MODEL[k]
+        w = m["deep_weight"]
+        # social devex = devex / success, blended by weight. Money
+        # spent on prospects that did not proceed is still a resource
+        # cost per delivered megawatt.
+        soc = ((1 - w) * C["shallow"]["devex_pct"] / C["shallow"]["success"]
+               + w * C["deep"]["devex_pct"] / C["deep"]["success"])
+        out["jur"][k] = {
+            "class": m["class"],
+            "deep_weight": w,
+            "source_c": nm["source_c"],
+            "spf": nm["spf"],
+            "spf_counterfactual": SPF_ANCHORS["ashp"],
+            "spf_gain": round(nm["spf"] / SPF_ANCHORS["ashp"], 2),
+            "devex_social_pct": round(soc, 4),
+            # BOTH carry a shortfall lever: productivity risk survives
+            # commissioning, and part of it is not geological at all -
+            # waste heat that does not arrive in the volume assumed.
+            "shortfall_default": m["shortfall_default"],
+            "shortfall_range": list(m["shortfall_range"]),
+        }
+    out["capacity_sign"] = {"electrify": -1, "subsurface": +1}
+    log("vfm stages: BAU -> air-source network (electrify), then "
+        "air-source -> geothermal (subsurface increment); never summed. "
+        + "; ".join(
+            f"{k.upper()} SPF {v['spf']} vs {v['spf_counterfactual']} "
+            f"= {v['spf_gain']}x, {100*v['deep_weight']:.0f}% deep, "
+            f"social devex {100*v['devex_social_pct']:.1f}%, shortfall "
+            f"{100*v['shortfall_default']:.0f}% "
+            f"({100*v['shortfall_range'][0]:.0f}-"
+            f"{100*v['shortfall_range'][1]:.0f}%)"
+            for k, v in out["jur"].items()))
+    return out
+
+
+def derive_vfm_scenario(anchors=None):
+    """
+    The policy scenario, per jurisdiction, and a fifth of it geothermal.
+
+    SEAI's National Heat Study puts the technical potential for
+    district heating at up to 54% of building heat, so a scenario at
+    10.7% sits well inside it - the ceiling is SEAI's, not ours.
+    """
+    a = anchors or ANCHORS
+    roi_del = (a["roi"]["residential_heat_twh"]
+               + a["roi"]["services_heat_twh"]) \
+        * a.get("delivered_over_input_roi", 0.8225)
+    ni_del = (a["ni"]["residential_heat_twh"]
+              + a["ni"]["services_heat_twh"]) \
+        * a.get("delivered_over_input_ni", 0.8375)
+    tgt = VFM_DH_SCENARIO["roi_target_twh"]
+    prop = tgt / roi_del
+    flh = VFM_DH_SCENARIO["network_load_hours"]
+    lo, hi = VFM_DH_SCENARIO["roi_delivery_pct"]
+    jur = {
+        "roi": {"delivered_twh": round(roi_del, 2), "network_twh": tgt,
+                "basis": "target", "committed": True},
+        "ni": {"delivered_twh": round(ni_del, 2),
+               "network_twh": round(prop * ni_del, 2),
+               "basis": "lent", "committed": False},
+    }
+    for k, v in jur.items():
+        # the WHOLE scenario, either way it is supplied
+        v["network_gwh"] = round(v["network_twh"] * 1000, 0)
+        v["plant_mw"] = round(v["network_twh"] * 1e6 / flh, 0)
+        v["network_pct_of_heat"] = round(100 * v["network_twh"]
+                                         / v["delivered_twh"], 1)
+        # the site-wide fifth, for contrast - a DIFFERENT question
+        v["site_whatif_twh"] = round(0.20 * v["delivered_twh"], 2)
+        v["vs_site_whatif"] = round(v["network_twh"]
+                                    / v["site_whatif_twh"], 2)
+    out = {
+        "scenario": dict(VFM_DH_SCENARIO),
+        "jur": jur,
+        "load_hours": flh,
+        "island_network_gwh": round(sum(v["network_gwh"]
+                                        for v in jur.values()), 0),
+        "island_plant_mw": round(sum(v["plant_mw"] for v in jur.values()), 0),
+        "roi_outturn_twh": [round(tgt * lo / 100, 2),
+                            round(tgt * hi / 100, 2)],
+        "seai_technical_ceiling_pct": 54.0,
+    }
+    log(f"vfm scenario: ROI district heating target {tgt} TWh "
+        f"({jur['roi']['network_pct_of_heat']}% of its building heat, "
+        f"{jur['roi']['plant_mw']:.0f} MW at {flh} h); NI at the same "
+        f"proportion would be {jur['ni']['network_twh']} TWh "
+        f"({jur['ni']['plant_mw']:.0f} MW) - LENT, it has no target. "
+        f"The WHOLE scenario is priced either way it is supplied - no "
+        f"fifth inside it")
+    return out
+
+
+def derive_vfm_constants(anchors=None):
+    """
+    Panel 6's shared constants, and the cross-panel reads that keep it
+    consistent with the rest of the site.
+
+    Nothing here is computed twice: the dispatch-down series comes from
+    Panel 3, the cooling service factors from Panel 1 and 4, the SPFs
+    and the geothermal load hours from the anchors those panels use.
+    """
+    a = anchors or ANCHORS
+    roi_del = (a["roi"]["residential_heat_twh"]
+               + a["roi"]["services_heat_twh"]) \
+        * a.get("delivered_over_input_roi", 0.8225)
+    ni_del = (a["ni"]["residential_heat_twh"]
+              + a["ni"]["services_heat_twh"]) \
+        * a.get("delivered_over_input_ni", 0.8375)
+    out = {
+        "counterfactuals": list(VFM_COUNTERFACTUALS),
+        "capacity_applies_to": list(VFM_CAPACITY_APPLIES_TO),
+        "sem_capacity_eur_mw_yr": VFM_SEM_CAPACITY,
+        "gb_capacity_gbp_kw_yr": VFM_GB_CAPACITY_GBP_KW,
+        "appraisal": VFM_APPRAISAL,
+        "transfers": list(VFM_TRANSFERS),
+        "ashp_energy_centre": VFM_ASHP_ENERGY_CENTRE_EUR_KWTH,
+        # read, not restated
+        "spf": {"ashp": SPF_ANCHORS["ashp"], "gshp": SPF_ANCHORS["gshp"],
+                "network_ni": NETWORK_MODEL["ni"]["spf"],
+                "network_roi": NETWORK_MODEL["roi"]["spf"]},
+        "delivered_heat_twh": {"roi": round(roi_del, 1),
+                               "ni": round(ni_del, 1)},
+        "whatif_share": 0.20,
+        "horizon_years": 60,
+    }
+    log(f"vfm constants: SEM capacity "
+        f"{VFM_SEM_CAPACITY['t4_2029_30']:,.0f} EUR/MW/yr against a GB "
+        f"T-4 of GBP {VFM_GB_CAPACITY_GBP_KW['t4_2029_30']}/kW/yr; "
+        f"capacity benefit applies to the ASHP counterfactual ONLY; "
+        f"network-scale ASHP energy centre carried as a "
+        f"{VFM_ASHP_ENERGY_CENTRE_EUR_KWTH['low']:.0f}-"
+        f"{VFM_ASHP_ENERGY_CENTRE_EUR_KWTH['high']:.0f} EUR/kWth proxy "
+        f"- no Irish figure is published")
+    return out
 
 
 def derive_geo_targets(anchors=None, geo=None):
@@ -7933,6 +8741,23 @@ def main():
             "the rest of the panel is unaffected")
     try:
         derived["cooling_tiers"] = derive_cooling_tiers()
+        # Panel 6. Wholly offline - every input is an anchor, a
+        # published constant or a cross-panel read, so it renders
+        # without a single feed. That is deliberate at this stage: the
+        # appraisal is being checked, not tracked.
+        derived["vfm"] = {
+            "scenario": derive_vfm_scenario(),
+            "stages": derive_vfm_stages(),
+            "increment": derive_vfm_increment(),
+            "carbon": derive_vfm_carbon(),
+            "running": derive_vfm_running(),
+            "constants": derive_vfm_constants(),
+            "tes_cop": VFM_TES_COP,
+            "tes_carbon": VFM_TES_CARBON,
+            "lrvc": {"years": list(VFM_LRVC_YEARS),
+                     "p_kwh": list(VFM_LRVC_P_KWH),
+                     "source": VFM_LRVC_SOURCE},
+        }
         derived["heat_rejected"] = derive_heat_rejected(
             derived["cooling_tiers"])
     except Exception as exc:
