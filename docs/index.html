@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.41.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.42.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -686,6 +686,43 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <summary>What the bars price, and where the comparators come
         from</summary>
       <div class="foldbody" id="geoMethod"></div>
+    </details>
+  </div>
+</section>
+
+<section id="vfm" aria-labelledby="vfm-h">
+  <h2 id="vfm-h">6. Value for money &mdash; geothermal against an
+    air-source-led network</h2>
+  <p class="scopeline">Not whether to build networks. The Republic has
+    committed to that. Only what sits at the head of them.</p>
+  <div class="panelbox">
+    <!-- Targets are jurisdictional, so no all-island view here
+         either. Same rule as Panel 5. -->
+    <div class="costctl costjur" id="vfmCtl">
+      <span>WHERE</span>
+      <button data-vfmjur="roi" aria-pressed="true">REPUBLIC OF IRELAND</button>
+      <button data-vfmjur="ni">NORTHERN IRELAND</button>
+    </div>
+    <h3 class="foldh">Two stages, never summed
+      <span class="sub">&mdash; electrify first, then choose the heat
+      source</span></h3>
+    <div id="vfmStages"></div>
+    <p class="note" id="vfmStagesNote"></p>
+
+    <h3 class="foldh">What the subsurface earns
+      <span class="sub">&mdash; per year, against an air-source
+      network</span></h3>
+    <div id="vfmStreams"></div>
+    <p class="note" id="vfmStreamsNote"></p>
+
+    <h3 class="foldh">And what the operators assume
+      <span class="sub">&mdash; a flat heat-pump COP, out to
+      2050</span></h3>
+    <div id="vfmTes"></div>
+    <p class="note" id="vfmTesNote"></p>
+    <details class="fold">
+      <summary>How this is built, and what is still missing</summary>
+      <div class="foldbody" id="vfmMethod"></div>
     </details>
   </div>
 </section>
@@ -2979,6 +3016,244 @@ function gasCalLine(D){
 // reads as an argument being made at the reader; letting them switch
 // between the two makes the same point and lets them find it.
 let GEOJUR = "roi";
+// ------------------------------------------- Panel 6: value for money
+// Wholly offline - every input is an anchor, a published constant or a
+// cross-panel read. No feed touches it.
+let VFMJUR = "roi";
+let VFMD = null;
+function vfmPanel(D){
+  VFMD = (D||{}).derived && D.derived.vfm ? D.derived.vfm : null;
+  vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD);
+}
+document.querySelectorAll("[data-vfmjur]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    VFMJUR = b.dataset.vfmjur;
+    document.querySelectorAll("[data-vfmjur]").forEach(x=>
+      x.setAttribute("aria-pressed", String(x === b)));
+    if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); }
+  });
+});
+const VFMLAB = {roi:"the Republic", ni:"Northern Ireland"};
+
+function vfmStages(v){
+  const box = el("vfmStages"), note = el("vfmStagesNote");
+  if(!box) return;
+  if(!v){ box.textContent = "The appraisal arrives with a coming build.";
+          if(note) note.textContent = ""; return; }
+  const sc = v.scenario.jur[VFMJUR], st = v.stages.jur[VFMJUR];
+  const lent = sc.basis === "lent";
+  let s = '<div class="hstats">'
+    + '<div class="hstat"><div class="hval">' + fmt(sc.network_twh,2)
+    + '<span style="font-size:.5em"> TWh</span></div><div class="hlab">'
+    + 'of building heat on networks by ' + (lent ? "the same year" : "2030")
+    + ' \u00b7 ' + fmt(sc.network_pct_of_heat,1) + '% of the total'
+    + (lent ? ' \u2014 <b>LENT</b>, this jurisdiction has set no target'
+            : ' \u2014 a government commitment')
+    + '</div></div>'
+    + '<div class="hstat"><div class="hval">' + fmt(sc.plant_mw,0)
+    + '<span style="font-size:.5em"> MW</span></div><div class="hlab">'
+    + 'of plant at ' + fmt(v.scenario.load_hours,0) + ' full-load hours'
+    + '<span class="dag">\u2020</span></div></div>'
+    + '<div class="hstat"><div class="hval">' + fmt(st.spf,1)
+    + '<span style="font-size:.5em"> vs </span>'
+    + fmt(st.spf_counterfactual,1) + '</div><div class="hlab">'
+    + 'network SPF against an air-source network \u00b7 a '
+    + fmt(st.spf_gain,2) + 'x gain, from a ' + fmt(st.source_c,1)
+    + '\u202f\u00b0C source</div></div></div>';
+  // the two stages, as a table, because they are never summed
+  s += '<table class="caltab"><thead><tr><th>Stage</th>'
+    + '<th>What it decides</th><th>Capacity</th><th>Price exposure</th>'
+    + '</tr></thead><tbody>'
+    + '<tr><td><b>1 \u00b7 electrify</b></td><td>BAU to an air-source '
+    + 'network \u2014 whether to move off oil and gas at all</td>'
+    + '<td style="color:#C98F4F">a COST \u2014 electrifying heat ADDS '
+    + 'winter peak</td><td>fuel AND electricity, so it turns on the '
+    + 'ratio between two forecasts</td></tr>'
+    + '<tr><td><b>2 \u00b7 subsurface</b></td><td>air-source to '
+    + 'geothermal \u2014 what sits at the head of the network</td>'
+    + '<td style="color:#3AAA35">a BENEFIT \u2014 the same heat at a '
+    + 'higher SPF</td><td>electricity only, so the price level largely '
+    + 'cancels</td></tr></tbody></table>';
+  box.innerHTML = s;
+  if(note){
+    note.textContent = "The stages are reported separately and never "
+      + "summed. Summing them would let the subsurface bank the carbon "
+      + "saving of moving off oil and gas \u2014 which any heat pump "
+      + "delivers \u2014 and leave the ground unjudged. It also settles "
+      + "the capacity sign without anyone having to remember it: "
+      + "electrifying heat adds winter peak, so capacity is a cost in "
+      + "stage one; raising the SPF once electrified saves it, so it is "
+      + "a benefit in stage two. And the stage this site advocates is "
+      + "the one least exposed to the forecast nobody can make, because "
+      + "both its routes are electric. "
+      + (lent
+         ? "Northern Ireland has set no district heating target of any "
+           + "kind, so its scenario is the Republic's share of building "
+           + "heat lent to it. That is the finding, not a caveat."
+         : "Stage one is only partly priced here \u2014 the "
+           + "electrification arithmetic is not yet built.");
+  }
+}
+
+function vfmStreams(v){
+  const box = el("vfmStreams"), note = el("vfmStreamsNote");
+  if(!box) return;
+  if(!v){ box.textContent = "The streams arrive with a coming build.";
+          if(note) note.textContent = ""; return; }
+  const cur = VFMJUR === "roi" ? "\u20ac" : "\u00a3";
+  const run = v.running.jur[VFMJUR].resource_eur_m_yr;
+  const cap = VFMJUR === "roi" ? 13.9 : 7.6;
+  const inc = v.increment.jur[VFMJUR].central.increment_eur_kw;
+  const mw = v.scenario.jur[VFMJUR].plant_mw;
+  const rows = [
+    {k:"Running cost", v:run.central, lo:run.low, hi:run.high,
+     note:"the SPF gain at long-run variable cost \u2014 a RESOURCE "
+        + "saving, with network charges, levies, margin and VAT "
+        + "stripped as transfers", dur:"runs the whole horizon"},
+    {k:"Avoided capacity", v:cap, lo:cap*0.7, hi:cap,
+     note:"less peak plant needed, at Net CONE rather than the auction "
+        + "clearing price \u2014 the avoided cost of capacity, not a "
+        + "payment anyone receives", dur:"does not decay"},
+    {k:"Carbon", v:null, lo:null, hi:null,
+     note:"near zero within a decade on the operators' own scenarios, "
+        + "and negative thereafter as the grid goes carbon-negative",
+     dur:"<b>extinguishes by about 2035</b>"},
+  ];
+  const tot = run.central + cap;
+  const capex = mw * inc / 1000;
+  let s = '<div class="hstats">'
+    + '<div class="hstat"><div class="hval">' + cur + fmt(tot,0)
+    + '<span style="font-size:.5em">m</span></div><div class="hlab">'
+    + 'a year, durable streams only \u00b7 running cost plus avoided '
+    + 'capacity</div></div>'
+    + '<div class="hstat"><div class="hval">' + cur + fmt(capex,0)
+    + '<span style="font-size:.5em">m</span></div><div class="hlab">'
+    + 'the subsurface increment over an air-source energy centre, at '
+    + cur + fmt(inc,0) + '/kW<span class="dag">\u2020</span> \u00b7 '
+    + 'distribution and connections cancel</div></div>'
+    + '<div class="hstat"><div class="hval">' + fmt(capex/tot,1)
+    + '<span style="font-size:.5em"> yr</span></div><div class="hlab">'
+    + 'simple payback, undiscounted and before optimism bias, devex or '
+    + 'shortfall \u2014 <b>not</b> a benefit-cost ratio</div></div>'
+    + '</div>';
+  s += '<table class="caltab"><thead><tr><th>Stream</th>'
+    + '<th>' + cur + 'm a year</th><th>Over sixty years</th>'
+    + '<th>What it is</th></tr></thead><tbody>'
+    + rows.map(r =>
+        '<tr><td><b>' + r.k + '</b></td><td>'
+        + (r.v === null ? '\u2014'
+           : cur + fmt(r.v,1) + ' <span style="color:var(--muted)">('
+             + fmt(r.lo,1) + '\u2013' + fmt(r.hi,1) + ')</span>')
+        + '</td><td>' + r.dur + '</td><td>' + r.note + '</td></tr>')
+        .join("")
+    + '</tbody></table>';
+  box.innerHTML = s;
+  if(note){
+    note.textContent = "Carbon was expected to carry this panel and "
+      + "does not. On EirGrid and SONI's own Tomorrow's Energy "
+      + "Scenarios the Irish power system reaches net zero from 2040 in "
+      + "two of four scenarios and turns carbon-NEGATIVE thereafter, so "
+      + "the carbon value of an efficiency gain is near zero within a "
+      + "decade. What remains is running cost and capacity \u2014 "
+      + "neither of which decays, because peak plant is needed whatever "
+      + "its carbon content. That is a more durable case than a "
+      + "carbon-led one, and it happens to be the one the operators' "
+      + "own forecasts support.";
+  }
+}
+
+function vfmTes(v){
+  const box = el("vfmTes"), note = el("vfmTesNote"), meth = el("vfmMethod");
+  if(!box) return;
+  if(!v){ box.textContent = "The comparison arrives with a coming build.";
+          if(note) note.textContent = ""; if(meth) meth.innerHTML = "";
+          return; }
+  const t = v.tes_cop, st = v.stages.jur[VFMJUR];
+  let s = '<table class="caltab"><thead><tr><th></th>'
+    + '<th>Air source</th><th>Ground source</th><th>Seasonal or peak '
+    + 'treatment</th></tr></thead><tbody>'
+    + '<tr><td><b>EirGrid and SONI</b><br><span style="color:'
+    + 'var(--muted)">' + esc(t.table) + '</span></td><td>'
+    + fmt(t.air_source,2) + '</td><td>' + fmt(t.ground_source,2)
+    + '</td><td style="color:#C98F4F"><b>none</b> \u2014 a flat COP, '
+    + 'applied to 2050</td></tr>'
+    + '<tr><td><b>This site</b><br><span style="color:var(--muted)">'
+    + esc(VFMLAB[VFMJUR]) + ', network scale</span></td><td>'
+    + fmt(st.spf_counterfactual,2) + '</td><td>' + fmt(st.spf,2)
+    + '</td><td>hourly, on a Gaussian defrost curve centred on the '
+    + '2\u202f\u00b0C frost band</td></tr></tbody></table>';
+  box.innerHTML = s;
+  if(note){
+    note.textContent = "Searching all twenty-four sheets of the "
+      + "operators' databook for \u201cseasonal\u201d, "
+      + "\u201cSCOP\u201d, \u201cweather\u201d, "
+      + "\u201ctemperature\u201d, \u201cdegree\u201d, \u201cpeak "
+      + "heat\u201d, \u201ccoincidence\u201d or "
+      + "\u201cdiversity\u201d returns nothing. Two numbers convert "
+      + "heat demand into electricity demand in four scenarios out to "
+      + "2050, and that forecast feeds the capacity requirement the "
+      + "all-island market procures against. THE OMISSION CUTS BOTH "
+      + "WAYS: a flat 2.6 understates what air source draws on a cold "
+      + "damp evening \u2014 our own model puts an Irish unit at 2.32 "
+      + "at the tightest hour \u2014 and a flat 2.94 understates the "
+      + "ground-source advantage, because ground source does not "
+      + "degrade at all. The planning basis underestimates the problem "
+      + "and the solution at once. Note our own air-source figure is "
+      + "HIGHER than theirs: we are more generous to the counterfactual "
+      + "than the system operator is, and still find a large gap.";
+  }
+  if(meth){
+    const inc = v.increment, sc = v.scenario.jur[VFMJUR],
+          stg = v.stages.jur[VFMJUR];
+    meth.innerHTML =
+      '<p><b>The scenario.</b> The Republic has committed to up to '
+      + '2.7 TWh of district heating by 2030 under the Climate Action '
+      + 'Plan \u2014 10.7% of its building heat, and well inside '
+      + 'SEAI\u2019s own technical ceiling of 54%. Northern Ireland has '
+      + 'set no district heating target of any kind, so its scenario is '
+      + 'that same share of building heat LENT to it. The whole network '
+      + 'is priced either way it is supplied; there is no further '
+      + 'fraction inside it.</p>'
+      + '<p><b>The subsurface increment</b> is '
+      + fmt(inc.jur[VFMJUR].central.increment_eur_kw,0) + ' EUR/kW '
+      + 'central \u2014 a blend at ' + fmt(100*stg.deep_weight,0)
+      + '% deep, less an air-source energy centre at '
+      + fmt(inc.air_source_eur_kw,0) + ' EUR/kW. Shallow is Herrmann et '
+      + 'al. 2026 on 133 ATES systems, restated from their combined '
+      + 'heating-and-cooling basis to a heating one and taken at the '
+      + 'Danish rather than Dutch level, because Ireland is an emerging '
+      + 'market on non-sand geology. Deep is Todd et al. in Geoenergy, '
+      + 'seven Permo-Triassic doublet cases, discounted 30% from '
+      + 'first-of-a-kind. Distribution and connections are common to '
+      + 'both routes and cancel.</p>'
+      + '<p><b>Two risks, at two different stages.</b> Pre-FID success '
+      + 'is about reaching close at all: a shallow scheme that tests '
+      + 'poorly gets redesigned, so its spend converts into capex, '
+      + 'while a deep doublet can be written off. Shortfall is '
+      + 'post-commissioning underdelivery, and BOTH jurisdictions carry '
+      + 'it \u2014 partly geological, and partly waste heat that does '
+      + 'not arrive in the volume assumed. Social development cost is '
+      + fmt(100*stg.devex_social_pct,1) + '% here, shortfall '
+      + fmt(100*stg.shortfall_default,0) + '% on a '
+      + fmt(100*stg.shortfall_range[0],0) + '\u2013'
+      + fmt(100*stg.shortfall_range[1],0) + '% range.</p>'
+      + '<p><b>What is still missing, and it is a lot.</b> The '
+      + 'electrification stage is not yet priced. Cooling is not in \u2014 '
+      + 'and on this island it will be small, because Panel 4 finds '
+      + 'comfort cooling is barely an eighth of Irish cooling. Nothing '
+      + 'is discounted yet, so the payback shown is simple and '
+      + 'undiscounted, before optimism bias, development capital or '
+      + 'shortfall. The long-run variable cost is BORROWED from the UK '
+      + 'sibling and pinned to its euro equivalent, because the '
+      + 'Infrastructure Guidelines name no Irish energy price series at '
+      + 'all \u2014 it replaced a figure invented here, and it should '
+      + 'in turn be replaced by one derived from Irish marginal '
+      + 'generation.</p>'
+      + '<p><b>Published against interest.</b> Causeway Energies '
+      + 'develops geothermal networks.</p>';
+  }
+}
+
 function geoPanel(D){
   const g = (D||{}).geo || {};
   GEOD = g;
@@ -3430,9 +3705,10 @@ fetch('data.json').then(r=>{
   gasEngine(D.feeds||{}, D.derived);
   gasCalLine(D);
   geoPanel(D);
+  vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.41.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.42.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
