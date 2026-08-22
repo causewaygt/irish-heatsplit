@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.42.0"
+PIPELINE_VERSION = "5.44.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5359,7 +5359,29 @@ VFM_ASHP_ENERGY_CENTRE_EUR_KWTH = {
 # (10.7%). That is lent ambition, not policy, and the panel says so as
 # the point rather than as a caveat: the only way to give the North a
 # number here is to borrow the South's.
+# THE SCENARIO IS THE TEN-YEAR BUILD, NOT THE 2030 MILESTONE.
+#
+# 2.7 TWh by 2030 is the Climate Action Plan commitment and it is
+# 10.7% of the Republic's building heat - barely half what Britain has
+# committed to. The UK sibling prices 20% of UK heat by 2050, about
+# 87 TWh, from roughly 3% today.
+#
+# The like-for-like scenario is therefore the TEN-YEAR BUILD: 5.0 TWh,
+# 19.7% of Irish building heat, which is essentially Britain's 20%.
+# Three routes converged on it - continuing the rate the 2030 milestone
+# implies, a decadal doubling of the kind Denmark and Sweden achieved,
+# and Britain's own ambition scaled to Ireland - all within half a
+# terawatt-hour of each other.
+#
+# 2030 IS THE MILESTONE ON THE WAY, at roughly half the ten-year
+# figure, and it is running at 20-32% of trajectory. So the panel
+# prices the ten-year build and carries the milestone as the near-term
+# marker whose slippage is the argument for urgency.
 VFM_DH_SCENARIO = {
+    "roi_twh": 5.0,
+    "roi_year": 2036,
+    "roi_milestone_twh": 2.7,
+    "roi_milestone_year": 2030,
     "roi_target_twh": 2.7,
     "roi_target_year": 2030,
     "roi_source": "Climate Action Plan 2025, up to 2.7 TWh by 2030",
@@ -5806,6 +5828,183 @@ VFM_STAGE_PRICES = {
 }
 
 
+# CAPITAL PHASING AND OPTIMISM BIAS, both ported from the UK sibling
+# because neither jurisdiction gives us a better basis.
+#
+# PHASING. Capital spread evenly over a ten-year build and discounted
+# at mid-year; benefits ramp linearly with the fleet, so year five of a
+# ten-year build delivers half. Nothing in the Irish rulebooks
+# specifies a build period, so the sibling's ten years is the anchor -
+# and it is arguably generous to Northern Ireland, which has 4.5 MWth
+# installed and no supply chain to ramp.
+#
+# OPTIMISM BIAS. THE REPUBLIC PUBLISHES NO TABLE. The Infrastructure
+# Guidelines treat it as a process requirement, not a number: "full
+# risk assessment and consideration of REMAINING optimism bias" at
+# Final Business Case, the word "remaining" implying a quantitative
+# risk assessment has already absorbed most of it. The centrally
+# specified parameters - shadow carbon, the shadow price of labour at
+# 80-100% - live in a separate document and optimism bias is not among
+# them. So the Green Book's Mott MacDonald bands are used in BOTH
+# jurisdictions: they apply directly in the North, and in the Republic
+# as a flagged proxy.
+#
+# AND NEITHER RULEBOOK ADJUSTS BENEFITS. The UK's own Department for
+# Transport work covers cost, time AND benefits, but no Irish
+# requirement for a downward benefit adjustment was found. That is
+# recorded as unresolved rather than assumed absent - it may sit in
+# sectoral guidance not reached.
+VFM_BUILD_YEARS = 10
+VFM_HORIZON_YEARS = 60
+VFM_OPTIMISM = {
+    "default_pct": 50.0, "min_pct": 0.0, "max_pct": 66.0,
+    "applies_to": "capital only",
+    "benefits_adjustment": None,
+    "source": "HM Treasury Green Book, Mott MacDonald bands - 66% is "
+              "the upper bound for non-standard civil engineering, "
+              "mitigating toward 40-50% at outline business case",
+    "roi_basis": "PROXY - the Infrastructure Guidelines publish no "
+                 "optimism bias table, only a process requirement to "
+                 "consider remaining bias after risk assessment",
+    "benefits_note": "no Irish requirement for a downward benefit "
+                     "adjustment was found; recorded as unresolved",
+}
+# Discount: the Republic flat, the North declining. Both from their own
+# rulebooks, and this is one place the two genuinely differ.
+VFM_DISCOUNT = {
+    "roi": {"kind": "flat", "rate": 0.04},
+    "ni": {"kind": "declining",
+           "bands": ((30, 0.035), (75, 0.030), (None, 0.025))},
+}
+
+
+def vfm_discount_factor(t, jur):
+    """Discount factor at year t. Flat 4% in the Republic; the Green
+    Book's declining STPR in the North."""
+    d = VFM_DISCOUNT[jur]
+    if d["kind"] == "flat":
+        return 1.0 / ((1.0 + d["rate"]) ** t)
+    f, k = 1.0, 1
+    while k <= int(t):
+        r = 0.035 if k <= 30 else (0.030 if k <= 75 else 0.025)
+        f /= (1.0 + r)
+        k += 1
+    fr = t - int(t)
+    if fr:
+        f /= (1.035 ** fr)
+    return f
+
+
+def derive_vfm_phased(anchors=None):
+    """
+    The appraisal, phased and discounted - capital over a ten-year
+    build, benefits ramping with the fleet, over sixty years.
+
+    Optimism bias applies to CAPITAL ONLY, because neither rulebook
+    specifies a benefit adjustment and inventing one would be our
+    thumb on the scale in the other direction.
+    """
+    a = anchors or ANCHORS
+    sc = derive_vfm_scenario(a)
+    inc = derive_vfm_increment(a)
+    st = derive_vfm_stages(a)
+    run = derive_vfm_running(a)
+    ob = VFM_OPTIMISM["default_pct"] / 100.0
+    out = {"build_years": VFM_BUILD_YEARS,
+           "horizon_years": VFM_HORIZON_YEARS,
+           "optimism": dict(VFM_OPTIMISM),
+           "discount": {k: dict(v) for k, v in VFM_DISCOUNT.items()},
+           "jur": {}}
+    for k in ("roi", "ni"):
+        mw = sc["jur"][k]["plant_mw"]
+        per_kw = inc["jur"][k]["central"]["increment_eur_kw"]
+        devex = st["jur"][k]["devex_social_pct"]
+        capex = mw * per_kw / 1000.0                     # EUR m
+        capex_all = capex * (1.0 + devex) * (1.0 + ob)
+        cap_pv = sum(capex_all / VFM_BUILD_YEARS
+                     * vfm_discount_factor(t - 0.5, k)
+                     for t in range(1, VFM_BUILD_YEARS + 1))
+        # Avoided capacity, DERIVED - it was hard-coded, and when the
+        # scenario moved from the 2030 milestone to the ten-year build
+        # the cost doubled while this did not, dropping both BCRs. The
+        # audit had flagged it as a shortcut; it bit within the hour.
+        #
+        # A geothermal network draws less at the system peak because
+        # its source does not freeze. Air source at the tightest hour
+        # is 2.32, our own model on Irish weather; ground source holds
+        # its seasonal figure. Valued at Net CONE, the avoided COST of
+        # capacity, not the auction clearing price.
+        p_ash = ANCHORS["ashp"]
+        t_peak = 0.21                       # Panel 3 tightest hour
+        lift = max(5.0, p_ash["flow_c"] - (t_peak - AIR_APPROACH_C))
+        cop_peak = (p_ash["carnot_fraction"] * (p_ash["flow_c"] + 273.15)
+                    / lift * defrost_factor(t_peak))
+        avoided_mw = mw / cop_peak - mw / NETWORK_MODEL[k]["spf"]
+        cap_eur_m = (avoided_mw
+                     * VFM_SEM_CAPACITY["net_cone_2028_29"] / 1e6)
+        annual = (run["jur"][k]["resource_eur_m_yr"]["central"]
+                  + cap_eur_m)
+        ben_pv = sum(annual * min(t, VFM_BUILD_YEARS) / VFM_BUILD_YEARS
+                     * vfm_discount_factor(t, k)
+                     for t in range(1, VFM_HORIZON_YEARS + 1))
+        out["jur"][k] = {
+            "plant_mw": mw, "increment_eur_kw": per_kw,
+            "capex_undiscounted_eur_m": round(capex, 1),
+            "capex_with_devex_and_ob_eur_m": round(capex_all, 1),
+            "capex_pv_eur_m": round(cap_pv, 1),
+            "avoided_peak_mw": round(avoided_mw, 1),
+            "capacity_eur_m_yr": round(cap_eur_m, 1),
+            "running_eur_m_yr": round(
+                run["jur"][k]["resource_eur_m_yr"]["central"], 1),
+            "annual_benefit_eur_m": round(annual, 1),
+            "benefit_pv_eur_m": round(ben_pv, 1),
+            "bcr": round(ben_pv / max(cap_pv, 1e-9), 2),
+        }
+    # WHAT IS IN THE ARITHMETIC AND WHAT IS NOT. Four terms of about
+    # twenty-five. Published so the panel cannot imply completeness.
+    out["integrated"] = ["running cost at LRVC",
+                         "avoided generation capacity",
+                         "subsurface increment",
+                         "development capital divided by success",
+                         "optimism bias on capital"]
+    out["not_integrated"] = {
+        "stage2_benefits": ["carbon at the shadow price (computed, not "
+                            "summed - near zero within a decade)",
+                            "cooling", "avoided network reinforcement",
+                            "air quality",
+                            "interseasonal storage enabling waste-heat "
+                            "recovery", "dispatch-down absorption",
+                            "security of supply and indigenous share",
+                            "residual value at 60 years"],
+        "stage2_costs": ["SUBSURFACE SHORTFALL - lever defined, never "
+                         "applied, and it flatters us",
+                         "operating and maintenance",
+                         "heat pump replacement, 2-3 times over the "
+                         "horizon"],
+        "stage1": ["NOTHING IS BUILT - fuel avoided, electricity "
+                   "drawn, carbon at the fossil margin, the capacity "
+                   "COST of electrification, network reinforcement, "
+                   "distribution and connection capital, building-side "
+                   "works, boiler replacement cycles avoided"],
+    }
+    out["known_shortcuts"] = [
+        "the shortfall lever is defined and unapplied",
+        "the long-run variable cost is borrowed from the UK sibling",
+        "the ten-year build has no Irish basis and is generous to the "
+        "North, which has no supply chain to ramp",
+        "optimism bias applies to capital only; no Irish requirement "
+        "for a benefit adjustment was found",
+    ]
+    log(f"vfm phased: {VFM_BUILD_YEARS}-year build, "
+        f"{VFM_HORIZON_YEARS}-year horizon, {ob*100:.0f}% optimism on "
+        f"capital only; "
+        + "; ".join(f"{k.upper()} PV cost "
+                    f"{v['capex_pv_eur_m']:.0f}m against benefit "
+                    f"{v['benefit_pv_eur_m']:.0f}m, BCR {v['bcr']}"
+                    for k, v in out["jur"].items()))
+    return out
+
+
 def derive_vfm_running(anchors=None):
     """
     The running-cost saving of the subsurface stage: electricity not
@@ -5996,16 +6195,21 @@ def derive_vfm_scenario(anchors=None):
     ni_del = (a["ni"]["residential_heat_twh"]
               + a["ni"]["services_heat_twh"]) \
         * a.get("delivered_over_input_ni", 0.8375)
-    tgt = VFM_DH_SCENARIO["roi_target_twh"]
+    tgt = VFM_DH_SCENARIO["roi_twh"]
+    ms = VFM_DH_SCENARIO["roi_milestone_twh"]
     prop = tgt / roi_del
     flh = VFM_DH_SCENARIO["network_load_hours"]
     lo, hi = VFM_DH_SCENARIO["roi_delivery_pct"]
     jur = {
         "roi": {"delivered_twh": round(roi_del, 2), "network_twh": tgt,
-                "basis": "target", "committed": True},
+                "basis": "ten-year build", "committed": True,
+                "milestone_twh": ms,
+                "milestone_year": VFM_DH_SCENARIO["roi_milestone_year"]},
         "ni": {"delivered_twh": round(ni_del, 2),
                "network_twh": round(prop * ni_del, 2),
-               "basis": "lent", "committed": False},
+               "basis": "lent", "committed": False,
+               "milestone_twh": round(ms / roi_del * ni_del, 2),
+               "milestone_year": VFM_DH_SCENARIO["roi_milestone_year"]},
     }
     for k, v in jur.items():
         # the WHOLE scenario, either way it is supplied
@@ -8773,6 +8977,7 @@ def main():
             "increment": derive_vfm_increment(),
             "carbon": derive_vfm_carbon(),
             "running": derive_vfm_running(),
+            "phased": derive_vfm_phased(),
             "constants": derive_vfm_constants(),
             "tes_cop": VFM_TES_COP,
             "tes_carbon": VFM_TES_CARBON,
