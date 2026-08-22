@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.43.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.45.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -3129,11 +3129,19 @@ function vfmStreams(v){
     + 'the subsurface increment over an air-source energy centre, at '
     + cur + fmt(inc,0) + '/kW<span class="dag">\u2020</span> \u00b7 '
     + 'distribution and connections cancel</div></div>'
-    + '<div class="hstat"><div class="hval">' + fmt(capex/tot,1)
-    + '<span style="font-size:.5em"> yr</span></div><div class="hlab">'
-    + 'simple payback, undiscounted and before optimism bias, devex or '
-    + 'shortfall \u2014 <b>not</b> a benefit-cost ratio</div></div>'
-    + '</div>';
+    + '<div class="hstat"><div class="hval">'
+    + (v.phased ? fmt(v.phased.jur[VFMJUR].bcr,2)
+                : fmt(capex/tot,1) + '<span style="font-size:.5em"> yr</span>')
+    + '</div><div class="hlab">'
+    + (v.phased
+       ? 'benefit-cost ratio over ' + fmt(v.phased.horizon_years,0)
+         + ' years \u00b7 capital spread over a '
+         + fmt(v.phased.build_years,0) + '-year build with '
+         + fmt(v.phased.optimism.default_pct,0) + '% optimism bias'
+         + '<span class="dag">\u2020</span> \u00b7 <b>five value '
+         + 'streams of about twenty-five are in it</b>'
+       : 'simple payback, undiscounted')
+    + '</div></div></div>';
   s += '<table class="caltab"><thead><tr><th>Stream</th>'
     + '<th>' + cur + 'm a year</th><th>Over sixty years</th>'
     + '<th>What it is</th></tr></thead><tbody>'
@@ -3212,6 +3220,18 @@ function vfmTes(v){
       + 'that same share of building heat LENT to it. The whole network '
       + 'is priced either way it is supplied; there is no further '
       + 'fraction inside it.</p>'
+      + '<p><b>Networks only, and that is a simplification.</b> We '
+      + 'expect other geothermal archetypes to be developed \u2014 '
+      + 'individual and shared-loop ground source, standing column '
+      + 'wells, aquifer and borehole storage serving single large '
+      + 'buildings, and direct use where the resource allows. Several '
+      + 'of them will reach parts of the building stock a network '
+      + 'never can, particularly outside the cities where density '
+      + 'will not support mains. This panel considers networks alone '
+      + 'because that is where the Republic\u2019s policy direction '
+      + 'points and because it gives one clean scenario to appraise. '
+      + 'It is therefore a floor on what geothermal could contribute, '
+      + 'not a ceiling.</p>'
       + '<p><b>The subsurface increment</b> is '
       + fmt(inc.jur[VFMJUR].central.increment_eur_kw,0) + ' EUR/kW '
       + 'central \u2014 a blend at ' + fmt(100*stg.deep_weight,0)
@@ -3235,18 +3255,16 @@ function vfmTes(v){
       + fmt(100*stg.shortfall_default,0) + '% on a '
       + fmt(100*stg.shortfall_range[0],0) + '\u2013'
       + fmt(100*stg.shortfall_range[1],0) + '% range.</p>'
-      + '<p><b>What is still missing, and it is a lot.</b> The '
-      + 'electrification stage is not yet priced. Cooling is not in \u2014 '
-      + 'and on this island it will be small, because Panel 4 finds '
-      + 'comfort cooling is barely an eighth of Irish cooling. Nothing '
-      + 'is discounted yet, so the payback shown is simple and '
-      + 'undiscounted, before optimism bias, development capital or '
-      + 'shortfall. The long-run variable cost is BORROWED from the UK '
-      + 'sibling and pinned to its euro equivalent, because the '
-      + 'Infrastructure Guidelines name no Irish energy price series at '
-      + 'all \u2014 it replaced a figure invented here, and it should '
-      + 'in turn be replaced by one derived from Irish marginal '
-      + 'generation.</p>'
+      + (v.phased ? '<p><b>What is in the arithmetic, and what is not.'
+      + '</b> Five value streams of about twenty-five. IN: '
+      + esc(v.phased.integrated.join('; ')) + '. NOT IN on the benefit '
+      + 'side: ' + esc(v.phased.not_integrated.stage2_benefits.join('; '))
+      + '. NOT IN on the cost side: '
+      + esc(v.phased.not_integrated.stage2_costs.join('; '))
+      + '. And the electrification stage: '
+      + esc(v.phased.not_integrated.stage1.join('; ')) + '.</p>'
+      + '<p><b>Known shortcuts.</b> '
+      + esc(v.phased.known_shortcuts.join('; ')) + '.</p>' : '')
       + '<p><b>Published against interest.</b> Causeway Energies '
       + 'develops geothermal networks.</p>';
   }
@@ -3706,7 +3724,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.43.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.45.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
