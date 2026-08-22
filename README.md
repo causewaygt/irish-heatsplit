@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.42.0 / site 5.43.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.44.0 / site 5.45.0.
 
 ## The premise
 
@@ -1697,6 +1697,70 @@ period is protected structurally rather than by remembering. Tests pin
 the effective basis, the register's internal arithmetic, and the
 absence of names.
 
+**The scenario is the TEN-YEAR BUILD, not the 2030 milestone (5.44.0 /
+site 5.45.0).** 5.0 TWh in the Republic and 2.15 in the North —
+**19.7% of building heat each, against Britain's committed 20%**. So
+the two panels now price the same ambition. Plant of 1,250 MW and
+538 MW; the 2030 milestone is carried alongside at roughly half, as the
+near-term marker whose slippage is the argument for urgency.
+
+**And the site-wide fifth converges with it.** 5.00 TWh against 5.07 —
+within 2%, reached by genuinely different routes. They remain different
+claims: one a scale argument about all Irish heat, one an appraisal of a
+network programme. A test asserts the convergence and the comment says
+they must not be conflated because the numbers agree.
+
+**The change exposed the hard-coded capacity benefit within the hour of
+the audit listing it.** Doubling the programme doubled the cost and left
+the benefit fixed, dropping the Republic from 1.21 to 1.08. It is now
+derived from plant size, the peak-hour COP on Irish weather, and Net
+CONE — 227 MW avoided in the Republic, 125 in the North — and
+the BCRs return to **1.21 and 2.17**.
+
+**The test for it needed strengthening twice.** The first version
+asserted the values were right, which a hard-coded pair satisfies. The
+second halved the heat anchors, which does not move a scenario held as
+a fixed constant. The third halves the SCENARIO and requires avoided
+capacity to halve with it — and catches the hard-coded version,
+which returns a ratio of exactly 1.000.
+
+**Capital phasing, optimism bias and a full audit (5.43.0 / site
+5.44.0).** Both ported from the UK sibling, because neither Irish
+rulebook gives a better basis: capital spread over a ten-year build and
+discounted at mid-year, benefits ramping with the fleet over sixty
+years, 50% optimism bias on capital. Discounting differs by
+jurisdiction — the Republic flat 4%, the North the Green Book's
+declining STPR.
+
+**Benefit-cost ratios: the Republic 1.21, Northern Ireland 2.17.** The
+Republic only just clears one, and that turns on the Danish shallow
+figure and a borrowed LRVC — either could take it below.
+
+**The Republic publishes no optimism bias table.** The Infrastructure
+Guidelines treat it as a process requirement: "full risk assessment and
+consideration of REMAINING optimism bias" at Final Business Case. The
+centrally specified parameters live in a separate document and optimism
+bias is not among them, so the Green Book's Mott MacDonald bands are
+used in both jurisdictions — directly in the North, as a flagged
+proxy in the Republic. **Neither rulebook adjusts benefits**, and no
+Irish requirement for a downward benefit adjustment was found; that is
+recorded as unresolved rather than assumed absent.
+
+**And the panel now audits itself.** Five value streams of about
+twenty-five are in the arithmetic. The fold lists what is in, what is
+out on both the benefit and cost sides, and five known shortcuts —
+including that **the subsurface shortfall lever is defined and never
+applied**, that avoided capacity is hard-coded rather than derived, and
+that **the entire electrification stage is unbuilt**. The two worst
+omissions both flatter us. Tests assert each of these appears on the
+page.
+
+**Networks only is stated as a simplification.** Other geothermal
+archetypes will reach parts of the stock a network never can; this
+panel considers networks alone because that is where the Republic's
+policy points. It is a floor on what geothermal could contribute, not a
+ceiling.
+
 **Panel 6 is COVERED on the public page (5.42.0 / site 5.43.0).** The
 watermark was too easy to look past, so the panel's contents are hidden
 entirely behind a plain "Under construction" notice. Its containers are
@@ -1908,8 +1972,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 195 tests, no network
-node tests/test_vol.js            # 296 front-end fixture checks
+python3 tests/test_synthetic.py   # 196 tests, no network
+node tests/test_vol.js            # 301 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
