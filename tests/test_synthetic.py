@@ -448,8 +448,13 @@ def test_cool_derivation():
     assert c is not None
     assert 20 <= c["stranded_summer_pct"] <= 60, c
     # DC line is cooling electricity (6 Aug 2026 correction), not the
-    # whole data-centre draw
-    assert abs(c["dc_twh"] - 31.0 * 0.22 * 0.14) < 0.05
+    # whole data-centre draw. Read the share from the anchors rather
+    # than repeating the literal, so a revision only has to change one
+    # place - this test previously hard-coded 0.14 and had to be edited
+    # alongside the anchor, which is how a parameter drifts.
+    import build as B
+    share = B.ANCHORS["cool"]["dc_cooling_share"]
+    assert abs(c["dc_twh"] - 31.0 * 0.22 * share) < 0.05
     # census: electricity total = sum of loads; rejection exceeds elec
     assert abs(c["cooling_elec_twh"]
                - sum(c["loads_twh"].values())) < 0.05
@@ -1249,19 +1254,29 @@ def test_cold_census_reconciles_with_seai():
 
 def test_service_factors_track_seai_ratios():
     """Commercial-type loads use SEAI's implied useful-to-final ratio
-    (2.07). Process is deliberately ABOVE SEAI's 1.00 pass-through but
-    below the old 2.5. Data centres keep their own high factor."""
+    (2.07). Data centres keep their own high factor, which is
+    arithmetic rather than judgement. Process sits ABOVE both of
+    SEAI's own anchors and is the one figure here that is ours.
+
+    The upper bound was 2.5 and is now 3.5. 2.5 put industrial process
+    chillers barely above part-load office air conditioning, which is
+    hard to defend: process plant runs steady, high-utilisation duty,
+    where chillers perform best. 3.5 is Barth et al. (2025) on
+    Manhattan and is the ceiling, not the value.
+    """
     from build import ANCHORS
     sf = ANCHORS["cool"]["cooling_service_factor"]
     assert sf["refrigeration"] == sf["comfort"] == 2.07
-    assert 1.0 < sf["process"] <= 2.5
+    # bracketed by SEAI's OWN anchors below and measured work above
+    assert sf["public"] > sf["comfort"], "public has its own SEAI ratio"
+    assert sf["comfort"] < sf["process"] <= 3.5, sf["process"]
     assert sf["dc"] > 5.0
-    # aggregate excluding DC must sit near SEAI's 1.86, not the old 2.6
+    # aggregate excluding DC, on the same functional loads
     c = ANCHORS["cool"]; L = c["loads_twh"]
     elec = L["refrigeration"] + L["process"] + L["comfort"]
     serv = (L["refrigeration"] * sf["refrigeration"]
             + L["process"] * sf["process"] + L["comfort"] * sf["comfort"])
-    assert 1.8 <= serv / elec <= 2.2, serv / elec
+    assert 1.8 <= serv / elec <= 2.4, serv / elec
 
 
 def test_completeness_denominator_is_the_intended_window():
@@ -3977,6 +3992,683 @@ def test_demand_series_is_never_reconstructed_with_solar():
         if "solar_ai" in win and "+" in win:
             bad.append(" ".join(win.split())[:140])
     assert not bad, f"demand may be reconstructed with solar: {bad}"
+
+
+def test_continuous_sources_bank_only_their_summer_half():
+    """Data centres, industry and refrigeration reject heat all year:
+    the winter half can go straight into a network, as Tallaght does,
+    and only the summer half strands and needs a store.
+
+    Treating them as summer-only would INFLATE the recovered figure by
+    about 29%, so the conservative treatment is also the correct one -
+    which is exactly why it needs pinning."""
+    import build as B
+    ct = B.derive_cooling_tiers()
+    hr = B.derive_heat_rejected(ct)
+    by = {r["key"]: r for r in hr["rows"]}
+    assert by["datacentres"]["continuous"] is True
+    assert by["industry"]["continuous"] is True
+    # and a continuous source banks HALF what it rejects, not all
+    for k in ("datacentres", "industry"):
+        r = by[k]
+        assert abs(r["summer_twh"] - r["rejected_twh"]
+                   * B.COOL_SUMMER_FRACTION) < 0.01, k
+        assert r["summer_twh"] < r["rejected_twh"]
+    # data centre rejection is the WHOLE facility draw, not the cooling
+    # block - all electricity in leaves as heat
+    dc_elec = B.COOL_DC_GROWTH[0]
+    assert abs(by["datacentres"]["rejected_twh"] - dc_elec) < 0.01
+    dc_cool = [t for t in ct["tiers"] if t["key"] == "datacentres"][0]
+    assert by["datacentres"]["rejected_twh"] > dc_cool["service_twh"]
+    # recovery must be the round trip applied to the banked figure only
+    assert abs(hr["recovered_twh"]
+               - hr["banked_twh"] * hr["roundtrip"]) < 0.01
+    assert hr["recovered_twh"] < hr["banked_twh"] < hr["rejected_twh"] * 1.0
+
+
+def test_no_geothermal_target_is_ever_invented():
+    """The panel's central claim is that NO jurisdiction on this island
+    has set a geothermal deployment target. Neither has: the Republic's
+    2023 policy statement and forthcoming Bill are a licensing regime,
+    and Northern Ireland consulted on the same in May 2026 with no
+    grants and no target.
+
+    So the list must stay EMPTY. If a future edit adds one - from a
+    press release, a consultation, an aspiration - the claim on the
+    page becomes false and this fails. Anything genuinely new belongs
+    in `nearest` with what it covers stated, not here.
+    """
+    import build as B
+    t = B.derive_geo_targets()
+    assert t["geothermal_targets"] == [], t["geothermal_targets"]
+    # and the nearest targets must each declare what they actually cover,
+    # because none of them reserves a share for geothermal
+    assert len(t["nearest"]) >= 3
+    for n in t["nearest"]:
+        assert n["covers"] and n["source"] and n["year"]
+        assert "geothermal" not in n["label"].lower()
+    # the NI hook: energy SAVED, which is the mechanism a heat pump
+    # scores against - and the saving must be materially below the
+    # counterfactual it displaces
+    e = t["ni_energy_saved"]
+    assert e["whatif_delivered_twh"] < e["counterfactual_input_twh"]
+    for k in ("gshp", "network"):
+        assert 10 <= e["saved_pct"][k] <= 50, (k, e["saved_pct"][k])
+    assert e["achieved_pct"] < 5, "NI delivery is ~1% - if this moves, " \
+        "the panel's framing needs revisiting"
+
+
+def test_calibration_uses_reported_output_not_a_load_factor():
+    """Each country's share of its own buildings heat must come from
+    its REPORTED annual output, not from capacity times an assumed
+    load factor.
+
+    The 2,000-hour convention this replaced was wrong for every
+    country in the comparison and wrong in OPPOSITE directions:
+    Ireland runs 1,301 full-load hours and Sweden 3,498, so it
+    overstated Ireland by 54% and understated Sweden by 43%, drawing
+    the gap between them roughly 2.7 times narrower than it is. Both
+    errors flattered Ireland, which is how it survived.
+    """
+    import build as B
+    h = B.derive_geo_hardware()
+    ro = B.GEO["reference_output"]
+    for c in h["share_of_national_heat"]["countries"]:
+        assert "output_gwh" in c and "flh" in c, c["name"]
+        # the share must reconcile with reported output, NOT with
+        # capacity x 2000
+        assert abs(c["share_pct"]
+                   - 100 * c["output_gwh"] / 1000
+                   / c["national_heat_TWh"]) < 0.02, c
+    # the load hours really do differ enough to matter
+    hours = [v["flh"] for v in ro.values()]
+    assert max(hours) / min(hours) > 3, hours
+    assert ro["Ireland"]["flh"] < 1500 < ro["Sweden"]["flh"]
+    # and the what-if uses Ireland's own hours, so the hardware needed
+    # is LARGER than a European convention would suggest
+    assert h["flh_ireland"] == ro["Ireland"]["flh"]
+    assert h["whatif_MWth"] > 0.20 * h["delivered_heat_TWh"] * 1e6 / 2000
+    # our own anchors must match the source exactly
+    assert B.GEO["roi"]["capacity_mwth"] == ro["Ireland"]["mwth"]
+    assert B.GEO["roi"]["heat_gwh"] == ro["Ireland"]["gwh"]
+    assert B.GEO["roi"]["units"] == ro["Ireland"]["units"]
+
+
+def test_ni_capacity_is_effective_not_nameplate():
+    """Northern Ireland's capacity comes from the Causeway register on
+    an EFFECTIVE basis - what is delivered, not what was installed.
+
+    It was 6.6 MWth until 20 Aug 2026: nameplate figures plus a
+    500-700 unit domestic estimate with no stated basis, about 40% too
+    high and flattering in the same direction as every other error
+    found that week. The register gives 460 kW delivered against 532
+    kW built, and 386 MCS units rather than 500-700.
+    """
+    import build as B
+    g = B.GEO
+    t = g["ni_register_totals"]
+    # delivered must be below nameplate - the shortfall is the point
+    assert t["delivered_heating_kw"] < t["nameplate_heating_kw"]
+    assert (t["nameplate_heating_kw"] - t["delivered_heating_kw"]
+            == t["heating_shortfall_kw"])
+    # the register's own arithmetic must hold
+    assert (t["operational_clean"] + t["failed"] + t["unconfirmed"]
+            <= t["documented"])
+    assert t["operational_clean"] <= t["operational_any"]
+    # capacity is large-tier DELIVERED heating plus the domestic tier,
+    # and must sit inside the range those two imply
+    d = g["ni_domestic"]
+    lo = t["delivered_heating_kw"] / 1000 + d["mw_low"]
+    hi = t["delivered_heating_kw"] / 1000 + d["mw_high"]
+    assert lo <= g["ni_capacity_mwth_est"] <= hi, (
+        lo, g["ni_capacity_mwth_est"], hi)
+    assert g["ni_capacity_mwth_est"] < 6.0, "6.6 was the old, high figure"
+    # per-capita is DERIVED, so re-anchoring cannot leave it stale
+    assert g["per_capita_w"]["ni"] == round(
+        g["ni_capacity_mwth_est"] * 1e6 / (g["population_m"]["ni"] * 1e6))
+    # and no site name may reach the payload while the register is out
+    # for comment
+    for r in g["ni_register"]:
+        assert r["site"] == r["id"], r
+
+
+def test_capacity_benefit_belongs_to_the_ashp_lever_only():
+    """Electrifying heat INCREASES electrical peak. Panel 3 measures it
+    at the binding hour: air source adds far more than a geothermal
+    network does. So there is no avoided capacity against a fossil
+    incumbent - only against the air-source counterfactual, where the
+    same heat is drawn at a higher SPF.
+
+    Shown against BAU it would read as geothermal saving capacity
+    against gas, which is false and is the single most likely
+    misreading of this panel. The SEM price is large enough
+    (~EUR 135,500/MW/yr against a GB T-4 of GBP 27.10/kW/yr) that the
+    error would be worth hundreds of millions a year.
+    """
+    import build as B
+    v = B.derive_vfm_constants()
+    assert set(v["counterfactuals"]) == {"bau", "ashp"}
+    assert v["capacity_applies_to"] == ["ashp"], v["capacity_applies_to"]
+    assert "bau" not in v["capacity_applies_to"]
+    # and the SEM price must be the Irish one, not the GB composite
+    sem = v["sem_capacity_eur_mw_yr"]
+    assert sem["t4_2029_30"] > 100000
+    assert sem["existing_cap_price_cap"] < sem["net_cone_2028_29"] \
+        < sem["t4_2029_30"]
+
+
+def test_vfm_reads_shared_constants_rather_than_restating_them():
+    """Panel 6 must READ the SPFs, service factors and heat anchors the
+    other panels publish. Restating is how the data-centre cooling
+    share and the geothermal EERs drifted twice in one week."""
+    import build as B
+    v = B.derive_vfm_constants()
+    assert v["spf"]["ashp"] == B.SPF_ANCHORS["ashp"]
+    assert v["spf"]["gshp"] == B.SPF_ANCHORS["gshp"]
+    assert v["spf"]["network_ni"] == B.NETWORK_MODEL["ni"]["spf"]
+    assert v["spf"]["network_roi"] == B.NETWORK_MODEL["roi"]["spf"]
+    # the carbon tax is a transfer and never a resource benefit
+    assert "carbon tax" in v["transfers"]
+    for t in ("network charges", "VAT", "supplier margin"):
+        assert t in v["transfers"], t
+    # the energy-centre cost is a RANGE, not a pick, because no Irish
+    # figure is published
+    ec = v["ashp_energy_centre"]
+    assert ec["low"] < ec["high"]
+    assert "no Irish" in ec["note"].lower() or "NO Irish" in ec["note"]
+
+
+def test_vfm_scenario_is_not_the_site_wide_fifth():
+    """Panel 6 prices a fifth of the DISTRICT HEATING scenario, which
+    is about a tenth of the fifth of all building heat that Panels 1-4
+    price. Confusing the two is the natural misreading, and the figures
+    differ by an order of magnitude.
+
+    Northern Ireland's number is LENT - the Republic's share of
+    building heat applied to a jurisdiction that has set no district
+    heating target of any kind. It has no standing as a commitment and
+    the payload must say so.
+    """
+    import build as B
+    s = B.derive_vfm_scenario()
+    roi, ni = s["jur"]["roi"], s["jur"]["ni"]
+    # NO FIFTH INSIDE THE SCENARIO. The whole network is priced either
+    # way it is supplied - geothermal against air-source - as the UK
+    # sibling does. An earlier version took 20% of the scenario and
+    # confused the site-wide what-if with the appraisal question.
+    assert "geothermal_twh" not in roi, "no fifth inside the scenario"
+    assert "geothermal_share" not in s["scenario"]
+    # the scenario is itself a small fraction of building heat, which
+    # is why a further fifth would price something negligible
+    for v in (roi, ni):
+        # THE TEN-YEAR BUILD, not the 2030 milestone. 19.7% of Irish
+        # building heat, which is essentially Britain's committed 20%
+        # - so the two panels price the same ambition. The milestone
+        # is carried alongside at roughly half, as the near-term
+        # marker whose slippage is the argument for urgency.
+        assert 15.0 < v["network_pct_of_heat"] < 25.0
+        assert v["milestone_twh"] < v["network_twh"]
+        assert v["milestone_year"] == 2030
+        # THE TWO NOW CONVERGE, and that is a finding rather than a
+        # coincidence. The site-wide what-if is a fifth of ALL Irish
+        # heat by any means; the ten-year build is a fifth via
+        # NETWORKS, reached from the 2030 milestone's implied rate,
+        # from a decadal doubling, and from Britain's own 20%. They
+        # land within 2% of each other.
+        #
+        # They remain different CLAIMS - one a scale argument about
+        # the whole heat system, one an appraisal of a network
+        # programme - and the panel must not present them as the same
+        # thing merely because the numbers agree.
+        assert 0.95 < v["vs_site_whatif"] < 1.05, v["vs_site_whatif"]
+        # and it must size to plant a reader can picture
+        assert 50 < v["plant_mw"] < 1500, v["plant_mw"]
+    # the Republic's is a commitment; the North's is not
+    # The Republic's basis is now the ten-year build, extrapolated
+    # from a real commitment; the milestone inside it is the target.
+    assert roi["committed"] is True and roi["basis"] == "ten-year build"
+    assert roi["milestone_twh"] == 2.7
+    assert ni["committed"] is False and ni["basis"] == "lent"
+    # lent means the SAME proportion of building heat, by construction
+    assert abs(roi["network_pct_of_heat"]
+               - ni["network_pct_of_heat"]) < 0.05
+    # and the scenario must sit inside SEAI's own technical ceiling
+    assert roi["network_pct_of_heat"] < s["seai_technical_ceiling_pct"]
+    # the outturn case must bracket below the target, since delivery is
+    # running at 20-32% of trajectory
+    lo, hi = s["roi_outturn_twh"]
+    assert lo < hi < s["scenario"]["roi_target_twh"]
+
+
+def test_vfm_stages_are_separate_and_the_capacity_sign_follows():
+    """Two stages, never summed. Summing would let geothermal bank the
+    carbon saving of moving off oil and gas - most of which ANY heat
+    pump delivers - and leave the subsurface unjudged.
+
+    The capacity sign follows from the stage rather than from a rule:
+    electrifying heat ADDS winter peak, so capacity is a cost in stage
+    one; raising the SPF once electrified saves it, so it is a benefit
+    in stage two. Panel 3 measures both at the binding hour.
+    """
+    import build as B
+    st = B.derive_vfm_stages()
+    assert st["stages"] == ["electrify", "subsurface"]
+    assert st["capacity_sign"]["electrify"] < 0
+    assert st["capacity_sign"]["subsurface"] > 0
+
+
+def test_vfm_separates_pre_fid_success_from_post_commissioning_shortfall():
+    """Two different risks at two different stages, which an earlier
+    version of this model conflated.
+
+    SUCCESS RATE is pre-FID: money spent on prospects that never reach
+    close. A shallow scheme that tests poorly gets REDESIGNED - more
+    wells, wider spacing, a bigger store - so the spend converts into
+    capex rather than being written off. A deep doublet can die at the
+    drill bit.
+
+    SHORTFALL is post-commissioning: a built scheme underdelivering.
+    BOTH jurisdictions carry it, because productivity risk survives
+    commissioning and part of it is not geological at all - waste heat
+    that does not arrive in the volume assumed.
+    """
+    import build as B
+    st = B.derive_vfm_stages()
+    C = st["classes"]
+    assert C["shallow"]["success"] == 1.00
+    assert C["deep"]["success"] < 1.00
+    assert C["deep"]["devex_pct"] > C["shallow"]["devex_pct"]
+    roi, ni = st["jur"]["roi"], st["jur"]["ni"]
+    for v in (roi, ni):
+        assert v["shortfall_default"] > 0, "both carry productivity risk"
+        lo, hi = v["shortfall_range"]
+        assert lo <= v["shortfall_default"] <= hi
+    assert ni["shortfall_default"] > roi["shortfall_default"]
+    assert (ni["shortfall_range"][1] - ni["shortfall_range"][0]
+            > roi["shortfall_range"][1] - roi["shortfall_range"][0])
+
+
+def test_vfm_blend_differs_by_depth_not_by_kind():
+    """Both jurisdictions run the same shallow technologies; the North
+    blends a deeper Permo-Triassic component on top. The weight is the
+    UK sibling's 40%, and if it moves it moves in both together.
+
+    Northern Ireland's social devex must reproduce the UK sibling's
+    7.4% exactly - same blend, same play. If it does not, one of the
+    two sites has drifted.
+    """
+    import build as B
+    st = B.derive_vfm_stages()
+    roi, ni = st["jur"]["roi"], st["jur"]["ni"]
+    assert roi["deep_weight"] == 0.0
+    assert ni["deep_weight"] == st["deep_weight"] == 0.40
+    assert roi["spf"] == B.NETWORK_MODEL["roi"]["spf"]
+    assert ni["spf"] == B.NETWORK_MODEL["ni"]["spf"]
+    assert roi["spf_counterfactual"] == B.SPF_ANCHORS["ashp"]
+    assert ni["source_c"] > roi["source_c"]
+    assert ni["spf_gain"] > roi["spf_gain"]
+    assert ni["devex_social_pct"] > roi["devex_social_pct"]
+    assert abs(ni["devex_social_pct"] - 0.074) < 0.0005, (
+        "NI must reproduce the UK sibling's 7.4% blend")
+    assert abs(roi["devex_social_pct"] - 0.040) < 0.0005
+
+
+def test_tes_planning_basis_is_recorded_with_its_gap():
+    """EirGrid and SONI's own databook applies a FLAT heat-pump COP -
+    air 2.6, ground 2.94 - as a divisor from heat demand to electricity
+    demand, in four scenarios out to 2050. Searching all twenty-four
+    sheets for seasonal, SCOP, weather, temperature, degree, peak heat,
+    coincidence or diversity returns nothing.
+
+    The omission cuts BOTH ways, which is why the panel states it
+    rather than merely disagreeing: a flat 2.6 understates air-source
+    peak draw, and a flat 2.94 understates the ground-source
+    advantage. The planning basis underestimates the problem and the
+    solution at the same time - and that forecast feeds the capacity
+    requirement the SEM procures against.
+
+    Our own figures are network scale, not the domestic units TES is
+    describing, and the panel must say so rather than appear to have
+    inflated theirs.
+    """
+    import build as B
+    t = B.VFM_TES_COP
+    assert t["seasonal_treatment"] is None
+    assert t["peak_treatment"] is None
+    assert len(t["searched"]) >= 6
+    # ours are higher AND for different machines - both must hold
+    assert B.NETWORK_MODEL["roi"]["spf"] > t["ground_source"]
+    assert B.NETWORK_MODEL["ni"]["spf"] > t["ground_source"]
+    assert B.SPF_ANCHORS["ashp"] > t["air_source"], (
+        "our air-source anchor is higher than TES's, so we are not "
+        "simply flattering the geothermal side")
+    # TES's carbon path all but extinguishes this panel's carbon stream
+    c = B.VFM_TES_CARBON
+    ss = c["ie_avg_g_kwh_ss"]
+    assert ss[2035] < 20, "near zero within a decade"
+    assert ss[2040] < 0 and ss[2050] < 0, "carbon-NEGATIVE thereafter"
+    # and the average-vs-marginal caveat must travel with it
+    assert "marginal" in c["caveat"].lower()
+
+
+def test_shallow_and_deep_are_both_on_a_heating_basis():
+    """Herrmann quotes every ATES figure per kW of COMBINED heating and
+    cooling, so each doubles for a balanced system on a heating basis.
+
+    An earlier version corrected the Dutch plateau (300 -> 600) and
+    then took the Danish figure UNCORRECTED at 1,000. That halved the
+    shallow central, collapsed the increment from about 1,000 to
+    119 EUR/kW, and produced a 1.4-year payback. The implausible answer
+    is what caught it - nothing in the suite did.
+    """
+    import build as B
+    sh = B.VFM_SHALLOW_EUR_KW
+    # the Danish central must be about double its combined-basis 939
+    assert 1700 < sh["central"] < 2100, sh["central"]
+    assert sh["dutch_floor"] < sh["central"] < sh["high"]
+    # and roughly double the Dutch floor, both being the same restatement
+    assert 2.5 < sh["central"] / sh["dutch_floor"] < 3.5
+    inc = B.derive_vfm_increment()
+    # the increment must be a real premium, not a rounding
+    for k in ("roi", "ni"):
+        v = inc["jur"][k]["central"]["increment_eur_kw"]
+        assert 400 < v < 1600, (k, v)
+    # learning now applies to BOTH classes (22 Aug 2026), but only to
+    # the SUBSURFACE SHARE of each all-in figure - the heat pump inside
+    # is the same mature kit as the flat air-source counterfactual
+    assert B.VFM_FOAK_LEARNING["applies_to"] == "shallow and deep"
+    for cls in ("shallow", "deep"):
+        assert 0.0 < B.VFM_SUBSURFACE_SHARE[cls] < 1.0
+    lr = B.VFM_FOAK_LEARNING["reduction"]
+    sl = inc["shallow_learn_eur_kw"]
+    dl = inc["deep_eur_kw"]
+    assert abs(sl["effective_reduction"]
+               - lr * B.VFM_SUBSURFACE_SHARE["shallow"]) < 1e-6
+    assert abs(dl["effective_reduction"]
+               - lr * B.VFM_SUBSURFACE_SHARE["deep"]) < 1e-6
+    # the ramp is the central case: monotone decreasing, FOAK first
+    for k in ("roi", "ni"):
+        r = inc["jur"][k]["ramp"]["increment_eur_kw_by_year"]
+        assert len(r) == B.VFM_BUILD_YEARS
+        assert all(a >= b for a, b in zip(r, r[1:])), (k, r)
+        assert r[0] > r[-1]
+    # and the uncomfortable consequence stays DISCLOSED, not silent:
+    # unless the floor is set, shallow at nth undercuts installed
+    # Danish outturn - the direction that flatters the Republic
+    if B.VFM_SHALLOW_NTH_FLOOR is None:
+        assert sl["nth"] < sl["danish_outturn"]
+    else:
+        assert sl["nth"] >= B.VFM_SHALLOW_NTH_FLOOR
+
+
+def test_lever_closed_form_matches_appraisal_at_corners():
+    """THE DRIFT GUARD for the live panel. The browser evaluates a
+    closed form from published coefficients (tools/vfm_levers.js); it
+    never runs the appraisal. This test pins that closed form - both
+    the Python statement of it and the SHIPPED JS FILE, byte for byte
+    as the page uses it - against derive_vfm_phased at the corners of
+    the lever space. Tolerances cover only the payload's ramp rounding
+    (0.1 EUR/kW per year). If either implementation moves without the
+    other, this fails and the page cannot silently disagree with the
+    arithmetic.
+    """
+    import build as B
+    import json as _json
+    import subprocess
+
+    base = B.derive_vfm_phased()
+
+    def closed(c, L):
+        m_wh = 1.0 - L["wh"] * (1.0 - L["rc"])
+        s0 = ((1 - c["deep_weight"]) * L["a_sh"]
+              * ((1 - c["ss_shallow"]) + c["ss_shallow"] * m_wh)
+              + c["deep_weight"] * L["a_dp"])
+        s1 = ((1 - c["deep_weight"]) * L["a_sh"] * c["ss_shallow"]
+              * m_wh + c["deep_weight"] * L["a_dp"] * c["ss_deep"])
+        sinc = (c["d0"] * (s0 * L["capm"] - c["asc_eur_kw"])
+                - L["lr"] * c["d1"] * s1 * L["capm"])
+        cap = (((c["mw"] / (1000.0 * c["build_years"])) * sinc
+                - (c["cool_capital_eur_m"] / c["build_years"])
+                * c["d0"]) * (1 + c["devex"]) * (1 + L["ob"]))
+        gross = c["flat_gross_pv_eur_m"] + c["carbon_gross_pv_eur_m"]
+        return (1 - L["s"]) * gross / max(cap, 1e-9), cap
+
+    defaults = {k: {"s": B.VFM_JUR_MODEL[k]["shortfall_default"],
+                    "ob": 0.50, "capm": 1.0,
+                    "wh": B.VFM_WASTE_HEAT["share"][k], "rc": 0.30,
+                    "lr": 0.30, "a_sh": B.VFM_SHALLOW_FOAK_EUR_KW,
+                    "a_dp": B.VFM_DEEP_GBP_KW["mid"] * B.GBP_EUR}
+                for k in ("roi", "ni")}
+
+    corners = []
+    for k in ("roi", "ni"):
+        lo, hi = B.VFM_JUR_MODEL[k]["shortfall_range"]
+        corners += [(k, {"s": lo}), (k, {"s": hi})]
+        corners += [(k, {"ob": 0.0}), (k, {"ob": 0.66})]
+        corners += [(k, {"capm": 0.75}), (k, {"capm": 1.25})]
+        wlo, whi = B.VFM_WASTE_HEAT["share_range"]
+        corners += [(k, {"wh": wlo}), (k, {"wh": whi})]
+        corners += [(k, {"lr": 0.25}), (k, {"lr": 0.40})]
+        corners += [(k, {"a_sh": 1500.0}), (k, {"a_sh": 3300.0})]
+        corners += [(k, {"s": hi, "ob": 0.66, "capm": 1.25,
+                         "wh": wlo, "lr": 0.25, "a_sh": 3300.0})]
+
+    # patch the module so the APPRAISAL runs at the corner, then
+    # compare it with the closed form on BASELINE coefficients - the
+    # exact substitution the browser performs
+    saved = (dict((k, B.VFM_JUR_MODEL[k]["shortfall_default"])
+                  for k in ("roi", "ni")),
+             B.VFM_OPTIMISM["default_pct"],
+             dict(B.VFM_WASTE_HEAT["share"]),
+             B.VFM_FOAK_LEARNING["reduction"],
+             B.VFM_SHALLOW_FOAK_EUR_KW, B.VFM_DEEP_GBP_KW["mid"])
+    js_cases = []
+    try:
+        for k, over in corners:
+            L = dict(defaults[k]); L.update(over)
+            for j in ("roi", "ni"):
+                B.VFM_JUR_MODEL[j]["shortfall_default"] = (
+                    L["s"] if j == k else defaults[j]["s"])
+                B.VFM_WASTE_HEAT["share"][j] = (
+                    L["wh"] if j == k else defaults[j]["wh"])
+            B.VFM_OPTIMISM["default_pct"] = L["ob"] * 100.0
+            B.VFM_FOAK_LEARNING["reduction"] = L["lr"]
+            B.VFM_SHALLOW_FOAK_EUR_KW = (L["a_sh"] * L["capm"])
+            B.VFM_DEEP_GBP_KW["mid"] = (L["a_dp"] * L["capm"]
+                                        / B.GBP_EUR)
+            ph = B.derive_vfm_phased()
+            c = base["jur"][k]["coeffs"]
+            bcr_cf, cap_cf = closed(c, L)
+            v = ph["jur"][k]
+            assert abs(cap_cf - v["capex_pv_eur_m"]) \
+                <= 0.002 * v["capex_pv_eur_m"] + 0.2, (k, over)
+            assert abs(bcr_cf - v["bcr"]) <= 0.011, (
+                k, over, bcr_cf, v["bcr"])
+            js_cases.append({"c": c, "L": L, "bcr": bcr_cf})
+    finally:
+        for j in ("roi", "ni"):
+            B.VFM_JUR_MODEL[j]["shortfall_default"] = saved[0][j]
+            B.VFM_WASTE_HEAT["share"][j] = saved[2][j]
+        B.VFM_OPTIMISM["default_pct"] = saved[1]
+        B.VFM_FOAK_LEARNING["reduction"] = saved[3]
+        B.VFM_SHALLOW_FOAK_EUR_KW = saved[4]
+        B.VFM_DEEP_GBP_KW["mid"] = saved[5]
+
+    # and the SHIPPED JS file must agree with the Python closed form
+    # to numerical precision on every corner
+    script = ("const {vfmLeverEval}=require(process.argv[1]);"
+              "const cases=JSON.parse(require('fs')"
+              ".readFileSync(0,'utf8'));"
+              "for (const t of cases){"
+              " const r=vfmLeverEval(t.c,t.L);"
+              " if (Math.abs(r.bcr-t.bcr)>1e-9)"
+              "  {console.error('JS drift',t);process.exit(1);}}"
+              "console.log('js corners ok '+cases.length)")
+    import os
+    js = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "tools", "vfm_levers.js")
+    r = subprocess.run(["node", "-e", script, js],
+                       input=_json.dumps(js_cases).encode(),
+                       capture_output=True, timeout=120)
+    assert r.returncode == 0, r.stderr.decode()[:400]
+
+
+def test_waste_heat_is_capex_avoidance_only():
+    """The operating upside of warm sources is already inside the class
+    SPFs, and delivery risk is already named in the shortfall lever.
+    So the waste-heat displacement must move CAPITAL ONLY: zeroing the
+    share must leave every benefit stream untouched and raise the cost
+    side. If a benefit ever moves with this lever, it is double-dipped.
+    """
+    import build as B
+    ph1 = B.derive_vfm_phased()
+    saved = dict(B.VFM_WASTE_HEAT["share"])
+    try:
+        B.VFM_WASTE_HEAT["share"] = {"roi": 0.0, "ni": 0.0}
+        ph0 = B.derive_vfm_phased()
+    finally:
+        B.VFM_WASTE_HEAT["share"] = saved
+    for k in ("roi", "ni"):
+        a, z = ph1["jur"][k], ph0["jur"][k]
+        assert z["benefit_pv_eur_m"] == a["benefit_pv_eur_m"], k
+        assert z["streams_pv_eur_m"] == a["streams_pv_eur_m"], k
+        assert z["capex_pv_eur_m"] > a["capex_pv_eur_m"], (
+            k, "zero waste heat must cost MORE subsurface")
+        assert z["bcr"] < a["bcr"], k
+
+
+def test_avoided_capacity_scales_with_the_programme():
+    """Avoided capacity was HARD-CODED at the 2030 milestone's figure.
+    When the scenario moved to the ten-year build the cost doubled and
+    this did not, dropping both BCRs - the Republic from 1.21 to 1.08.
+
+    The audit had listed it as a known shortcut; it bit within the hour
+    of being written down. It is now derived from plant size, the
+    peak-hour COP on Irish weather, and Net CONE.
+    """
+    import build as B
+    ph = B.derive_vfm_phased()
+    for k, v in ph["jur"].items():
+        assert v["avoided_peak_mw"] > 0
+        # must be a real fraction of the plant, not a constant
+        r = v["avoided_peak_mw"] / v["plant_mw"]
+        assert 0.10 < r < 0.40, (k, r)
+        assert v["capacity_eur_m_yr"] > 0
+        # the annual benefit reconciles across ALL its terms - this
+        # broke when cooling was added, which is a test doing its job
+        assert abs(v["running_eur_m_yr"] + v["capacity_eur_m_yr"]
+                   + v["cooling_running_eur_m_yr"]
+                   - v["annual_benefit_eur_m"]) < 0.2
+    # the North's warmer source gives it the larger avoided share
+    assert (ph["jur"]["ni"]["avoided_peak_mw"] / ph["jur"]["ni"]["plant_mw"]
+            > ph["jur"]["roi"]["avoided_peak_mw"]
+            / ph["jur"]["roi"]["plant_mw"])
+    # and the shortcut is off the list
+    assert not any("hard-coded" in s for s in ph["known_shortcuts"])
+    # THE REAL CHECK: it must MOVE with the programme, not merely hold
+    # correct values. An earlier version of this test asserted only
+    # that the numbers were right, which a hard-coded pair satisfies -
+    # and hard-coding is precisely the fault that produced the bug.
+    # The Republic's 5.0 TWh is a fixed scenario constant, not a share
+    # of heat, so halving the heat anchors does not halve it. Move the
+    # SCENARIO instead - that is what changed when the panel switched
+    # from the 2030 milestone to the ten-year build, and it is what
+    # exposed the hard-coded figure.
+    saved = B.VFM_DH_SCENARIO["roi_twh"]
+    try:
+        B.VFM_DH_SCENARIO["roi_twh"] = saved / 2.0
+        half = B.derive_vfm_phased()
+        r0, r1 = ph["jur"]["roi"], half["jur"]["roi"]
+        assert r1["plant_mw"] < r0["plant_mw"] * 0.6, "the programme halved"
+        ratio = r1["avoided_peak_mw"] / max(r0["avoided_peak_mw"], 1e-9)
+        assert 0.45 < ratio < 0.55, (
+            "avoided capacity must scale with the programme, not sit at "
+            "a constant: got %.3f" % ratio)
+    finally:
+        B.VFM_DH_SCENARIO["roi_twh"] = saved
+
+
+def test_carbon_is_summed_and_its_beccs_dependency_recorded():
+    """Carbon is now IN the arithmetic rather than computed and left
+    out. It is discounted year by year rather than annualised, because
+    it is the one stream that does not run flat - worth most now and
+    extinguishing within a decade on the operators' own path.
+
+    AND THE SIGN FLIP AFTER 2040 RESTS ON UNBUILT BECCS. TES shows 300
+    MW of bioenergy with carbon capture against ZERO biomass-only
+    capacity in every scenario. There is no operating plant on this
+    island, no licensed CO2 storage and no transport infrastructure. A
+    reader who assumes the grid simply gets clean would miss that.
+    """
+    import build as B
+    ph = B.derive_vfm_phased()
+    for k, v in ph["jur"].items():
+        s = v["streams_pv_eur_m"]
+        assert s["carbon"] > 0, "carbon is summed"
+        assert abs(sum(s.values()) - v["benefit_pv_eur_m"]) < 1.0
+        # running dominates; carbon and cooling are the tail. If that
+        # order inverts, something upstream has broken.
+        assert s["running"] > s["capacity"] > s["carbon"] > s["cooling"], (k, s)
+        assert s["carbon"] / v["benefit_pv_eur_m"] < 0.10
+    # the intensity path goes negative, and only because of BECCS
+    assert B.vfm_grid_intensity(2030) > 200
+    assert B.vfm_grid_intensity(2040) < 0
+    assert B.VFM_BECCS_MW == 300
+    assert "no operating plant" in B.VFM_BECCS_NOTE
+
+
+def test_cooling_is_avoided_capital_and_is_small_in_ireland():
+    """A ground loop that already rejects heat can absorb it too, so
+    the chillers are never bought. That is capital AVOIDED - it nets
+    off the cost, it is not a fourth benefit stream, and counting it
+    both ways would double-count one physical fact.
+
+    AND IT IS MUCH SMALLER THAN IN BRITAIN, for reasons that are
+    structural rather than about ambition: a heat network mostly serves
+    homes and Irish homes do not cool, and Panel 4 finds Irish comfort
+    cooling is 1.25 TWh against 13.95 of process. The default
+    connection rate is 12% against the UK sibling's 30%.
+
+    If this ever grows into a material share of capital, something
+    upstream has broken - most likely the comfort tier.
+    """
+    import build as B
+    c = B.derive_vfm_cooling()
+    ph = B.derive_vfm_phased()
+    assert B.VFM_COOLING["connections_pct"] < 30.0, "below the UK's 30%"
+    for k, v in c["jur"].items():
+        assert v["served_twh"] < v["carriable_twh"] <= v["available_twh"]
+        assert v["avoided_capital_eur_m"] > 0
+    # only the non-deep fraction can carry cooling, so the North's
+    # carriable share is cut and the Republic's is not
+    assert (c["jur"]["ni"]["carriable_twh"]
+            < c["jur"]["ni"]["available_twh"])
+    assert (abs(c["jur"]["roi"]["carriable_twh"]
+                - c["jur"]["roi"]["available_twh"]) < 1e-9)
+    # it is an OFFSET to capital, and a small one
+    for k, v in ph["jur"].items():
+        assert v["capex_net_of_cooling_eur_m"] < v["capex_undiscounted_eur_m"]
+        assert v["cooling_pct_of_capex"] < 3.0, (k, v["cooling_pct_of_capex"])
+    # COOLING IMPROVES BOTH SIDES AT ONCE, which is the UK sibling's
+    # framing and it is right. An earlier version of this test asserted
+    # cooling was capital-only, on the argument that counting both
+    # would double-count one fact. It is TWO facts: not buying a
+    # chiller and not running it are separate savings.
+    #
+    # The operating half is the larger - capital is once, the
+    # electricity is every summer for sixty years.
+    for k, v in ph["jur"].items():
+        assert set(v["streams_pv_eur_m"]) == {"running", "capacity",
+                                              "carbon", "cooling"}
+        assert v["streams_pv_eur_m"]["cooling"] > 0
+        assert (v["streams_pv_eur_m"]["cooling"]
+                > v["cooling_avoided_eur_m"]), (
+            "the operating saving should exceed the one-off capital")
+        # still the smallest stream, because Irish comfort cooling is
+        assert v["streams_pv_eur_m"]["cooling"] < v["streams_pv_eur_m"]["carbon"]
+    # and the efficiency gap is what drives it
+    assert (B.VFM_COOLING["ground_cooling_eer"]
+            > 4 * B.VFM_COOLING["chiller_eer"])
 
 
 def test_hdd_year_gate_and_base_scan():
