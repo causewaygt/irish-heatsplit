@@ -4401,6 +4401,48 @@ def test_shallow_and_deep_are_both_on_a_heating_basis():
         assert sl["nth"] >= B.VFM_SHALLOW_NTH_FLOOR
 
 
+def test_panel6_generator_is_idempotent_and_current():
+    """The working copy's header claims build.py generates it; for
+    months nothing did, and it was hand-regenerated four times in one
+    day. Now regenerate_panel6() owns the payload, the widget and the
+    banner. This pins three things: running it twice is byte-identical
+    (idempotent - no accretion, no drift); the payload it writes
+    matches the derive functions it claims to publish; and the North
+    carries its sterling block at the published rate, per the
+    own-currency convention.
+    """
+    import build as B
+    import json as _json
+    import pathlib
+    import re
+
+    p = pathlib.Path(B.__file__).resolve().parent.parent / "docs" / "panel6.html"
+    B.regenerate_panel6()
+    once = p.read_text()
+    B.regenerate_panel6()
+    twice = p.read_text()
+    assert once == twice, "generator is not idempotent"
+
+    m = re.search(r'window\.VFM_PAYLOAD = (\{.*?\});</script>',
+                  once, re.S)
+    vfm = _json.loads(m.group(1))["derived"]["vfm"]
+    ph = B.derive_vfm_phased()
+    for k in ("roi", "ni"):
+        assert vfm["phased"]["jur"][k]["bcr"] == ph["jur"][k]["bcr"]
+    assert "beccs_mw" in vfm, "preserved key dropped"
+    assert "<!-- panel6-banner -->" in once
+    assert once.count("<!-- panel6-widget -->") == 1
+
+    ni = vfm["phased"]["jur"]["ni"]
+    assert ni["currency"] == "GBP"
+    assert vfm["phased"]["jur"]["roi"]["currency"] == "EUR"
+    g = ni["coeffs"]["gbp_per_eur"]
+    assert abs(ni["gbp"]["capex_pv_gbp_m"]
+               - ni["capex_pv_eur_m"] * g) <= 0.06
+    assert abs(ni["gbp"]["benefit_pv_gbp_m"]
+               - ni["benefit_pv_eur_m"] * g) <= 0.06
+
+
 def test_lever_closed_form_matches_appraisal_at_corners():
     """THE DRIFT GUARD for the live panel. The browser evaluates a
     closed form from published coefficients (tools/vfm_levers.js); it
