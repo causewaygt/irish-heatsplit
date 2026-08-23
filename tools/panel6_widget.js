@@ -8,8 +8,22 @@
  * published semester rate, per the panel's own-currency convention.
  */
 (function(){
-  var P=(window.VFM_PAYLOAD&&window.VFM_PAYLOAD.derived&&window.VFM_PAYLOAD.derived.vfm)||null;
-  if(!P||!P.phased||!P.phased.levers){return;}
+  // Outside a browser (the test harness evaluates every script
+  // block) there is nothing to mount on and nothing to poll for.
+  if (typeof window==="undefined" || typeof document==="undefined"){return;}
+  // On docs/panel6.html the payload is inline and this runs at once.
+  // On docs/index.html the payload arrives async with the daily data,
+  // so poll briefly for it rather than assuming script order.
+  var tries=0;
+  (function wait(){
+    var P=(window.VFM_PAYLOAD&&window.VFM_PAYLOAD.derived&&window.VFM_PAYLOAD.derived.vfm)||null;
+    if(!P||!P.phased||!P.phased.levers){
+      if(++tries<100){setTimeout(wait,200);}
+      return;
+    }
+    init(P);
+  })();
+  function init(P){
   var LV=P.phased.levers, JUR=P.phased.jur, cur="roi";
   var state={ob:null,capm:null,a_sh:null,a_dp:null,lr:null,s:{},wh:{}};
   LV.headline.forEach(function(l){
@@ -125,5 +139,7 @@
        "outside the declared range of 0-"+Math.round(hi*100)+"%")+".</p>";
   }
   syncAll();render();
-  document.body.appendChild(box);
+  var host=document.getElementById("vfm")||document.body;
+  host.appendChild(box);
+  }
 })();
