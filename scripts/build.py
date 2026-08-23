@@ -6315,7 +6315,36 @@ def derive_vfm_phased(anchors=None):
             "devex": devex,
             "flat_gross_pv_eur_m": round(flat_pv / keep, 3),
             "carbon_gross_pv_eur_m": round(carb_pv / keep, 3),
+            "gbp_per_eur": round(1.0 / GBP_EUR, 6) if k == "ni" else None,
         }
+        # CURRENCY (22 Aug 2026). The standing convention is each
+        # jurisdiction in its own currency; the chain to here ran the
+        # North in euro, a recorded breach. Every NI input is either
+        # natively sterling converted in at the single ECB 2025-S2
+        # semester rate, or natively euro (SEM Net CONE); all real
+        # 2025. So a euro computation presented in sterling at that
+        # same rate is EXACTLY the sterling computation - the rate
+        # cancels in the BCR and native-sterling figures round-trip
+        # unchanged. The legacy _eur_m keys stay until the renderer
+        # migrates; the sterling block is authoritative for the North.
+        out["jur"][k]["currency"] = "GBP" if k == "ni" else "EUR"
+        if k == "ni":
+            g = 1.0 / GBP_EUR
+            out["jur"][k]["gbp"] = {
+                "capex_pv_gbp_m": round(cap_pv * g, 1),
+                "benefit_pv_gbp_m": round(ben_pv * g, 1),
+                "annual_benefit_gbp_m": round(annual * g, 1),
+                "capex_undiscounted_gbp_m": round(capex * g, 1),
+                "cooling_avoided_gbp_m": round(cool_m * g, 1),
+                "increment_gbp_kw": round(per_kw * g, 0),
+                "streams_pv_gbp_m": {
+                    "running": round(run_pv * g, 1),
+                    "capacity": round(cap_pv_ben * g, 1),
+                    "carbon": round(carb_pv * g, 1),
+                    "cooling": round(cool_pv_ben * g, 1)},
+                "rate": "ECB 2025-S2 semester mean, "
+                        f"{round(1.0/GBP_EUR, 5)} GBP per EUR",
+            }
     # THE LIVE LEVERS. Four headline - the four appraisal questions in
     # plain language - and three in a capital fold for the specialist.
     # Two hard-wired at their defaults: connection relcost (0.30,
@@ -9331,6 +9360,88 @@ def build_hourly_store(previous, feeds_now=None):
                       "not UTC, so temperature and demand describe "
                       "the same hour year-round."),
             "series": packed}
+
+
+def regenerate_panel6(path="docs/panel6.html"):
+    """THE WORKING COPY'S GENERATOR - the function this file's header
+    always claimed existed and did not, during which the copy was
+    hand-regenerated four times in one day. It owns the three mutable
+    parts of docs/panel6.html and treats the renderer as the static
+    template it is:
+
+      1. the VFM_PAYLOAD block, rebuilt from the derive functions
+         (keys the derive chain does not produce are preserved, never
+         dropped - beccs_mw and beccs_note live only in the page);
+      2. the lever widget, injected verbatim from tools/vfm_levers.js
+         + tools/panel6_widget.js between marker comments;
+      3. the under-construction banner at the top of the body.
+
+    Idempotent by construction: running it twice yields byte-identical
+    output, and a test asserts exactly that.
+    """
+    import re as _re
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parent.parent
+    page = root / path
+    src = page.read_text()
+
+    payload_m = _re.search(
+        r'(<script>window\.VFM_PAYLOAD = )(\{.*?\})(;</script>)',
+        src, _re.S)
+    if not payload_m:
+        raise RuntimeError("panel6: VFM_PAYLOAD block not found")
+    old = json.loads(payload_m.group(2))
+    vfm = old.setdefault("derived", {}).setdefault("vfm", {})
+    preserved = set(vfm)
+    vfm.update({
+        "scenario": derive_vfm_scenario(),
+        "stages": derive_vfm_stages(),
+        "increment": derive_vfm_increment(),
+        "carbon": derive_vfm_carbon(),
+        "running": derive_vfm_running(),
+        "cooling": derive_vfm_cooling(),
+        "phased": derive_vfm_phased(),
+        "constants": derive_vfm_constants(),
+        "tes_cop": VFM_TES_COP,
+        "tes_carbon": VFM_TES_CARBON,
+        "lrvc": {"years": list(VFM_LRVC_YEARS),
+                 "p_kwh": list(VFM_LRVC_P_KWH),
+                 "source": VFM_LRVC_SOURCE},
+    })
+    if not preserved <= set(vfm):
+        raise RuntimeError("panel6: a preserved payload key was lost")
+    src = (src[:payload_m.start(2)]
+           + json.dumps(old, separators=(", ", ": "))
+           + src[payload_m.end(2):])
+
+    banner = (
+        '<!-- panel6-banner --><div style="background:#8a5a00;color:'
+        '#fff;padding:.55rem 1rem;text-align:center;font-weight:600">'
+        'UNDER CONSTRUCTION &mdash; a working appraisal, published '
+        'while it is still being built. Figures move as streams are '
+        'added; the fold below records what is in the arithmetic and '
+        'what is not.</div><!-- /panel6-banner -->')
+    if "<!-- panel6-banner -->" in src:
+        src = _re.sub(r'<!-- panel6-banner -->.*?<!-- /panel6-banner -->',
+                      lambda _m: banner, src, flags=_re.S)
+    else:
+        src = _re.sub(r'(<body[^>]*>)',
+                      lambda _m: _m.group(1) + banner, src, count=1)
+
+    widget = ("<!-- panel6-widget -->\n<script>\n"
+              + (root / "tools" / "vfm_levers.js").read_text()
+              + "\n"
+              + (root / "tools" / "panel6_widget.js").read_text()
+              + "</script>\n<!-- /panel6-widget -->")
+    if "<!-- panel6-widget -->" in src:
+        src = _re.sub(r'<!-- panel6-widget -->.*?<!-- /panel6-widget -->',
+                      lambda _m: widget, src, flags=_re.S)
+    else:
+        src = src.replace("</body>", widget + "\n</body>")
+
+    page.write_text(src)
+    log(f"panel6: regenerated {path} - payload, widget, banner")
+    return path
 
 
 def main():
