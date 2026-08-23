@@ -91,7 +91,10 @@ globalThis.__page = {
 };`;
 SCRIPTS.forEach((src, i) => {
   try {
-    (0, eval)(src + SHIM);
+    // the SHIM reaches into the page block's lexical scope (fmt,
+    // MONTHS3...). Since the generator injects the lever widget as a
+    // second block, shim only blocks that actually define the helpers.
+    (0, eval)(src + (/\bconst fmt\b/.test(src) ? SHIM : ""));
   } catch(e){
     throw new Error("script block " + i + " failed to evaluate: " + e.message);
   }
@@ -1423,7 +1426,7 @@ const VFMFIX = {derived:{vfm:{
         "avoided network reinforcement","air quality",
         "interseasonal storage","dispatch-down absorption",
         "security of supply","residual value at 60 years"],
-      stage2_costs:["operating and maintenance","heat pump replacement"],
+      stage2_costs:["operating and maintenance"],
       stage1:["NOTHING IS BUILT"]},
     known_shortcuts:["avoided capacity is hard-coded",
       "the shortfall is applied flat, not through a duration curve",
@@ -1460,8 +1463,10 @@ ok(!/NaN|undefined/.test(vs+vr+vt+vm), "no NaN in the appraisal panel");
 // THE STAGES ARE NEVER SUMMED, and the capacity sign follows the stage
 ok(/a COST/.test(vs) && /a BENEFIT/.test(vs),
    "capacity is a cost in stage one and a benefit in stage two");
-ok(/never summed/.test(vsn),
-   "and the note says the stages are never summed");
+ok(/geothermal upgrade to the national/.test(vsn),
+   "and the note frames stage 2 as the geothermal upgrade");
+ok(/single-home ground source heat pumps/.test(vsn),
+   "spanning single homes to city networks");
 // THE SCENARIO IS OURS; ONLY THE MILESTONE IS GOVERNMENT'S. When the
 // panel moved from the 2030 milestone to the ten-year build, two
 // labels went stale and left it saying "5 TWh by 2030 - a government
@@ -1476,8 +1481,8 @@ ok(!/2\.7 TWh[^<]{0,40}by 2030[^<]{0,40}\u2014 a government commitment/
      .test(vs), "and no bare commitment claim on the scenario figure");
 ok(/networks by 2036/.test(vs),
    "the ten-year build carries its own date, not the milestone's");
-ok(/least exposed to the forecast nobody can make/.test(vsn),
-   "with the price-exposure argument for the split");
+// (the price-exposure sentence was removed from the note by edit,
+// 23 Aug 2026 - the geothermal-upgrade pins above police its successor)
 // carbon must NOT be shown as a durable stream
 ok(/extinguishes by about 2035/.test(vr),
    "carbon is shown extinguishing, not as a durable benefit");
@@ -1551,20 +1556,27 @@ ok(/against interest/.test(vm), "and the interest declaration");
 vfmPanel({});
 ok(/coming build/.test(DOM.vfmStages.textContent),
    "and it declines cleanly without the block");
-// THE PANEL IS COVERED ON THE PUBLIC PAGE. Its figures are real,
-// which is why: a reader could otherwise take an unpriced
-// electrification stage, absent cooling and an undiscounted payback
-// for a finished appraisal. The working copy, docs/panel6.html,
-// renders the same panel from the same payload with the cover off.
+// THE PANEL IS LIVE ON THE PUBLIC PAGE, UNDER A LABEL - uncovered
+// 23 Aug 2026 by decision. These assertions are the INVERSE of the
+// cover checks that stood while the appraisal was half finished: the
+// label must say the work is unfinished, the containers must exist
+// for the renderer, and the daily payload must be exposed for the
+// lever widget. If the label ever comes off, that must be a decision
+// that edits this test, not an accident.
 {
   const sec = html.slice(html.indexOf('<section id="vfm"'),
                          html.indexOf('<section id="why"'));
-  ok(/wipcover/.test(sec), "Panel 6 is covered on the public page");
-  ok(/Under construction/i.test(sec), "and says so");
-  ok(!/id="vfmStages"/.test(sec) && !/id="vfmStreams"/.test(sec),
-     "its containers are absent, so nothing renders behind the cover");
-  ok(!/\u20ac|EUR|\u00a3/.test(sec.replace(/<!--[\s\S]*?-->/g, "")),
-     "and no figure leaks through it");
+  ok(/wipcover/.test(sec), "Panel 6 carries the under-construction label");
+  ok(/working appraisal/i.test(sec), "and calls itself a working appraisal");
+  ok(/id="vfmStages"/.test(sec) && /id="vfmStreams"/.test(sec)
+     && /id="vfmTes"/.test(sec) && /id="vfmMethod"/.test(sec),
+     "its containers are present, so the renderer runs");
+  ok(/data-vfmjur="roi"/.test(sec) && /data-vfmjur="ni"/.test(sec),
+     "with both jurisdiction toggles");
+  ok(/window\.VFM_PAYLOAD = D;/.test(html),
+     "and the daily payload is exposed for the lever widget");
+  ok(html.indexOf("<!-- panel6-widget -->") !== -1,
+     "which is injected by the generator, not by hand");
 }
 
 console.log(checks + " front-end fixture checks passed");
