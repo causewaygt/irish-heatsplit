@@ -84,6 +84,8 @@ globalThis.__page = {
   get GJUR(){return GJUR}, set GJUR(v){GJUR = v},
   get GVIEW(){return GVIEW}, set GVIEW(v){GVIEW = v},
   get DDJUR(){return DDJUR}, set DDJUR(v){DDJUR = v},
+  get GEOJUR(){return GEOJUR}, set GEOJUR(v){GEOJUR = v},
+  get VFMJUR(){return VFMJUR}, set VFMJUR(v){VFMJUR = v},
   fmt: fmt, MONTHS3: MONTHS3, NICE: NICE, niceTicks: niceTicks,
   hourLabel: hourLabel, monthLabel: monthLabel,
 };`;
@@ -1132,5 +1134,437 @@ ok(/50\u201380%|50–80%/.test(hn),
 heatReject(null);
 ok(/coming build/.test(DOM.heatReject.textContent),
    "and it declines cleanly without the block");
+
+// ---- Panel 5: geothermal, now and next ----------------------------
+["geoTargets","geoTargetsNote","geoHardware","geoHardwareNote",
+ "geoCalib","geoCalibNote","geoMethod"].forEach(k=>{DOM[k]=null; el(k);});
+const GEOT = {geothermal_targets:[], whatif_share:0.2,
+  roi_delivered_twh:25.3, ni_delivered_twh:10.9, island_delivered_twh:36.2,
+  roi_vs_dh:{fifth_twh:5.06, dh_target_twh:2.7, multiple:1.9},
+  nearest:[{jur:"ROI",label:"District heating",value:2.7,unit:"TWh/yr",
+            year:2030,status:"government commitment",
+            covers:"all heat sources, no geothermal share",
+            source:"Climate Action Plan 2025"},
+           {jur:"ROI",label:"Heat pumps installed",value:680000,
+            unit:"units",year:2030,status:"government commitment",
+            covers:"air and ground source, no ground-source share",
+            source:"Climate Action Plan 2025"},
+           {jur:"NI",label:"Energy saved, buildings and industry",
+            value:8000,unit:"GWh",year:2030,status:"strategy target",
+            covers:"all savings measures, buildings AND industry",
+            source:"NI Energy Strategy, DfE 2021",achieved_gwh:90}],
+  ni_energy_saved:{target_gwh:8000,achieved_gwh:90,achieved_pct:1.1,
+    whatif_delivered_twh:2.18,counterfactual_input_twh:2.60,
+    saved_gwh:{gshp:1928,network:2164},saved_pct:{gshp:24,network:27}}};
+const GEOH = {island_gshp_MWth:225, island_ni_MWth:6.6,
+  island_total_MWth:231.6, whatif_MWth:3622, multiple:15.6, eflh:2000,
+  delivered_heat_TWh:36.2, roi_units:20128, internal_gap:14,
+  per_person_W:{roi:42,ni:3,sweden:773,france:34,netherlands:140},
+  sales_2025:{Ireland:1409,Sweden:26785},
+  comparators:[{name:"France",gshp_MWth:2293,deep_MWth:724},
+               {name:"Netherlands",gshp_MWth:2486,deep_MWth:367},
+               {name:"Sweden",gshp_MWth:8120,deep_MWth:47}],
+  register_threshold_kw:45, ni_register_confirmed:8, ni_register_total:10,
+  ni_register_totals:{documented:10, operational_clean:2,
+    operational_any:4, failed:4, unconfirmed:2,
+    delivered_heating_kw:460, delivered_cooling_kw:120,
+    nameplate_heating_kw:532, heating_shortfall_kw:72},
+  sources:{roi:"WGC2026 Country Update: Ireland \u2014 Ireland, Blake, "
+              + "Pasquali, Dunphy & Hunter Williams, June 2026",
+           ni_register:"Causeway Energies register of Northern Ireland "
+              + "ground-source schemes above 45 kW, compiled site by "
+              + "site and currently circulating for comment among "
+              + "Northern Ireland practitioners",
+           ni_domestic:"MCS certification records, ~386\u2013450 units, "
+              + "plus a pre-certification estimate \u2014 Causeway "
+              + "triangulation",
+           comparators:"EGC 2025 country updates (Sanner et al., Tables "
+              + "3\u20134, end-2024) \u2014 shared with the UK sibling"},
+  flh_ireland:1301, flh_europe_avg:2420,
+  output_source:"EGC 2025 Country Update Summary, Sanner et al., Table 4",
+  jur:{roi:{installed_MWth:224.4,whatif_MWth:3894,multiple:17.0,
+            delivered_TWh:25.3,national_heat_TWh:30.8,share_pct:0.95,
+            output_gwh:291.9,output_reported:true,
+            per_person_W:42,units:20128,population_m:5.3},
+       ni:{installed_MWth:4.5,whatif_MWth:1674,multiple:372.0,
+           delivered_TWh:10.9,national_heat_TWh:13.0,share_pct:0.05,
+           output_gwh:5.9,output_reported:false,
+           per_person_W:2,units:null,population_m:1.92}},
+  share_of_national_heat:{whatif_pct:20.0,countries:[
+    {name:"Ireland",national_heat_TWh:44,share_pct:0.67,
+     output_gwh:291.9,flh:1301},
+    {name:"France",national_heat_TWh:350,share_pct:1.36,
+     output_gwh:4750,flh:2072},
+    {name:"Netherlands",national_heat_TWh:115,share_pct:2.37,
+     output_gwh:2722,flh:1095},
+    {name:"Sweden",national_heat_TWh:80,share_pct:35.50,
+     output_gwh:28400,flh:3498}]}};
+geoPanel({geo:{targets:GEOT, hardware:GEOH}});
+const gt = DOM.geoTargets.innerHTML, gtn = DOM.geoTargetsNote.textContent;
+const gh = DOM.geoHardware.innerHTML, ghn = DOM.geoHardwareNote.textContent;
+const gcv = DOM.geoCalib.innerHTML, gcn = DOM.geoCalibNote.textContent;
+const gm = DOM.geoMethod.innerHTML;
+ok(!/NaN|undefined/.test(gt+gh+gcv+gm), "no NaN in the geothermal panel");
+// THE FINDING: no target exists, and the panel leads with it
+ok(/geothermal deployment targets set in/.test(gt),
+   "the zero-targets finding is a headline figure, not a footnote");
+ok(/No jurisdiction on this island has set a geothermal deployment target/
+     .test(gtn), "and the note states it in full");
+// TARGETS ARE JURISDICTIONAL, so there is no all-island view: each
+// side is measured against what its own government committed to, and
+// the two are never averaged.
+ok(!/data-geojur="all"/.test(html),
+   "no all-island option on this panel");
+ok(/1\.9/.test(gt) && /district heating target/.test(gt),
+   "the Republic's fifth is set against its district heating target");
+ok(/no ground-source share is reserved/.test(gt),
+   "and what that target does not reserve");
+// THE SECOND FINDING: the Irish bar is not empty, the gap is internal
+// THE TOGGLE CARRIES THE CONTRAST, so the copy must not assert it.
+// Spelling it out reads as an argument made at the reader; switching
+// between the two makes the same point and lets them find it.
+ok(!/empty bar Britain|fold gap inside one island/.test(ghn),
+   "the copy no longer spells the ROI/NI contrast out - the toggle "
+   + "carries it");
+const hsvg = svgAt(gh, 0);
+ok(gridlinesSpread(hsvg, 3), "the hardware chart's gridlines spread");
+ok(axisLabelReadable(hsvg), "its axis label is legible");
+ok(/wiHatch/.test(hsvg), "the what-if is hatched, not solid");
+ok((hsvg.match(/<rect [^>]*fill="#5A6B64"/g)||[]).length === 3,
+   "three comparator fleets drawn");
+// calibration
+const csv2 = svgAt(gcv, 0);
+ok(gridlinesSpread(csv2, 3), "the calibration chart's gridlines spread");
+// REPORTED OUTPUT, no load-hour convention. The 2,000-hour figure
+// this replaced was wrong for every country and wrong in opposite
+// directions - overstating Ireland by 54% and understating Sweden by
+// 43%, drawing the gap between them 2.7 times narrower than it is.
+ok(/35\.50%|35\.5%/.test(csv2) && /0\.95%/.test(csv2),
+   "each fleet's share of its own national heat is labelled");
+ok(/reported output, not/.test(csv2),
+   "and the chart says reported output, not an assumed load factor");
+ok(/Sweden already serves well over it/.test(csv2),
+   "Sweden is above the what-if line, not level with it");
+ok(/stroke-dasharray/.test(csv2) && /the 20% what-if/.test(csv2),
+   "with the what-if drawn as a rule across it");
+ok(/unremarkable somewhere that started/.test(gcn),
+   "and the scale argument stated");
+// THE RUNNING HOURS EXPLAIN PART OF THE GAP, and belong at the chart
+// where the gap is visible rather than in the method fold - a reader
+// looking at a short bar asks why, not how it was computed.
+ok(/1,301 full-load hours a year/.test(gcn)
+   && /European average of 2,420/.test(gcn),
+   "the calibration note explains the gap with the running hours");
+ok(/short heating season/.test(gcn),
+   "and why Irish systems run so few of them");
+ok(/no load-factor assumption anywhere in it/.test(gcn),
+   "while stating the calibration itself assumes none");
+ok(/Load hours are reported, not assumed/.test(gm)
+   && /Netherlands at 1,095 to Sweden at 3,498/.test(gm),
+   "the fold gives the spread that makes one convention untenable");
+ok(/Country Update Summary/.test(gm), "with the table it comes from");
+ok(/currently circulating for comment/.test(gm),
+   "the register is described as circulating, not published");
+// AND NO ENTRY IS REPRODUCED. The register is Causeway's own and out
+// for review among NI practitioners; the site reports totals derived
+// from it and cites it as a source, but must not publish the sites
+// until that review closes.
+{
+  const sites = ["Riddel Hall", "Lisnafin", "Randalstown", "McClay",
+                 "Girdwood", "Lyric Theatre", "Jordanstown",
+                 "Greenmount", "Giant\u2019s Causeway",
+                 "Giant's Causeway"];
+  const leaked = sites.filter(s => html.indexOf(s) >= 0);
+  ok(leaked.length === 0,
+     "no register entry is named on the page"
+     + (leaked.length ? " - leaked: " + leaked.join(", ") : ""));
+}
+// method
+ok(/Comparator capacities are the UK sibling/.test(gm),
+   "the method credits the shared comparator constants");
+ok(/weakest figure here/.test(gm) && /never commissioned/.test(gm),
+   "and admits the NI register's weakness, failures included");
+// EVERY SOURCE CREDITED BY NAME. The fold previously said "a
+// site-by-site register" as though it had appeared from nowhere, and
+// never credited the Republic's country update at all.
+ok(/WGC2026 Country Update/.test(gm),
+   "the Republic's country update is credited");
+ok(/Causeway Energies register/.test(gm) && /above 45 kW/.test(gm),
+   "the NI register is credited to Causeway with its threshold");
+ok(/44 and 18 kW/.test(gm),
+   "and the exclusions that fix that threshold are given");
+ok(/MCS certification records/.test(gm),
+   "MCS is credited for the domestic estimate");
+// THE TOGGLE MUST MOVE THE FIGURES, not just the wording. Asserting
+// that the note mentions a toggle proves nothing about whether
+// switching does anything - the same failure as testing that a label
+// exists rather than where it sits.
+function geoAt(j){
+  setPageVar("GEOJUR", j);
+  ["geoHardware","geoHardwareNote","geoCalib","geoCalibNote"]
+    .forEach(k=>{DOM[k]=null; el(k);});
+  geoPanel({geo:{targets:GEOT, hardware:GEOH}});
+  return {hw:DOM.geoHardware.innerHTML, note:DOM.geoHardwareNote.textContent,
+          cal:DOM.geoCalib.innerHTML};
+}
+{
+  const R = geoAt("roi"), N = geoAt("ni");
+  ok(R.hw !== N.hw,
+     "each jurisdiction renders a different hardware panel");
+  ok(/17x what is installed/.test(R.hw)
+     && /372x what is installed/.test(N.hw),
+     "the what-if multiple changes with the toggle - 17x against 372x");
+  ok(/0\.95%/.test(R.cal) && /0\.05%/.test(N.cal),
+     "and each jurisdiction's share of its own heat is drawn");
+  ok(/Republic of Ireland/.test(R.cal) && /Northern Ireland/.test(N.cal),
+     "with the home bar relabelled");
+  ok(/Sweden/.test(R.cal) && /Sweden/.test(N.cal),
+     "while the comparators stay put");
+  // THE DELIVERY RECORD IS THE FINDING, not just the small number:
+  // two of ten schemes run cleanly, four failed outright, and a
+  // seventh of installed heating never reached a building.
+  ok(/10 documented schemes above 45 kW/.test(N.note)
+     && /only 2 run cleanly/.test(N.note),
+     "the NI view gives the register's delivery record");
+  ok(/532 kW of heating built, 460 kW is delivered/.test(N.note),
+     "including the gap between built and delivered");
+  ok(/never reached a building/.test(N.note),
+     "and says what that gap means");
+  setPageVar("GEOJUR", "roi");
+}
+["geoTargets","geoHardware","geoCalib"].forEach(k=>{DOM[k]=null; el(k);});
+geoPanel({});
+ok(/coming build/.test(DOM.geoTargets.textContent)
+   && /coming build/.test(DOM.geoHardware.textContent),
+   "and every sub-panel declines cleanly without its block");
+
+// ---- no renderer may reach for an element that does not exist ------
+// Removing a panel leaves its renderer behind, and in the browser el()
+// returns NULL for a missing id - so the first .textContent on one
+// throws and kills EVERY renderer after it in the boot sequence. That
+// is what emptied Panel 5: heatGap and coolSide were still being
+// called for markup deleted two versions earlier, and geoPanel never
+// ran. Nothing in either suite could see it, because the harness's
+// el() manufactures a stub instead of returning null.
+{
+  const markup = html.replace(/<script[\s\S]*?<\/script>/g, "");
+  const have = new Set([...markup.matchAll(/id="([A-Za-z0-9_-]+)"/g)]
+    .map(m => m[1]));
+  const want = [...SCRIPTS.join("\n")
+    .matchAll(/\bel\(\s*['"]([A-Za-z0-9_-]+)['"]\s*\)/g)]
+    .map(m => m[1]);
+  // an id is allowed to be absent only where the call site guards it
+  // Two guard idioms are in use and BOTH count. The first is
+  //   const h1 = el('h1Win'); if (h1) h1.textContent = ...
+  // the second, used by every panel renderer, is
+  //   const box = el("vfmStages"), note = el("vfmStagesNote");
+  //   if (!box) return;
+  // which protects every id destructured on that line, not just the
+  // first. Panel 6 is covered on the public page, so its containers
+  // are absent by design and the renderers return early - a false
+  // positive here would have looked like the bug it is designed to
+  // catch.
+  const src = SCRIPTS.join("\n");
+  const guarded = new Set([...src
+    .matchAll(/(?:const|let)\s+(\w+)\s*=\s*el\(\s*['"]([A-Za-z0-9_-]+)['"]\s*\)\s*;\s*if\s*\(\s*\1\s*\)/g)]
+    .map(m => m[2]));
+  [...src.matchAll(
+    /(?:const|let)\s+(\w+)\s*=\s*((?:el\(\s*['"][A-Za-z0-9_-]+['"]\s*\)\s*,?\s*\w*\s*=?\s*)+);[\s\S]{0,120}?if\s*\(\s*!\1\s*\)\s*(?:return|\{)/g)]
+    .forEach(m => {
+      [...m[2].matchAll(/el\(\s*['"]([A-Za-z0-9_-]+)['"]\s*\)/g)]
+        .forEach(x => guarded.add(x[1]));
+    });
+  const missing = [...new Set(want)]
+    .filter(id => !have.has(id) && !guarded.has(id));
+  ok(missing.length === 0,
+     "every el() the script calls resolves to markup that exists"
+     + (missing.length ? " - missing: " + missing.join(", ") : ""));
+}
+
+// ---- Panel 6: value for money -------------------------------------
+["vfmStages","vfmStagesNote","vfmStreams","vfmStreamsNote","vfmTes",
+ "vfmTesNote","vfmMethod"].forEach(k=>{DOM[k]=null; el(k);});
+const VFMFIX = {derived:{vfm:{
+  scenario:{load_hours:4000,
+    scenario:{roi_twh:5.0, roi_year:2036, roi_milestone_twh:2.7,
+              roi_milestone_year:2030},
+    jur:{
+    roi:{network_twh:5.0, network_pct_of_heat:19.7, plant_mw:1250,
+         basis:"ten-year build", committed:true,
+         milestone_twh:2.7, milestone_year:2030},
+    ni:{network_twh:2.15, network_pct_of_heat:19.7, plant_mw:538,
+        basis:"lent", committed:false,
+        milestone_twh:1.16, milestone_year:2030}}},
+  stages:{jur:{
+    roi:{spf:4.0, spf_counterfactual:2.8, spf_gain:1.43, source_c:16.0,
+         deep_weight:0.0, devex_social_pct:0.040,
+         shortfall_default:0.10, shortfall_range:[0.0,0.30]},
+    ni:{spf:5.0, spf_counterfactual:2.8, spf_gain:1.79, source_c:19.6,
+        deep_weight:0.40, devex_social_pct:0.074,
+        shortfall_default:0.15, shortfall_range:[0.0,0.45]}}},
+  increment:{air_source_eur_kw:881, jur:{
+    roi:{central:{increment_eur_kw:119}},
+    ni:{central:{increment_eur_kw:330}}}},
+  carbon:{jur:{roi:{elec_saved_twh:0.289}, ni:{elec_saved_twh:0.182}}},
+  running:{jur:{
+    roi:{resource_eur_m_yr:{low:31.1,central:42.4,high:48.4}},
+    ni:{resource_eur_m_yr:{low:19.6,central:26.7,high:30.5}}}},
+  constants:{capacity_applies_to:["ashp"]},
+  phased:{build_years:10, horizon_years:60,
+    optimism:{default_pct:50.0, applies_to:"capital only",
+              benefits_adjustment:null},
+    integrated:["running cost at LRVC","avoided generation capacity",
+                "carbon at the shadow price",
+                "cooling, operating and avoided chiller capital",
+                "subsurface increment","development capital",
+                "optimism bias on capital",
+                "subsurface shortfall on the benefit side"],
+    not_integrated:{stage2_benefits:[
+        "avoided network reinforcement","air quality",
+        "interseasonal storage","dispatch-down absorption",
+        "security of supply","residual value at 60 years"],
+      stage2_costs:["operating and maintenance","heat pump replacement"],
+      stage1:["NOTHING IS BUILT"]},
+    known_shortcuts:["avoided capacity is hard-coded",
+      "the shortfall is applied flat, not through a duration curve",
+      "the avoided chiller capital is NOT scaled by the shortfall",
+      "the LRVC is borrowed from the UK sibling",
+      "the ten-year build has no Irish basis",
+      "optimism applies to capital only"],
+    jur:{roi:{plant_mw:1250, increment_eur_kw:997,
+              avoided_peak_mw:227, capacity_eur_m_yr:25.7,
+              running_eur_m_yr:78.6, annual_benefit_eur_m:104.3,
+              carbon_pv_eur_m:94,
+              streams_pv_eur_m:{running:1471, capacity:481, carbon:94,
+                                cooling:34},
+              cooling_avoided_eur_m:7.1, cooling_running_eur_m_yr:1.8,
+              capex_pv_eur_m:1608, benefit_pv_eur_m:2046, bcr:1.27},
+         ni:{plant_mw:538, increment_eur_kw:857,
+             avoided_peak_mw:125, capacity_eur_m_yr:14.1,
+             running_eur_m_yr:49.6, annual_benefit_eur_m:63.7,
+             carbon_pv_eur_m:53,
+             streams_pv_eur_m:{running:1061, capacity:302, carbon:53,
+                               cooling:9},
+             cooling_avoided_eur_m:1.8, cooling_running_eur_m_yr:0.5,
+             capex_pv_eur_m:628, benefit_pv_eur_m:1416, bcr:2.25}}},
+  tes_cop:{air_source:2.6, ground_source:2.94,
+    table:"TES 2023 databook, IE Demand, Table 6.4",
+    seasonal_treatment:null, peak_treatment:null},
+  tes_carbon:{}, lrvc:{}}}};
+vfmPanel(VFMFIX);
+const vs = DOM.vfmStages.innerHTML, vsn = DOM.vfmStagesNote.textContent;
+const vr = DOM.vfmStreams.innerHTML, vrn = DOM.vfmStreamsNote.textContent;
+const vt = DOM.vfmTes.innerHTML, vtn = DOM.vfmTesNote.textContent;
+const vm = DOM.vfmMethod.innerHTML;
+ok(!/NaN|undefined/.test(vs+vr+vt+vm), "no NaN in the appraisal panel");
+// THE STAGES ARE NEVER SUMMED, and the capacity sign follows the stage
+ok(/a COST/.test(vs) && /a BENEFIT/.test(vs),
+   "capacity is a cost in stage one and a benefit in stage two");
+ok(/never summed/.test(vsn),
+   "and the note says the stages are never summed");
+// THE SCENARIO IS OURS; ONLY THE MILESTONE IS GOVERNMENT'S. When the
+// panel moved from the 2030 milestone to the ten-year build, two
+// labels went stale and left it saying "5 TWh by 2030 - a government
+// commitment". Neither the year nor the attribution was true. The
+// Republic has committed to 2.7 TWh by 2030; 5.0 TWh by 2036 is our
+// extrapolation from it.
+ok(/our ten-year build/.test(vs),
+   "the scenario is declared as ours, not a commitment");
+ok(/extrapolated from a 2\.7 TWh commitment by 2030/.test(vs),
+   "with the actual commitment named and dated");
+ok(!/2\.7 TWh[^<]{0,40}by 2030[^<]{0,40}\u2014 a government commitment/
+     .test(vs), "and no bare commitment claim on the scenario figure");
+ok(/networks by 2036/.test(vs),
+   "the ten-year build carries its own date, not the milestone's");
+ok(/least exposed to the forecast nobody can make/.test(vsn),
+   "with the price-exposure argument for the split");
+// carbon must NOT be shown as a durable stream
+ok(/extinguishes by about 2035/.test(vr),
+   "carbon is shown extinguishing, not as a durable benefit");
+// THE BENEFITS BAR. Proportions of present value, with cost drawn
+// beside it at the same scale so the BCR is visible rather than only
+// readable.
+ok(/class="mixbar"/.test(vr) && (vr.match(/class="seg"/g)||[]).length >= 5,
+   "a benefits bar is drawn with four streams and a cost bar");
+ok(/improves BOTH sides at once/.test(vr),
+   "and cooling is declared as improving both sides");
+ok(/BENEFIT \u2014 present value|BENEFIT — present value/.test(vr),
+   "the benefit bar is labelled");
+ok(/COST \u2014 subsurface increment|COST — subsurface/.test(vr),
+   "and the cost bar beside it");
+{
+  // running must dominate, carbon must be the smallest - if that ever
+  // inverts, something has gone wrong upstream
+  const w = [...vr.matchAll(/class="seg" style="width:([\d.]+)%;background:(#[0-9A-Fa-f]{6})/g)]
+    .map(m => ({pct:parseFloat(m[1]), col:m[2]}));
+  const run = w.find(x=>x.col==="#3AAA35"), carb = w.find(x=>x.col==="#C98F4F");
+  ok(run && carb && run.pct > 50 && carb.pct < 15,
+     "running cost dominates the benefit and carbon is the smallest");
+}
+ok(/does not decay/.test(vr), "while capacity is marked as durable");
+// It IS a BCR now - capital phased over a ten-year build, benefits
+// ramping with the fleet, discounted on each jurisdiction's own rule.
+// The earlier assertion guarded against calling an undiscounted
+// payback a BCR; that guard is replaced rather than removed, because
+// the substance changed.
+ok(/benefit-cost ratio over/.test(vr),
+   "a properly discounted BCR is shown");
+ok(/optimism bias/.test(vr), "with the optimism bias declared on it");
+ok(/five value streams of about twenty-five/i.test(vr),
+   "and how little of the appraisal is actually in it");
+// the TES finding
+ok(/none<\/b>/.test(vt) && /flat COP/.test(vt),
+   "the operators' flat COP is shown with no seasonal treatment");
+ok(/HIGHER than theirs/.test(vtn),
+   "and our own air-source figure is declared higher than theirs");
+ok(/underestimates the problem and the solution/.test(vtn),
+   "with the omission cutting both ways");
+// the method fold must admit what is missing
+// THE AUDIT MUST BE ON THE PAGE, not just in the payload. Eight terms
+// of about twenty-five are in the arithmetic. The shortfall lever is
+// now APPLIED, so this assertion is INVERTED from the version that
+// policed its absence - the page can never quietly drop it again.
+ok(/What is in the arithmetic, and what is not/.test(vm),
+   "the fold audits what is in and what is out");
+ok(/subsurface shortfall on the benefit side/.test(vm),
+   "the shortfall is named as applied, not as an omission");
+ok(!/SUBSURFACE SHORTFALL - defined, never applied/.test(vm),
+   "and the old unapplied wording is gone from the page");
+ok(/NOTHING IS BUILT/.test(vm),
+   "and that the electrification stage does not exist");
+ok(/Known shortcuts/.test(vm) && /hard-coded/.test(vm),
+   "with the shortcuts listed, including the hard-coded capacity");
+ok(/borrowed from the UK sibling/i.test(vm),
+   "including that the LRVC is borrowed");
+ok(/against interest/.test(vm), "and the interest declaration");
+// the toggle must move the figures
+{
+  setPageVar("VFMJUR","ni");
+  ["vfmStages","vfmStreams","vfmTes"].forEach(k=>{DOM[k]=null; el(k);});
+  vfmPanel(VFMFIX);
+  const ni = DOM.vfmStages.innerHTML;
+  ok(/LENT/.test(ni), "the North's scenario is declared lent");
+  ok(ni !== vs, "and the toggle changes the figures");
+  setPageVar("VFMJUR","roi");
+}
+["vfmStages","vfmStreams","vfmTes"].forEach(k=>{DOM[k]=null; el(k);});
+vfmPanel({});
+ok(/coming build/.test(DOM.vfmStages.textContent),
+   "and it declines cleanly without the block");
+// THE PANEL IS COVERED ON THE PUBLIC PAGE. Its figures are real,
+// which is why: a reader could otherwise take an unpriced
+// electrification stage, absent cooling and an undiscounted payback
+// for a finished appraisal. The working copy, docs/panel6.html,
+// renders the same panel from the same payload with the cover off.
+{
+  const sec = html.slice(html.indexOf('<section id="vfm"'),
+                         html.indexOf('<section id="why"'));
+  ok(/wipcover/.test(sec), "Panel 6 is covered on the public page");
+  ok(/Under construction/i.test(sec), "and says so");
+  ok(!/id="vfmStages"/.test(sec) && !/id="vfmStreams"/.test(sec),
+     "its containers are absent, so nothing renders behind the cover");
+  ok(!/\u20ac|EUR|\u00a3/.test(sec.replace(/<!--[\s\S]*?-->/g, "")),
+     "and no figure leaks through it");
+}
 
 console.log(checks + " front-end fixture checks passed");
