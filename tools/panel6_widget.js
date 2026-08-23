@@ -67,8 +67,8 @@
   var h=document.createElement("h3");
   h.textContent="Try the levers";box.appendChild(h);
   var intro=document.createElement("p");
-  intro.style.cssText="font-size:.92em;color:#444";
-  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. The Republic is appraised in euro and the North in sterling, each at real 2025 prices.";
+  intro.style.cssText="font-size:.92em;color:var(--muted,#A9B4B1)";
+  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. The Republic of Ireland is appraised in euro and Northern Ireland in sterling, each at real 2025 prices.";
   box.appendChild(intro);
   var tog=document.createElement("div");tog.style.cssText="margin:.4rem 0 .8rem";
   ["roi","ni"].forEach(function(j){
