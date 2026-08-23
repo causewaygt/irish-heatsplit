@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.49.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.50.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -27,7 +27,7 @@
 :root{
   --bg:#0b0d0d; --panel:#101413; --panel2:#0d1110; --line:#26302d;
   --green:#3AAA35; --green2:#568F59; --petrol:#1F4E5F; --amber:#D98E2B;
-  --teal:#2F8F8C; --ink:#F0F2F1; --muted:#A9B4B1; --faint:#6E7B78;
+  --teal:#2F8F8C; --ink:#F0F2F1; --muted:#A9B4B1; --faint:#8C9A96;
   /* --ink2 was USED IN SIXTEEN PLACES AND NEVER DEFINED. In CSS an
      invalid var() makes the property inherit, so those uses looked
      fine; in an SVG fill attribute it falls back to BLACK, so every
@@ -735,7 +735,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     streams are added; the fold at the bottom of this panel records
     what is in the arithmetic and what is not.</span>
   </div>
-  <p class="scopeline">Not whether to build networks. The Republic has
+  <p class="scopeline">Not whether to build networks. Ireland has
     committed to that. Only what sits at the head of them.</p>
   <div class="panelbox">
     <div class="costctl costjur" id="vfmCtl">
@@ -743,9 +743,9 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <button data-vfmjur="roi" aria-pressed="true">REPUBLIC OF IRELAND</button>
       <button data-vfmjur="ni">NORTHERN IRELAND</button>
     </div>
-    <h3 class="foldh">Two stages, never summed
-      <span class="sub">&mdash; electrify first, then choose the heat
-      source</span></h3>
+    <h3 class="foldh">Two stages
+      <span class="sub">&mdash; electrify first, then compare heat
+      sources</span></h3>
     <div id="vfmStages"></div>
     <p class="note" id="vfmStagesNote"></p>
 
@@ -755,7 +755,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <div id="vfmStreams"></div>
     <p class="note" id="vfmStreamsNote"></p>
 
-    <h3 class="foldh">And what the operators assume
+    <h3 class="foldh">What the grid operators currently assume
       <span class="sub">&mdash; a flat heat-pump COP, out to
       2050</span></h3>
     <div id="vfmTes"></div>
@@ -764,11 +764,22 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <summary>How this is built, and what is still missing</summary>
       <div class="foldbody" id="vfmMethod"></div>
     </details>
+    <h3 class="foldh">What would need to change
+      <span class="sub">&mdash; our view</span></h3>
+    <div id="vfmAsks"></div>
+    <p class="note">This section is advocacy and is labelled as such:
+    Causeway Energies develops geothermal projects in both
+    jurisdictions. The interest declaration in the fold above
+    applies.</p>
   </div>
 </section>
 
+<section id="footnotes" aria-labelledby="footnotes-h">
+  <h2 id="footnotes-h">Footnotes</h2>
+</section>
+
 <section id="why" aria-labelledby="why-h">
-  <h2 id="why-h">Why heat?</h2>
+  <h3 id="why-h" style="font-family:'Lato',sans-serif">Why heat?</h3>
   <div class="panelbox">
     <p style="max-width:720px;margin-bottom:6px">Of everything the island
       pays for as energy – power, transport, heat – heat rivals transport
@@ -780,7 +791,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </section>
 
 <section id="oil" aria-labelledby="oil-h">
-  <h2 id="oil-h">The oil ticker</h2>
+  <h3 id="oil-h" style="font-family:'Lato',sans-serif">The oil ticker</h3>
   <div class="split2">
     <div class="panelbox">
       <div class="stat" style="background:none;border:none;padding:0">
@@ -838,7 +849,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 <script>
 const CLR = {green:'#3AAA35', green2:'#568F59', petrol:'#1F4E5F',
              amber:'#D98E2B', teal:'#2F8F8C', ink:'#F0F2F1',
-             muted:'#A9B4B1', faint:'#6E7B78', line:'#26302d',
+             muted:'#A9B4B1', faint:'#8C9A96', line:'#26302d',
              panel:'#0d1110'};
 const PL_BASE = {
   paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
@@ -3061,6 +3072,75 @@ let GEOJUR = "roi";
 // cross-panel read. No feed touches it.
 let VFMJUR = "roi";
 let VFMD = null;
+
+function vfmAsks(v){
+  const box = el("vfmAsks");
+  if(!box) return;
+  if(!v){ box.innerHTML=""; return; }
+  const A = {
+    roi: [
+      ["Buy the heat, not the boreholes.",
+       "Heat-as-a-Service as a recognised public procurement route. "
+       + "The case above stands only if someone can procure a "
+       + "capital-up-front, sixty-year asset \u2014 annualised public "
+       + "budgeting cannot, and every market that scaled geothermal "
+       + "solved procurement before it solved anything geological."],
+      ["Assess the ground for source AND store, before the default "
+       + "is signed.",
+       "A forcing mechanism in heat network development \u2014 zoning, "
+       + "scheme approval, funding gates \u2014 requiring geothermal "
+       + "supply and interseasonal storage to be properly assessed "
+       + "before an air-source design is fixed. Every scheme that "
+       + "defaults without the assessment forecloses the increment "
+       + "this panel prices for the life of the network."],
+      ["Say clearly that ambient loops and 5GDHC are regulated heat "
+       + "networks.",
+       "The class this appraisal prices \u2014 open loop, standing "
+       + "column, aquifer and borehole storage with waste-heat "
+       + "recovery \u2014 is the ambient class. If definitions and "
+       + "support are written around high-temperature district "
+       + "heating only, the scenario above sits outside the "
+       + "architecture built to deliver it."],
+      ["Legislate the 2023 Policy Statement.",
+       "Three years from policy to no enacted licensing. Open-loop "
+       + "and aquifer storage at this scale need ownership of the "
+       + "heat and abstraction certainty; the shallow class does not "
+       + "escape the licensing question because the deep one is "
+       + "unproven."]],
+    ni: [
+      ["Buy the heat, not the boreholes.",
+       "Heat-as-a-Service as a recognised public-sector procurement "
+       + "route, with RHI successors that reward efficiency rather "
+       + "than output. The benefit\u2013cost ratio above is capital "
+       + "up front against sixty years of value \u2014 the annual "
+       + "capital/resource split is structurally unable to buy it."],
+      ["Underwrite appraisal risk now, not later.",
+       "An exploration guarantee for the intermediate play on the "
+       + "Netherlands\u2019 RNES model, brought forward from the "
+       + "consultation\u2019s future option. This appraisal prices "
+       + "pre-FID risk and carries a programme shortfall lever; this "
+       + "is the instrument that moves both, and the international "
+       + "evidence puts de-risking above tariff support."],
+      ["One Geothermal Desk.",
+       "A coordinated consenting front door across DfE licensing, "
+       + "NIEA, planning and HSENI, running as a policy sandbox "
+       + "before legislation. The ten-year build assumed above is "
+       + "already flagged as generous to a jurisdiction with no "
+       + "supply chain; fragmented consenting is a named reason "
+       + "why."],
+      ["Licence terms that do not price into the cost of capital.",
+       "Thirty years plus twenty rather than twenty-five; no "
+       + "separate exploration licence for a heat sector with an "
+       + "identified offtaker; tolerance bands instead of "
+       + "\u201ccannot exceed\u201d. Re-licensing risk inside debt "
+       + "tenor is a discount-rate cost this appraisal does not "
+       + "carry \u2014 keeping it out is cheaper than compensating "
+       + "for it."]],
+  };
+  box.innerHTML = (A[VFMJUR]||[]).map(([t,b]) =>
+    '<p><b>' + t + '</b> ' + b + '</p>').join('');
+}
+
 function vfmPanel(D){
   VFMD = (D||{}).derived && D.derived.vfm ? D.derived.vfm : null;
   // On the public page the panel is COVERED, so these containers do
@@ -3069,17 +3149,17 @@ function vfmPanel(D){
   // throw and kill every renderer after this one in the boot sequence.
   // That is exactly what blanked Panel 5 when two earlier panels were
   // removed and their renderers left behind.
-  vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD);
+  vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD);
 }
 document.querySelectorAll("[data-vfmjur]").forEach(b=>{
   b.addEventListener("click", ()=>{
     VFMJUR = b.dataset.vfmjur;
     document.querySelectorAll("[data-vfmjur]").forEach(x=>
       x.setAttribute("aria-pressed", String(x === b)));
-    if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); }
+    if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD); }
   });
 });
-const VFMLAB = {roi:"the Republic", ni:"Northern Ireland"};
+const VFMLAB = {roi:"ROI", ni:"Northern Ireland"};
 
 function vfmStages(v){
   const box = el("vfmStages"), note = el("vfmStagesNote");
@@ -3121,7 +3201,7 @@ function vfmStages(v){
   s += '<table class="caltab"><thead><tr><th>Stage</th>'
     + '<th>What it decides</th><th>Capacity</th><th>Price exposure</th>'
     + '</tr></thead><tbody>'
-    + '<tr><td><b>1 \u00b7 electrify</b></td><td>BAU to an air-source '
+    + '<tr><td><b>1 \u00b7 electrify</b></td><td>BAU to an assumed air-source '
     + 'network \u2014 whether to move off oil and gas at all</td>'
     + '<td style="color:#C98F4F">a COST \u2014 electrifying heat ADDS '
     + 'winter peak</td><td>fuel AND electricity, so it turns on the '
@@ -3133,22 +3213,18 @@ function vfmStages(v){
     + 'cancels</td></tr></tbody></table>';
   box.innerHTML = s;
   if(note){
-    note.textContent = "The stages are reported separately and never "
-      + "summed. Summing them would let the subsurface bank the carbon "
-      + "saving of moving off oil and gas \u2014 which any heat pump "
-      + "delivers \u2014 and leave the ground unjudged. It also settles "
-      + "the capacity sign without anyone having to remember it: "
-      + "electrifying heat adds winter peak, so capacity is a cost in "
-      + "stage one; raising the SPF once electrified saves it, so it is "
-      + "a benefit in stage two. And the stage this site advocates is "
-      + "the one least exposed to the forecast nobody can make, because "
-      + "both its routes are electric. "
+    note.textContent = "The Geothermal Network in stage 2 assumes, "
+      + "for simplicity, a geothermal upgrade to the national "
+      + "programme of heat networks heated by ASHPs. In reality, "
+      + "geothermal deployment is expected to involve everything "
+      + "from single-home ground source heat pumps, through "
+      + "hospital and airport microgrids, to full heat networks "
+      + "in towns and cities."
       + (lent
-         ? "Northern Ireland has set no district heating target of any "
-           + "kind, so its scenario is the Republic's share of building "
-           + "heat lent to it. That is the finding, not a caveat."
-         : "Stage one is only partly priced here \u2014 the "
-           + "electrification arithmetic is not yet built.");
+         ? " Northern Ireland has set no district heating target "
+           + "of any kind, so its scenario is ROI\u2019s "
+           + "proportional share of building heat lent to it."
+         : "");
   }
 }
 
@@ -3172,8 +3248,9 @@ function vfmStreams(v){
         + "clearing price \u2014 the avoided cost of capacity, not a "
         + "payment anyone receives", dur:"does not decay"},
     {k:"Carbon", v:null, lo:null, hi:null,
-     note:"near zero within a decade on the operators' own scenarios, "
-        + "and negative thereafter as the grid goes carbon-negative",
+     note:"near zero within a decade on the grid operators' own "
+        + "scenarios, and negative thereafter as the grid goes "
+        + "carbon-negative due to the BECCS assumptions",
      dur:"<b>extinguishes by about 2035</b>"},
     {k:"Cooling", v:null, lo:null, hi:null,
      note:"improves BOTH sides at once \u2014 the chillers are not "
@@ -3262,16 +3339,7 @@ function vfmStreams(v){
     + '</tbody></table>';
   box.innerHTML = s;
   if(note){
-    note.textContent = "Carbon was expected to carry this panel and "
-      + "does not. On EirGrid and SONI's own Tomorrow's Energy "
-      + "Scenarios the Irish power system reaches net zero from 2040 in "
-      + "two of four scenarios and turns carbon-NEGATIVE thereafter, so "
-      + "the carbon value of an efficiency gain is near zero within a "
-      + "decade. What remains is running cost and capacity \u2014 "
-      + "neither of which decays, because peak plant is needed whatever "
-      + "its carbon content. That is a more durable case than a "
-      + "carbon-led one, and it happens to be the one the operators' "
-      + "own forecasts support.";
+    note.textContent = "";
   }
 }
 
@@ -3319,12 +3387,14 @@ function vfmTes(v){
     const inc = v.increment, sc = v.scenario.jur[VFMJUR],
           stg = v.stages.jur[VFMJUR];
     meth.innerHTML =
-      '<p><b>The scenario.</b> The Republic has committed to up to '
+      '<p><b>The scenario.</b> ROI has committed to up to '
       + '2.7 TWh of district heating by 2030 under the Climate Action '
       + 'Plan \u2014 10.7% of its building heat, and well inside '
       + 'SEAI\u2019s own technical ceiling of 54%. Northern Ireland has '
-      + 'set no district heating target of any kind, so its scenario is '
-      + 'that same share of building heat LENT to it. The whole network '
+      + 'set no district heating target of any kind, but does have a '
+      + '2030 Energy Strategy goal of 8,000 GWh saved, so its scenario '
+      + 'is '
+      + 'that same proportional share of building heat LENT to it. The whole network '
       + 'is priced either way it is supplied; there is no further '
       + 'fraction inside it.</p>'
       + '<p><b>Networks only, and that is a simplification.</b> We '
@@ -3334,8 +3404,10 @@ function vfmTes(v){
       + 'buildings, and direct use where the resource allows. Several '
       + 'of them will reach parts of the building stock a network '
       + 'never can, particularly outside the cities where density '
-      + 'will not support mains. This panel considers networks alone '
-      + 'because that is where the Republic\u2019s policy direction '
+      + 'will not support mains. For simplicity, to represent '
+      + 'geothermal\u2019s case plainly, this panel considers networks '
+      + 'alone '
+      + 'because that is where Ireland\u2019s policy direction '
       + 'points and because it gives one clean scenario to appraise. '
       + 'It is therefore a floor on what geothermal could contribute, '
       + 'not a ceiling.</p>'
@@ -3347,7 +3419,8 @@ function vfmTes(v){
       + 'up to a town or city network. Those differ in cost per '
       + 'kilowatt, in who pays, in how long they take to consent and '
       + 'in the risk each carries. Modelling them as one network is a '
-      + 'simplification made for tractability, and it will understate '
+      + 'simplification made to make the case for geothermal plainly, '
+      + 'and it will understate '
       + 'the cheapest cases and overstate the hardest.</p>'
       + '<p><b>The subsurface increment</b> is '
       + fmt(inc.jur[VFMJUR].central.increment_eur_kw,0) + ' EUR/kW '
@@ -3842,7 +3915,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.49.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.50.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
@@ -3962,8 +4035,8 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   var h=document.createElement("h3");
   h.textContent="Try the levers";box.appendChild(h);
   var intro=document.createElement("p");
-  intro.style.cssText="font-size:.92em;color:#444";
-  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. The Republic is appraised in euro and the North in sterling, each at real 2025 prices.";
+  intro.style.cssText="font-size:.92em;color:var(--muted,#A9B4B1)";
+  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. The Republic of Ireland is appraised in euro and Northern Ireland in sterling, each at real 2025 prices.";
   box.appendChild(intro);
   var tog=document.createElement("div");tog.style.cssText="margin:.4rem 0 .8rem";
   ["roi","ni"].forEach(function(j){

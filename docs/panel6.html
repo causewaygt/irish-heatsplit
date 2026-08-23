@@ -14,7 +14,7 @@
 :root{
   --bg:#0b0d0d; --panel:#101413; --panel2:#0d1110; --line:#26302d;
   --green:#3AAA35; --green2:#568F59; --petrol:#1F4E5F; --amber:#D98E2B;
-  --teal:#2F8F8C; --ink:#F0F2F1; --muted:#A9B4B1; --faint:#6E7B78;
+  --teal:#2F8F8C; --ink:#F0F2F1; --muted:#A9B4B1; --faint:#8C9A96;
   /* --ink2 was USED IN SIXTEEN PLACES AND NEVER DEFINED. In CSS an
      invalid var() makes the property inherit, so those uses looked
      fine; in an SVG fill attribute it falls back to BLACK, so every
@@ -303,7 +303,7 @@ body{padding:24px}
 <section id="vfm" aria-labelledby="vfm-h">
   <h2 id="vfm-h">6. Value for money &mdash; geothermal against an
     air-source-led network</h2>
-  <p class="scopeline">Not whether to build networks. The Republic has
+  <p class="scopeline">Not whether to build networks. Ireland has
     committed to that. Only what sits at the head of them.</p>
   <div class="panelbox">
     <div class="costctl costjur" id="vfmCtl">
@@ -311,9 +311,9 @@ body{padding:24px}
       <button data-vfmjur="roi" aria-pressed="true">REPUBLIC OF IRELAND</button>
       <button data-vfmjur="ni">NORTHERN IRELAND</button>
     </div>
-    <h3 class="foldh">Two stages, never summed
-      <span class="sub">&mdash; electrify first, then choose the heat
-      source</span></h3>
+    <h3 class="foldh">Two stages
+      <span class="sub">&mdash; electrify first, then compare heat
+      sources</span></h3>
     <div id="vfmStages"></div>
     <p class="note" id="vfmStagesNote"></p>
 
@@ -323,7 +323,7 @@ body{padding:24px}
     <div id="vfmStreams"></div>
     <p class="note" id="vfmStreamsNote"></p>
 
-    <h3 class="foldh">And what the operators assume
+    <h3 class="foldh">What the grid operators currently assume
       <span class="sub">&mdash; a flat heat-pump COP, out to
       2050</span></h3>
     <div id="vfmTes"></div>
@@ -332,15 +332,22 @@ body{padding:24px}
       <summary>How this is built, and what is still missing</summary>
       <div class="foldbody" id="vfmMethod"></div>
     </details>
+    <h3 class="foldh">What would need to change
+      <span class="sub">&mdash; our view</span></h3>
+    <div id="vfmAsks"></div>
+    <p class="note">This section is advocacy and is labelled as such:
+    Causeway Energies develops geothermal projects in both
+    jurisdictions. The interest declaration in the fold above
+    applies.</p>
   </div>
 </section>
 
-<script>window.VFM_PAYLOAD = {"derived": {"vfm": {"scenario": {"scenario": {"roi_twh": 5.0, "roi_year": 2036, "roi_milestone_twh": 2.7, "roi_milestone_year": 2030, "roi_target_twh": 2.7, "roi_target_year": 2030, "roi_source": "Climate Action Plan 2025, up to 2.7 TWh by 2030", "roi_delivery_pct": [20.0, 32.0], "ni_basis": "lent - the Republic's share of building heat applied to Northern Ireland, which has set no target", "network_load_hours": 4000}, "jur": {"roi": {"delivered_twh": 25.33, "network_twh": 5.0, "basis": "ten-year build", "committed": true, "milestone_twh": 2.7, "milestone_year": 2030, "network_gwh": 5000.0, "plant_mw": 1250.0, "network_pct_of_heat": 19.7, "site_whatif_twh": 5.07, "vs_site_whatif": 0.99}, "ni": {"delivered_twh": 10.89, "network_twh": 2.15, "basis": "lent", "committed": false, "milestone_twh": 1.16, "milestone_year": 2030, "network_gwh": 2150.0, "plant_mw": 538.0, "network_pct_of_heat": 19.7, "site_whatif_twh": 2.18, "vs_site_whatif": 0.99}}, "load_hours": 4000, "island_network_gwh": 7150.0, "island_plant_mw": 1788.0, "roi_outturn_twh": [1.0, 1.6], "seai_technical_ceiling_pct": 54.0}, "stages": {"stages": ["electrify", "subsurface"], "jur": {"roi": {"class": "open loop and standing column wells, ATES and BTES, with waste heat recovery and storage", "deep_weight": 0.0, "source_c": 16.0, "spf": 4.0, "spf_counterfactual": 2.8, "spf_gain": 1.43, "devex_social_pct": 0.04, "shortfall_default": 0.05, "shortfall_range": [0.0, 0.3]}, "ni": {"class": "the same, with a deeper Permo-Triassic HSA component blended in", "deep_weight": 0.4, "source_c": 19.6, "spf": 5.0, "spf_counterfactual": 2.8, "spf_gain": 1.79, "devex_social_pct": 0.074, "shortfall_default": 0.1, "shortfall_range": [0.0, 0.45]}}, "classes": {"shallow": {"devex_pct": 0.04, "success": 1.0, "note": "open loop, standing column wells, ATES and BTES with waste heat recovery and storage - pre-FID spend reduces design uncertainty rather than mitigating a project-killing risk"}, "deep": {"devex_pct": 0.1, "success": 0.8, "note": "Permo-Triassic hot sedimentary aquifer doublet - found, not installed, and can be written off"}}, "deep_weight": 0.4, "capacity_sign": {"electrify": -1, "subsurface": 1}}, "increment": {"air_source_eur_kw": 881.18, "shallow_eur_kw": {"dutch_floor": 600.0, "central": 1878.0, "high": 2400.0, "source": "Herrmann et al. 2026, RSER 226:116202, 133 ATES systems; 300 EUR/kW combined heating and cooling above 2 MW, restated to a heating basis; Danish subset near 1,000 EUR/kW taken as the Irish central"}, "subsurface_share": {"shallow": 0.723, "deep": 0.618, "source": "Causeway Hospital feasibility, SCW and Deep GHP capital stacks"}, "shallow_learn_eur_kw": {"foak": 2000.0, "nth": 1566.0, "effective_reduction": 0.2169, "floor": null, "danish_outturn": 1878.0, "learning": 0.3}, "deep_eur_kw": {"foak": 2182.0, "nth": 1777.0, "effective_reduction": 0.1854, "learning": 0.3}, "jur": {"roi": {"deep_weight": 0.0, "cases": {"floor_foak": {"blend_eur_kw": 600.0, "increment_eur_kw": -281.0}, "floor_nth": {"blend_eur_kw": 600.0, "increment_eur_kw": -281.0}, "central_foak": {"blend_eur_kw": 1878.0, "increment_eur_kw": 997.0}, "central_nth": {"blend_eur_kw": 1878.0, "increment_eur_kw": 997.0}, "high_foak": {"blend_eur_kw": 2400.0, "increment_eur_kw": 1519.0}, "high_nth": {"blend_eur_kw": 2400.0, "increment_eur_kw": 1519.0}, "ramp": {"increment_eur_kw_by_year": [967.0, 923.9, 880.7, 837.6, 794.4, 751.3, 708.2, 665.0, 621.9, 578.7], "year1": 967.0, "final": 578.7, "mean": 772.9, "waste_heat_share": 0.15, "waste_heat_relcost": 0.3, "waste_heat_subsurface_multiplier": 0.895, "basis": "linear FOAK->nth over the build years, subsurface-share learning both classes, waste-heat displacement on the shallow subsurface, from the Irish anchors"}}, "central": {"blend_eur_kw": 1654.0, "increment_eur_kw": 773.0}, "ramp": {"increment_eur_kw_by_year": [967.0, 923.9, 880.7, 837.6, 794.4, 751.3, 708.2, 665.0, 621.9, 578.7], "year1": 967.0, "final": 578.7, "mean": 772.9, "waste_heat_share": 0.15, "waste_heat_relcost": 0.3, "waste_heat_subsurface_multiplier": 0.895, "basis": "linear FOAK->nth over the build years, subsurface-share learning both classes, waste-heat displacement on the shallow subsurface, from the Irish anchors"}}, "ni": {"deep_weight": 0.4, "cases": {"floor_foak": {"blend_eur_kw": 1233.0, "increment_eur_kw": 352.0}, "floor_nth": {"blend_eur_kw": 1071.0, "increment_eur_kw": 190.0}, "central_foak": {"blend_eur_kw": 2000.0, "increment_eur_kw": 1118.0}, "central_nth": {"blend_eur_kw": 1838.0, "increment_eur_kw": 957.0}, "high_foak": {"blend_eur_kw": 2313.0, "increment_eur_kw": 1432.0}, "high_nth": {"blend_eur_kw": 2151.0, "increment_eur_kw": 1270.0}, "ramp": {"increment_eur_kw_by_year": [1130.9, 1086.0, 1041.2, 996.3, 951.4, 906.5, 861.7, 816.8, 771.9, 727.0], "year1": 1130.9, "final": 727.0, "mean": 929.0, "waste_heat_share": 0.1, "waste_heat_relcost": 0.3, "waste_heat_subsurface_multiplier": 0.93, "basis": "linear FOAK->nth over the build years, subsurface-share learning both classes, waste-heat displacement on the shallow subsurface, from the Irish anchors"}}, "central": {"blend_eur_kw": 1810.0, "increment_eur_kw": 929.0}, "ramp": {"increment_eur_kw_by_year": [1130.9, 1086.0, 1041.2, 996.3, 951.4, 906.5, 861.7, 816.8, 771.9, 727.0], "year1": 1130.9, "final": 727.0, "mean": 929.0, "waste_heat_share": 0.1, "waste_heat_relcost": 0.3, "waste_heat_subsurface_multiplier": 0.93, "basis": "linear FOAK->nth over the build years, subsurface-share learning both classes, waste-heat displacement on the shallow subsurface, from the Irish anchors"}}}}, "carbon": {"stage": "subsurface", "jur": {"roi": {"network_twh": 5.0, "elec_ashp_twh": 1.786, "elec_geo_twh": 1.25, "elec_saved_twh": 0.536, "saved_pct": 30.0}, "ni": {"network_twh": 2.15, "elec_ashp_twh": 0.768, "elec_geo_twh": 0.43, "elec_saved_twh": 0.338, "saved_pct": 44.0}}}, "running": {"lrvc_eur_mwh": {"central": 146.6, "low": 143.6, "high": 167.4, "note": "UK Heat Split sibling, long-run variable cost series on its own anchor years; NI direct, ROI pinned to the euro equivalent pending an Irish derivation"}, "jur": {"roi": {"elec_saved_twh": 0.536, "resource_eur_m_yr": {"low": 77.0, "central": 78.6, "high": 89.7}, "transfers_excluded": ["carbon tax", "network charges", "policy levies", "supplier margin", "VAT"]}, "ni": {"elec_saved_twh": 0.338, "resource_eur_m_yr": {"low": 48.5, "central": 49.6, "high": 56.6}, "transfers_excluded": ["carbon tax", "network charges", "policy levies", "supplier margin", "VAT"]}}}, "cooling": {"lever": {"connections_pct": 12.0, "min_pct": 0.0, "max_pct": 60.0, "chiller_eur_kw": 620.0, "chiller_range": [400.0, 900.0], "chiller_eer": 3.0, "ground_cooling_eer": 15.0, "note": "avoided air-cooled chiller capital where the loop serves both. Set the lever to zero and the heat case stands on its own.", "roi_only_caveat": "only an ambient loop can carry cooling at network flow temperatures; that is the Republic's blend but only the shallow part of the North's, so the North's share is capped at its non-deep fraction"}, "comfort_cooling_twh": 1.94, "jur": {"roi": {"elec_saved_twh": 0.0123, "available_twh": 0.383, "carriable_twh": 0.383, "served_twh": 0.046, "chiller_mw_avoided": 11.5, "avoided_capital_eur_m": 7.1}, "ni": {"elec_saved_twh": 0.0032, "available_twh": 0.165, "carriable_twh": 0.099, "served_twh": 0.012, "chiller_mw_avoided": 3.0, "avoided_capital_eur_m": 1.8}}}, "phased": {"build_years": 10, "horizon_years": 60, "optimism": {"default_pct": 50.0, "min_pct": 0.0, "max_pct": 66.0, "applies_to": "capital only", "benefits_adjustment": null, "source": "HM Treasury Green Book, Mott MacDonald bands - 66% is the upper bound for non-standard civil engineering, mitigating toward 40-50% at outline business case", "roi_basis": "PROXY - the Infrastructure Guidelines publish no optimism bias table, only a process requirement to consider remaining bias after risk assessment", "benefits_note": "no Irish requirement for a downward benefit adjustment was found; recorded as unresolved"}, "discount": {"roi": {"kind": "flat", "rate": 0.04}, "ni": {"kind": "declining", "bands": [[30, 0.035], [75, 0.03], [null, 0.025]]}}, "jur": {"roi": {"plant_mw": 1250.0, "increment_eur_kw": 773.0, "capex_undiscounted_eur_m": 966.2, "cooling_avoided_eur_m": 7.1, "capex_net_of_cooling_eur_m": 959.1, "cooling_pct_of_capex": 0.7, "capex_with_devex_and_ob_eur_m": 1496.3, "capex_pv_eur_m": 1259.9, "avoided_peak_mw": 227.0, "capacity_eur_m_yr": 24.4, "running_eur_m_yr": 74.7, "capacity_gross_eur_m_yr": 25.7, "running_gross_eur_m_yr": 78.6, "annual_benefit_eur_m": 100.8, "carbon_pv_eur_m": 89.3, "benefit_pv_eur_m": 1975.9, "streams_pv_eur_m": {"running": 1397.2, "capacity": 457.3, "carbon": 89.3, "cooling": 32.1}, "cooling_running_eur_m_yr": 1.7, "cooling_running_gross_eur_m_yr": 1.8, "bcr": 1.57, "shortfall_applied": 0.05, "shortfall_range": [0.0, 0.3], "bcr_before_shortfall": 1.65, "bcr_at_worst_shortfall": 1.16, "shortfall_breakeven": 0.3942, "coeffs": {"mw": 1250.0, "build_years": 10, "d0": 8.271523, "d1": 3.839148, "asc_eur_kw": 881.18, "a_shallow_eur_kw": 2000.0, "a_deep_eur_kw": 2182.05, "deep_weight": 0.0, "ss_shallow": 0.723, "ss_deep": 0.618, "cool_capital_eur_m": 7.1, "devex": 0.04, "flat_gross_pv_eur_m": 1985.898, "carbon_gross_pv_eur_m": 93.977, "gbp_per_eur": null}, "currency": "EUR"}, "ni": {"plant_mw": 538.0, "increment_eur_kw": 929.0, "capex_undiscounted_eur_m": 499.8, "cooling_avoided_eur_m": 1.8, "capex_net_of_cooling_eur_m": 498.0, "cooling_pct_of_capex": 0.4, "capex_with_devex_and_ob_eur_m": 802.3, "capex_pv_eur_m": 688.1, "avoided_peak_mw": 124.6, "capacity_eur_m_yr": 12.7, "running_eur_m_yr": 44.6, "capacity_gross_eur_m_yr": 14.1, "running_gross_eur_m_yr": 49.6, "annual_benefit_eur_m": 57.7, "carbon_pv_eur_m": 47.6, "benefit_pv_eur_m": 1282.5, "streams_pv_eur_m": {"running": 955.2, "capacity": 272.0, "carbon": 47.6, "cooling": 7.7}, "cooling_running_eur_m_yr": 0.4, "cooling_running_gross_eur_m_yr": 0.4, "bcr": 1.86, "shortfall_applied": 0.1, "shortfall_range": [0.0, 0.45], "bcr_before_shortfall": 2.07, "bcr_at_worst_shortfall": 1.14, "shortfall_breakeven": 0.5171, "coeffs": {"mw": 538.0, "build_years": 10, "d0": 8.460894, "d1": 3.964166, "asc_eur_kw": 881.18, "a_shallow_eur_kw": 2000.0, "a_deep_eur_kw": 2182.05, "deep_weight": 0.4, "ss_shallow": 0.723, "ss_deep": 0.618, "cool_capital_eur_m": 1.8, "devex": 0.074, "flat_gross_pv_eur_m": 1372.061, "carbon_gross_pv_eur_m": 52.904, "gbp_per_eur": 0.854701}, "currency": "GBP", "gbp": {"capex_pv_gbp_m": 588.1, "benefit_pv_gbp_m": 1096.1, "annual_benefit_gbp_m": 49.3, "capex_undiscounted_gbp_m": 427.2, "cooling_avoided_gbp_m": 1.5, "increment_gbp_kw": 794.0, "streams_pv_gbp_m": {"running": 816.4, "capacity": 232.4, "carbon": 40.7, "cooling": 6.6}, "rate": "ECB 2025-S2 semester mean, 0.8547 GBP per EUR"}}}, "levers": {"headline": [{"id": "shortfall", "label": "Subsurface shortfall, programme mean", "per_jur": true, "default": {"roi": 0.05, "ni": 0.1}, "range": {"roi": [0.0, 0.3], "ni": [0.0, 0.45]}}, {"id": "optimism", "label": "Optimism bias", "per_jur": false, "default": 0.5, "range": [0.0, 0.66]}, {"id": "capm", "label": "Subsurface capital", "per_jur": false, "default": 1.0, "range": [0.75, 1.25]}, {"id": "wh", "label": "Waste-heat coupling share", "per_jur": true, "default": {"roi": 0.15, "ni": 0.1}, "range": {"roi": [0.0, 0.4], "ni": [0.0, 0.4]}}], "capital_fold": [{"id": "a_sh", "label": "Shallow FOAK anchor (EUR/kW)", "default": 2000.0, "range": [1500.0, 3300.0]}, {"id": "a_dp", "label": "Deep FOAK anchor (EUR/kW)", "default": 2182.0, "range": [1814.0, 2549.0]}, {"id": "lr", "label": "Programme learning rate", "default": 0.3, "range": [0.25, 0.4]}], "hardwired": {"connection_relcost": 0.3, "cooling_connections_pct": 12.0}}, "integrated": ["running cost at LRVC", "avoided generation capacity", "carbon at the shadow price", "cooling, operating and avoided chiller capital", "subsurface increment", "development capital divided by success", "optimism bias on capital", "subsurface shortfall on the benefit side"], "not_integrated": {"stage2_benefits": ["avoided network reinforcement", "air quality", "interseasonal storage enabling waste-heat recovery", "dispatch-down absorption", "security of supply and indigenous share", "residual value at 60 years"], "stage2_costs": ["operating and maintenance - EXCLUDED WITH A BALANCE NOTE (22 Aug 2026): routine servicing runs LOWER for geothermal (indoor water-to-water plant on a steady source, no defrost duty, no outdoor coils; the Causeway Hospital feasibility carries 0.6-0.75 GBP/MWh against roughly 2 EUR/MWh for the DEA air-source centre), while the episodic subsurface lifecycle runs HIGHER (well-pump and ESP replacement on the deep leg, open-loop scaling and dosing, workovers, licence fees and monitoring). The two pull against each other and the net is plausibly near zero; excluded until the subsurface lifecycle rates are set from developer data rather than judgement. UNRESOLVED BOUNDARY: whether source-pumping parasitics sit inside the class SPFs - if they do not, the running stream is flattered and the O&M net moves against us", "heat pump replacement, 2-3 times over the horizon"], "stage1": ["NOTHING IS BUILT - fuel avoided, electricity drawn, carbon at the fossil margin, the capacity COST of electrification, network reinforcement, distribution and connection capital, building-side works, boiler replacement cycles avoided"]}, "known_shortcuts": ["the shortfall is applied flat, not through a duration curve as the UK sibling does - harder on us, but it assumes every hour underdelivers equally", "the Republic's deep weight is ZERO because the Early Carboniferous Limestone play remains unproven despite extensive research and, by our count, five wells to about 1 km - there is no demonstrated intermediate play in the Republic. The current ~2 km Grangegorman well in Dublin is exploration of exactly this question, not evidence it is answered; the panel prices what is proven, and will move when the well does", "the avoided chiller capital is NOT scaled by the shortfall, on the ground that those chillers are never bought however the ground performs", "avoided distribution reinforcement is bounded rather than built: under GBP 11m for the North on RP7 unit rates, and transmission reinforcement sits outside the price control", "the long-run variable cost is borrowed from the UK sibling", "the ten-year build has no Irish basis and is generous to the North, which has no supply chain to ramp", "optimism bias applies to capital only; no Irish requirement for a benefit adjustment was found"]}, "constants": {"counterfactuals": ["bau", "ashp"], "capacity_applies_to": ["ashp"], "sem_capacity_eur_mw_yr": {"t4_2028_29": 149960.0, "t4_2029_30": 135499.99, "t1_2025_26": 90000.0, "net_cone_2028_29": 113355.0, "existing_cap_price_cap": 55678.0, "source": "SEMO capacity auction reports; SEM Committee parameters"}, "gb_capacity_gbp_kw_yr": {"t4_2028_29": 60.0, "t4_2029_30": 27.1}, "appraisal": {"roi": {"name": "Infrastructure Guidelines, DPENDR, Dec 2023", "discount": "4% real, flat", "discount_flat_pct": 4.0, "carbon_eur_t": {"2024": 322, "2030": 408, "2040": 604, "2050": 890}, "carbon_basis": "shadow price, constant 2018 euro, target-consistent TIMES-Ireland", "sppf_pct": 130.0, "spl_pct": [80.0, 100.0], "optimism_bias": "no national table - UK Mott MacDonald as a flagged proxy"}, "ni": {"name": "Better Business Cases NI, on HM Treasury Green Book", "discount": "declining STPR: 3.5% to yr 30, 3.0% to 75, 2.5% thereafter", "discount_declining": [[30, 3.5], [75, 3.0], [null, 2.5]], "carbon_basis": "DESNZ carbon values", "optimism_bias": "Mott MacDonald, 66% upper bound for non-standard civil engineering", "overlays": "Section 75 equality, Rural Needs Act (NI) 2016, Climate Change Act (NI) 2022"}}, "transfers": ["carbon tax", "network charges", "policy levies", "supplier margin", "VAT"], "ashp_energy_centre": {"low": 856.25, "high": 906.1, "gb_bracket_gbp_kw": [500.0, 800.0], "spf_range": [2.8, 3.6], "flow_c": [70, 90], "note": "NO Irish or Northern Irish outturn is published. This is the highest-value data gap in the whole appraisal."}, "spf": {"ashp": 2.8, "gshp": 3.24, "network_ni": 5.0, "network_roi": 4.0}, "delivered_heat_twh": {"roi": 25.3, "ni": 10.9}, "whatif_share": 0.2, "horizon_years": 60}, "tes_cop": {"air_source": 2.6, "ground_source": 2.94, "table": "Tomorrow's Energy Scenarios 2023 databook, IE Demand, Table 6.4", "seasonal_treatment": null, "peak_treatment": null, "searched": ["seasonal", "SCOP", "weather", "temperature", "degree", "peak heat", "coincidence", "diversity"], "note": "two numbers, no stated conditions, applied flat to 2050"}, "tes_carbon": {"ie_mt": {"self_sustaining": {"2035": 0.98, "2040": -0.7, "2045": -0.74, "2050": -1.24}, "gas_evolution": {"2035": 1.13, "2040": 0.5, "2045": 0.0, "2050": 0.0}, "constrained_growth": {"2035": 2.49, "2040": 1.63, "2045": 0.97, "2050": -0.4}}, "ni_mt": {"self_sustaining": {"2035": 0.15, "2040": -0.33, "2045": -0.39, "2050": -0.59}}, "ie_avg_g_kwh_ss": {"2035": 14.1, "2040": -8.6, "2045": -8.9, "2050": -14.7}, "source": "TES 2023 databook, Tables 7.11 and 7.12 with Figure 6.1", "caveat": "AVERAGE intensity, not marginal. A saved kilowatt-hour displaces the marginal generator, which may still be gas when the annual total is negative - and the negative totals imply removals whose accounting treatment matters. Marginal is the right basis and TES does not publish it."}, "beccs_mw": 300, "beccs_note": "the sign flip after 2040 rests on 300 MW of bioenergy with carbon capture, against zero biomass-only capacity in every scenario - no operating plant on this island, no licensed CO2 storage, no transport infrastructure", "lrvc": {"years": [2026, 2030, 2035, 2040, 2045, 2050, 2055, 2060], "p_kwh": [14.306, 12.53, 12.763, 12.695, 12.565, 12.273, 12.273, 12.273], "source": "UK Heat Split sibling, long-run variable cost series on its own anchor years; NI direct, ROI pinned to the euro equivalent pending an Irish derivation"}}}};</script>
+<script>window.VFM_PAYLOAD = {"derived": {"vfm": {"scenario": {"scenario": {"roi_twh": 5.0, "roi_year": 2036, "roi_milestone_twh": 2.7, "roi_milestone_year": 2030, "roi_target_twh": 2.7, "roi_target_year": 2030, "roi_source": "Climate Action Plan 2025, up to 2.7 TWh by 2030", "roi_delivery_pct": [20.0, 32.0], "ni_basis": "lent - the Republic's share of building heat applied to Northern Ireland, which has set no target", "network_load_hours": 4000}, "jur": {"roi": {"delivered_twh": 25.33, "network_twh": 5.0, "basis": "ten-year build", "committed": true, "milestone_twh": 2.7, "milestone_year": 2030, "network_gwh": 5000.0, "plant_mw": 1250.0, "network_pct_of_heat": 19.7, "site_whatif_twh": 5.07, "vs_site_whatif": 0.99}, "ni": {"delivered_twh": 10.89, "network_twh": 2.15, "basis": "lent", "committed": false, "milestone_twh": 1.16, "milestone_year": 2030, "network_gwh": 2150.0, "plant_mw": 538.0, "network_pct_of_heat": 19.7, "site_whatif_twh": 2.18, "vs_site_whatif": 0.99}}, "load_hours": 4000, "island_network_gwh": 7150.0, "island_plant_mw": 1788.0, "roi_outturn_twh": [1.0, 1.6], "seai_technical_ceiling_pct": 54.0}, "stages": {"stages": ["electrify", "subsurface"], "jur": {"roi": {"class": "open loop and standing column wells, ATES and BTES, with waste heat recovery and storage", "deep_weight": 0.0, "source_c": 16.0, "spf": 4.0, "spf_counterfactual": 2.8, "spf_gain": 1.43, "devex_social_pct": 0.04, "shortfall_default": 0.05, "shortfall_range": [0.0, 0.3]}, "ni": {"class": "the same, with a deeper Permo-Triassic HSA component blended in", "deep_weight": 0.4, "source_c": 19.6, "spf": 5.0, "spf_counterfactual": 2.8, "spf_gain": 1.79, "devex_social_pct": 0.074, "shortfall_default": 0.1, "shortfall_range": [0.0, 0.45]}}, "classes": {"shallow": {"devex_pct": 0.04, "success": 1.0, "note": "open loop, standing column wells, ATES and BTES with waste heat recovery and storage - pre-FID spend reduces design uncertainty rather than mitigating a project-killing risk"}, "deep": {"devex_pct": 0.1, "success": 0.8, "note": "Permo-Triassic hot sedimentary aquifer doublet - found, not installed, and can be written off"}}, "deep_weight": 0.4, "capacity_sign": {"electrify": -1, "subsurface": 1}}, "increment": {"air_source_eur_kw": 881.18, "shallow_eur_kw": {"dutch_floor": 600.0, "central": 1878.0, "high": 2400.0, "source": "Herrmann et al. 2026, RSER 226:116202, 133 ATES systems; 300 EUR/kW combined heating and cooling above 2 MW, restated to a heating basis; Danish subset near 1,000 EUR/kW taken as the Irish central"}, "subsurface_share": {"shallow": 0.723, "deep": 0.618, "source": "Causeway Hospital feasibility, SCW and Deep GHP capital stacks"}, "shallow_learn_eur_kw": {"foak": 2000.0, "nth": 1566.0, "effective_reduction": 0.2169, "floor": null, "danish_outturn": 1878.0, "learning": 0.3}, "deep_eur_kw": {"foak": 2182.0, "nth": 1777.0, "effective_reduction": 0.1854, "learning": 0.3}, "jur": {"roi": {"deep_weight": 0.0, "cases": {"floor_foak": {"blend_eur_kw": 600.0, "increment_eur_kw": -281.0}, "floor_nth": {"blend_eur_kw": 600.0, "increment_eur_kw": -281.0}, "central_foak": {"blend_eur_kw": 1878.0, "increment_eur_kw": 997.0}, "central_nth": {"blend_eur_kw": 1878.0, "increment_eur_kw": 997.0}, "high_foak": {"blend_eur_kw": 2400.0, "increment_eur_kw": 1519.0}, "high_nth": {"blend_eur_kw": 2400.0, "increment_eur_kw": 1519.0}, "ramp": {"increment_eur_kw_by_year": [967.0, 923.9, 880.7, 837.6, 794.4, 751.3, 708.2, 665.0, 621.9, 578.7], "year1": 967.0, "final": 578.7, "mean": 772.9, "waste_heat_share": 0.15, "waste_heat_relcost": 0.3, "waste_heat_subsurface_multiplier": 0.895, "basis": "linear FOAK->nth over the build years, subsurface-share learning both classes, waste-heat displacement on the shallow subsurface, from the Irish anchors"}}, "central": {"blend_eur_kw": 1654.0, "increment_eur_kw": 773.0}, "ramp": {"increment_eur_kw_by_year": [967.0, 923.9, 880.7, 837.6, 794.4, 751.3, 708.2, 665.0, 621.9, 578.7], "year1": 967.0, "final": 578.7, "mean": 772.9, "waste_heat_share": 0.15, "waste_heat_relcost": 0.3, "waste_heat_subsurface_multiplier": 0.895, "basis": "linear FOAK->nth over the build years, subsurface-share learning both classes, waste-heat displacement on the shallow subsurface, from the Irish anchors"}}, "ni": {"deep_weight": 0.4, "cases": {"floor_foak": {"blend_eur_kw": 1233.0, "increment_eur_kw": 352.0}, "floor_nth": {"blend_eur_kw": 1071.0, "increment_eur_kw": 190.0}, "central_foak": {"blend_eur_kw": 2000.0, "increment_eur_kw": 1118.0}, "central_nth": {"blend_eur_kw": 1838.0, "increment_eur_kw": 957.0}, "high_foak": {"blend_eur_kw": 2313.0, "increment_eur_kw": 1432.0}, "high_nth": {"blend_eur_kw": 2151.0, "increment_eur_kw": 1270.0}, "ramp": {"increment_eur_kw_by_year": [1130.9, 1086.0, 1041.2, 996.3, 951.4, 906.5, 861.7, 816.8, 771.9, 727.0], "year1": 1130.9, "final": 727.0, "mean": 929.0, "waste_heat_share": 0.1, "waste_heat_relcost": 0.3, "waste_heat_subsurface_multiplier": 0.93, "basis": "linear FOAK->nth over the build years, subsurface-share learning both classes, waste-heat displacement on the shallow subsurface, from the Irish anchors"}}, "central": {"blend_eur_kw": 1810.0, "increment_eur_kw": 929.0}, "ramp": {"increment_eur_kw_by_year": [1130.9, 1086.0, 1041.2, 996.3, 951.4, 906.5, 861.7, 816.8, 771.9, 727.0], "year1": 1130.9, "final": 727.0, "mean": 929.0, "waste_heat_share": 0.1, "waste_heat_relcost": 0.3, "waste_heat_subsurface_multiplier": 0.93, "basis": "linear FOAK->nth over the build years, subsurface-share learning both classes, waste-heat displacement on the shallow subsurface, from the Irish anchors"}}}}, "carbon": {"stage": "subsurface", "jur": {"roi": {"network_twh": 5.0, "elec_ashp_twh": 1.786, "elec_geo_twh": 1.25, "elec_saved_twh": 0.536, "saved_pct": 30.0}, "ni": {"network_twh": 2.15, "elec_ashp_twh": 0.768, "elec_geo_twh": 0.43, "elec_saved_twh": 0.338, "saved_pct": 44.0}}}, "running": {"lrvc_eur_mwh": {"central": 146.6, "low": 143.6, "high": 167.4, "note": "UK Heat Split sibling, long-run variable cost series on its own anchor years; NI direct, ROI pinned to the euro equivalent pending an Irish derivation"}, "jur": {"roi": {"elec_saved_twh": 0.536, "resource_eur_m_yr": {"low": 77.0, "central": 78.6, "high": 89.7}, "transfers_excluded": ["carbon tax", "network charges", "policy levies", "supplier margin", "VAT"]}, "ni": {"elec_saved_twh": 0.338, "resource_eur_m_yr": {"low": 48.5, "central": 49.6, "high": 56.6}, "transfers_excluded": ["carbon tax", "network charges", "policy levies", "supplier margin", "VAT"]}}}, "cooling": {"lever": {"connections_pct": 12.0, "min_pct": 0.0, "max_pct": 60.0, "chiller_eur_kw": 620.0, "chiller_range": [400.0, 900.0], "chiller_eer": 3.0, "ground_cooling_eer": 15.0, "note": "avoided air-cooled chiller capital where the loop serves both. Set the lever to zero and the heat case stands on its own.", "roi_only_caveat": "only an ambient loop can carry cooling at network flow temperatures; that is the Republic's blend but only the shallow part of the North's, so the North's share is capped at its non-deep fraction"}, "comfort_cooling_twh": 1.94, "jur": {"roi": {"elec_saved_twh": 0.0123, "available_twh": 0.383, "carriable_twh": 0.383, "served_twh": 0.046, "chiller_mw_avoided": 11.5, "avoided_capital_eur_m": 7.1}, "ni": {"elec_saved_twh": 0.0032, "available_twh": 0.165, "carriable_twh": 0.099, "served_twh": 0.012, "chiller_mw_avoided": 3.0, "avoided_capital_eur_m": 1.8}}}, "phased": {"build_years": 10, "horizon_years": 60, "optimism": {"default_pct": 50.0, "min_pct": 0.0, "max_pct": 66.0, "applies_to": "capital only", "benefits_adjustment": null, "source": "HM Treasury Green Book, Mott MacDonald bands - 66% is the upper bound for non-standard civil engineering, mitigating toward 40-50% at outline business case", "roi_basis": "PROXY - the Infrastructure Guidelines publish no optimism bias table, only a process requirement to consider remaining bias after risk assessment", "benefits_note": "no Irish requirement for a downward benefit adjustment was found; recorded as unresolved"}, "discount": {"roi": {"kind": "flat", "rate": 0.04}, "ni": {"kind": "declining", "bands": [[30, 0.035], [75, 0.03], [null, 0.025]]}}, "jur": {"roi": {"plant_mw": 1250.0, "increment_eur_kw": 773.0, "capex_undiscounted_eur_m": 966.2, "cooling_avoided_eur_m": 7.1, "capex_net_of_cooling_eur_m": 959.1, "cooling_pct_of_capex": 0.7, "capex_with_devex_and_ob_eur_m": 1496.3, "capex_pv_eur_m": 1259.9, "avoided_peak_mw": 227.0, "capacity_eur_m_yr": 24.4, "running_eur_m_yr": 74.7, "capacity_gross_eur_m_yr": 25.7, "running_gross_eur_m_yr": 78.6, "annual_benefit_eur_m": 100.8, "carbon_pv_eur_m": 89.3, "benefit_pv_eur_m": 1975.9, "streams_pv_eur_m": {"running": 1397.2, "capacity": 457.3, "carbon": 89.3, "cooling": 32.1}, "cooling_running_eur_m_yr": 1.7, "cooling_running_gross_eur_m_yr": 1.8, "bcr": 1.57, "shortfall_applied": 0.05, "shortfall_range": [0.0, 0.3], "bcr_before_shortfall": 1.65, "bcr_at_worst_shortfall": 1.16, "shortfall_breakeven": 0.3942, "coeffs": {"mw": 1250.0, "build_years": 10, "d0": 8.271523, "d1": 3.839148, "asc_eur_kw": 881.18, "a_shallow_eur_kw": 2000.0, "a_deep_eur_kw": 2182.05, "deep_weight": 0.0, "ss_shallow": 0.723, "ss_deep": 0.618, "cool_capital_eur_m": 7.1, "devex": 0.04, "flat_gross_pv_eur_m": 1985.898, "carbon_gross_pv_eur_m": 93.977, "gbp_per_eur": null}, "currency": "EUR"}, "ni": {"plant_mw": 538.0, "increment_eur_kw": 929.0, "capex_undiscounted_eur_m": 499.8, "cooling_avoided_eur_m": 1.8, "capex_net_of_cooling_eur_m": 498.0, "cooling_pct_of_capex": 0.4, "capex_with_devex_and_ob_eur_m": 802.3, "capex_pv_eur_m": 688.1, "avoided_peak_mw": 124.6, "capacity_eur_m_yr": 12.7, "running_eur_m_yr": 44.6, "capacity_gross_eur_m_yr": 14.1, "running_gross_eur_m_yr": 49.6, "annual_benefit_eur_m": 57.7, "carbon_pv_eur_m": 47.6, "benefit_pv_eur_m": 1282.5, "streams_pv_eur_m": {"running": 955.2, "capacity": 272.0, "carbon": 47.6, "cooling": 7.7}, "cooling_running_eur_m_yr": 0.4, "cooling_running_gross_eur_m_yr": 0.4, "bcr": 1.86, "shortfall_applied": 0.1, "shortfall_range": [0.0, 0.45], "bcr_before_shortfall": 2.07, "bcr_at_worst_shortfall": 1.14, "shortfall_breakeven": 0.5171, "coeffs": {"mw": 538.0, "build_years": 10, "d0": 8.460894, "d1": 3.964166, "asc_eur_kw": 881.18, "a_shallow_eur_kw": 2000.0, "a_deep_eur_kw": 2182.05, "deep_weight": 0.4, "ss_shallow": 0.723, "ss_deep": 0.618, "cool_capital_eur_m": 1.8, "devex": 0.074, "flat_gross_pv_eur_m": 1372.061, "carbon_gross_pv_eur_m": 52.904, "gbp_per_eur": 0.854701}, "currency": "GBP", "gbp": {"capex_pv_gbp_m": 588.1, "benefit_pv_gbp_m": 1096.1, "annual_benefit_gbp_m": 49.3, "capex_undiscounted_gbp_m": 427.2, "cooling_avoided_gbp_m": 1.5, "increment_gbp_kw": 794.0, "streams_pv_gbp_m": {"running": 816.4, "capacity": 232.4, "carbon": 40.7, "cooling": 6.6}, "rate": "ECB 2025-S2 semester mean, 0.8547 GBP per EUR"}}}, "levers": {"headline": [{"id": "shortfall", "label": "Subsurface shortfall, programme mean", "per_jur": true, "default": {"roi": 0.05, "ni": 0.1}, "range": {"roi": [0.0, 0.3], "ni": [0.0, 0.45]}}, {"id": "optimism", "label": "Optimism bias", "per_jur": false, "default": 0.5, "range": [0.0, 0.66]}, {"id": "capm", "label": "Subsurface capital", "per_jur": false, "default": 1.0, "range": [0.75, 1.25]}, {"id": "wh", "label": "Waste-heat coupling share", "per_jur": true, "default": {"roi": 0.15, "ni": 0.1}, "range": {"roi": [0.0, 0.4], "ni": [0.0, 0.4]}}], "capital_fold": [{"id": "a_sh", "label": "Shallow FOAK anchor (EUR/kW)", "default": 2000.0, "range": [1500.0, 3300.0]}, {"id": "a_dp", "label": "Deep FOAK anchor (EUR/kW)", "default": 2182.0, "range": [1814.0, 2549.0]}, {"id": "lr", "label": "Programme learning rate", "default": 0.3, "range": [0.25, 0.4]}], "hardwired": {"connection_relcost": 0.3, "cooling_connections_pct": 12.0}}, "integrated": ["running cost at LRVC", "avoided generation capacity", "carbon at the shadow price", "cooling, operating and avoided chiller capital", "subsurface increment", "development capital divided by success", "optimism bias on capital", "subsurface shortfall on the benefit side"], "not_integrated": {"stage2_benefits": ["avoided network reinforcement", "air quality", "interseasonal storage enabling waste-heat recovery", "dispatch-down absorption", "security of supply and indigenous share", "residual value at 60 years"], "stage2_costs": ["operating and maintenance - EXCLUDED WITH A BALANCE NOTE (22 Aug 2026): routine servicing runs LOWER for geothermal (indoor water-to-water plant on a steady source, no defrost duty, no outdoor coils; the Causeway Hospital feasibility carries 0.6-0.75 GBP/MWh against roughly 2 EUR/MWh for the DEA air-source centre), while the episodic subsurface lifecycle runs HIGHER (well-pump and ESP replacement on the deep leg, open-loop scaling and dosing, workovers, licence fees and monitoring). The two pull against each other and the net is plausibly near zero; excluded until the subsurface lifecycle rates are set from developer data rather than judgement"], "stage1": ["NOTHING IS BUILT - fuel avoided, electricity drawn, carbon at the fossil margin, the capacity COST of electrification, network reinforcement, distribution and connection capital, building-side works, boiler replacement cycles avoided"]}, "known_shortcuts": ["the shortfall is applied flat, not through a duration curve as the UK sibling does - harder on us, but it assumes every hour underdelivers equally", "ROI's deep weight is ZERO because the Early Carboniferous Limestone play remains unproven despite extensive research and, by our count, five wells to about 1 km - there is no demonstrated intermediate play in Ireland. The current ~2 km Grangegorman well in Dublin is exploration of exactly this question, not evidence it is answered; the panel prices what is proven, and will move when the well does", "the avoided chiller capital is NOT scaled by the shortfall, on the ground that those chillers are never bought however the ground performs", "avoided distribution reinforcement is bounded rather than built: under GBP 11m for NI on RP7 unit rates, and transmission reinforcement sits outside the price control", "the long-run variable cost is borrowed from the UK sibling", "the ten-year build has no Irish basis and is generous to the North, which has no supply chain to ramp", "optimism bias applies to capital only; no Irish requirement for a benefit adjustment was found"]}, "constants": {"counterfactuals": ["bau", "ashp"], "capacity_applies_to": ["ashp"], "sem_capacity_eur_mw_yr": {"t4_2028_29": 149960.0, "t4_2029_30": 135499.99, "t1_2025_26": 90000.0, "net_cone_2028_29": 113355.0, "existing_cap_price_cap": 55678.0, "source": "SEMO capacity auction reports; SEM Committee parameters"}, "gb_capacity_gbp_kw_yr": {"t4_2028_29": 60.0, "t4_2029_30": 27.1}, "appraisal": {"roi": {"name": "Infrastructure Guidelines, DPENDR, Dec 2023", "discount": "4% real, flat", "discount_flat_pct": 4.0, "carbon_eur_t": {"2024": 322, "2030": 408, "2040": 604, "2050": 890}, "carbon_basis": "shadow price, constant 2018 euro, target-consistent TIMES-Ireland", "sppf_pct": 130.0, "spl_pct": [80.0, 100.0], "optimism_bias": "no national table - UK Mott MacDonald as a flagged proxy"}, "ni": {"name": "Better Business Cases NI, on HM Treasury Green Book", "discount": "declining STPR: 3.5% to yr 30, 3.0% to 75, 2.5% thereafter", "discount_declining": [[30, 3.5], [75, 3.0], [null, 2.5]], "carbon_basis": "DESNZ carbon values", "optimism_bias": "Mott MacDonald, 66% upper bound for non-standard civil engineering", "overlays": "Section 75 equality, Rural Needs Act (NI) 2016, Climate Change Act (NI) 2022"}}, "transfers": ["carbon tax", "network charges", "policy levies", "supplier margin", "VAT"], "ashp_energy_centre": {"low": 856.25, "high": 906.1, "gb_bracket_gbp_kw": [500.0, 800.0], "spf_range": [2.8, 3.6], "flow_c": [70, 90], "note": "NO Irish or Northern Irish outturn is published. This is the highest-value data gap in the whole appraisal."}, "spf": {"ashp": 2.8, "gshp": 3.24, "network_ni": 5.0, "network_roi": 4.0}, "delivered_heat_twh": {"roi": 25.3, "ni": 10.9}, "whatif_share": 0.2, "horizon_years": 60}, "tes_cop": {"air_source": 2.6, "ground_source": 2.94, "table": "Tomorrow's Energy Scenarios 2023 databook, IE Demand, Table 6.4", "seasonal_treatment": null, "peak_treatment": null, "searched": ["seasonal", "SCOP", "weather", "temperature", "degree", "peak heat", "coincidence", "diversity"], "note": "two numbers, no stated conditions, applied flat to 2050"}, "tes_carbon": {"ie_mt": {"self_sustaining": {"2035": 0.98, "2040": -0.7, "2045": -0.74, "2050": -1.24}, "gas_evolution": {"2035": 1.13, "2040": 0.5, "2045": 0.0, "2050": 0.0}, "constrained_growth": {"2035": 2.49, "2040": 1.63, "2045": 0.97, "2050": -0.4}}, "ni_mt": {"self_sustaining": {"2035": 0.15, "2040": -0.33, "2045": -0.39, "2050": -0.59}}, "ie_avg_g_kwh_ss": {"2035": 14.1, "2040": -8.6, "2045": -8.9, "2050": -14.7}, "source": "TES 2023 databook, Tables 7.11 and 7.12 with Figure 6.1", "caveat": "AVERAGE intensity, not marginal. A saved kilowatt-hour displaces the marginal generator, which may still be gas when the annual total is negative - and the negative totals imply removals whose accounting treatment matters. Marginal is the right basis and TES does not publish it."}, "beccs_mw": 300, "beccs_note": "the sign flip after 2040 rests on 300 MW of bioenergy with carbon capture, against zero biomass-only capacity in every scenario - no operating plant on this island, no licensed CO2 storage, no transport infrastructure", "lrvc": {"years": [2026, 2030, 2035, 2040, 2045, 2050, 2055, 2060], "p_kwh": [14.306, 12.53, 12.763, 12.695, 12.565, 12.273, 12.273, 12.273], "source": "UK Heat Split sibling, long-run variable cost series on its own anchor years; NI direct, ROI pinned to the euro equivalent pending an Irish derivation"}}}};</script>
 <script>
 
 const CLR = {green:'#3AAA35', green2:'#568F59', petrol:'#1F4E5F',
              amber:'#D98E2B', teal:'#2F8F8C', ink:'#F0F2F1',
-             muted:'#A9B4B1', faint:'#6E7B78', line:'#26302d',
+             muted:'#A9B4B1', faint:'#8C9A96', line:'#26302d',
              panel:'#0d1110'};
 const PL_BASE = {
   paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
@@ -2563,6 +2570,75 @@ let GEOJUR = "roi";
 // cross-panel read. No feed touches it.
 let VFMJUR = "roi";
 let VFMD = null;
+
+function vfmAsks(v){
+  const box = el("vfmAsks");
+  if(!box) return;
+  if(!v){ box.innerHTML=""; return; }
+  const A = {
+    roi: [
+      ["Buy the heat, not the boreholes.",
+       "Heat-as-a-Service as a recognised public procurement route. "
+       + "The case above stands only if someone can procure a "
+       + "capital-up-front, sixty-year asset \u2014 annualised public "
+       + "budgeting cannot, and every market that scaled geothermal "
+       + "solved procurement before it solved anything geological."],
+      ["Assess the ground for source AND store, before the default "
+       + "is signed.",
+       "A forcing mechanism in heat network development \u2014 zoning, "
+       + "scheme approval, funding gates \u2014 requiring geothermal "
+       + "supply and interseasonal storage to be properly assessed "
+       + "before an air-source design is fixed. Every scheme that "
+       + "defaults without the assessment forecloses the increment "
+       + "this panel prices for the life of the network."],
+      ["Say clearly that ambient loops and 5GDHC are regulated heat "
+       + "networks.",
+       "The class this appraisal prices \u2014 open loop, standing "
+       + "column, aquifer and borehole storage with waste-heat "
+       + "recovery \u2014 is the ambient class. If definitions and "
+       + "support are written around high-temperature district "
+       + "heating only, the scenario above sits outside the "
+       + "architecture built to deliver it."],
+      ["Legislate the 2023 Policy Statement.",
+       "Three years from policy to no enacted licensing. Open-loop "
+       + "and aquifer storage at this scale need ownership of the "
+       + "heat and abstraction certainty; the shallow class does not "
+       + "escape the licensing question because the deep one is "
+       + "unproven."]],
+    ni: [
+      ["Buy the heat, not the boreholes.",
+       "Heat-as-a-Service as a recognised public-sector procurement "
+       + "route, with RHI successors that reward efficiency rather "
+       + "than output. The benefit\u2013cost ratio above is capital "
+       + "up front against sixty years of value \u2014 the annual "
+       + "capital/resource split is structurally unable to buy it."],
+      ["Underwrite appraisal risk now, not later.",
+       "An exploration guarantee for the intermediate play on the "
+       + "Netherlands\u2019 RNES model, brought forward from the "
+       + "consultation\u2019s future option. This appraisal prices "
+       + "pre-FID risk and carries a programme shortfall lever; this "
+       + "is the instrument that moves both, and the international "
+       + "evidence puts de-risking above tariff support."],
+      ["One Geothermal Desk.",
+       "A coordinated consenting front door across DfE licensing, "
+       + "NIEA, planning and HSENI, running as a policy sandbox "
+       + "before legislation. The ten-year build assumed above is "
+       + "already flagged as generous to a jurisdiction with no "
+       + "supply chain; fragmented consenting is a named reason "
+       + "why."],
+      ["Licence terms that do not price into the cost of capital.",
+       "Thirty years plus twenty rather than twenty-five; no "
+       + "separate exploration licence for a heat sector with an "
+       + "identified offtaker; tolerance bands instead of "
+       + "\u201ccannot exceed\u201d. Re-licensing risk inside debt "
+       + "tenor is a discount-rate cost this appraisal does not "
+       + "carry \u2014 keeping it out is cheaper than compensating "
+       + "for it."]],
+  };
+  box.innerHTML = (A[VFMJUR]||[]).map(([t,b]) =>
+    '<p><b>' + t + '</b> ' + b + '</p>').join('');
+}
+
 function vfmPanel(D){
   VFMD = (D||{}).derived && D.derived.vfm ? D.derived.vfm : null;
   // On the public page the panel is COVERED, so these containers do
@@ -2571,17 +2647,17 @@ function vfmPanel(D){
   // throw and kill every renderer after this one in the boot sequence.
   // That is exactly what blanked Panel 5 when two earlier panels were
   // removed and their renderers left behind.
-  vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD);
+  vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD);
 }
 document.querySelectorAll("[data-vfmjur]").forEach(b=>{
   b.addEventListener("click", ()=>{
     VFMJUR = b.dataset.vfmjur;
     document.querySelectorAll("[data-vfmjur]").forEach(x=>
       x.setAttribute("aria-pressed", String(x === b)));
-    if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); }
+    if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD); }
   });
 });
-const VFMLAB = {roi:"the Republic", ni:"Northern Ireland"};
+const VFMLAB = {roi:"ROI", ni:"Northern Ireland"};
 
 function vfmStages(v){
   const box = el("vfmStages"), note = el("vfmStagesNote");
@@ -2623,7 +2699,7 @@ function vfmStages(v){
   s += '<table class="caltab"><thead><tr><th>Stage</th>'
     + '<th>What it decides</th><th>Capacity</th><th>Price exposure</th>'
     + '</tr></thead><tbody>'
-    + '<tr><td><b>1 \u00b7 electrify</b></td><td>BAU to an air-source '
+    + '<tr><td><b>1 \u00b7 electrify</b></td><td>BAU to an assumed air-source '
     + 'network \u2014 whether to move off oil and gas at all</td>'
     + '<td style="color:#C98F4F">a COST \u2014 electrifying heat ADDS '
     + 'winter peak</td><td>fuel AND electricity, so it turns on the '
@@ -2635,22 +2711,18 @@ function vfmStages(v){
     + 'cancels</td></tr></tbody></table>';
   box.innerHTML = s;
   if(note){
-    note.textContent = "The stages are reported separately and never "
-      + "summed. Summing them would let the subsurface bank the carbon "
-      + "saving of moving off oil and gas \u2014 which any heat pump "
-      + "delivers \u2014 and leave the ground unjudged. It also settles "
-      + "the capacity sign without anyone having to remember it: "
-      + "electrifying heat adds winter peak, so capacity is a cost in "
-      + "stage one; raising the SPF once electrified saves it, so it is "
-      + "a benefit in stage two. And the stage this site advocates is "
-      + "the one least exposed to the forecast nobody can make, because "
-      + "both its routes are electric. "
+    note.textContent = "The Geothermal Network in stage 2 assumes, "
+      + "for simplicity, a geothermal upgrade to the national "
+      + "programme of heat networks heated by ASHPs. In reality, "
+      + "geothermal deployment is expected to involve everything "
+      + "from single-home ground source heat pumps, through "
+      + "hospital and airport microgrids, to full heat networks "
+      + "in towns and cities."
       + (lent
-         ? "Northern Ireland has set no district heating target of any "
-           + "kind, so its scenario is the Republic's share of building "
-           + "heat lent to it. That is the finding, not a caveat."
-         : "Stage one is only partly priced here \u2014 the "
-           + "electrification arithmetic is not yet built.");
+         ? " Northern Ireland has set no district heating target "
+           + "of any kind, so its scenario is ROI\u2019s "
+           + "proportional share of building heat lent to it."
+         : "");
   }
 }
 
@@ -2674,8 +2746,9 @@ function vfmStreams(v){
         + "clearing price \u2014 the avoided cost of capacity, not a "
         + "payment anyone receives", dur:"does not decay"},
     {k:"Carbon", v:null, lo:null, hi:null,
-     note:"near zero within a decade on the operators' own scenarios, "
-        + "and negative thereafter as the grid goes carbon-negative",
+     note:"near zero within a decade on the grid operators' own "
+        + "scenarios, and negative thereafter as the grid goes "
+        + "carbon-negative due to the BECCS assumptions",
      dur:"<b>extinguishes by about 2035</b>"},
     {k:"Cooling", v:null, lo:null, hi:null,
      note:"improves BOTH sides at once \u2014 the chillers are not "
@@ -2764,16 +2837,7 @@ function vfmStreams(v){
     + '</tbody></table>';
   box.innerHTML = s;
   if(note){
-    note.textContent = "Carbon was expected to carry this panel and "
-      + "does not. On EirGrid and SONI's own Tomorrow's Energy "
-      + "Scenarios the Irish power system reaches net zero from 2040 in "
-      + "two of four scenarios and turns carbon-NEGATIVE thereafter, so "
-      + "the carbon value of an efficiency gain is near zero within a "
-      + "decade. What remains is running cost and capacity \u2014 "
-      + "neither of which decays, because peak plant is needed whatever "
-      + "its carbon content. That is a more durable case than a "
-      + "carbon-led one, and it happens to be the one the operators' "
-      + "own forecasts support.";
+    note.textContent = "";
   }
 }
 
@@ -2821,12 +2885,14 @@ function vfmTes(v){
     const inc = v.increment, sc = v.scenario.jur[VFMJUR],
           stg = v.stages.jur[VFMJUR];
     meth.innerHTML =
-      '<p><b>The scenario.</b> The Republic has committed to up to '
+      '<p><b>The scenario.</b> ROI has committed to up to '
       + '2.7 TWh of district heating by 2030 under the Climate Action '
       + 'Plan \u2014 10.7% of its building heat, and well inside '
       + 'SEAI\u2019s own technical ceiling of 54%. Northern Ireland has '
-      + 'set no district heating target of any kind, so its scenario is '
-      + 'that same share of building heat LENT to it. The whole network '
+      + 'set no district heating target of any kind, but does have a '
+      + '2030 Energy Strategy goal of 8,000 GWh saved, so its scenario '
+      + 'is '
+      + 'that same proportional share of building heat LENT to it. The whole network '
       + 'is priced either way it is supplied; there is no further '
       + 'fraction inside it.</p>'
       + '<p><b>Networks only, and that is a simplification.</b> We '
@@ -2836,8 +2902,10 @@ function vfmTes(v){
       + 'buildings, and direct use where the resource allows. Several '
       + 'of them will reach parts of the building stock a network '
       + 'never can, particularly outside the cities where density '
-      + 'will not support mains. This panel considers networks alone '
-      + 'because that is where the Republic\u2019s policy direction '
+      + 'will not support mains. For simplicity, to represent '
+      + 'geothermal\u2019s case plainly, this panel considers networks '
+      + 'alone '
+      + 'because that is where Ireland\u2019s policy direction '
       + 'points and because it gives one clean scenario to appraise. '
       + 'It is therefore a floor on what geothermal could contribute, '
       + 'not a ceiling.</p>'
@@ -2849,7 +2917,8 @@ function vfmTes(v){
       + 'up to a town or city network. Those differ in cost per '
       + 'kilowatt, in who pays, in how long they take to consent and '
       + 'in the risk each carries. Modelling them as one network is a '
-      + 'simplification made for tractability, and it will understate '
+      + 'simplification made to make the case for geothermal plainly, '
+      + 'and it will understate '
       + 'the cheapest cases and overstate the hardest.</p>'
       + '<p><b>The subsurface increment</b> is '
       + fmt(inc.jur[VFMJUR].central.increment_eur_kw,0) + ' EUR/kW '
@@ -3467,8 +3536,8 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   var h=document.createElement("h3");
   h.textContent="Try the levers";box.appendChild(h);
   var intro=document.createElement("p");
-  intro.style.cssText="font-size:.92em;color:#444";
-  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. The Republic is appraised in euro and the North in sterling, each at real 2025 prices.";
+  intro.style.cssText="font-size:.92em;color:var(--muted,#A9B4B1)";
+  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. The Republic of Ireland is appraised in euro and Northern Ireland in sterling, each at real 2025 prices.";
   box.appendChild(intro);
   var tog=document.createElement("div");tog.style.cssText="margin:.4rem 0 .8rem";
   ["roi","ni"].forEach(function(j){
