@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.47.0"
+PIPELINE_VERSION = "5.49.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6438,13 +6438,14 @@ def derive_vfm_phased(anchors=None):
                          "other and the net is plausibly near zero; "
                          "excluded until the subsurface lifecycle "
                          "rates are set from developer data rather "
-                         "than judgement. UNRESOLVED BOUNDARY: whether "
-                         "source-pumping parasitics sit inside the "
-                         "class SPFs - if they do not, the running "
-                         "stream is flattered and the O&M net moves "
-                         "against us",
-                         "heat pump replacement, 2-3 times over the "
-                         "horizon"],
+                         "than judgement"],
+        # EDITED 23 Aug 2026 at Simon's direction: the UNRESOLVED
+        # BOUNDARY sentence (source-pumping parasitics vs class SPFs)
+        # and the heat-pump-replacement omission item were removed from
+        # the page. The parasitics question itself is NOT resolved -
+        # it lives here so it is not lost: if the class SPFs are
+        # heat-pump-only, well and circulation pumping is an uncounted
+        # operating cost and the running stream is flattered.
         "stage1": ["NOTHING IS BUILT - fuel avoided, electricity "
                    "drawn, carbon at the fossil margin, the capacity "
                    "COST of electrification, network reinforcement, "
@@ -6455,11 +6456,11 @@ def derive_vfm_phased(anchors=None):
         "the shortfall is applied flat, not through a duration curve as "
         "the UK sibling does - harder on us, but it assumes every hour "
         "underdelivers equally",
-        "the Republic's deep weight is ZERO because the Early "
+        "ROI's deep weight is ZERO because the Early "
         "Carboniferous Limestone play remains unproven despite "
         "extensive research and, by our count, five wells to about "
-        "1 km - there is no demonstrated intermediate play in the "
-        "Republic. The current ~2 km Grangegorman well in Dublin is "
+        "1 km - there is no demonstrated intermediate play in "
+        "Ireland. The current ~2 km Grangegorman well in Dublin is "
         "exploration of exactly this question, not evidence it is "
         "answered; the panel prices what is proven, and will move "
         "when the well does",
@@ -6467,7 +6468,7 @@ def derive_vfm_phased(anchors=None):
         "on the ground that those chillers are never bought however "
         "the ground performs",
         "avoided distribution reinforcement is bounded rather than "
-        "built: under GBP 11m for the North on RP7 unit rates, and "
+        "built: under GBP 11m for NI on RP7 unit rates, and "
         "transmission reinforcement sits outside the price control",
         "the long-run variable cost is borrowed from the UK sibling",
         "the ten-year build has no Irish basis and is generous to the "
@@ -9440,7 +9441,21 @@ def regenerate_panel6(path="docs/panel6.html"):
         src = src.replace("</body>", widget + "\n</body>")
 
     page.write_text(src)
-    log(f"panel6: regenerated {path} - payload, widget, banner")
+
+    # THE PUBLIC PAGE carries the same widget (its payload arrives with
+    # the daily data, so no payload injection there) - refreshed from
+    # the same tools/ files so the two pages cannot diverge.
+    idx = root / "docs" / "index.html"
+    isrc = idx.read_text()
+    if "<!-- panel6-widget -->" in isrc:
+        isrc = _re.sub(r'<!-- panel6-widget -->.*?<!-- /panel6-widget -->',
+                       lambda _m: widget, isrc, flags=_re.S)
+    else:
+        isrc = isrc.replace("</body>", widget + "\n</body>")
+    idx.write_text(isrc)
+
+    log(f"panel6: regenerated {path} + index widget - payload, "
+        f"widget, banner")
     return path
 
 
