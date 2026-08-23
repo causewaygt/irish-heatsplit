@@ -6,7 +6,7 @@ no one can see.**
 Live site: https://causewaygt.github.io/irish-heatsplit/
 Sibling of the [UK Heat Split](https://causewaygt.github.io/uk-heatsplit/).
 Built and maintained by [Causeway Energies](https://causewaygt.com)
-(Causeway Geothermal NI Ltd). Pipeline 5.44.0 / site 5.45.0.
+(Causeway Geothermal NI Ltd). Pipeline 5.47.0 / site 5.48.0.
 
 ## The premise
 
@@ -1697,6 +1697,77 @@ period is protected structurally rather than by remembering. Tests pin
 the effective basis, the register's internal arithmetic, and the
 absence of names.
 
+**Cooling improves BOTH sides at once (5.46.0 / site 5.47.0).** BCRs
+**1.30 and 2.28**, and the benefits bar gains a fourth segment.
+
+An earlier version counted only the capital half — avoided chillers
+netted off the cost — on the argument that counting both would
+double-count one physical fact. **That was wrong.** Not *buying* a
+chiller and not *running* it are two facts, and the operating half is
+nearly five times the larger: **€33.7m against €7.1m** in the Republic,
+because capital is once and the electricity is every summer for sixty
+years.
+
+The stream split is now running cost 71%, avoided capacity 23%, carbon
+4.5%, cooling 1.6%. **The connection lever defaults to 12% against the
+UK sibling's 30%**, for three structural reasons: a heat network mostly
+serves homes and Irish homes do not cool; Panel 4 puts Irish comfort
+cooling at 1.25 TWh against 13.95 of process; and only an ambient loop
+carries cooling at network temperatures, which caps the North at its
+non-deep fraction.
+
+**A test I had written to prevent double-counting was enforcing the
+error** — it asserted the benefit split had exactly three keys, which
+locked cooling out. Two further tests broke when cooling arrived, both
+reconciliations summing a hard-coded list of terms. All three now sum
+across whatever streams exist.
+
+**A false attribution, caught on review (site 5.46.1).** The panel was
+reading *"5 TWh of building heat on networks by 2030 — a government
+commitment"*. Neither half was true: the commitment is **2.7 TWh by
+2030**, and 5.0 TWh by 2036 is **our extrapolation** from it.
+
+Both labels were correct when the scenario WAS the 2030 milestone and
+went stale when it changed — a label hard-coding a value the payload
+also carries will silently disagree with it the moment the payload
+moves. The same trap as the "eleven terawatt-hours" sub-heading on
+Panel 4.
+
+It now reads *"5 TWh of building heat on networks by 2036 · 19.7%
+of the total — our ten-year build, extrapolated from a 2.7 TWh
+commitment by 2030"*. Four tests pin it: the scenario declared as ours,
+the commitment named and dated, no bare attribution on the scenario
+figure, and the year taken from the payload. The fix also exposed `fmt`
+rendering the year as "2,030" — corrected at the render rather than
+by loosening the assertion.
+
+**Carbon and avoided capacity are both in the arithmetic, and a
+benefits bar shows the proportions (5.45.0 / site 5.46.0).** BCRs rise
+to **1.27 and 2.25**. The split of present value:
+
+| | Republic | North |
+|---|---|---|
+| running cost | €1,471m (72%) | £1,061m (75%) |
+| avoided capacity | €481m (24%) | £302m (21%) |
+| carbon | €94m (5%) | £53m (4%) |
+
+Carbon is discounted year by year rather than annualised, because it is
+the one stream that does not run flat — worth most now, extinguishing
+within a decade on the operators' own path.
+
+**And the negative years after 2040 rest on unbuilt BECCS.** TES shows
+300 MW of bioenergy with carbon capture against **zero** biomass-only
+capacity in every scenario. There is no operating plant on this island,
+no licensed CO₂ storage and no transport infrastructure. A reader who
+assumed the grid simply gets clean would miss that the sign flip is one
+unbuilt technology. Recorded in the payload and pinned by a test.
+
+**The benefits bar** draws the three streams as proportions of present
+value with the cost bar beside it at the same scale, so the BCR is
+visible rather than only readable. **The class names matched the UK
+sibling but the CSS did not come with them** — both sites descend from
+one original and I assumed the styles were already here. They were not.
+
 **The scenario is the TEN-YEAR BUILD, not the 2030 milestone (5.44.0 /
 site 5.45.0).** 5.0 TWh in the Republic and 2.15 in the North —
 **19.7% of building heat each, against Britain's committed 20%**. So
@@ -1972,8 +2043,8 @@ footer alongside the build time.
 
 ```
 pip install requests openpyxl
-python3 tests/test_synthetic.py   # 196 tests, no network
-node tests/test_vol.js            # 301 front-end fixture checks
+python3 tests/test_synthetic.py   # 198 tests, no network
+node tests/test_vol.js            # 310 front-end fixture checks
 python3 scripts/build.py          # full build, writes docs/data.json
 ```
 
