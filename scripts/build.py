@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.44.0"
+PIPELINE_VERSION = "5.46.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5469,14 +5469,14 @@ VFM_JUR_MODEL = {
         "class": "open loop and standing column wells, ATES and BTES, "
                  "with waste heat recovery and storage",
         "deep_weight": 0.0,
-        "shortfall_default": 0.10,
+        "shortfall_default": 0.05,
         "shortfall_range": (0.0, 0.30),
     },
     "ni": {
         "class": "the same, with a deeper Permo-Triassic HSA "
                  "component blended in",
         "deep_weight": VFM_DEEP_WEIGHT,
-        "shortfall_default": 0.15,
+        "shortfall_default": 0.10,
         "shortfall_range": (0.0, 0.45),
     },
 }
@@ -5573,11 +5573,72 @@ VFM_DEEP_GBP_KW = {"low": 1550.0, "high": 2179.0, "mid": 1865.0,
 # on a learning rate applied to one side and not the other, so it is
 # the first thing to test if the result is challenged.
 VFM_FOAK_LEARNING = {"reduction": 0.30, "range": (0.25, 0.40),
-                     "applies_to": "deep only",
+                     "applies_to": "shallow and deep",
                      "note": "5-10% per capacity doubling over ~7 "
-                             "doublings to a 500-1,250 MW programme; "
-                             "NOT applied to the shallow figure, which "
-                             "is installed Danish outturn"}
+                             "doublings to a 500-1,250 MW programme. "
+                             "Applied to BOTH classes from 22 Aug 2026, "
+                             "each from its own Irish FOAK anchor, "
+                             "ramped along the build years rather than "
+                             "pricing the whole build at nth"}
+# IRISH SHALLOW FOAK ANCHOR, set 22 Aug 2026. EUR 2,000/kW ALL-IN -
+# the Causeway Hospital feasibility's SCW case (GBP 1,698/kW at
+# 2.2 MW, EUR 1,950 at the ECB 2025-S2 semester mean), rounded.
+# Boundary matches the increment: subsurface + ancillaries + heat pump
+# package, 15% contingency inside, devex separate, no distribution.
+# Stated AT ITS REFERENCE SIZING - the same wells serve 1.3 MW at
+# EUR 3,300/kW, so this is not a scale-free constant. Developer
+# estimate, daggered.
+VFM_SHALLOW_FOAK_EUR_KW = 2000.0
+# LEARNING APPLIES TO THE SUBSURFACE SHARE ONLY (22 Aug 2026). The
+# heat pump package inside every all-in figure is the same mature
+# technology as the flat air-source counterfactual, so it does not
+# learn - discounting it would be learning on the component the
+# comparison holds constant. Shares derived from the same workbook's
+# own arithmetic (each component carries its 15% contingency):
+#   shallow: (1,956,250 + 391,250) x 1.15 / 3,734,625 = 0.723
+#   deep:    (1,670,500 + 167,050) x 1.15 / 3,421,938 = 0.618
+# The deep share is a 1 km two-borehole scheme's; a 2 km HSA doublet's
+# drilling share is plausibly higher, which would mean MORE learning -
+# so 0.618 is the conservative side. Todd et al.'s author can set it.
+VFM_SUBSURFACE_SHARE = {"shallow": 0.723, "deep": 0.618,
+                        "source": "Causeway Hospital feasibility, SCW "
+                                  "and Deep GHP capital stacks"}
+# Effective programme reduction is therefore 30% x share: about 21.7%
+# shallow and 18.5% deep. CONSEQUENCE DISCLOSED: shallow at nth is
+# 2,000 x (1 - 0.30 x 0.723) = EUR 1,566 - still BELOW Herrmann's
+# installed Danish outturn of 1,878, and the ramp mean sits below the
+# flat Danish figure the Republic was priced at before, so this change
+# RAISES the ROI BCR. VFM_SHALLOW_NTH_FLOOR stops learning at Danish
+# outturn instead.
+VFM_SHALLOW_NTH_FLOOR = None   # DECIDED 22 Aug 2026: stays None. The
+                               # Danish comparator is not accepted as a
+                               # bound on an Irish programme; Herrmann
+                               # remains in the payload as a
+                               # cross-reference only
+# WASTE-HEAT DISPLACEMENT (22 Aug 2026). A fraction of the programme
+# couples to waste heat - data centres, energy-from-waste, power
+# stations - and DRILLS LESS: subsurface capital is replaced by heat
+# exchangers and a connection to the source. CAPEX AVOIDANCE ONLY.
+# The operating upside of warm sources is already inside the class
+# SPFs and blended source temperatures, and the risk of waste heat not
+# arriving is already named in the shortfall lever's definition - so
+# counting anything but capital here would double-dip.
+# Applies to the SHALLOW class only (waste-heat coupling is the
+# 5G/ambient-loop move; the North's deep fraction is untouched) and to
+# the subsurface share only, BEFORE learning - the remaining
+# subsurface still learns, the connection kit, like the heat pump,
+# stays flat. Defaults are Causeway judgement pending a source
+# inventory, daggered and ranged.
+VFM_WASTE_HEAT = {
+    "share": {"roi": 0.15, "ni": 0.10},
+    "share_range": (0.0, 0.40),
+    "connection_relcost": 0.30,
+    "connection_relcost_range": (0.15, 0.60),
+    "note": "share of shallow-class schemes coupled to waste heat; "
+            "connection_relcost is the interconnection's cost as a "
+            "fraction of the subsurface it displaces. Judgement "
+            "figures pending a per-jurisdiction source inventory",
+}
 # AIR-SOURCE COUNTERFACTUAL. Danish Energy Agency technology catalogue
 # via PyPSA, and HIR Hamburg. The DEA boundary is the complete energy
 # centre - heat pump, air evaporators, civil works, buildings, grid
@@ -5895,6 +5956,145 @@ def vfm_discount_factor(t, jur):
     return f
 
 
+# TES Self-Sustaining, Ireland, average intensity in gCO2/kWh. The
+# 2026-30 values interpolate from peer-reviewed modelling to TES's own
+# 2035 figure. NEGATIVE FROM 2040 on 300 MW of unbuilt BECCS.
+VFM_GRID_INTENSITY = ((2026, 320.0), (2030, 290.0), (2035, 14.1),
+                      (2040, -8.6), (2045, -8.9), (2050, -14.7),
+                      (2060, -14.7))
+VFM_BECCS_MW = 300
+VFM_BECCS_NOTE = ("the sign flip after 2040 rests on 300 MW of "
+                  "bioenergy with carbon capture, against zero "
+                  "biomass-only capacity in every scenario - no "
+                  "operating plant on this island, no licensed CO2 "
+                  "storage, no transport infrastructure")
+
+
+def vfm_grid_intensity(year):
+    """Average grid intensity, gCO2/kWh, on the TES path."""
+    p = VFM_GRID_INTENSITY
+    if year <= p[0][0]:
+        return p[0][1]
+    if year >= p[-1][0]:
+        return p[-1][1]
+    for i in range(1, len(p)):
+        if year <= p[i][0]:
+            a, b = p[i - 1], p[i]
+            f = (year - a[0]) / (b[0] - a[0])
+            return a[1] + f * (b[1] - a[1])
+    return p[-1][1]
+
+
+# COOLING IMPROVES BOTH SIDES AT ONCE - more benefit AND less
+# capital - which is the UK sibling's framing and it is right.
+#
+# An earlier version here counted only the capital half, on the
+# argument that counting both would double-count one physical fact.
+# THAT WAS WRONG. They are two facts: not BUYING a chiller and not
+# RUNNING it are separate savings and both are real. The operating
+# half is the larger of the two, because capital is once and the
+# electricity is every summer for sixty years.
+#
+# CAPITAL: avoided chillers, netted off the cost.
+#
+# A ground loop that already rejects heat can absorb it too, so the
+# chillers those buildings would otherwise need are never bought. That
+# is capital AVOIDED, so it enters as a negative increment on the cost
+# side rather than as a fourth benefit - which keeps the benefit bar to
+# three streams and stops the same physical fact being counted twice.
+#
+# THE IRISH CASE IS MUCH SMALLER THAN THE BRITISH ONE, for two
+# structural reasons and neither is about ambition:
+#
+#   A HEAT NETWORK MOSTLY SERVES HOMES, AND IRISH HOMES DO NOT COOL.
+#   72% of the Republic's building heat is residential. Only about
+#   1.38 TWh of the 5.0 TWh scenario lands in services buildings -
+#   the offices, hotels and hospitals that have cooling at all.
+#
+#   AND IRISH COMFORT COOLING IS SMALL TO BEGIN WITH. Panel 4 puts
+#   Tier 1 at 1.25 TWh against 13.95 of process; with the mixed tier
+#   it is 1.94 TWh. At the network's share that is about 0.38 TWh of
+#   cooling service that could ride the same loops.
+#
+# SO THE DEFAULT IS 12%, NOT THE UK'S 30%. Three things cut it: the
+# residential share above, the free-cooling finding from Panel 4 (an
+# Irish office already meets much of its cooling with fresh air, so
+# the chiller displaced is smaller than a British equivalent), and the
+# fact that only a 5G ambient loop can carry cooling at all - which is
+# the Republic's blend but only part of the North's.
+# OPERATING: the same cooling delivered at a far better efficiency.
+# An air-cooled chiller runs near EER 3; rejecting to ground or to a
+# store is circulation work, at an effective ratio well into the
+# teens. The gap is the saving, valued at the same long-run variable
+# cost as the heat side.
+VFM_COOLING = {
+    "connections_pct": 12.0, "min_pct": 0.0, "max_pct": 60.0,
+    "chiller_eur_kw": 620.0,
+    "chiller_range": (400.0, 900.0),
+    "chiller_eer": 3.0,
+    "ground_cooling_eer": 15.0,
+    "note": "avoided air-cooled chiller capital where the loop serves "
+            "both. Set the lever to zero and the heat case stands on "
+            "its own.",
+    "roi_only_caveat": "only an ambient loop can carry cooling at "
+                       "network flow temperatures; that is the "
+                       "Republic's blend but only the shallow part of "
+                       "the North's, so the North's share is capped at "
+                       "its non-deep fraction",
+}
+
+
+def derive_vfm_cooling(anchors=None):
+    """
+    Avoided chiller capital, as a NEGATIVE increment.
+
+    Sized from the cooling that could physically ride the same loops -
+    Panel 4's comfort and mixed tiers at the network's share of
+    building heat - times the connection lever, times a chiller capital
+    rate.
+    """
+    a = anchors or ANCHORS
+    sc = derive_vfm_scenario(a)
+    ct = derive_cooling_tiers()
+    tt = ct["tier_totals_twh"]
+    comfort_twh = tt["1"] + tt["m"]          # Tier 1 plus mixed
+    roi_del = sc["jur"]["roi"]["delivered_twh"]
+    pct = VFM_COOLING["connections_pct"] / 100.0
+    out = {"lever": dict(VFM_COOLING),
+           "comfort_cooling_twh": round(comfort_twh, 2), "jur": {}}
+    for k, v in sc["jur"].items():
+        share = v["network_twh"] / v["delivered_twh"]
+        # the Republic's comfort cooling scaled to each jurisdiction by
+        # its heat, since neither publishes a cooling split of its own
+        avail = comfort_twh * (v["delivered_twh"] / roi_del) * share
+        # only the non-deep fraction of the North's blend can carry it
+        deep_w = VFM_JUR_MODEL[k]["deep_weight"]
+        carriable = avail * (1.0 - deep_w)
+        served = carriable * pct
+        mw = served * 1e6 / VFM_DH_SCENARIO["network_load_hours"]
+        avoided = mw * VFM_COOLING["chiller_eur_kw"] / 1000.0
+        # and the electricity those chillers never draw
+        elec_chiller = served / VFM_COOLING["chiller_eer"]
+        elec_ground = served / VFM_COOLING["ground_cooling_eer"]
+        elec_saved = elec_chiller - elec_ground
+        out["jur"][k] = {
+            "elec_saved_twh": round(elec_saved, 4),
+            "available_twh": round(avail, 3),
+            "carriable_twh": round(carriable, 3),
+            "served_twh": round(served, 3),
+            "chiller_mw_avoided": round(mw, 1),
+            "avoided_capital_eur_m": round(avoided, 1),
+        }
+    log(f"vfm cooling: {VFM_COOLING['connections_pct']:.0f}% of "
+        f"connections take cooling too (UK sibling 30%, lower here "
+        f"because a network mostly serves homes and Irish homes do not "
+        f"cool); "
+        + "; ".join(f"{k.upper()} avoids {v['chiller_mw_avoided']:.0f} MW "
+                    f"of chillers = EUR {v['avoided_capital_eur_m']:.0f}m"
+                    for k, v in out["jur"].items()))
+    return out
+
+
 def derive_vfm_phased(anchors=None):
     """
     The appraisal, phased and discounted - capital over a ten-year
@@ -5909,6 +6109,8 @@ def derive_vfm_phased(anchors=None):
     inc = derive_vfm_increment(a)
     st = derive_vfm_stages(a)
     run = derive_vfm_running(a)
+    carb = derive_vfm_carbon(a)
+    cool = derive_vfm_cooling(a)
     ob = VFM_OPTIMISM["default_pct"] / 100.0
     out = {"build_years": VFM_BUILD_YEARS,
            "horizon_years": VFM_HORIZON_YEARS,
@@ -5918,12 +6120,23 @@ def derive_vfm_phased(anchors=None):
     for k in ("roi", "ni"):
         mw = sc["jur"][k]["plant_mw"]
         per_kw = inc["jur"][k]["central"]["increment_eur_kw"]
+        ramp = inc["jur"][k]["ramp"]["increment_eur_kw_by_year"]
         devex = st["jur"][k]["devex_social_pct"]
-        capex = mw * per_kw / 1000.0                     # EUR m
-        capex_all = capex * (1.0 + devex) * (1.0 + ob)
-        cap_pv = sum(capex_all / VFM_BUILD_YEARS
-                     * vfm_discount_factor(t - 0.5, k)
-                     for t in range(1, VFM_BUILD_YEARS + 1))
+        # RAMPED CAPITAL (22 Aug 2026): each build-year tranche is
+        # priced at that year's increment - FOAK in year one, nth in
+        # the final year - instead of the whole build at nth. Early
+        # tranches are dearer AND less discounted, so this is stricter
+        # than the flat treatment on both counts.
+        capex = mw * per_kw / 1000.0        # EUR m, mean - for display
+        cool_m = cool["jur"][k]["avoided_capital_eur_m"]
+        cap_pv = 0.0
+        for t in range(1, VFM_BUILD_YEARS + 1):
+            tranche = (mw / VFM_BUILD_YEARS) * ramp[t - 1] / 1000.0
+            tranche_net = tranche - cool_m / VFM_BUILD_YEARS
+            cap_pv += (tranche_net * (1.0 + devex) * (1.0 + ob)
+                       * vfm_discount_factor(t - 0.5, k))
+        capex_net = capex - cool_m
+        capex_all = capex_net * (1.0 + devex) * (1.0 + ob)
         # Avoided capacity, DERIVED - it was hard-coded, and when the
         # scenario moved from the 2030 milestone to the ten-year build
         # the cost doubled while this did not, dropping both BCRs. The
@@ -5942,43 +6155,265 @@ def derive_vfm_phased(anchors=None):
         avoided_mw = mw / cop_peak - mw / NETWORK_MODEL[k]["spf"]
         cap_eur_m = (avoided_mw
                      * VFM_SEM_CAPACITY["net_cone_2028_29"] / 1e6)
-        annual = (run["jur"][k]["resource_eur_m_yr"]["central"]
-                  + cap_eur_m)
-        ben_pv = sum(annual * min(t, VFM_BUILD_YEARS) / VFM_BUILD_YEARS
-                     * vfm_discount_factor(t, k)
-                     for t in range(1, VFM_HORIZON_YEARS + 1))
+        # the cooling electricity those chillers never draw, at the
+        # same long-run variable cost as the heat side
+        cool_elec = cool["jur"][k]["elec_saved_twh"]
+        cool_run_m = cool_elec * 1e6 * vfm_lrvc(2030, k) / 1e6
+        # SUBSURFACE SHORTFALL, applied 22 Aug 2026. Post-commissioning
+        # underdelivery against design - defined since the lever was
+        # built, never applied until now, and it flattered us.
+        #
+        # It scales BENEFITS and leaves capital at the RATED capacity,
+        # following the UK sibling: a shortfall is capacity paid for and
+        # not received. The counterfactual carries no equivalent,
+        # because the atmosphere does not run down.
+        #
+        # FLAT (1-s) on every benefit stream. The UK reduces effective
+        # sizing and reads energy off a duration curve, so its shortfall
+        # bites less than (1-s) on energy and exactly (1-s) on capacity.
+        # This scenario is energy-defined at 4,000 hours with no sizing
+        # lever, so there is no curve to read - the flat treatment is
+        # the conservative port, and deliberately harder on us.
+        #
+        # The gap is filled by the COUNTERFACTUAL, not by gas as in the
+        # UK, because stage 2 compares against an air-source network. So
+        # the benefit is forgone; no extra carbon penalty beyond scaling.
+        #
+        # AND THE AVOIDED CHILLER CAPITAL (cool_m) IS NOT SCALED. Under
+        # the fixed-build framing capital sits at rated capacity on both
+        # sides: those chillers are genuinely never bought, however the
+        # ground performs. Scaling it too would charge the shortfall
+        # against cooling twice - once on the operating benefit below,
+        # once on capital above.
+        shortfall = st["jur"][k]["shortfall_default"]
+        keep = 1.0 - shortfall
+        # gross_annual is kept because the stream SPLIT divides by it.
+        # Dividing by the scaled figure leaves the fractions summing to
+        # 1/keep, inflating every stream by the same factor.
+        gross_annual = (run["jur"][k]["resource_eur_m_yr"]["central"]
+                        + cap_eur_m + cool_run_m)
+        annual = gross_annual * keep
+        # CARBON, now summed rather than merely computed. It is the one
+        # stream that does not run flat: it is worth most now and
+        # extinguishes within a decade on the operators' own path, so
+        # it is discounted year by year rather than annualised.
+        #
+        # TES Self-Sustaining, IE average intensity. The 2026-30 values
+        # interpolate from peer-reviewed modelling (~290 g/kWh in 2030)
+        # to TES's own 2035 figure; TES publishes megatonnes, not
+        # intensities, so the early years - which carry most of the
+        # value - are our construction.
+        #
+        # AND IT GOES NEGATIVE AFTER 2040 ON UNBUILT BECCS. The sign
+        # flip depends on 300 MW of bioenergy with carbon capture,
+        # against zero biomass-only capacity in every scenario. There
+        # is no operating BECCS plant on this island, no licensed CO2
+        # storage and no transport infrastructure. A reader who assumes
+        # the grid simply gets clean would miss that the negative years
+        # rest on one unbuilt technology.
+        saved_twh = carb["jur"][k]["elec_saved_twh"] * keep
+        carb_pv = 0.0
+        for t in range(1, VFM_HORIZON_YEARS + 1):
+            y = 2026 + t - 1
+            ramp = min(t, VFM_BUILD_YEARS) / VFM_BUILD_YEARS
+            tco2 = saved_twh * ramp * 1e9 * vfm_grid_intensity(y) / 1e6
+            carb_pv += (tco2 * vfm_shadow_carbon(k, y) / 1e6
+                        * vfm_discount_factor(t, k))
+        flat_pv = sum(annual * min(t, VFM_BUILD_YEARS) / VFM_BUILD_YEARS
+                      * vfm_discount_factor(t, k)
+                      for t in range(1, VFM_HORIZON_YEARS + 1))
+        ben_pv = flat_pv + carb_pv
+        f_run = (run["jur"][k]["resource_eur_m_yr"]["central"]
+                 / max(gross_annual, 1e-9))
+        f_cap = cap_eur_m / max(gross_annual, 1e-9)
+        f_cool = cool_run_m / max(gross_annual, 1e-9)
+        run_pv = flat_pv * f_run
+        cap_pv_ben = flat_pv * f_cap
+        cool_pv_ben = flat_pv * f_cool
         out["jur"][k] = {
             "plant_mw": mw, "increment_eur_kw": per_kw,
             "capex_undiscounted_eur_m": round(capex, 1),
+            "cooling_avoided_eur_m": round(cool_m, 1),
+            "capex_net_of_cooling_eur_m": round(capex_net, 1),
+            "cooling_pct_of_capex": round(100 * cool_m
+                                          / max(capex, 1e-9), 1),
             "capex_with_devex_and_ob_eur_m": round(capex_all, 1),
             "capex_pv_eur_m": round(cap_pv, 1),
             "avoided_peak_mw": round(avoided_mw, 1),
-            "capacity_eur_m_yr": round(cap_eur_m, 1),
+            # Reported NET of the shortfall, so running + capacity +
+            # cooling reconcile to annual_benefit_eur_m. The gross
+            # figures sit beside them - what the stream is worth if the
+            # ground performs to design.
+            "capacity_eur_m_yr": round(cap_eur_m * keep, 1),
             "running_eur_m_yr": round(
+                run["jur"][k]["resource_eur_m_yr"]["central"] * keep, 1),
+            "capacity_gross_eur_m_yr": round(cap_eur_m, 1),
+            "running_gross_eur_m_yr": round(
                 run["jur"][k]["resource_eur_m_yr"]["central"], 1),
             "annual_benefit_eur_m": round(annual, 1),
+            "carbon_pv_eur_m": round(carb_pv, 1),
             "benefit_pv_eur_m": round(ben_pv, 1),
+            # FOUR streams. Cooling appears on BOTH sides - avoided
+            # chillers net off the capital above, and the electricity
+            # those chillers never draw is a benefit here. Two facts,
+            # not one counted twice.
+            "streams_pv_eur_m": {
+                "running": round(run_pv, 1),
+                "capacity": round(cap_pv_ben, 1),
+                "carbon": round(carb_pv, 1),
+                "cooling": round(cool_pv_ben, 1)},
+            "cooling_running_eur_m_yr": round(cool_run_m * keep, 1),
+            "cooling_running_gross_eur_m_yr": round(cool_run_m, 1),
             "bcr": round(ben_pv / max(cap_pv, 1e-9), 2),
+            # The lever, and what it costs us. bcr_before_shortfall is
+            # the figure this panel published while the lever sat
+            # unused, kept so the change is visible rather than silent.
+            "shortfall_applied": shortfall,
+            "shortfall_range": st["jur"][k]["shortfall_range"],
+            "bcr_before_shortfall": round(
+                ben_pv / keep / max(cap_pv, 1e-9), 2),
+            "bcr_at_worst_shortfall": round(
+                ben_pv / keep * (1 - st["jur"][k]["shortfall_range"][1])
+                / max(cap_pv, 1e-9), 2),
+            # The shortfall at which this case stops passing. If it
+            # sits INSIDE the declared range, the range contains
+            # failure and the panel must say so on its face.
+            "shortfall_breakeven": round(
+                1.0 - cap_pv / max(ben_pv / keep, 1e-9), 4),
         }
-    # WHAT IS IN THE ARITHMETIC AND WHAT IS NOT. Four terms of about
+        # CLOSED-FORM COEFFICIENTS for the live levers (22 Aug 2026).
+        # Every lever enters the discounted arithmetic linearly or
+        # multiplicatively, so the browser never needs the appraisal -
+        # it evaluates an exact closed form from these constants, and a
+        # test pins the two implementations to each other at the corners
+        # of the lever space. That makes drift between the page and this
+        # function a tested invariant, not a standing worry.
+        #
+        #   m_wh   = 1 - wh_share*(1 - relcost)
+        #   S0     = (1-w)*Ash*((1-ss) + ss*m_wh) + w*Adp
+        #   S1     = (1-w)*Ash*ss*m_wh + w*Adp*ds
+        #   sum(inc_t*df_t) = D0*(S0*capm - asc) - lr*D1*S1*capm
+        #   cap_pv = ((mw/(1000*N))*sum - (cool_m/N)*D0)
+        #            * (1+devex)*(1+ob)
+        #   ben_pv = (1-s) * (flat_gross_pv + carbon_gross_pv)
+        n_by = VFM_BUILD_YEARS
+        d0 = sum(vfm_discount_factor(t - 0.5, k)
+                 for t in range(1, n_by + 1))
+        d1 = sum(((t - 1) / max(n_by - 1, 1))
+                 * vfm_discount_factor(t - 0.5, k)
+                 for t in range(1, n_by + 1))
+        out["jur"][k]["coeffs"] = {
+            "mw": mw, "build_years": n_by,
+            "d0": round(d0, 6), "d1": round(d1, 6),
+            "asc_eur_kw": VFM_AIRSOURCE_EUR_KW["mid"],
+            "a_shallow_eur_kw": VFM_SHALLOW_FOAK_EUR_KW,
+            "a_deep_eur_kw": round(VFM_DEEP_GBP_KW["mid"] * GBP_EUR, 2),
+            "deep_weight": VFM_JUR_MODEL[k]["deep_weight"],
+            "ss_shallow": VFM_SUBSURFACE_SHARE["shallow"],
+            "ss_deep": VFM_SUBSURFACE_SHARE["deep"],
+            "cool_capital_eur_m": cool_m,
+            "devex": devex,
+            "flat_gross_pv_eur_m": round(flat_pv / keep, 3),
+            "carbon_gross_pv_eur_m": round(carb_pv / keep, 3),
+        }
+    # THE LIVE LEVERS. Four headline - the four appraisal questions in
+    # plain language - and three in a capital fold for the specialist.
+    # Two hard-wired at their defaults: connection relcost (0.30,
+    # Causeway judgement pending the source inventory - a daggered
+    # default, deliberately NOT promoted to a midrange constant) and
+    # cooling connections (its whole 0-60% swing moves the BCR ~0.02).
+    #
+    # The SHORTFALL IS A PROGRAMME MEAN, not a project number. What
+    # survives aggregation across a hundred schemes is the correlated
+    # remainder: systematic assessment bias, shared play risk, shared
+    # completion practice, and the waste-heat volumes named in the
+    # lever's own definition. It carries BOTH attrition (schemes that
+    # commission and then close - 26% of 256 HSA projects failed, most
+    # in the operational phase; Bremaud et al. 2025) and performance
+    # shading of the survivors. Modern, remediated programmes imply an
+    # attrition-equivalent of order 5-10%, which is where the defaults
+    # sit. The tops of the ranges are common-mode stresses with named
+    # precedents (Denmark 67%, Eromanga 87.5%), not expectations.
+    out["levers"] = {
+        "headline": [
+            {"id": "shortfall", "label": "Subsurface shortfall, "
+             "programme mean", "per_jur": True,
+             "default": {j: st["jur"][j]["shortfall_default"]
+                         for j in ("roi", "ni")},
+             "range": {j: list(st["jur"][j]["shortfall_range"])
+                       for j in ("roi", "ni")}},
+            {"id": "optimism", "label": "Optimism bias",
+             "per_jur": False,
+             "default": VFM_OPTIMISM["default_pct"] / 100.0,
+             "range": [VFM_OPTIMISM["min_pct"] / 100.0,
+                       VFM_OPTIMISM["max_pct"] / 100.0]},
+            {"id": "capm", "label": "Subsurface capital",
+             "per_jur": False, "default": 1.0, "range": [0.75, 1.25]},
+            {"id": "wh", "label": "Waste-heat coupling share",
+             "per_jur": True,
+             "default": dict(VFM_WASTE_HEAT["share"]),
+             "range": {j: list(VFM_WASTE_HEAT["share_range"])
+                       for j in ("roi", "ni")}},
+        ],
+        "capital_fold": [
+            {"id": "a_sh", "label": "Shallow FOAK anchor (EUR/kW)",
+             "default": VFM_SHALLOW_FOAK_EUR_KW,
+             "range": [1500.0, 3300.0]},
+            {"id": "a_dp", "label": "Deep FOAK anchor (EUR/kW)",
+             "default": round(VFM_DEEP_GBP_KW["mid"] * GBP_EUR, 0),
+             "range": [round(VFM_DEEP_GBP_KW["low"] * GBP_EUR, 0),
+                       round(VFM_DEEP_GBP_KW["high"] * GBP_EUR, 0)]},
+            {"id": "lr", "label": "Programme learning rate",
+             "default": VFM_FOAK_LEARNING["reduction"],
+             "range": list(VFM_FOAK_LEARNING["range"])},
+        ],
+        "hardwired": {"connection_relcost":
+                      VFM_WASTE_HEAT["connection_relcost"],
+                      "cooling_connections_pct": 12.0},
+    }
+    # WHAT IS IN THE ARITHMETIC AND WHAT IS NOT. Eight terms of about
     # twenty-five. Published so the panel cannot imply completeness.
+    #
+    # The previous version said "four" above a list of five, and the
+    # list omitted carbon and cooling although both were summed. A
+    # count asserted in a comment drifts from the list beneath it; the
+    # test now counts the list instead.
     out["integrated"] = ["running cost at LRVC",
                          "avoided generation capacity",
+                         "carbon at the shadow price",
+                         "cooling, operating and avoided chiller "
+                         "capital",
                          "subsurface increment",
                          "development capital divided by success",
-                         "optimism bias on capital"]
+                         "optimism bias on capital",
+                         "subsurface shortfall on the benefit side"]
     out["not_integrated"] = {
-        "stage2_benefits": ["carbon at the shadow price (computed, not "
-                            "summed - near zero within a decade)",
-                            "cooling", "avoided network reinforcement",
+        "stage2_benefits": ["avoided network reinforcement",
                             "air quality",
                             "interseasonal storage enabling waste-heat "
                             "recovery", "dispatch-down absorption",
                             "security of supply and indigenous share",
                             "residual value at 60 years"],
-        "stage2_costs": ["SUBSURFACE SHORTFALL - lever defined, never "
-                         "applied, and it flatters us",
-                         "operating and maintenance",
+        "stage2_costs": ["operating and maintenance - EXCLUDED WITH A "
+                         "BALANCE NOTE (22 Aug 2026): routine servicing "
+                         "runs LOWER for geothermal (indoor water-to-"
+                         "water plant on a steady source, no defrost "
+                         "duty, no outdoor coils; the Causeway Hospital "
+                         "feasibility carries 0.6-0.75 GBP/MWh against "
+                         "roughly 2 EUR/MWh for the DEA air-source "
+                         "centre), while the episodic subsurface "
+                         "lifecycle runs HIGHER (well-pump and ESP "
+                         "replacement on the deep leg, open-loop "
+                         "scaling and dosing, workovers, licence fees "
+                         "and monitoring). The two pull against each "
+                         "other and the net is plausibly near zero; "
+                         "excluded until the subsurface lifecycle "
+                         "rates are set from developer data rather "
+                         "than judgement. UNRESOLVED BOUNDARY: whether "
+                         "source-pumping parasitics sit inside the "
+                         "class SPFs - if they do not, the running "
+                         "stream is flattered and the O&M net moves "
+                         "against us",
                          "heat pump replacement, 2-3 times over the "
                          "horizon"],
         "stage1": ["NOTHING IS BUILT - fuel avoided, electricity "
@@ -5988,7 +6423,23 @@ def derive_vfm_phased(anchors=None):
                    "works, boiler replacement cycles avoided"],
     }
     out["known_shortcuts"] = [
-        "the shortfall lever is defined and unapplied",
+        "the shortfall is applied flat, not through a duration curve as "
+        "the UK sibling does - harder on us, but it assumes every hour "
+        "underdelivers equally",
+        "the Republic's deep weight is ZERO because the Early "
+        "Carboniferous Limestone play remains unproven despite "
+        "extensive research and, by our count, five wells to about "
+        "1 km - there is no demonstrated intermediate play in the "
+        "Republic. The current ~2 km Grangegorman well in Dublin is "
+        "exploration of exactly this question, not evidence it is "
+        "answered; the panel prices what is proven, and will move "
+        "when the well does",
+        "the avoided chiller capital is NOT scaled by the shortfall, "
+        "on the ground that those chillers are never bought however "
+        "the ground performs",
+        "avoided distribution reinforcement is bounded rather than "
+        "built: under GBP 11m for the North on RP7 unit rates, and "
+        "transmission reinforcement sits outside the price control",
         "the long-run variable cost is borrowed from the UK sibling",
         "the ten-year build has no Irish basis and is generous to the "
         "North, which has no supply chain to ramp",
@@ -6100,12 +6551,33 @@ def derive_vfm_increment(anchors=None):
     """
     asc = VFM_AIRSOURCE_EUR_KW["mid"]
     deep_eur = VFM_DEEP_GBP_KW["mid"] * GBP_EUR
-    deep_nth = deep_eur * (1 - VFM_FOAK_LEARNING["reduction"])
+    lr = VFM_FOAK_LEARNING["reduction"]
+    # Learning bites the SUBSURFACE SHARE of each all-in figure only -
+    # the heat pump inside it is the same mature kit as the flat
+    # air-source counterfactual. Effective reductions ~21.7% shallow,
+    # ~18.5% deep at the workbook-derived shares.
+    eff_sh = lr * VFM_SUBSURFACE_SHARE["shallow"]
+    eff_dp = lr * VFM_SUBSURFACE_SHARE["deep"]
+    deep_nth = deep_eur * (1 - eff_dp)
+    sh_foak = VFM_SHALLOW_FOAK_EUR_KW
+    sh_nth = sh_foak * (1 - eff_sh)
+    if VFM_SHALLOW_NTH_FLOOR is not None:
+        sh_nth = max(sh_nth, VFM_SHALLOW_NTH_FLOOR)
     out = {"air_source_eur_kw": asc,
            "shallow_eur_kw": dict(VFM_SHALLOW_EUR_KW),
+           "subsurface_share": dict(VFM_SUBSURFACE_SHARE),
+           "shallow_learn_eur_kw": {"foak": round(sh_foak, 0),
+                                    "nth": round(sh_nth, 0),
+                                    "effective_reduction":
+                                        round(eff_sh, 4),
+                                    "floor": VFM_SHALLOW_NTH_FLOOR,
+                                    "danish_outturn":
+                                        VFM_SHALLOW_EUR_KW["central"],
+                                    "learning": lr},
            "deep_eur_kw": {"foak": round(deep_eur, 0),
                            "nth": round(deep_nth, 0),
-                           "learning": VFM_FOAK_LEARNING["reduction"]},
+                           "effective_reduction": round(eff_dp, 4),
+                           "learning": lr},
            "jur": {}}
     for k, m in VFM_JUR_MODEL.items():
         w = m["deep_weight"]
@@ -6118,13 +6590,48 @@ def derive_vfm_increment(anchors=None):
                 row[f"{lab}_{dl}"] = {
                     "blend_eur_kw": round(blend, 0),
                     "increment_eur_kw": round(blend - asc, 0)}
+        # THE RAMP is the appraisal's central case from 22 Aug 2026:
+        # both classes interpolate FOAK -> nth linearly along the build
+        # years. Linear-in-year is the CONSERVATIVE shape - a learning
+        # curve is convex in cumulative capacity, so most of the
+        # reduction arrives early and a convex ramp would price the
+        # build cheaper than this does.
+        ramp = []
+        n = VFM_BUILD_YEARS
+        ss = VFM_SUBSURFACE_SHARE["shallow"]
+        ds = VFM_SUBSURFACE_SHARE["deep"]
+        # waste-heat displacement: this share of shallow schemes swaps
+        # its subsurface for a connection at connection_relcost of the
+        # displaced capital. Multiplier on the shallow subsurface:
+        wh = VFM_WASTE_HEAT
+        m_wh = 1.0 - wh["share"][k] * (1.0 - wh["connection_relcost"])
+        for t in range(1, n + 1):
+            f = (t - 1) / max(n - 1, 1)
+            sh_t = sh_foak * ((1 - ss) + ss * m_wh * (1 - lr * f))
+            dp_t = deep_eur * ((1 - ds) + ds * (1 - lr * f))
+            blend_t = (1 - w) * sh_t + w * dp_t
+            ramp.append(round(blend_t - asc, 1))
+        row["ramp"] = {
+            "increment_eur_kw_by_year": ramp,
+            "year1": ramp[0], "final": ramp[-1],
+            "mean": round(sum(ramp) / len(ramp), 1),
+            "waste_heat_share": wh["share"][k],
+            "waste_heat_relcost": wh["connection_relcost"],
+            "waste_heat_subsurface_multiplier": round(m_wh, 4),
+            "basis": "linear FOAK->nth over the build years, "
+                     "subsurface-share learning both classes, "
+                     "waste-heat displacement on the shallow "
+                     "subsurface, from the Irish anchors"}
         out["jur"][k] = {"deep_weight": w, "cases": row,
-                         "central": row["central_nth"]}
-    log(f"vfm increment: air-source {asc:.0f} EUR/kW; shallow "
-        f"{VFM_SHALLOW_EUR_KW['dutch_floor']:.0f} Dutch floor to "
-        f"{VFM_SHALLOW_EUR_KW['central']:.0f} Irish central; deep "
-        f"{deep_eur:.0f} FOAK, {deep_nth:.0f} at nth. Central "
-        f"increments: ROI "
+                         "central": {"blend_eur_kw": round(
+                             sum(ramp) / len(ramp) + asc, 0),
+                             "increment_eur_kw": round(
+                                 sum(ramp) / len(ramp), 0)},
+                         "ramp": row["ramp"]}
+    log(f"vfm increment: air-source {asc:.0f} EUR/kW flat; shallow "
+        f"FOAK {sh_foak:.0f} -> nth {sh_nth:.0f} (Irish anchor, "
+        f"subsurface-share learning); deep FOAK {deep_eur:.0f} -> nth "
+        f"{deep_nth:.0f}. Ramped central increments (mean): ROI "
         f"{out['jur']['roi']['central']['increment_eur_kw']:+.0f}, NI "
         f"{out['jur']['ni']['central']['increment_eur_kw']:+.0f} "
         f"EUR/kW")
@@ -8977,6 +9484,7 @@ def main():
             "increment": derive_vfm_increment(),
             "carbon": derive_vfm_carbon(),
             "running": derive_vfm_running(),
+            "cooling": derive_vfm_cooling(),
             "phased": derive_vfm_phased(),
             "constants": derive_vfm_constants(),
             "tes_cop": VFM_TES_COP,
