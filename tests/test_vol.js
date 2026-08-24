@@ -783,16 +783,21 @@ const naive = b.value_naive_eur_m.reduce((a,v)=>a+v,0);
 ok(wtd < naive * 0.8,
    "spilled wind is worth materially less than the monthly average implies");
 ok(wtd > naive * 0.3, "but not implausibly less - the join is not broken");
+// the value-and-capture argument moved into the method fold when
+// Panel 3's notes were shortened; render it here to police it
+el("gridMethod");
+gridMethod(ddFix, null);
+const gmEarly = DOM.gridMethod.innerHTML;
 // constraint must be worth more per MWh than curtailment
 const pc = ddFix.jurisdictions.NI.price_cons.filter(v=>v),
       pu = ddFix.jurisdictions.NI.price_curt.filter(v=>v);
 const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
 ok(mean(pc) > mean(pu) * 1.15,
    "constraint hours clear well above curtailment hours");
-ok(/already compensated/.test(DOM.ddValueNote.textContent)
-   && /generator/.test(DOM.ddValueNote.textContent),
+ok(/already compensated/.test(gmEarly)
+   && /generator/.test(gmEarly),
    "the note says who would capture it, and that it differs by reason");
-ok(/upper bound/.test(DOM.ddValueNote.textContent),
+ok(/upper bound/.test(gmEarly),
    "and that delivering the energy would itself soften the price");
 ok(!/value lost/i.test(dv) && /was worth/.test(html),
    "the chart is titled what the energy was worth, not value lost");
@@ -803,7 +808,7 @@ ok(/coming build/.test(DOM.ddValue.textContent),
 
 // ---- worked examples: sizing the sink, not claiming a saving ------
 ["oddEx","oddExNote"].forEach(k=>{DOM[k]=null; el(k);});
-oddExamples({basis_from:"2025-07", basis_to:"2026-06", basis_months:12,
+const oddFix = {basis_from:"2025-07", basis_to:"2026-06", basis_months:12,
   constrained_gwh:656.1, heat_gwh:2789.6,
   ni_delivered_heat_gwh:10888, share_of_ni_heat_pct:25.6,
   hospital:{eui_kwh_m2:211, heat_share:0.6, floor_m2:55000,
@@ -816,8 +821,15 @@ oddExamples({basis_from:"2025-07", basis_to:"2026-06", basis_months:12,
             curtailment_cut_pct:74, household_saving_gbp:220,
             farm_10mw_gbp:19400, operator_saving_pct:78,
             cite:"Agbonaye, Keatley, Huang, Odiase & Hewitt (2022), "
-                 + "Renewable Energy 190:487\u2013500"}});
+                 + "Renewable Energy 190:487\u2013500"}};
+oddExamples(oddFix);
 const ox = DOM.oddEx.innerHTML, oxn = DOM.oddExNote.innerHTML;
+// THE METHOD FOLD. Panel 3's notes were shortened to their
+// findings and the defence moved here; these pins moved with the
+// text, so the claims are still policed - just in their new home.
+el("gridMethod");
+gridMethod(ddFix, oddFix);
+const gmFold = DOM.gridMethod.innerHTML;
 ok(!/NaN|undefined/.test(ox + oxn), "no NaN in the worked examples");
 // the unit sits in a nested span, so figure and unit are not
 // contiguous in the markup
@@ -839,19 +851,19 @@ ok(/Worked examples/.test(oxn) && /not\s+measurements/.test(oxn),
    "the panel declares itself worked examples, not measurements");
 ok(/size the LOAD it would take, not heat delivered/.test(oxn),
    "and that it sizes the load rather than claiming heat delivered");
-ok(/outside the heating season/.test(oxn) && /storage/.test(oxn),
+ok(/outside the heating season/.test(gmFold) && /storage/.test(gmFold),
    "the coincidence objection is stated, not left for a reviewer");
 // Agbonaye is quoted, attributed and not re-derived - the supervisor
 // is a named peer reviewer, so the citation has to be exact
-ok(/Agbonaye, Keatley, Huang, Odiase &amp; Hewitt \(2022\)/.test(oxn)
-   || /Agbonaye, Keatley, Huang, Odiase & Hewitt \(2022\)/.test(oxn),
+ok(/Agbonaye, Keatley, Huang, Odiase &amp; Hewitt \(2022\)/.test(gmFold)
+   || /Agbonaye, Keatley, Huang, Odiase & Hewitt \(2022\)/.test(gmFold),
    "the domestic figures are attributed to the paper in full");
-ok(/Renewable Energy 190:487/.test(oxn), "with the journal reference");
-ok(/quoted rather than re-derived/.test(oxn),
+ok(/Renewable Energy 190:487/.test(gmFold), "with the journal reference");
+ok(/quoted rather than re-derived/.test(gmFold),
    "and stated as quoted rather than recomputed");
 // the hospital benchmark's weakest joint must be admitted
-ok(/heat share is[\s\S]{0,20}ours/.test(oxn)
-   && /ERIC publishes total energy/.test(oxn),
+ok(/heat share is[\s\S]{0,20}ours/.test(gmFold)
+   && /ERIC publishes total energy/.test(gmFold),
    "the hospital heat share is declared as ours, not ERIC's");
 ["oddEx","oddExNote"].forEach(k=>{DOM[k]=null; el(k);});
 oddExamples(null);
@@ -864,10 +876,44 @@ ok(/16\.9%/.test(ox) && /19\.5%/.test(ox) && /25\.6%/.test(ox),
    "each route's share of NI heat from the same spilled electricity");
 ok(/Air source/.test(ox) && /Geothermal network/.test(ox),
    "named per route, not folded into one figure");
-ok(/storage measured in months rather than hours/.test(oxn),
+ok(/storage measured in months rather than hours/.test(gmFold),
    "and the storage-duration discriminator is stated as the larger one");
-ok(/property of the route, not of the machine/.test(oxn),
+ok(/property of the route rather than[\s\S]{0,20}of the machine/.test(gmFold),
    "framed as a property of the route rather than of the heat pump");
+// THE CONSTRAINT-GROUP ARGUMENT. Panel 3's ceiling is all-island and
+// correct; the locational layer is what it used to omit. These pin the
+// parts a grid engineer would test: that adequacy and deliverability
+// are distinguished, that the shift-factor mechanism is GIVEN rather
+// than asserted, that the two-sided cost is admitted, and that
+// valuation is handed to Panel 6 rather than duplicated here.
+ok(/ADEQUACY/.test(gmFold) && /[Dd]eliverability is separate/.test(gmFold),
+   "the fold separates adequacy from deliverability");
+ok(/SHIFT FACTOR/.test(gmFold)
+   && /identical shift factor with[\s\S]{0,20}the opposite sign/.test(gmFold),
+   "and gives the mechanism, not just the claim");
+ok(/five Northern Irish wind constraint groups/.test(gmFold),
+   "the five groups are named as five");
+ok(/voltage-stability[\s\S]{0,80}Republic/.test(gmFold),
+   "the voltage-stability exception is stated, not buried");
+ok(/cuts against heat in the binding[\s\S]{0,20}hour/.test(gmFold),
+   "the binding-hour cost of local load is admitted");
+ok(/[Dd]istribution headroom, not the/.test(gmFold),
+   "and distribution headroom is named as the real siting screen");
+{
+  const sec = html.slice(html.indexOf('<section id="grid"'),
+                         html.indexOf('<section id="cooling"'));
+  ok(/constraint-groups\.png/.test(sec),
+     "the constraint-group map sits in the panel");
+  ok(/Wind Dispatch Tool Constraint Group[\s\S]{0,40}Overview/.test(sec)
+     && /February 2024/.test(sec),
+     "credited to the EirGrid/SONI publication and its date");
+  ok(/no warranty/.test(sec),
+     "carrying the TSOs' disclaimer rather than implying endorsement");
+  ok(/22\.0% of available/.test(sec) && /85% of it transmission/.test(sec),
+     "and the panel states the NI constraint share on its face");
+  ok(/priced elsewhere, not here/.test(sec),
+     "valuation is handed to the appraisal panel, not duplicated");
+}
 
 // ---- every CSS variable used must be defined ----------------------
 // --ink2 was used in sixteen places and never declared. In CSS an
