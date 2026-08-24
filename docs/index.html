@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.50.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.51.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -3259,6 +3259,21 @@ function vfmStreams(v){
         + "network mostly serves homes and Irish homes do not cool",
      dur:"runs the whole horizon"},
   ];
+  const phj = v.phased ? v.phased.jur[VFMJUR] : null;
+  if (VFMJUR === "ni" && phj && phj.streams_pv_eur_m
+      && phj.streams_pv_eur_m.constrained_wind > 0) {
+    rows.push({k:"Constrained wind", v:null, lo:null, hi:null,
+     note:"wind wasted in Derry and Antrim because it cannot leave "
+        + "the local network \u2014 constraint, not curtailment \u2014 "
+        + "overlaps the play fairway. A storage-capable fleet sited "
+        + "there charges in constrained hours, so that share of its "
+        + "electricity costs near zero instead of LRVC. The avoided "
+        + "dispatch-down PAYMENT is a transfer and is not priced; the "
+        + "resource saving is. Coincident fraction 15%, Causeway "
+        + "judgement\u2020",
+     dur:"<b>decays over 25 years</b> as reinforcement erodes the "
+        + "constraint"});
+  }
   const tot = run.central + cap;
   const capex = mw * inc / 1000;
   let s = '<div class="hstats">'
@@ -3422,6 +3437,24 @@ function vfmTes(v){
       + 'simplification made to make the case for geothermal plainly, '
       + 'and it will understate '
       + 'the cheapest cases and overstate the hardest.</p>'
+      + (VFMJUR === 'ni'
+         ? '<p><b>Constrained wind.</b> Wind wasted in Derry and '
+           + 'Antrim because it cannot leave the local network '
+           + 'overlaps the play fairway \u2014 constraint, not '
+           + 'curtailment, which stays excluded because spill and '
+           + 'heat demand anti-correlate system-wide. A '
+           + 'storage-capable fleet sited in the constrained zones '
+           + 'charges in constrained hours, so that fraction of its '
+           + 'draw costs near zero instead of LRVC. The avoided '
+           + 'dispatch-down payment is a transfer and is NOT priced; '
+           + 'the resource saving is. Coincident fraction 15% '
+           + '(siting \u00d7 hours \u00d7 dispatchability), Causeway '
+           + 'judgement\u2020; constraint energy derived at 0.43 TWh '
+           + 'pending the published constraint and curtailment '
+           + 'table; the stream DECAYS to zero over 25 years as '
+           + 'reinforcement erodes the constraint, and delivery '
+           + 'risk sits inside the shortfall lever.</p>'
+         : '')
       + '<p><b>The subsurface increment</b> is '
       + fmt(inc.jur[VFMJUR].central.increment_eur_kw,0) + ' EUR/kW '
       + 'central \u2014 a blend at ' + fmt(100*stg.deep_weight,0)
@@ -3915,7 +3948,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.50.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.51.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
