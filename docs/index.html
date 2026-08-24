@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.54.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.55.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -759,6 +759,10 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       network</span></h3>
     <div id="vfmStreams"></div>
     <p class="note" id="vfmStreamsNote"></p>
+    <!-- THE LEVERS SIT WITH THE BARS THEY MOVE, as on the UK site:
+         a reader who has just seen the streams can push them without
+         scrolling past the rest of the panel to find the controls. -->
+    <div id="vfmLevers"></div>
 
     <h3 class="foldh">What the grid operators currently assume
       <span class="sub">&mdash; a flat heat-pump COP, out to
@@ -1010,8 +1014,8 @@ function emitPanel(he){
       + 'The heat network here is GEOTHERMAL, not the gas-fired network '
       + 'assumed in most comparisons \u2014 its figure is the ambient '
       + 'loop at an island SPF of ' + fmt(he.network_spf_island, 2)
-      + '\u2020, the heat-weighted harmonic mean of 5.0 in the North '
-      + 'and 4.0 in the Republic. Harmonic because efficiencies average '
+      + '\u2020, the heat-weighted harmonic mean of 5.0 in NI '
+      + 'and 4.0 in ROI. Harmonic because efficiencies average '
       + 'that way; an arithmetic mean would flatter it. Every electric '
       + 'route improves as the grid decarbonises; combustion never '
       + 'does.</p>';
@@ -1995,7 +1999,7 @@ function coolTiers(ct){
   if(note){
     note.textContent = "Ireland barely cools its buildings; it cools its "
       + "machines. Of " + fmt(ct.service_twh,1) + " TWh of cooling "
-      + "delivered in the Republic, Tier 0 process is "
+      + "delivered in ROI, Tier 0 process is "
       + fmt(tt["0"],1) + " TWh \u2014 " + fmt(100*tt["0"]/ct.service_twh,0)
       + "% \u2014 against Tier 1 comfort at " + fmt(tt["1"],1)
       + " TWh, or " + fmt(100*tt["1"]/ct.service_twh,0) + "%, with "
@@ -2058,7 +2062,7 @@ function coolTiers(ct){
       + 'process and comfort, so public comfort cooling sits inside '
       + '\u201ccomfort\u201d there and has its own sourced factor '
       + 'here. Panel 2 is also all-island and trailing twelve months '
-      + 'where these bars are the Republic in ' + esc(ct.base_year)
+      + 'where these bars are ROI in ' + esc(ct.base_year)
       + ', so its cooling figure is the larger of the two \u2014 there '
       + 'is no equivalent Northern Ireland data.</p>'
       + '<p>And <b>data centres at an effective EER of ' + fmt(ct.dc_eer,0)
@@ -2113,7 +2117,7 @@ function coolTiers(ct){
       + '\u201cheld, not forecast\u201d treatment of those blocks is '
       + 'SEAI\u2019s own. Northern Ireland is not in these bars: SEAI is '
       + 'Republic-only, and our all-island figure carries about '
-      + fmt(ct.ni_all_twh,1) + ' TWh for the North as a single '
+      + fmt(ct.ni_all_twh,1) + ' TWh for NI as a single '
       + 'undivided anchor, because DfE publishes no cooling line and NI '
       + 'is not separable inside UK statistics.</p>'
       + '<p>Source: ' + esc(ct.source) + '.</p>';
@@ -2479,7 +2483,7 @@ function drawCost(){
         + "DELIVERED in the meantime."
       : state === "ni"
         ? "Northern Ireland's oil record does not reach this far back "
-          + "yet. Try a shorter window, or ROI \u2014 the Republic's "
+          + "yet. Try a shorter window, or ROI \u2014 its "
           + "series runs deeper."
         : "Not enough priced days in this window yet.";
     el("costLegend").innerHTML = "";
@@ -2609,7 +2613,7 @@ function drawCost(){
     + "estimated.</p>"
     + "<p>The Irish series excludes the government electricity "
     + "credits. Between 2022 and 2025 domestic electricity accounts "
-    + "in the Republic received \u20ac1,500 in lump sums, and the "
+    + "in ROI received \u20ac1,500 in lump sums, and the "
     + "published price statistics book those into the effective unit "
     + "price \u2014 which is why the same electricity shows a 93% rise "
     + "in the smallest consumption band and a 4% fall in the largest. "
@@ -3593,7 +3597,7 @@ document.querySelectorAll("[data-geojur]").forEach(b=>{
               geoCalib(GEOD.hardware); }
   });
 });
-const GEOJUR_LABEL = {roi:"the Republic", ni:"Northern Ireland"};
+const GEOJUR_LABEL = {roi:"ROI", ni:"Northern Ireland"};
 
 function geoTargets(t){
   const box = el("geoTargets"), note = el("geoTargetsNote");
@@ -4032,7 +4036,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.54.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.55.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
@@ -4153,12 +4157,12 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   h.textContent="Try the levers";box.appendChild(h);
   var intro=document.createElement("p");
   intro.style.cssText="font-size:.92em;color:var(--muted,#A9B4B1)";
-  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. The Republic of Ireland is appraised in euro and Northern Ireland in sterling, each at real 2025 prices.";
+  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. ROI is appraised in euro and NI in sterling, each at real 2025 prices.";
   box.appendChild(intro);
   var tog=document.createElement("div");tog.style.cssText="margin:.4rem 0 .8rem";
   ["roi","ni"].forEach(function(j){
     var btn=document.createElement("button");
-    btn.textContent=j==="roi"?"Republic":"North";
+    btn.textContent=j==="roi"?"ROI":"NI";
     btn.style.cssText="margin-right:.5rem;padding:.25rem .8rem";
     btn.addEventListener("click",function(){cur=j;syncPerJur();render();});
     tog.appendChild(btn);
@@ -4209,7 +4213,7 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
     sASh._sync(state.a_sh);sADp._sync(state.a_dp);sLr._sync(state.lr);
   }
   function render(){
-    var name=cur==="roi"?"Republic":"North";
+    var name=cur==="roi"?"ROI":"NI";
     var r=evalJur(cur), hi=(LV.headline[0].range[cur]||[0,0.45])[1];
     var inside=r.breakeven<=hi;
     var d=JUR[cur], mny=money(cur);
@@ -4224,7 +4228,10 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
        "outside the declared range of 0-"+Math.round(hi*100)+"%")+".</p>";
   }
   syncAll();render();
-  var host=document.getElementById("vfm")||document.body;
+  // mount beside the streams bars if the panel offers a slot,
+  // falling back to the section end for older markup
+  var host=document.getElementById("vfmLevers")
+        || document.getElementById("vfm")||document.body;
   host.appendChild(box);
   }
 })();
