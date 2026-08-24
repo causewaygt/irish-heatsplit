@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.49.0"
+PIPELINE_VERSION = "5.50.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5629,6 +5629,40 @@ VFM_SHALLOW_NTH_FLOOR = None   # DECIDED 22 Aug 2026: stays None. The
 # subsurface still learns, the connection kit, like the heat pump,
 # stays flat. Defaults are Causeway judgement pending a source
 # inventory, daggered and ranged.
+# CONSTRAINED WIND (NI ONLY, 23 Aug 2026). Wind wasted in Derry and
+# Antrim because it cannot LEAVE - local network constraint, not
+# system curtailment - overlaps the Permo-Trias play fairway. A
+# storage-capable geothermal fleet sited there charges in constrained
+# hours: for that coincident fraction, the fleet's electricity falls
+# from LRVC toward the near-zero cost of wind otherwise spilled.
+# TRANSFERS EXCLUDED, per the panel's convention: dispatch-down
+# PAYMENTS avoided are a consumer-to-generator transfer and are NOT
+# the benefit - the resource saving is, and the payments falling is a
+# consequence for the asks, not a priced stream. NO DOUBLE-DIP: the
+# SPF gain prices using LESS electricity; this prices the remaining
+# electricity COSTING less. Delivery risk (controllable charging
+# actually happening) sits inside the shortfall lever like waste heat.
+# CURTAILMENT stays excluded - the morning's anti-correlation finding
+# stands; only the local-constraint component rides here.
+VFM_CONSTRAINED_WIND = {
+    # NI wind ~2.9 TWh x 22.0% published dispatch-down x ~0.68
+    # constraint share of NI dispatch-down = 0.43 TWh. DERIVED, not
+    # read from a table - REPLACE with the EirGrid/SONI Annual
+    # Constraint and Curtailment Report figure before the banner
+    # comes off.
+    "constraint_twh": 0.43,
+    # siting share x hour overlap x storage dispatchability. Causeway
+    # judgement, daggered, hard-wired (not a slider - the panel holds
+    # at four).
+    "coincidence": 0.15, "coincidence_range": (0.0, 0.40),
+    # constraint is not permanent: the North-West reinforcement
+    # pipeline erodes it. Linear decay to zero over this horizon -
+    # judgement, disclosed - so the stream does NOT run flat for
+    # sixty years.
+    "erosion_years": 25,
+    "applies": "ni only - the Republic's constraint geography does "
+               "not overlap its shallow class the same way",
+}
 VFM_WASTE_HEAT = {
     "share": {"roi": 0.15, "ni": 0.10},
     "share_range": (0.0, 0.40),
@@ -6222,7 +6256,26 @@ def derive_vfm_phased(anchors=None):
         flat_pv = sum(annual * min(t, VFM_BUILD_YEARS) / VFM_BUILD_YEARS
                       * vfm_discount_factor(t, k)
                       for t in range(1, VFM_HORIZON_YEARS + 1))
-        ben_pv = flat_pv + carb_pv
+        # CONSTRAINED WIND (NI only). Fleet draw = network heat / SPF,
+        # capped at the constraint energy; coincident fraction priced
+        # at that year's LRVC; linear decay over the reinforcement
+        # horizon; ramped with the build; scaled by keep like every
+        # benefit. See VFM_CONSTRAINED_WIND for the exclusions.
+        cw_pv = 0.0
+        if k == "ni":
+            cw = VFM_CONSTRAINED_WIND
+            draw_twh = min(sc["jur"][k]["network_twh"]
+                           / st["jur"][k]["spf"],
+                           cw["constraint_twh"])
+            for t in range(1, VFM_HORIZON_YEARS + 1):
+                decay = max(0.0, 1.0 - (t - 1) / cw["erosion_years"])
+                if decay <= 0.0:
+                    break
+                ramp = min(t, VFM_BUILD_YEARS) / VFM_BUILD_YEARS
+                cw_pv += (keep * cw["coincidence"] * draw_twh * decay
+                          * ramp * vfm_lrvc(2026 + t - 1, k)
+                          * vfm_discount_factor(t, k))
+        ben_pv = flat_pv + carb_pv + cw_pv
         f_run = (run["jur"][k]["resource_eur_m_yr"]["central"]
                  / max(gross_annual, 1e-9))
         f_cap = cap_eur_m / max(gross_annual, 1e-9)
@@ -6260,6 +6313,7 @@ def derive_vfm_phased(anchors=None):
             "streams_pv_eur_m": {
                 "running": round(run_pv, 1),
                 "capacity": round(cap_pv_ben, 1),
+                "constrained_wind": round(cw_pv, 1),
                 "carbon": round(carb_pv, 1),
                 "cooling": round(cool_pv_ben, 1)},
             "cooling_running_eur_m_yr": round(cool_run_m * keep, 1),
@@ -6313,7 +6367,10 @@ def derive_vfm_phased(anchors=None):
             "ss_deep": VFM_SUBSURFACE_SHARE["deep"],
             "cool_capital_eur_m": cool_m,
             "devex": devex,
-            "flat_gross_pv_eur_m": round(flat_pv / keep, 3),
+            # includes constrained wind - it scales only with keep,
+            # so folding it here keeps the closed form exact with
+            # no evaluator change
+            "flat_gross_pv_eur_m": round((flat_pv + cw_pv) / keep, 3),
             "carbon_gross_pv_eur_m": round(carb_pv / keep, 3),
             "gbp_per_eur": round(1.0 / GBP_EUR, 6) if k == "ni" else None,
         }
@@ -6339,6 +6396,7 @@ def derive_vfm_phased(anchors=None):
                 "increment_gbp_kw": round(per_kw * g, 0),
                 "streams_pv_gbp_m": {
                     "running": round(run_pv * g, 1),
+                    "constrained_wind": round(cw_pv * g, 1),
                     "capacity": round(cap_pv_ben * g, 1),
                     "carbon": round(carb_pv * g, 1),
                     "cooling": round(cool_pv_ben * g, 1)},
