@@ -4555,6 +4555,35 @@ def test_lever_closed_form_matches_appraisal_at_corners():
     assert r.returncode == 0, r.stderr.decode()[:400]
 
 
+def test_constrained_wind_is_ni_only_and_severable():
+    """Constrained wind rides on local network constraint, not
+    curtailment - the anti-correlation finding that killed the
+    curtailment version stands. This pins: the Republic never carries
+    the stream; zeroing the coincidence factor removes exactly this
+    stream and nothing else; and the stream scales with the shortfall
+    lever like every benefit (delivery risk is inside that lever).
+    """
+    import build as B
+    ph1 = B.derive_vfm_phased()
+    assert ph1["jur"]["roi"]["streams_pv_eur_m"]["constrained_wind"] == 0.0
+    assert ph1["jur"]["ni"]["streams_pv_eur_m"]["constrained_wind"] > 0.0
+    saved = B.VFM_CONSTRAINED_WIND["coincidence"]
+    try:
+        B.VFM_CONSTRAINED_WIND["coincidence"] = 0.0
+        ph0 = B.derive_vfm_phased()
+    finally:
+        B.VFM_CONSTRAINED_WIND["coincidence"] = saved
+    z, a = ph0["jur"]["ni"], ph1["jur"]["ni"]
+    assert z["streams_pv_eur_m"]["constrained_wind"] == 0.0
+    for kk in ("running", "capacity", "carbon", "cooling"):
+        assert z["streams_pv_eur_m"][kk] == a["streams_pv_eur_m"][kk], kk
+    assert z["capex_pv_eur_m"] == a["capex_pv_eur_m"]
+    assert z["bcr"] < a["bcr"]
+    # decays to zero inside the horizon: erosion must be shorter than
+    # the appraisal, or the "not flat for sixty years" claim is false
+    assert B.VFM_CONSTRAINED_WIND["erosion_years"] < B.VFM_HORIZON_YEARS
+
+
 def test_waste_heat_is_capex_avoidance_only():
     """The operating upside of warm sources is already inside the class
     SPFs, and delivery risk is already named in the shortfall lever.
@@ -4701,7 +4730,8 @@ def test_cooling_is_avoided_capital_and_is_small_in_ireland():
     # electricity is every summer for sixty years.
     for k, v in ph["jur"].items():
         assert set(v["streams_pv_eur_m"]) == {"running", "capacity",
-                                              "carbon", "cooling"}
+                                              "carbon", "cooling",
+                                              "constrained_wind"}
         assert v["streams_pv_eur_m"]["cooling"] > 0
         assert (v["streams_pv_eur_m"]["cooling"]
                 > v["cooling_avoided_eur_m"]), (
