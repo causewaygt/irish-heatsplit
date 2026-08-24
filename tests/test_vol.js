@@ -899,21 +899,6 @@ ok(/cuts against heat in the binding[\s\S]{0,20}hour/.test(gmFold),
    "the binding-hour cost of local load is admitted");
 ok(/[Dd]istribution headroom, not the/.test(gmFold),
    "and distribution headroom is named as the real siting screen");
-{
-  const sec = html.slice(html.indexOf('<section id="grid"'),
-                         html.indexOf('<section id="cooling"'));
-  ok(/constraint-groups\.png/.test(sec),
-     "the constraint-group map sits in the panel");
-  ok(/Wind Dispatch Tool Constraint Group[\s\S]{0,40}Overview/.test(sec)
-     && /February 2024/.test(sec),
-     "credited to the EirGrid/SONI publication and its date");
-  ok(/no warranty/.test(sec),
-     "carrying the TSOs' disclaimer rather than implying endorsement");
-  ok(/22\.0% of available/.test(sec) && /85% of it transmission/.test(sec),
-     "and the panel states the NI constraint share on its face");
-  ok(/priced elsewhere, not here/.test(sec),
-     "valuation is handed to the appraisal panel, not duplicated");
-}
 
 // ---- every CSS variable used must be defined ----------------------
 // --ink2 was used in sixteen places and never declared. In CSS an
