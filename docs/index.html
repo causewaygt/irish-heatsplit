@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.51.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.52.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -3948,7 +3948,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.51.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.52.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
@@ -4026,7 +4026,7 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   })();
   function init(P){
   var LV=P.phased.levers, JUR=P.phased.jur, cur="roi";
-  var state={ob:null,capm:null,a_sh:null,a_dp:null,lr:null,s:{},wh:{}};
+  var state={optimism:null,capm:null,a_sh:null,a_dp:null,lr:null,shortfall:{},wh:{}};
   LV.headline.forEach(function(l){
     if(l.per_jur){["roi","ni"].forEach(function(j){state[l.id][j]=l.default[j];});}
     else{state[l.id]=l.default;}
@@ -4042,7 +4042,7 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   }
   function evalJur(j){
     var c=JUR[j].coeffs;
-    return vfmLeverEval(c,{s:state.s[j],ob:state.ob,capm:state.capm,
+    return vfmLeverEval(c,{s:state.shortfall[j],ob:state.optimism,capm:state.capm,
       wh:state.wh[j],rc:rc,lr:state.lr,a_sh:state.a_sh,a_dp:state.a_dp});
   }
   function fmt(x,d){return x.toFixed(d===undefined?2:d);}
@@ -4081,10 +4081,10 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   });
   box.appendChild(tog);
 
-  var sShort=slider("Subsurface shortfall, programme mean",0,0.45,state.s[cur],0.005,
-    function(v){state.s[cur]=v;},"%");
-  var sOb=slider("Optimism bias",0,0.66,state.ob,0.01,
-    function(v){state.ob=v;},"%");
+  var sShort=slider("Subsurface shortfall, programme mean",0,0.45,state.shortfall[cur],0.005,
+    function(v){state.shortfall[cur]=v;},"%");
+  var sOb=slider("Optimism bias",0,0.66,state.optimism,0.01,
+    function(v){state.optimism=v;},"%");
   var sCap=slider("Subsurface capital",0.75,1.25,state.capm,0.01,
     function(v){state.capm=v;},"x");
   var sWh=slider("Waste-heat coupling share",0,0.40,state.wh[cur],0.005,
@@ -4119,9 +4119,9 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   });
   box.appendChild(reset);
 
-  function syncPerJur(){sShort._sync(state.s[cur]);sWh._sync(state.wh[cur]);}
+  function syncPerJur(){sShort._sync(state.shortfall[cur]);sWh._sync(state.wh[cur]);}
   function syncAll(){
-    syncPerJur();sOb._sync(state.ob);sCap._sync(state.capm);
+    syncPerJur();sOb._sync(state.optimism);sCap._sync(state.capm);
     sASh._sync(state.a_sh);sADp._sync(state.a_dp);sLr._sync(state.lr);
   }
   function render(){
