@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.52.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.53.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -262,6 +262,9 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .iofoot{font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--muted);margin-top:8px}
 .iofoot b{color:var(--green)}
 .note{font-size:.8rem;color:var(--faint);margin-top:12px}
+.mapfig{margin:18px 0 4px;max-width:560px}
+.mapfig img{display:block;border:1px solid var(--line);border-radius:4px}
+.mapfig figcaption{margin-top:8px}
 .panelbox{background:var(--panel2);border:1px solid var(--line);
   border-radius:6px;padding:18px}
 .plot{width:100%;min-height:340px}
@@ -626,6 +629,30 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       ceiling would invent a constraint that does not exist. So each
       jurisdiction's what-if is measured against one shared block.<span
       class="dag">†</span></p>
+    <p class="note"><b>The ceiling is all-island. The network is
+      not.</b> Five Northern Irish constraint groups spill wind that
+      cannot leave the place it is generated &mdash; 22.0% of available
+      wind in 2025, 85% of it transmission constraint, against near
+      half that in the Republic.</p>
+    <figure class="mapfig">
+      <img src="constraint-groups.png" width="100%"
+           alt="Map of the five Northern Ireland wind constraint groups
+                defined in the Wind Dispatch Tool, over the transmission
+                network">
+      <figcaption class="note">The five Northern Irish constraint
+        groups. 1 and 5 cover the north-west and the Kells&ndash;Rasharkin
+        corridor, 2 and 3 west Tyrone and Fermanagh, 4 is all of
+        Northern Ireland and manages the tie-lines south. Reproduced
+        from EirGrid/SONI, <i>Wind Dispatch Tool Constraint Group
+        Overview</i>, February 2024, Figure 1; the TSOs give no warranty
+        as to its content and none is implied here.</figcaption>
+    </figure>
+    <p class="note"><b>Heat load sited inside a group works both ends
+      of the wind.</b> It adds to the binding-hour draw, which is where
+      a ground-coupled system's lower peak and a pre-charged store earn
+      their keep &mdash; and absorbs constrained wind in the windy
+      hours, when the flow runs the other way. What that energy is
+      worth is priced elsewhere, not here.</p>
     <div class="costctl costwin" id="gridViewCtl">
       <span>VIEW</span>
       <button data-gview="hourly" aria-pressed="true">HOURLY · 7d</button>
@@ -657,6 +684,11 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       than claiming the saving</span></h3>
     <div id="oddEx"></div>
     <p class="note" id="oddExNote"></p>
+    <details class="fold">
+      <summary>How the grid layer is built, and what it does not
+        claim</summary>
+      <div class="foldbody" id="gridMethod"></div>
+    </details>
   </div>
 </section>
 
@@ -1427,10 +1459,7 @@ function ddPanel(dd){
     note.textContent = "Wind only. Over the same months that spilled "
       + "electricity would have made about " + fmt(h,1) + " TWh of heat "
       + "through a geothermal network at SPF " + fmt(dd.spf.network,2)
-      + ". That is an energy-scale statement, not a dispatch claim: it "
-      + "takes no account of whether the spill coincided with heat "
-      + "demand, and a large flexible load would itself change the "
-      + "dispatch.";
+      + ". An energy-scale statement, not a dispatch claim.";
   }
 }
 
@@ -1442,6 +1471,117 @@ function ddPanel(dd){
 // operator and consumers; curtailed wind is not, so absorbing it is
 // revenue the generator keeps - and that belongs in the note rather
 // than encoded in the bars.
+// ------------------------- Panel 3 method fold
+// EVERYTHING THE THREE NOTES USED TO CARRY INLINE. The notes above
+// state findings; the defence lives here, as on every other panel.
+// The constraint-group section is the part a grid engineer would test:
+// it must say WHY a load inside a group relieves the binding element,
+// not merely assert that it does.
+function gridMethod(dd, x){
+  const box = el("gridMethod");
+  if(!box) return;
+  const d = x || {};
+  let s = '';
+
+  s += '<p><b>Constraint groups, and why the ceiling above does not '
+    + 'settle it.</b> The all-island ceiling answers ADEQUACY: whether '
+    + 'the island can schedule enough generation in the binding hour. '
+    + 'Deliverability is separate and local. EirGrid and SONI define '
+    + 'five Northern Irish wind constraint groups in the Wind Dispatch '
+    + 'Tool \u2014 the north-west around Coleraine, Limavady and '
+    + 'Coolkeeragh; the Kells\u2013Rasharkin corridor; two covering '
+    + 'west Tyrone and Fermanagh; and one covering all of Northern '
+    + 'Ireland, which manages the tie-lines to Louth. When a group '
+    + 'binds, wind inside it is dispatched down because the network '
+    + 'cannot evacuate it, not because the island cannot use it. '
+    + 'Curtailment is the opposite case \u2014 system-wide, applied to '
+    + 'every farm at once \u2014 and the two are separated in the '
+    + 'series above by EirGrid\u2019s own reason codes.</p>';
+
+  s += '<p><b>Membership is electrical, not areal.</b> The TSO assigns '
+    + 'farms to a group by SHIFT FACTOR: it perturbs generation at a '
+    + 'node and measures the change in flow on the binding circuit. A '
+    + 'load at the same node carries the identical shift factor with '
+    + 'the opposite sign, so demand inside the group relieves the '
+    + 'binding element exactly as the dispatch-down instruction does. '
+    + 'All five Northern Irish groups are flow-driven; voltage-stability '
+    + 'groups, where added load can worsen rather than help, are in the '
+    + 'Republic. The all-Northern-Ireland group works by a second route '
+    + '\u2014 demand creates room beneath the must-run minimum-generation '
+    + 'floor and reduces the export the tie-line standard protects \u2014 '
+    + 'so for that component any Northern Irish siting qualifies.</p>';
+
+  s += '<p><b>The same locality cuts against heat in the binding '
+    + 'hour</b>, when those weak circuits are importing and new load '
+    + 'adds to the flow. Ground-coupled systems draw materially less at '
+    + 'the design condition than air source, and thermal storage moves '
+    + 'the draw off the peak: surface tanks handle the diurnal shift, '
+    + 'ground storage the seasonal one. Distribution headroom, not the '
+    + 'transmission groups, is the practical siting screen per '
+    + 'scheme.</p>';
+
+  s += '<p><b>What the spilled energy is worth, and to whom.</b> '
+    + 'Spilled wind is spilled when the wind blows and power is cheap, '
+    + 'so valuing it at monthly averages overstates it by about 40%; '
+    + 'the chart prices each reason in the half-hours it was actually '
+    + 'spilling. Who would capture it differs: constrained wind with '
+    + 'firm access is already compensated, so absorbing it saves the '
+    + 'system operator and consumers, while curtailed wind is not, so '
+    + 'absorbing it is revenue the generator keeps. Delivering the '
+    + 'energy would itself soften the price in those hours, so even '
+    + 'this is an upper bound on MARKET value \u2014 though not on the '
+    + 'heat, which is unaffected. A large flexible load would also '
+    + 'change the dispatch, which is why the heat-equivalent figure '
+    + 'above is an energy-scale statement and not a dispatch claim.</p>';
+
+  if(d.hospital){
+    const h = d.hospital;
+    s += '<p><b>How the worked examples are sized.</b> They size the '
+      + 'LOAD it would take, not heat delivered \u2014 sizing survives '
+      + 'the coincidence objection and a benefit claim does not. The '
+      + 'hospital is sized from the ERIC 2024/25 acute mean of '
+      + fmt(h.eui_kwh_m2,0) + ' kWh/m\u00b2 across 1,104 English '
+      + 'sites, at a ' + fmt(100*h.heat_share,0) + '% heat share'
+      + '<span class="dag">\u2020</span> and ' + fmt(h.floor_m2/1000,0)
+      + ',000 m\u00b2 \u2014 the heat share is ours, ERIC publishes '
+      + 'total energy. An anchor site is what you can build, finance '
+      + 'and monitor; it is not what absorbs the volume.</p>';
+  }
+  if(d.domestic){
+    const dm = d.domestic;
+    s += '<p>The domestic figures are the published results of '
+      + esc(dm.cite) + ' \u2014 same jurisdiction, four SONI constraint '
+      + 'groups, hourly and spatial \u2014 quoted rather than '
+      + 're-derived, including household savings of up to \u00a3'
+      + fmt(dm.household_saving_gbp,0) + ' a year, \u00a3'
+      + fmt(dm.farm_10mw_gbp,0) + ' a year to a 10 MW wind farm from '
+      + 'avoided curtailment, and up to '
+      + fmt(dm.operator_saving_pct,0) + '% off constraint '
+      + 'payments.</p>';
+  }
+
+  s += '<p><b>Why storage is the difference between the routes.</b> '
+    + 'Half the spill falls outside the heating season and only 44% of '
+    + 'it between midnight and six, so absorbing it needs storage '
+    + 'measured in months rather than hours. The same spilled '
+    + 'electricity also makes half as much heat again through a network '
+    + 'as through air source \u2014 but the seasonal mismatch is the '
+    + 'larger difference, and it is a property of the route rather than '
+    + 'of the machine.</p>';
+
+  s += '<p><b>Sources.</b> Dispatch-down volumes and reason codes are '
+    + 'EirGrid\u2019s half-hourly wind files, monthly since 2021, wind '
+    + 'only \u2014 solar coverage does not begin until 2023 and would '
+    + 'change the denominator\u2019s shape midway. Prices are the SEM '
+    + 'day-ahead series, joined per row on UTC derived from each '
+    + 'file\u2019s own offset column. Constraint groups are the '
+    + 'EirGrid/SONI Wind Dispatch Tool Constraint Group Overview, '
+    + 'February 2024. Figures marked <span class="dag">\u2020</span> '
+    + 'are Causeway estimates.</p>';
+
+  box.innerHTML = s;
+}
+
 function ddValue(dd){
   const box = el("ddValue"), note = el("ddValueNote");
   if(!box) return;
@@ -1516,17 +1656,9 @@ function ddValue(dd){
   if(note){
     note.textContent = "What the energy was worth, not what anyone was "
       + "paid. Spilled wind clears at roughly half the average price, "
-      + "because it is spilled when the wind blows and power is cheap \u2014 "
-      + "so valuing it at monthly averages overstates it by about 40%. "
-      + "Constraint hours are worth around 40% more per MWh than "
-      + "curtailment hours, so the volume a local heat load can absorb "
-      + "is also the more valuable volume. Who would capture it differs: "
-      + "constrained wind with firm access is already compensated, so "
-      + "absorbing it saves the system operator and consumers, while "
-      + "curtailed wind is not, so absorbing it is revenue the generator "
-      + "keeps. And delivering the energy would itself soften the price "
-      + "in those hours, so even this is an upper bound on its market "
-      + "value \u2014 though not on the heat, which is unaffected.";
+      + "and constraint hours are worth around 40% more per MWh than "
+      + "curtailment hours \u2014 so the volume a local heat load can "
+      + "absorb is also the more valuable volume.";
   }
 }
 
@@ -1589,30 +1721,8 @@ function oddExamples(x){
   if(note){
     note.innerHTML = 'Worked examples<span class="dag">\u2020</span>, not '
       + 'measurements: they size the LOAD it would take, not heat '
-      + 'delivered. Half the spill falls outside the heating season and '
-      + 'only 44% of it between midnight and six, so absorbing it needs '
-      + 'storage \u2014 which is the difference between the routes, not '
-      + 'the efficiency. The hospital is sized from the ERIC 2024/25 '
-      + 'acute mean of ' + fmt(h.eui_kwh_m2,0) + ' kWh/m\u00b2 across '
-      + '1,104 English sites, at a ' + fmt(100*h.heat_share,0) + '% heat '
-      + 'share<span class="dag">\u2020</span> and '
-      + fmt(h.floor_m2/1000,0) + ',000 m\u00b2 \u2014 the heat share is '
-      + 'ours, ERIC publishes total energy. An anchor site is what you '
-      + 'can build, finance and monitor; it is not what absorbs the '
-      + 'volume. The domestic figures are the published results of '
-      + esc(d.cite) + ' \u2014 same jurisdiction, four SONI constraint '
-      + 'groups, hourly and spatial \u2014 quoted rather than re-derived, '
-      + 'including household savings of up to \u00a3'
-      + fmt(d.household_saving_gbp,0) + ' a year, \u00a3'
-      + fmt(d.farm_10mw_gbp,0) + ' a year to a 10 MW wind farm from '
-      + 'avoided curtailment, and up to ' + fmt(d.operator_saving_pct,0)
-      + '% off constraint payments. The routes differ twice over: the '
-      + 'same spilled electricity makes half as much heat again '
-      + 'through a network as through air source, and \u2014 the '
-      + 'larger difference \u2014 half the spill falls outside the '
-      + 'heating season, so absorbing it needs storage measured in '
-      + 'months rather than hours. That is a property of the route, '
-      + 'not of the machine.';
+      + 'delivered. Absorbing this spill needs storage \u2014 which is '
+      + 'the difference between the routes, not the efficiency.';
   }
 }
 
@@ -3927,6 +4037,7 @@ fetch('data.json').then(r=>{
   ddPanel(GDD);
   ddValue(GDD);
   oddExamples((D.derived||{}).odd_examples || null);
+  gridMethod(GDD, (D.derived||{}).odd_examples || null);
   coolTiers((D.derived||{}).cooling_tiers || null);
   heatReject((D.derived||{}).heat_rejected || null);
   gridPanel(GTH);
@@ -3948,7 +4059,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.52.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.53.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
