@@ -1579,4 +1579,76 @@ ok(/coming build/.test(DOM.vfmStages.textContent),
      "which is injected by the generator, not by hand");
 }
 
+// THE WIDGET MOUNTS. The lever widget crashed on its own init for two
+// days while every arithmetic test passed: the corner tests exercised
+// the evaluator, and this harness skips non-page script blocks, so the
+// widget's boot path ran NOWHERE until a real-DOM check caught two
+// slider ids writing into state keys that did not exist. This mini-DOM
+// executes the SHIPPED tools files against the real standalone payload
+// and asserts the widget builds, renders a readout, and toggles to
+// sterling for the North. If the widget cannot boot, this fails.
+{
+  const path = require("path");
+  const p6 = fs.readFileSync(
+    path.join(__dirname, "..", "docs", "panel6.html"), "utf8");
+  const pm = p6.match(/<script>window\.VFM_PAYLOAD = (\{[\s\S]*?\});<\/script>/);
+  ok(!!pm, "widget-mount: standalone payload found");
+  const payload = JSON.parse(pm[1]);
+
+  function elem(tag){
+    return {tag, children:[], style:{}, dataset:{}, listeners:{},
+      type:null, id:null, _text:"", _html:"",
+      appendChild(c){this.children.push(c); return c;},
+      addEventListener(t,f){(this.listeners[t]=this.listeners[t]||[]).push(f);},
+      setAttribute(){},
+      set innerHTML(v){this._html=v; this._text=v.replace(/<[^>]+>/g," ");
+                       this.children=[];},
+      get innerHTML(){return this._html;},
+      set textContent(v){this._text=v; this.children=[];},
+      get textContent(){
+        let t=this._text||"";
+        this.children.forEach(c=>{t+=c.textContent;});
+        return t;},
+      all(){const o=[this];
+        this.children.forEach(c=>{if(c.all)o.push(...c.all());});
+        return o;},
+    };
+  }
+  const host = elem("section"); host.id="vfm";
+  const savedW = global.window, savedD = global.document;
+  global.document = {
+    getElementById: id => id==="vfm" ? host : null,
+    createElement: t => elem(t),
+    createTextNode: t => ({textContent:t, children:[]}),
+    body: elem("body"),
+  };
+  global.window = {VFM_PAYLOAD: payload};
+  try {
+    const src =
+      fs.readFileSync(path.join(__dirname,"..","tools","vfm_levers.js"),"utf8")
+      + "\n"
+      + fs.readFileSync(path.join(__dirname,"..","tools","panel6_widget.js"),"utf8");
+    (0, eval)(src);
+    const box = host.children.find(c=>c.id==="vfm-lever-widget");
+    ok(!!box, "widget-mount: the widget boots and mounts in the panel");
+    const nodes = box ? box.all() : [];
+    const ranges = nodes.filter(n=>n.tag==="input" && n.type==="range");
+    ok(ranges.length===7,
+       "widget-mount: four headline sliders plus three in the fold");
+    ok(/BCR \d/.test(box.textContent),
+       "widget-mount: a live BCR readout renders");
+    ok(/stops passing at a programme shortfall/.test(box.textContent),
+       "widget-mount: the break-even sentence renders");
+    const niBtn = nodes.find(n=>n.tag==="button"
+                             && /North/.test(n.textContent||""));
+    ok(!!niBtn, "widget-mount: the North toggle exists");
+    if (niBtn) (niBtn.listeners.click||[]).forEach(f=>f());
+    ok(/North BCR/.test(box.textContent)
+       && /\u00a3/.test(box.textContent),
+       "widget-mount: the North renders, in sterling");
+  } finally {
+    global.window = savedW; global.document = savedD;
+  }
+}
+
 console.log(checks + " front-end fixture checks passed");
