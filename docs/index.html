@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.53.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.54.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -262,9 +262,6 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .iofoot{font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--muted);margin-top:8px}
 .iofoot b{color:var(--green)}
 .note{font-size:.8rem;color:var(--faint);margin-top:12px}
-.mapfig{margin:18px 0 4px;max-width:560px}
-.mapfig img{display:block;border:1px solid var(--line);border-radius:4px}
-.mapfig figcaption{margin-top:8px}
 .panelbox{background:var(--panel2);border:1px solid var(--line);
   border-radius:6px;padding:18px}
 .plot{width:100%;min-height:340px}
@@ -629,30 +626,6 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       ceiling would invent a constraint that does not exist. So each
       jurisdiction's what-if is measured against one shared block.<span
       class="dag">†</span></p>
-    <p class="note"><b>The ceiling is all-island. The network is
-      not.</b> Five Northern Irish constraint groups spill wind that
-      cannot leave the place it is generated &mdash; 22.0% of available
-      wind in 2025, 85% of it transmission constraint, against near
-      half that in the Republic.</p>
-    <figure class="mapfig">
-      <img src="constraint-groups.png" width="100%"
-           alt="Map of the five Northern Ireland wind constraint groups
-                defined in the Wind Dispatch Tool, over the transmission
-                network">
-      <figcaption class="note">The five Northern Irish constraint
-        groups. 1 and 5 cover the north-west and the Kells&ndash;Rasharkin
-        corridor, 2 and 3 west Tyrone and Fermanagh, 4 is all of
-        Northern Ireland and manages the tie-lines south. Reproduced
-        from EirGrid/SONI, <i>Wind Dispatch Tool Constraint Group
-        Overview</i>, February 2024, Figure 1; the TSOs give no warranty
-        as to its content and none is implied here.</figcaption>
-    </figure>
-    <p class="note"><b>Heat load sited inside a group works both ends
-      of the wind.</b> It adds to the binding-hour draw, which is where
-      a ground-coupled system's lower peak and a pre-charged store earn
-      their keep &mdash; and absorbs constrained wind in the windy
-      hours, when the flow runs the other way. What that energy is
-      worth is priced elsewhere, not here.</p>
     <div class="costctl costwin" id="gridViewCtl">
       <span>VIEW</span>
       <button data-gview="hourly" aria-pressed="true">HOURLY · 7d</button>
@@ -792,7 +765,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       2050</span></h3>
     <div id="vfmTes"></div>
     <p class="note" id="vfmTesNote"></p>
-    <details class="fold" open>
+    <details class="fold">
       <summary>How this is built, and what is still missing</summary>
       <div class="foldbody" id="vfmMethod"></div>
     </details>
@@ -4059,7 +4032,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.53.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.54.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
