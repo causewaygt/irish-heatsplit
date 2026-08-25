@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.56.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.57.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -755,13 +755,13 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <p class="note" id="vfmStagesNote"></p>
 
     <h3 class="foldh">What the subsurface earns
-      <span class="sub">&mdash; per year, against an air-source
-      network</span></h3>
-    <div id="vfmStreams"></div>
-    <p class="note" id="vfmStreamsNote"></p>
-    <!-- THE LEVERS SIT WITH THE BARS THEY MOVE, as on the UK site:
-         a reader who has just seen the streams can push them without
-         scrolling past the rest of the panel to find the controls. -->
+      <span class="sub">&mdash; and what it costs, against an
+      air-source network</span></h3>
+    <!-- THE LIVE BLOCK IS THE PANEL FACE. Headline, benefit bar, cost
+         bar and the levers that move all three. The per-stream table
+         that used to sit here is now in the method fold: it carries
+         notes and durations the bars cannot, but it is detail, and
+         showing both was showing the same five streams twice. -->
     <div id="vfmLevers"></div>
 
     <h3 class="foldh">What the grid operators currently assume
@@ -772,6 +772,12 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <details class="fold">
       <summary>How this is built, and what is still missing</summary>
       <div class="foldbody" id="vfmMethod"></div>
+      <div class="foldbody">
+        <p><b>The streams, one by one.</b> The same five the bar above
+        is made of, with what each is and how long it runs.</p>
+        <div id="vfmStreams"></div>
+        <p class="note" id="vfmStreamsNote"></p>
+      </div>
     </details>
     <h3 class="foldh">What would need to change
       <span class="sub">&mdash; our view</span></h3>
@@ -4036,7 +4042,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.56.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.57.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
@@ -4149,6 +4155,29 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
     return vfmLeverEval(c,{s:state.shortfall[j],ob:state.optimism,capm:state.capm,
       wh:state.wh[j],rc:rc,lr:state.lr,a_sh:state.a_sh,a_dp:state.a_dp});
   }
+  // CAPITAL, DECOMPOSED. Same algebra as vfmLeverEval, split at the
+  // points the levers act on, so the segments always sum to cap_pv:
+  // the subsurface increment (net of learning and net of the
+  // air-source plant not bought and the chiller not bought), then
+  // the two uplifts applied to it.
+  function costParts(j){
+    var c=JUR[j].coeffs;
+    var m_wh=1.0-state.wh[j]*(1.0-rc);
+    var s0=(1-c.deep_weight)*state.a_sh*((1-c.ss_shallow)+c.ss_shallow*m_wh)
+          + c.deep_weight*state.a_dp;
+    var s1=(1-c.deep_weight)*state.a_sh*c.ss_shallow*m_wh
+          + c.deep_weight*state.a_dp*c.ss_deep;
+    var sinc=c.d0*(s0*state.capm-c.asc_eur_kw)-state.lr*c.d1*s1*state.capm;
+    var net=(c.mw/(1000.0*c.build_years))*sinc
+            -(c.cool_capital_eur_m/c.build_years)*c.d0;
+    var devex=net*c.devex;
+    var ob=(net+devex)*state.optimism;
+    return [
+      {lab:"Subsurface increment", c:"#1F4E5F", v:net},
+      {lab:"Development risk", c:"#568F59", v:devex},
+      {lab:"Optimism bias", c:"#8C9A96", v:ob}
+    ];
+  }
   function shares(j){ // lever-invariant, from the published streams
     var sp=JUR[j].streams_pv_eur_m||{}, tot=0, out=[];
     STREAMS.forEach(function(s){tot+=(sp[s[0]]||0);});
@@ -4181,8 +4210,29 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   var legend=document.createElement("div");
   legend.style.cssText="margin-top:.5rem;font-size:.78rem;display:flex;"
     +"flex-wrap:wrap;gap:.2rem 1.1rem";
-  barWrap.appendChild(bar);barWrap.appendChild(legend);
+  var barLab=document.createElement("div");
+  barLab.style.cssText="font-size:.72rem;letter-spacing:.06em;"
+    +"text-transform:uppercase;color:var(--muted,#A9B4B1);margin-bottom:.25rem";
+  barLab.textContent="Benefits";
+  barWrap.appendChild(barLab);barWrap.appendChild(bar);
+  barWrap.appendChild(legend);
   box.appendChild(barWrap);
+
+  // ---- and what it costs, on the same scale
+  var costWrap=document.createElement("div");
+  costWrap.style.cssText="margin:.2rem 0 .9rem";
+  var costLab=document.createElement("div");
+  costLab.style.cssText="font-size:.72rem;letter-spacing:.06em;"
+    +"text-transform:uppercase;color:var(--muted,#A9B4B1);margin-bottom:.25rem";
+  costLab.textContent="Costs";
+  var cbar=document.createElement("div");
+  cbar.style.cssText="display:flex;height:26px;border-radius:3px;overflow:hidden";
+  var clegend=document.createElement("div");
+  clegend.style.cssText="margin-top:.5rem;font-size:.78rem;display:flex;"
+    +"flex-wrap:wrap;gap:.2rem 1.1rem";
+  costWrap.appendChild(costLab);costWrap.appendChild(cbar);
+  costWrap.appendChild(clegend);
+  box.appendChild(costWrap);
 
   // ---- jurisdiction toggle
   var tog=document.createElement("div");
@@ -4306,6 +4356,29 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
         +Math.round(s.sh*100)+"%</span>";
       legend.appendChild(li);
     });
+
+    // the cost bar, on the SAME pixels-per-euro as the benefit bar so
+    // the two are visually comparable rather than each self-scaled
+    var parts=costParts(cur), tot=Math.max(ben,cap);
+    cbar.innerHTML="";clegend.innerHTML="";
+    parts.forEach(function(p){
+      var v=p.v*mny.f;
+      var seg=document.createElement("div");
+      seg.style.cssText="width:"+Math.max(0,(v/tot)*100).toFixed(2)
+        +"%;background:"+p.c;
+      seg.title=p.lab;
+      cbar.appendChild(seg);
+      var li=document.createElement("span");
+      li.innerHTML="<span style='display:inline-block;width:9px;height:9px;"
+        +"background:"+p.c+";margin-right:.35rem'></span>"+p.lab+" "
+        +mny.sym+bn(v)+" <span style='opacity:.65'>"
+        +Math.round((v/cap)*100)+"%</span>";
+      clegend.appendChild(li);
+    });
+    // the benefit bar shares the same scale
+    var sc=(ben/tot);
+    bar.style.width=(sc*100).toFixed(2)+"%";
+    cbar.style.width=((cap/tot)*100).toFixed(2)+"%";
 
     outEl.innerHTML=
       "Published default "+fmt(d.bcr)+", before shortfall "
