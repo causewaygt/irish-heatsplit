@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.58.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.59.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -3230,8 +3230,10 @@ function vfmAsks(v){
        + "carry \u2014 keeping it out is cheaper than compensating "
        + "for it."]],
   };
+  // ask titles in the site's lighter green - they read as headings
+  // within the paragraph without breaking the flow into the reason.
   box.innerHTML = (A[VFMJUR]||[]).map(([t,b]) =>
-    '<p><b>' + t + '</b> ' + b + '</p>').join('');
+    '<p><b style="color:var(--green2)">' + t + '</b> ' + b + '</p>').join('');
 }
 
 function vfmPanel(D){
@@ -4044,7 +4046,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.58.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.59.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{

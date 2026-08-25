@@ -2645,8 +2645,10 @@ function vfmAsks(v){
        + "carry \u2014 keeping it out is cheaper than compensating "
        + "for it."]],
   };
+  // ask titles in the site's lighter green - they read as headings
+  // within the paragraph without breaking the flow into the reason.
   box.innerHTML = (A[VFMJUR]||[]).map(([t,b]) =>
-    '<p><b>' + t + '</b> ' + b + '</p>').join('');
+    '<p><b style="color:var(--green2)">' + t + '</b> ' + b + '</p>').join('');
 }
 
 function vfmPanel(D){
