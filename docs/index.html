@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.59.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.60.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -262,6 +262,20 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .iofoot{font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--muted);margin-top:8px}
 .iofoot b{color:var(--green)}
 .note{font-size:.8rem;color:var(--faint);margin-top:12px}
+#front .fgrid{display:grid;gap:0;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  border-top:1px solid var(--line);margin-top:14px}
+#front .fig{padding:18px 20px 20px;border-bottom:1px solid var(--line)}
+#front .fig:nth-child(odd){border-right:1px solid var(--line)}
+#front .fnum{font-family:'IBM Plex Mono',monospace;font-size:.68rem;
+  color:var(--faint);letter-spacing:.08em}
+#front .fval{font-family:'IBM Plex Mono',monospace;font-size:2.3rem;
+  font-weight:600;color:var(--green);line-height:1.1;margin:.15rem 0 .1rem}
+#front .funit{font-family:'Lato',sans-serif;font-size:.95rem;
+  font-weight:600;color:var(--ink);margin-left:.4rem}
+#front .fclaim{font-weight:700;font-size:.93rem;margin:.35rem 0 .4rem}
+#front .fbody{font-size:.82rem;color:var(--muted);margin:0}
+#front .flink{display:inline-block;margin-top:.7rem;font-size:.76rem;
+  font-family:'IBM Plex Mono',monospace}
 .panelbox{background:var(--panel2);border:1px solid var(--line);
   border-radius:6px;padding:18px}
 .plot{width:100%;min-height:340px}
@@ -481,6 +495,23 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </header>
 
 <main class="wrap">
+
+<!-- THE FRONTISPIECE. Six figures that state the case before the
+     panels argue it. Every number is restated from a panel below and
+     none is computed here - see derive_frontispiece(). -->
+<section id="front" aria-labelledby="front-h">
+  <h2 id="front-h">The case for geothermal in six figures</h2>
+  <p class="note" style="margin-top:0">Every number here is computed
+    from the panels below and restates one of them. Daggers mark
+    figures resting on Causeway judgement rather than a published
+    source.</p>
+  <div class="costctl costjur" id="frontCtl">
+    <span>WHERE</span>
+    <button data-frontjur="roi" aria-pressed="true">REPUBLIC OF IRELAND</button>
+    <button data-frontjur="ni">NORTHERN IRELAND</button>
+  </div>
+  <div id="frontGrid"></div>
+</section>
 
 <section id="hero" aria-labelledby="hero-h">
   <h2 id="hero-h">1. How <span id="heroWhere">the island of Ireland</span>
@@ -3254,6 +3285,14 @@ document.querySelectorAll("[data-vfmjur]").forEach(b=>{
     if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD); }
   });
 });
+document.querySelectorAll("[data-frontjur]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    FRONTJUR = b.dataset.frontjur;
+    document.querySelectorAll("[data-frontjur]").forEach(x=>
+      x.setAttribute("aria-pressed", String(x === b)));
+    frontispiece(FRONTD);
+  });
+});
 const VFMLAB = {roi:"ROI", ni:"Northern Ireland"};
 
 function vfmStages(v){
@@ -3956,6 +3995,34 @@ function geoCalib(h){
 }
 
 
+// ------------------------- the frontispiece
+// Renders whatever derive_frontispiece() published. It holds NO
+// figures of its own: if a panel below moves, the payload moves and
+// this moves with it. The jurisdiction toggle is its own - it sits
+// above the panels and cannot borrow one of theirs.
+let FRONTJUR = "roi", FRONTD = null;
+const FRONT_TO = {why:"Why heat?", vfm:"the value-for-money panel",
+                  cooling:"cooling, and what heat costs",
+                  grid:"the grid panel"};
+function frontispiece(f){
+  const box = el("frontGrid");
+  if(!box) return;
+  if(!f || !f.jur || !f.jur[FRONTJUR]){
+    box.textContent = "The summary figures arrive with a coming build.";
+    return;
+  }
+  const cur = f.jur[FRONTJUR];
+  box.innerHTML = '<div class="fgrid">' + cur.figures.map(g =>
+    '<div class="fig">'
+    + '<div class="fnum">' + String(g.n).padStart(2,"0") + '</div>'
+    + '<div class="fval">' + esc(String(g.v))
+    + ' <span class="funit">' + esc(g.unit) + '</span></div>'
+    + '<div class="fclaim">' + esc(g.claim) + '</div>'
+    + '<p class="fbody">' + esc(g.body) + '</p>'
+    + '<a class="flink" href="#' + esc(g.to) + '">\u2193 '
+    + esc(FRONT_TO[g.to] || g.to) + '</a>'
+    + '</div>').join('') + '</div>';
+}
 function whyHeat(D){
   const w=(D||{}).why_heat;
   if(!w){el('whyPies').textContent='Whole-economy anchors arrive with the next build.';return}
@@ -4044,9 +4111,11 @@ fetch('data.json').then(r=>{
   geoPanel(D);
   window.VFM_PAYLOAD = D;  // for the lever widget
   vfmPanel(D);
+  FRONTD = (D.derived||{}).frontispiece || null;
+  frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.59.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.60.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
