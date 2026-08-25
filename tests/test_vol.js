@@ -473,8 +473,14 @@ ok(/next daily build/.test(DOM.emitBars.textContent),
 
 // ---- page order and the Panel 3 stub -------------------------------
 const order = [...html.matchAll(/<section id="([a-z]+)"/g)].map(m=>m[1]);
-ok(order.indexOf("grid") === 2,
-   "Panel 3 sits third, where the oil ticker used to be");
+// THE FRONTISPIECE LEADS. Six figures before the panels argue them;
+// the numbered panels keep their order behind it, so this is pinned
+// RELATIVE to the hero rather than by absolute index - adding a
+// section above should not silently renumber the argument.
+ok(order[0] === "front",
+   "the frontispiece is the first section on the page");
+ok(order.indexOf("grid") === order.indexOf("hero") + 2,
+   "Panel 3 still sits two behind the hero");
 ok(order.indexOf("oil") === order.length - 1,
    "the oil ticker has moved to the foot of the page");
 ok(order.indexOf("why") < order.indexOf("oil"),
@@ -1646,9 +1652,23 @@ ok(/coming build/.test(DOM.vfmStages.textContent),
     };
   }
   const host = elem("section"); host.id="vfm";
+  // the widget prefers the slot beside the streams bars; the harness
+  // offers both so the test proves WHICH one it chooses
+  const levers = elem("div"); levers.id="vfmLevers";
+  // THE PANEL OWNS THE ONLY JURISDICTION TOGGLE. The widget used to
+  // carry a second one; it now follows these, so the harness must
+  // supply them and the test asserts the widget tracks a click.
+  const jurBtns = ["roi","ni"].map(j=>{
+    const b = elem("button"); b.dataset = {vfmjur:j};
+    b._pressed = j==="roi";
+    b.getAttribute = a => a==="aria-pressed" ? String(b._pressed) : null;
+    return b;
+  });
   const savedW = global.window, savedD = global.document;
   global.document = {
-    getElementById: id => id==="vfm" ? host : null,
+    getElementById: id => id==="vfmLevers" ? levers
+                       : (id==="vfm" ? host : null),
+    querySelectorAll: sel => /data-vfmjur/.test(sel) ? jurBtns : [],
     createElement: t => elem(t),
     createTextNode: t => ({textContent:t, children:[]}),
     body: elem("body"),
@@ -1660,23 +1680,48 @@ ok(/coming build/.test(DOM.vfmStages.textContent),
       + "\n"
       + fs.readFileSync(path.join(__dirname,"..","tools","panel6_widget.js"),"utf8");
     (0, eval)(src);
-    const box = host.children.find(c=>c.id==="vfm-lever-widget");
-    ok(!!box, "widget-mount: the widget boots and mounts in the panel");
+    const box = levers.children.find(c=>c.id==="vfm-lever-widget");
+    ok(!!box, "widget-mount: the widget boots and mounts beside the bars");
+    ok(!host.children.some(c=>c.id==="vfm-lever-widget"),
+       "widget-mount: not at the section end, where it was before");
     const nodes = box ? box.all() : [];
     const ranges = nodes.filter(n=>n.tag==="input" && n.type==="range");
     ok(ranges.length===7,
        "widget-mount: four headline sliders plus three in the fold");
-    ok(/BCR \d/.test(box.textContent),
-       "widget-mount: a live BCR readout renders");
+    ok(/benefit\u2013cost ratio/.test(box.textContent),
+       "widget-mount: a live headline ratio renders");
+    ok(/net present social value/.test(box.textContent),
+       "widget-mount: with its net present value and cost");
+    // THE BAR MOVES WITH THE NUMBER. The point of the layout: a
+    // reader pushes a lever and sees the streams it is made of change,
+    // not just the ratio. Segment widths are exact under the levers
+    // because every benefit stream scales with (1 - shortfall).
+    const barOf = b => (b.all().filter(n=>n.tag==="div"
+                        && /width:/.test(n.style.cssText||"")));
+    ok(barOf(box).length >= 4,
+       "widget-mount: the stream bar renders its segments");
+    ok(/Benefits/.test(box.textContent) && /Costs/.test(box.textContent),
+       "widget-mount: both bars are labelled");
+    // THE COST BAR IS DECOMPOSED FROM THE SAME COEFFICIENTS the
+    // evaluator uses, so its segments sum to the headline cost. If a
+    // future lever changes the capital algebra without changing the
+    // decomposition, the two drift and this catches it.
+    ok(/Subsurface increment/.test(box.textContent)
+       && /Development risk/.test(box.textContent)
+       && /Optimism bias/.test(box.textContent),
+       "widget-mount: capital is split into its three parts");
     ok(/stops passing at a programme shortfall/.test(box.textContent),
        "widget-mount: the break-even sentence renders");
-    const niBtn = nodes.find(n=>n.tag==="button"
-                             && /North/.test(n.textContent||""));
-    ok(!!niBtn, "widget-mount: the North toggle exists");
-    if (niBtn) (niBtn.listeners.click||[]).forEach(f=>f());
-    ok(/North BCR/.test(box.textContent)
+    ok(!nodes.some(n=>n.tag==="button"
+                    && /^(NI|ROI)$/.test((n.textContent||"").trim())),
+       "widget-mount: the widget carries no toggle of its own");
+    const niBtn = jurBtns[1];
+    (niBtn.listeners.click||[]).forEach(f=>f());
+    ok(/NI benefit\u2013cost ratio/.test(box.textContent)
        && /\u00a3/.test(box.textContent),
-       "widget-mount: the North renders, in sterling");
+       "widget-mount: NI renders, in sterling");
+    ok(/Constrained wind/.test(box.textContent),
+       "widget-mount: and NI's bar carries the constrained-wind stream");
   } finally {
     global.window = savedW; global.document = savedD;
   }

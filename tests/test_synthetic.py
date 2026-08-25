@@ -4555,6 +4555,44 @@ def test_lever_closed_form_matches_appraisal_at_corners():
     assert r.returncode == 0, r.stderr.decode()[:400]
 
 
+def test_frontispiece_restates_the_panels_and_never_leads_them():
+    """
+    The frontispiece is a SUMMARY, not a source. Every figure must
+    equal the panel figure it claims to restate, so the two cannot
+    drift - which is the whole risk of a hardcoded summary block at
+    the top of a page whose numbers move daily.
+
+    Also pins the deliberate asymmetry: figure 5 differs by
+    jurisdiction (delivery gap in ROI, wasted wind in NI) and the
+    other five are the same claim in both.
+    """
+    import build as B
+    fp = B.derive_frontispiece({})
+    sc, st, ph = (B.derive_vfm_scenario(), B.derive_vfm_stages(),
+                  B.derive_vfm_phased())
+    ct = B.derive_cooling_tiers()
+    for j in ("roi", "ni"):
+        figs = {f["n"]: f for f in fp["jur"][j]["figures"]}
+        assert set(figs) == {1, 2, 3, 4, 5, 6}
+        a = B.ANCHORS[j]
+        heat = a["residential_heat_twh"] + a["services_heat_twh"]
+        assert figs[1]["v"] == f"{heat:.1f}"
+        assert figs[2]["v"] == f"{st['jur'][j]['spf']:.1f}"
+        assert figs[3]["v"] == f"{sc['jur'][j]['plant_mw']:.0f}"
+        assert figs[4]["v"] == f"{ct['geo_saving_pct']:.1f}"
+        assert figs[6]["v"] == f"{ph['jur'][j]['bcr']:.2f}"
+        # every figure points somewhere the reader can check it
+        for f in figs.values():
+            assert f["to"] in {"why", "vfm", "cooling", "grid"}
+            assert f["claim"] and f["body"]
+    roi5 = {f["n"]: f for f in fp["jur"]["roi"]["figures"]}[5]
+    ni5 = {f["n"]: f for f in fp["jur"]["ni"]["figures"]}[5]
+    assert "TWh by" in roi5["unit"] and roi5["to"] == "vfm"
+    assert "wind" in ni5["unit"] and ni5["to"] == "grid"
+    # the NI wind figure must name a COMPLETE year, not "current"
+    assert any(y in ni5["body"] for y in ("2023", "2024", "2025", "2026"))
+
+
 def test_constrained_wind_is_ni_only_and_severable():
     """Constrained wind rides on local network constraint, not
     curtailment - the anti-correlation finding that killed the
