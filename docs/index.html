@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.57.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.58.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -3356,7 +3356,8 @@ function vfmStreams(v){
   if (VFMJUR === "ni" && phj && phj.streams_pv_eur_m
       && phj.streams_pv_eur_m.constrained_wind > 0) {
     rows.push({k:"Constrained wind", v:null, lo:null, hi:null,
-     note:"wind wasted in Derry and Antrim because it cannot leave "
+     note:"wind wasted in Derry/Londonderry and Antrim because it "
+        + "cannot leave "
         + "the local network \u2014 constraint, not curtailment \u2014 "
         + "overlaps the play fairway. A storage-capable fleet sited "
         + "there charges in constrained hours, so that share of its "
@@ -3531,7 +3532,8 @@ function vfmTes(v){
       + 'and it will understate '
       + 'the cheapest cases and overstate the hardest.</p>'
       + (VFMJUR === 'ni'
-         ? '<p><b>Constrained wind.</b> Wind wasted in Derry and '
+         ? '<p><b>Constrained wind.</b> Wind wasted in '
+           + 'Derry/Londonderry and '
            + 'Antrim because it cannot leave the local network '
            + 'overlaps the play fairway \u2014 constraint, not '
            + 'curtailment, which stays excluded because spill and '
@@ -4042,7 +4044,7 @@ fetch('data.json').then(r=>{
   vfmPanel(D);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.57.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.58.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
@@ -4188,6 +4190,22 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
     return out;
   }
   function fmt(x,d){return x.toFixed(d===undefined?2:d);}
+  // A FIXED SCALE, or the bars lie. Scaling both bars by the live
+  // max(benefits, costs) makes the cost bar GROW when the shortfall
+  // lever cuts benefits - the denominator moves with the numerator.
+  // The reference is therefore the widest either bar can get anywhere
+  // in the lever space, computed once per jurisdiction, so a bar
+  // moving means that quantity moved.
+  var SCALE={};
+  ["roi","ni"].forEach(function(j){
+    var c=JUR[j].coeffs;
+    // benefits at zero shortfall - the ceiling of the case. Anchoring
+    // on the worst-case CAPITAL instead would be defensible but leaves
+    // both bars stubs at any sane setting. A cost bar can therefore run
+    // past full width at extreme corners; it is clamped, and by then
+    // the ratio is under 1 and the headline has already gone red.
+    SCALE[j]=c.flat_gross_pv_eur_m+c.carbon_gross_pv_eur_m;
+  });
   function bn(v){ // present values run to thousands of millions
     return Math.abs(v)>=1000 ? fmt(v/1000,1)+"bn" : fmt(v,0)+"m";
   }
@@ -4234,17 +4252,20 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   costWrap.appendChild(clegend);
   box.appendChild(costWrap);
 
-  // ---- jurisdiction toggle
-  var tog=document.createElement("div");
-  tog.style.cssText="margin:.2rem 0 .7rem";
-  ["roi","ni"].forEach(function(j){
-    var btn=document.createElement("button");
-    btn.textContent=j==="roi"?"ROI":"NI";
-    btn.style.cssText="margin-right:.5rem;padding:.2rem .8rem;font:inherit";
-    btn.addEventListener("click",function(){cur=j;syncPerJur();render();});
-    tog.appendChild(btn);
-  });
-  box.appendChild(tog);
+  // ---- NO TOGGLE OF ITS OWN. The panel already has one; two
+  // controls for one choice is one too many, and they could disagree.
+  // Follow the panel's buttons instead, and take the current state
+  // from whichever is pressed at mount.
+  function followPanelToggle(){
+    var btns=document.querySelectorAll("[data-vfmjur]");
+    if(!btns||!btns.length){return false;}
+    Array.prototype.forEach.call(btns,function(b){
+      if(b.getAttribute("aria-pressed")==="true"){cur=b.dataset.vfmjur;}
+      b.addEventListener("click",function(){
+        cur=b.dataset.vfmjur;syncPerJur();render();});
+    });
+    return true;
+  }
 
   // ---- levers, three across so the block fits one screen
   function slider(label,min,max,val,step,oninput,suffix){
@@ -4359,7 +4380,7 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
 
     // the cost bar, on the SAME pixels-per-euro as the benefit bar so
     // the two are visually comparable rather than each self-scaled
-    var parts=costParts(cur), tot=Math.max(ben,cap);
+    var parts=costParts(cur), tot=SCALE[cur]*mny.f;
     cbar.innerHTML="";clegend.innerHTML="";
     parts.forEach(function(p){
       var v=p.v*mny.f;
@@ -4375,10 +4396,9 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
         +Math.round((v/cap)*100)+"%</span>";
       clegend.appendChild(li);
     });
-    // the benefit bar shares the same scale
-    var sc=(ben/tot);
-    bar.style.width=(sc*100).toFixed(2)+"%";
-    cbar.style.width=((cap/tot)*100).toFixed(2)+"%";
+    // both bars against that same fixed reference
+    bar.style.width=Math.min(100,(ben/tot)*100).toFixed(2)+"%";
+    cbar.style.width=Math.min(100,(cap/tot)*100).toFixed(2)+"%";
 
     outEl.innerHTML=
       "Published default "+fmt(d.bcr)+", before shortfall "
@@ -4392,6 +4412,7 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
       +"waste-heat connection cost and cooling connections are held at "
       +"their stated defaults.";
   }
+  followPanelToggle();
   syncAll();render();
   // mount beside the streams bars if the panel offers a slot,
   // falling back to the section end for older markup
