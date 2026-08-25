@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.51.0"
+PIPELINE_VERSION = "5.52.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6775,6 +6775,143 @@ def derive_vfm_stages(anchors=None, geo=None):
     return out
 
 
+def derive_frontispiece(feeds, anchors=None):
+    """
+    Six figures that state the case, per jurisdiction.
+
+    EVERY NUMBER HERE IS COMPUTED ELSEWHERE AND RESTATED. Nothing is
+    derived for the first time in this function and nothing is
+    hardcoded: it reads the scenario, stages, cooling and phased
+    blocks, and the dispatch-down series, so a frontispiece figure
+    cannot drift from the panel it summarises. If a panel moves, this
+    moves with it or the build fails a test.
+
+    Two of the six differ by jurisdiction ON PURPOSE. Figure 5 is the
+    delivery gap in ROI - which has a target and is behind it - and
+    the wasted wind in NI, which has no target but the worse network
+    constraint. The UK sibling's "Britain is the outlier" figure does
+    NOT transfer: Ireland's international comparison is weaker than
+    its domestic one.
+    """
+    a = anchors or ANCHORS
+    sc = derive_vfm_scenario(a)
+    st = derive_vfm_stages(a)
+    ph = derive_vfm_phased(a)
+    ct = derive_cooling_tiers()
+    dd = (json.loads(DD_PATH.read_text())
+          if DD_PATH.exists() else None)
+    if not (sc and st and ph):
+        return None
+
+    # figure 5, NI half: the most recent COMPLETE calendar year in the
+    # series, named rather than "current" - dispatch-down is trending
+    # and a moving basis would be cherry-pickable.
+    ddyear, ddpct, ddcons = None, None, None
+    if dd and dd.get("months"):
+        yrs = sorted({m[:4] for m in dd["months"]})
+        full = [y for y in yrs
+                if sum(1 for m in dd["months"] if m.startswith(y)) == 12]
+        if full:
+            ddyear = full[-1]
+            idx = [i for i, m in enumerate(dd["months"])
+                   if m.startswith(ddyear)]
+            ni = dd["jurisdictions"]["NI"]
+            tot = sum(ni["dd"][i] for i in idx)
+            av = sum(ni["avail"][i] for i in idx)
+            cons = sum(ni["cons"][i] for i in idx)
+            ddpct = round(100.0 * tot / av, 1) if av else None
+            ddcons = round(100.0 * cons / tot) if tot else None
+
+    out = {"jur": {}}
+    for j in ("roi", "ni"):
+        heat = (a[j]["residential_heat_twh"]
+                + a[j]["services_heat_twh"])
+        fs = a[j]["fuel_shares"]
+        comb = round(100.0 * (fs["oil"] + fs["gas"] + fs["peat"]), 1)
+        s, t, p = sc["jur"][j], st["jur"][j], ph["jur"][j]
+        cur = "GBP" if p.get("currency") == "GBP" else "EUR"
+
+        figs = [
+            {"n": 1, "v": f"{heat:.1f}", "unit": "TWh",
+             "claim": "Building heat is the biggest thing "
+                      + ("the Republic" if j == "roi"
+                         else "Northern Ireland") + " burns.",
+             "body": ("Residential and services heat a year, of which "
+                      + f"{comb:.0f}% is still combustion - oil, gas "
+                      "and peat burned in buildings."),
+             "to": "why"},
+            {"n": 2, "v": f"{t['spf']:.1f}", "unit": f"vs {t['spf_counterfactual']}",
+             "claim": "The ground is a better heat source than the "
+                      "air, and the gap is the whole case.",
+             "body": (f"Network seasonal performance of {t['spf']:.1f} "
+                      f"against {t['spf_counterfactual']} for a "
+                      "network-scale air-source "
+                      f"energy centre - {t['spf_gain']:.2f}x the heat per "
+                      "unit of electricity, from a source that does "
+                      "not cool when the weather does."),
+             "to": "vfm"},
+            {"n": 3, "v": f"{s['plant_mw']:.0f}", "unit": "MW",
+             "claim": "The scenario is a programme, not a pilot.",
+             "body": (f"{s['network_twh']:.2f} TWh of building heat on "
+                      f"networks - {s['network_pct_of_heat']:.1f}% of "
+                      "the total - over a ten-year build"
+                      + ("" if s.get("committed") else
+                         ", LENT to a jurisdiction that has set no "
+                         "target of its own")
+                      + "."),
+             "to": "vfm"},
+            {"n": 4, "v": f"{ct['geo_saving_pct']:.1f}", "unit": "% less",
+             "claim": "One asset heats and cools the same building.",
+             "body": ("Electricity for service-sector cooling, with a "
+                      "fifth of it on ambient loops instead of "
+                      "air-cooled chillers - the heat rejected in "
+                      "summer stored and recovered in winter, which "
+                      "is the same asset working twice."),
+             "to": "cooling"},
+        ]
+        if j == "roi":
+            figs.append(
+                {"n": 5, "v": f"{s['milestone_twh']:.1f}", "unit": "TWh by "
+                 + str(s["milestone_year"]),
+                 "claim": "The Republic has committed. The gap is "
+                          "delivery, not ambition.",
+                 "body": ("The Climate Action Plan milestone. The "
+                          "question this site asks is not whether to "
+                          "build networks but what sits at the head "
+                          "of them - and that is decided scheme by "
+                          "scheme, as each one is designed."),
+                 "to": "vfm"})
+        else:
+            figs.append(
+                {"n": 5, "v": f"{ddpct:.1f}", "unit": "% of wind spilled",
+                 "claim": "Northern Ireland throws away wind it "
+                          "cannot move.",
+                 "body": (f"In {ddyear}, {ddcons}% of it transmission "
+                          "constraint - wind that cannot leave where "
+                          "it is generated, against roughly half that "
+                          "share in the Republic. A heat load sited "
+                          "inside the constraint absorbs it."),
+                 "to": "grid"})
+        figs.append(
+            {"n": 6, "v": f"{p['bcr']:.2f}", "unit": "benefit-cost ratio",
+             "claim": "Against an air-source-led network, the "
+                      "subsurface pays for itself.",
+             "body": ("Over sixty years on "
+                      + ("the Public Spending Code" if j == "roi"
+                         else "Green Book")
+                      + " conventions, after optimism bias on capital "
+                      "and a programme shortfall. Measured against an "
+                      "air-source network, not a gas boiler: an "
+                      "efficiency and capacity case, not a carbon "
+                      "one."),
+             "to": "vfm"})
+        out["jur"][j] = {"currency": cur, "figures": figs}
+
+    log("frontispiece: six figures per jurisdiction, all restated "
+        f"from the panels (NI wind basis {ddyear})")
+    return out
+
+
 def derive_vfm_scenario(anchors=None):
     """
     The policy scenario, per jurisdiction, and a fifth of it geothermal.
@@ -9740,6 +9877,7 @@ def main():
                 "hardware": derive_geo_hardware(),
                 "targets": derive_geo_targets()},
         "why_heat": WHY_HEAT,
+        "frontispiece": derive_frontispiece(feeds),
         "notes": ("Feed statuses - ok: fetched and current; lagging: fetched, "
                   "source publishes on a lag; stale: fetch failed, previous "
                   "values retained. Judgement figures are current Causeway "
