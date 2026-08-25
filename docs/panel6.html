@@ -3510,8 +3510,16 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
  * alongside, from tools/vfm_levers.js) and window.VFM_PAYLOAD.
  *
  * Currency: the evaluator runs in euro for both jurisdictions - the
- * rate cancels in the BCR - and the North DISPLAYS in sterling at the
+ * rate cancels in the BCR - and NI DISPLAYS in sterling at the
  * published semester rate, per the panel's own-currency convention.
+ *
+ * LAYOUT follows the UK site: headline ratio, the stream bar it is
+ * made of, then the levers - one screen, and moving a lever moves
+ * both the number and the bar. The bar is EXACT under the levers,
+ * not approximated: every benefit stream scales with (1 - shortfall)
+ * identically, so the stream SHARES are lever-invariant and only the
+ * total moves. If a future stream scales differently, this stops
+ * being true and the shares must come from the evaluator instead.
  */
 (function(){
   // Outside a browser (the test harness evaluates every script
@@ -3539,6 +3547,14 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
   LV.capital_fold.forEach(function(l){state[l.id]=l.default;});
   var rc=LV.hardwired.connection_relcost;
 
+  var STREAMS=[
+    ["running","Energy at resource cost","#3AAA35"],
+    ["capacity","Avoided winter peak","#E8A33C"],
+    ["constrained_wind","Constrained wind","#7FB3D5"],
+    ["carbon","Carbon","#1F4E5F"],
+    ["cooling","Chiller plant not built","#568F59"]
+  ];
+
   function money(j){ // symbol + conversion for display only
     if(JUR[j].currency==="GBP"){
       return {sym:"\u00a3", f:JUR[j].coeffs.gbp_per_eur};
@@ -3550,71 +3566,117 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
     return vfmLeverEval(c,{s:state.shortfall[j],ob:state.optimism,capm:state.capm,
       wh:state.wh[j],rc:rc,lr:state.lr,a_sh:state.a_sh,a_dp:state.a_dp});
   }
+  function shares(j){ // lever-invariant, from the published streams
+    var sp=JUR[j].streams_pv_eur_m||{}, tot=0, out=[];
+    STREAMS.forEach(function(s){tot+=(sp[s[0]]||0);});
+    if(tot<=0){return out;}
+    STREAMS.forEach(function(s){
+      if((sp[s[0]]||0)>0){out.push({k:s[0],lab:s[1],c:s[2],sh:sp[s[0]]/tot});}
+    });
+    return out;
+  }
   function fmt(x,d){return x.toFixed(d===undefined?2:d);}
+  function bn(v){ // present values run to thousands of millions
+    return Math.abs(v)>=1000 ? fmt(v/1000,1)+"bn" : fmt(v,0)+"m";
+  }
 
   var box=document.createElement("section");
   box.id="vfm-lever-widget";
-  box.style.cssText="max-width:820px;margin:2.5rem auto;padding:1.2rem 1.4rem;border:1px solid #ccc;border-radius:8px;font:inherit";
-  function slider(label,min,max,val,step,oninput,suffix){
-    var w=document.createElement("label");
-    w.style.cssText="display:block;margin:.55rem 0";
-    var t=document.createElement("div");
-    var b=document.createElement("b");
-    t.appendChild(document.createTextNode(label+" "));t.appendChild(b);
-    var r=document.createElement("input");
-    r.type="range";r.min=min;r.max=max;r.step=step;r.value=val;
-    r.style.cssText="width:100%";
-    function show(v){b.textContent=suffix==="%"?Math.round(v*100)+"%":Math.round(v)+(suffix||"");}
-    r.addEventListener("input",function(){oninput(parseFloat(r.value));show(parseFloat(r.value));render();});
-    show(val);w.appendChild(t);w.appendChild(r);
-    w._sync=function(v){r.value=v;show(v);};
-    return w;
-  }
-  var h=document.createElement("h3");
-  h.textContent="Try the levers";box.appendChild(h);
-  var intro=document.createElement("p");
-  intro.style.cssText="font-size:.92em;color:var(--muted,#A9B4B1)";
-  intro.textContent="Four judgements the appraisal turns on. The shortfall is a programme mean, not a project number - it carries both attrition and underperformance of the commissioned fleet. Connection cost of waste-heat coupling is held at its stated default; cooling connections are held at 12%. ROI is appraised in euro and NI in sterling, each at real 2025 prices.";
-  box.appendChild(intro);
-  var tog=document.createElement("div");tog.style.cssText="margin:.4rem 0 .8rem";
+  box.style.cssText="margin:1.4rem 0 .6rem;font:inherit";
+
+  // ---- headline
+  var head=document.createElement("div");
+  head.style.cssText="display:flex;align-items:baseline;flex-wrap:wrap;"
+    +"gap:1.6rem;margin-bottom:.7rem";
+  box.appendChild(head);
+
+  // ---- the bar the ratio is made of
+  var barWrap=document.createElement("div");
+  barWrap.style.cssText="margin:.2rem 0 .9rem";
+  var bar=document.createElement("div");
+  bar.style.cssText="display:flex;height:26px;border-radius:3px;overflow:hidden";
+  var legend=document.createElement("div");
+  legend.style.cssText="margin-top:.5rem;font-size:.78rem;display:flex;"
+    +"flex-wrap:wrap;gap:.2rem 1.1rem";
+  barWrap.appendChild(bar);barWrap.appendChild(legend);
+  box.appendChild(barWrap);
+
+  // ---- jurisdiction toggle
+  var tog=document.createElement("div");
+  tog.style.cssText="margin:.2rem 0 .7rem";
   ["roi","ni"].forEach(function(j){
     var btn=document.createElement("button");
     btn.textContent=j==="roi"?"ROI":"NI";
-    btn.style.cssText="margin-right:.5rem;padding:.25rem .8rem";
+    btn.style.cssText="margin-right:.5rem;padding:.2rem .8rem;font:inherit";
     btn.addEventListener("click",function(){cur=j;syncPerJur();render();});
     tog.appendChild(btn);
   });
   box.appendChild(tog);
 
-  var sShort=slider("Subsurface shortfall, programme mean",0,0.45,state.shortfall[cur],0.005,
+  // ---- levers, three across so the block fits one screen
+  function slider(label,min,max,val,step,oninput,suffix){
+    var w=document.createElement("label");
+    w.style.cssText="display:block;margin:0";
+    var t=document.createElement("div");
+    t.style.cssText="display:flex;justify-content:space-between;"
+      +"align-items:baseline;font-size:.82rem";
+    var nm=document.createElement("span");nm.textContent=label;
+    var b=document.createElement("b");
+    t.appendChild(nm);t.appendChild(b);
+    var r=document.createElement("input");
+    r.type="range";r.min=min;r.max=max;r.step=step;r.value=val;
+    r.style.cssText="width:100%;margin:.15rem 0 0";
+    function show(v){
+      b.textContent = suffix==="%" ? Math.round(v*100)+"%"
+                    : (suffix==="x" ? fmt(v,2)+"\u00d7" : Math.round(v)+(suffix||""));
+    }
+    r.addEventListener("input",function(){
+      oninput(parseFloat(r.value));show(parseFloat(r.value));render();});
+    show(val);w.appendChild(t);w.appendChild(r);
+    w._sync=function(v){r.value=v;show(v);};
+    return w;
+  }
+  function grid(){
+    var g=document.createElement("div");
+    g.style.cssText="display:grid;gap:.55rem 1.4rem;"
+      +"grid-template-columns:repeat(auto-fit,minmax(210px,1fr))";
+    return g;
+  }
+  var g1=grid();
+  var sShort=slider("Subsurface shortfall",0,0.45,state.shortfall[cur],0.005,
     function(v){state.shortfall[cur]=v;},"%");
   var sOb=slider("Optimism bias",0,0.66,state.optimism,0.01,
     function(v){state.optimism=v;},"%");
   var sCap=slider("Subsurface capital",0.75,1.25,state.capm,0.01,
     function(v){state.capm=v;},"x");
-  var sWh=slider("Waste-heat coupling share",0,0.40,state.wh[cur],0.005,
+  var sWh=slider("Waste-heat coupling",0,0.40,state.wh[cur],0.005,
     function(v){state.wh[cur]=v;},"%");
-  [sShort,sOb,sCap,sWh].forEach(function(w){box.appendChild(w);});
+  [sShort,sOb,sCap,sWh].forEach(function(w){g1.appendChild(w);});
+  box.appendChild(g1);
 
   var det=document.createElement("details");
-  var sm=document.createElement("summary");sm.textContent="Capital detail (euro anchors, both jurisdictions)";
+  det.style.cssText="margin-top:.7rem";
+  var sm=document.createElement("summary");
+  sm.style.cssText="font-size:.82rem;cursor:pointer";
+  sm.textContent="Capital detail \u2014 euro anchors, both jurisdictions";
   det.appendChild(sm);
-  var sASh=slider("Shallow FOAK anchor, EUR/kW",1500,3300,state.a_sh,10,
+  var g2=grid();g2.style.marginTop=".5rem";
+  var sASh=slider("Shallow FOAK anchor, \u20ac/kW",1500,3300,state.a_sh,10,
     function(v){state.a_sh=v;},"");
-  var sADp=slider("Deep FOAK anchor, EUR/kW",
+  var sADp=slider("Deep FOAK anchor, \u20ac/kW",
     LV.capital_fold[1].range[0],LV.capital_fold[1].range[1],state.a_dp,10,
     function(v){state.a_dp=v;},"");
   var sLr=slider("Programme learning rate",0.25,0.40,state.lr,0.005,
     function(v){state.lr=v;},"%");
-  [sASh,sADp,sLr].forEach(function(w){det.appendChild(w);});
-  box.appendChild(det);
+  [sASh,sADp,sLr].forEach(function(w){g2.appendChild(w);});
+  det.appendChild(g2);box.appendChild(det);
 
   var outEl=document.createElement("div");
-  outEl.style.cssText="margin-top:1rem;padding:.8rem;border-top:1px solid #ddd";
+  outEl.style.cssText="margin-top:.8rem;font-size:.8rem;color:var(--muted,#A9B4B1)";
   box.appendChild(outEl);
   var reset=document.createElement("button");
   reset.textContent="Reset to the panel's defaults";
-  reset.style.cssText="margin-top:.6rem;padding:.25rem .8rem";
+  reset.style.cssText="margin-top:.5rem;padding:.2rem .8rem;font:inherit;font-size:.8rem";
   reset.addEventListener("click",function(){
     LV.headline.forEach(function(l){
       if(l.per_jur){["roi","ni"].forEach(function(j){state[l.id][j]=l.default[j];});}
@@ -3634,15 +3696,45 @@ if (typeof window !== "undefined") { window.vfmLeverEval = vfmLeverEval; }
     var r=evalJur(cur), hi=(LV.headline[0].range[cur]||[0,0.45])[1];
     var inside=r.breakeven<=hi;
     var d=JUR[cur], mny=money(cur);
+    var ben=r.ben_pv*mny.f, cap=r.cap_pv*mny.f;
+
+    head.innerHTML=
+      "<div><div style='font-size:2.6rem;font-weight:700;line-height:1;"
+      +"color:"+(r.bcr>=1?"#3AAA35":"#C0392B")+"'>"+fmt(r.bcr)+"</div>"
+      +"<div style='font-size:.78rem;letter-spacing:.04em'>"+name
+      +" benefit\u2013cost ratio</div></div>"
+      +"<div><div style='font-size:1.25rem'>"+(ben-cap>=0?"+":"\u2212")
+      +mny.sym+bn(Math.abs(ben-cap))+"</div>"
+      +"<div style='font-size:.78rem'>net present social value</div></div>"
+      +"<div><div style='font-size:1.25rem'>"+mny.sym+bn(cap)+"</div>"
+      +"<div style='font-size:.78rem'>social cost, 60 years</div></div>";
+
+    var sh=shares(cur);
+    bar.innerHTML="";legend.innerHTML="";
+    sh.forEach(function(s){
+      var seg=document.createElement("div");
+      seg.style.cssText="width:"+(s.sh*100).toFixed(2)+"%;background:"+s.c;
+      seg.title=s.lab;
+      bar.appendChild(seg);
+      var li=document.createElement("span");
+      li.innerHTML="<span style='display:inline-block;width:9px;height:9px;"
+        +"background:"+s.c+";margin-right:.35rem'></span>"+s.lab+" "
+        +mny.sym+bn(ben*s.sh)+" <span style='opacity:.65'>"
+        +Math.round(s.sh*100)+"%</span>";
+      legend.appendChild(li);
+    });
+
     outEl.innerHTML=
-      "<p style='margin:.2rem 0'><b>"+name+" BCR "+fmt(r.bcr)+"</b>"+
-      " &nbsp;(published default "+fmt(d.bcr)+", before shortfall "+fmt(d.bcr_before_shortfall)+")</p>"+
-      "<p style='margin:.2rem 0'>Benefits "+mny.sym+fmt(r.ben_pv*mny.f,0)+"m against capital "+
-      mny.sym+fmt(r.cap_pv*mny.f,0)+"m, present value, real 2025.</p>"+
-      "<p style='margin:.2rem 0'>At these settings the case stops passing at a programme shortfall of <b>"+
-      Math.round(r.breakeven*1000)/10+"%</b> - "+
-      (inside?"<b>inside</b> the declared range of 0-"+Math.round(hi*100)+"%, so the range contains failure":
-       "outside the declared range of 0-"+Math.round(hi*100)+"%")+".</p>";
+      "Published default "+fmt(d.bcr)+", before shortfall "
+      +fmt(d.bcr_before_shortfall)+". At these settings the case stops "
+      +"passing at a programme shortfall of <b>"
+      +(Math.round(r.breakeven*1000)/10)+"%</b> \u2014 "
+      +(inside?"<b>inside</b> the declared range of 0\u2013"+Math.round(hi*100)
+        +"%, so the range contains failure"
+       :"outside the declared range of 0\u2013"+Math.round(hi*100)+"%")
+      +". ROI is appraised in euro and NI in sterling, real 2025 prices; "
+      +"waste-heat connection cost and cooling connections are held at "
+      +"their stated defaults.";
   }
   syncAll();render();
   // mount beside the streams bars if the panel offers a slot,
