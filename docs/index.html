@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.62.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.63.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -262,6 +262,10 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .iofoot{font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--muted);margin-top:8px}
 .iofoot b{color:var(--green)}
 .note{font-size:.8rem;color:var(--faint);margin-top:12px}
+.pngbtn{margin-top:10px;padding:.3rem .8rem;font-family:'IBM Plex Mono',monospace;
+  font-size:.76rem;background:transparent;color:var(--muted);
+  border:1px solid var(--line);border-radius:3px;cursor:pointer}
+.pngbtn:hover{color:var(--ink2);border-color:var(--faint)}
 #front .fgrid{display:grid;gap:0;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   border-top:1px solid var(--line);margin-top:14px}
 #front .fig{padding:18px 20px 20px;border-bottom:1px solid var(--line)}
@@ -622,6 +626,8 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <div id="volChart" class="chart volchart"></div>
     <div class="legend" id="volLegend"></div>
     <p class="note" id="costNote"></p>
+    <button id="pngBtn" class="pngbtn" type="button">↓ PNG of both
+      charts, on white</button>
     <details class="fold">
       <summary>How this is estimated, and why it is not metered</summary>
       <div class="foldbody" id="costMethod"></div>
@@ -2534,7 +2540,9 @@ function drawCost(){
     el("costNote").textContent = "";
     return;
   }
-  const W = 1000, H = 320, P = {t:14, r:14, b:26, l:62};
+  // r leaves room for the trailing weighted means. drawVol is
+  // handed the same r below, so both charts keep one x-axis.
+  const W = 1000, H = 320, P = {t:14, r:74, b:26, l:62};
   const vals = [];
   rows.forEach(r => COST_ROUTES.forEach(([k]) => vals.push(r[key][k] * PER_MWH)));
   const hi = Math.max.apply(null, vals) * 1.06, lo = 0;
@@ -2576,6 +2584,41 @@ function drawCost(){
       + 'text-anchor="middle" font-size="11" fill="var(--muted)" '
       + 'font-family="IBM Plex Mono, monospace">' + monthLabel(m) + '</text>';
   });
+  // WEIGHTED MEANS at the right-hand end of each line, in the line's
+  // own colour. Weighted by delivered heat, not by day: a day that
+  // delivers three times the heat should count three times, and an
+  // unweighted mean of a winter-heavy window would flatter whichever
+  // route is cheapest in summer. Falls back to the plain mean only if
+  // the window has no volume behind it, and says so in the caption.
+  const vkey = "vol_" + state;
+  const wRows = rows.filter(r => r[vkey]);
+  const weighted = wRows.length === rows.length && rows.length > 0;
+  const marks = COST_ROUTES.map(([k, name, col]) => {
+    let num = 0, den = 0;
+    rows.forEach(r => {
+      const w = weighted ? (r[vkey].space + r[vkey].dhw) : 1;
+      num += r[key][k] * PER_MWH * w; den += w;
+    });
+    return {v: den ? num / den : 0, col: col, name: name};
+  });
+  // Nudge labels apart where lines converge - 11px is the smallest
+  // gap two 11px labels can take without touching.
+  marks.sort((a, b) => a.v - b.v);
+  let prevY = Infinity;
+  marks.slice().reverse().forEach(m => {
+    let yy = y(m.v);
+    if (prevY - yy < 11) yy = prevY - 11;
+    m.y = Math.max(P.t + 4, yy); prevY = m.y;
+  });
+  marks.forEach(m => {
+    svg += '<line x1="' + (W - P.r) + '" x2="' + (W - P.r + 5) + '" y1="'
+      + y(m.v) + '" y2="' + y(m.v) + '" stroke="' + m.col
+      + '" stroke-width="2"/>'
+      + '<text x="' + (W - P.r + 8) + '" y="' + (m.y + 4) + '" '
+      + 'font-size="11" font-weight="600" fill="' + m.col + '" '
+      + 'font-family="IBM Plex Mono, monospace">'
+      + m.v.toFixed(0) + '</text>';
+  });
   svg += '</svg>';
   box.innerHTML = svg;
 
@@ -2589,7 +2632,10 @@ function drawCost(){
   const last = rows[rows.length - 1];
   el("costspan").textContent = "\u00b7 " + unit + " per MWh of delivered "
     + "heat \u00b7 "
-    + rows.length + " days \u00b7 " + (state === "ni" ? "NI" : "ROI");
+    + rows.length + " days \u00b7 " + (state === "ni" ? "NI" : "ROI")
+    + " \u00b7 figures at the right are the "
+    + (weighted ? "heat-weighted" : "unweighted") + " mean over the "
+    + "window";
 
   // The wedge, stated rather than left to be inferred from a toggle.
   let wedge = "";
@@ -3285,6 +3331,8 @@ document.querySelectorAll("[data-vfmjur]").forEach(b=>{
     if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD); }
   });
 });
+{const pb=document.getElementById("pngBtn");
+ if(pb && pb.addEventListener) pb.addEventListener("click", panel2Png);}
 document.querySelectorAll("[data-frontjur]").forEach(b=>{
   b.addEventListener("click", ()=>{
     FRONTJUR = b.dataset.frontjur;
@@ -3997,6 +4045,117 @@ function geoCalib(h){
 }
 
 
+// ------------------------- PNG export, Panel 2
+// Both charts on one white canvas, for slides and documents. The two
+// SVGs are cloned rather than redrawn, so the export cannot disagree
+// with what is on screen - but they are built for a dark panel, so
+// the clone is retinted: CSS variables do not survive serialisation
+// (there is no page to resolve them against), and the volume bands
+// are pale greys chosen against black, invisible on white.
+const PNG_LIGHT = {
+  "var(--line)":"#D5DAD8", "var(--ink2)":"#33403C",
+  "var(--ink)":"#1A2320", "var(--muted)":"#55635E",
+  "var(--faint)":"#6E7B78", "var(--green)":"#2E8B2A",
+  "#fff":"#1A2320",                       // in-chart labels invert
+};
+// the volume bands, re-chosen for white: same hue relationship, dark
+// enough to read. Space heating stays the heavier of the two.
+const PNG_VOL = {"#8FA6A0":"#4E6B63", "#C9D6D0":"#9DB3AB"};
+
+function panel2Png(){
+  const src1 = el("costChart") && el("costChart").querySelector("svg");
+  const src2 = el("volChart") && el("volChart").querySelector("svg");
+  if(!src1){ return; }
+  const PAD = 28, GAP = 16, LEGH = 30, TITLEH = 58, FOOTH = 26;
+  function tint(svg, isVol){
+    let x = new XMLSerializer().serializeToString(svg);
+    Object.keys(PNG_LIGHT).forEach(k=>{
+      x = x.split(k).join(PNG_LIGHT[k]); });
+    if(isVol){ Object.keys(PNG_VOL).forEach(k=>{
+      x = x.split(k).join(PNG_VOL[k]); }); }
+    // strip the outer <svg> wrapper - the parts are re-nested below
+    return x.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+  }
+  function vb(svg){
+    const a = (svg.getAttribute("viewBox")||"0 0 900 300").split(/\s+/);
+    return {w:+a[2], h:+a[3]};
+  }
+  const b1 = vb(src1), b2 = src2 ? vb(src2) : {w:b1.w, h:0};
+  const W = Math.max(b1.w, b2.w) + PAD*2;
+  const H = TITLEH + b1.h + LEGH + (src2 ? GAP + b2.h + LEGH : 0)
+          + FOOTH + PAD*2;
+  const where = CJUR === "roi" ? "the Republic of Ireland's"
+                               : "Northern Ireland's";
+  const svc = CSVC === "blend" ? "as delivered"
+            : (CSVC === "space" ? "space heating" : "hot water");
+  const basis = CBASIS === "retail" ? "unit rate" : "ex-tax";
+  const unit = CJUR === "roi" ? "\u20ac" : "\u00a3";
+  function legendRow(items, y){
+    let g = "", x = PAD;
+    items.forEach(([name, col])=>{
+      g += '<rect x="'+x+'" y="'+(y-9)+'" width="11" height="11" rx="2" '
+         + 'fill="'+col+'"/>'
+         + '<text x="'+(x+16)+'" y="'+y+'" font-size="13" fill="#33403C" '
+         + 'font-family="Lato, Helvetica, Arial, sans-serif">'
+         + name.replace(/&/g,"&amp;")+'</text>';
+      x += 22 + name.length*7.1;
+    });
+    return g;
+  }
+  let y = PAD + TITLEH;
+  let out = '<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" '
+    + 'height="'+H+'" viewBox="0 0 '+W+' '+H+'">'
+    + '<rect width="'+W+'" height="'+H+'" fill="#ffffff"/>'
+    + '<text x="'+PAD+'" y="'+(PAD+20)+'" font-size="19" font-weight="700" '
+    + 'fill="#1A2320" font-family="Lato, Helvetica, Arial, sans-serif">'
+    + 'What ' + where + ' heat costs</text>'
+    + '<text x="'+PAD+'" y="'+(PAD+42)+'" font-size="13" fill="#55635E" '
+    + 'font-family="Lato, Helvetica, Arial, sans-serif">'
+    + unit + ' per MWh of delivered heat \u00b7 ' + svc + ' \u00b7 '
+    + basis + ' \u00b7 ' + CWIN + ' days</text>'
+    + '<g transform="translate('+PAD+','+y+')">' + tint(src1, false) + '</g>';
+  y += b1.h + LEGH - 8;
+  out += legendRow(COST_ROUTES.map(r=>[r[1], r[2]]), y);
+  if(src2){
+    y += GAP;
+    out += '<g transform="translate('+PAD+','+y+')">'
+         + tint(src2, true) + '</g>';
+    y += b2.h + LEGH - 8;
+    out += legendRow(VOL_PARTS.map(v=>[v[1], PNG_VOL[v[2]] || v[2]]), y);
+  }
+  out += '<text x="'+PAD+'" y="'+(H-PAD+4)+'" font-size="11" '
+    + 'fill="#6E7B78" font-family="IBM Plex Mono, monospace">'
+    + 'causewaygt.com/irish-heatsplit \u00b7 '
+    + new Date().toISOString().slice(0,10) + '</text></svg>';
+
+  const img = new Image();
+  const blob = new Blob([out], {type:"image/svg+xml;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  img.onload = function(){
+    const S = 2;                       // 2x, so it survives a slide
+    const c = document.createElement("canvas");
+    c.width = W*S; c.height = H*S;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,c.width,c.height);
+    ctx.scale(S,S); ctx.drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    c.toBlob(function(b){
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(b);
+      a.download = "heat-cost-" + CJUR + "-" + CWIN + "d-"
+                 + new Date().toISOString().slice(0,10) + ".png";
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    }, "image/png");
+  };
+  img.onerror = function(){
+    URL.revokeObjectURL(url);
+    const btn = el("pngBtn");
+    if(btn) btn.textContent = "PNG export failed";
+  };
+  img.src = url;
+}
+
 // ------------------------- the frontispiece
 // Renders whatever derive_frontispiece() published. It holds NO
 // figures of its own: if a panel below moves, the payload moves and
@@ -4117,7 +4276,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.62.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.63.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
