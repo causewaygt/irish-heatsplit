@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.64.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.65.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -2602,15 +2602,28 @@ function drawCost(){
     return {v: den ? num / den : 0, col: col, name: name};
   });
   // Nudge labels apart where lines converge - 11px is the smallest
-  // gap two 11px labels can take without touching.
-  marks.sort((a, b) => a.v - b.v);
-  let prevY = Infinity;
-  marks.slice().reverse().forEach(m => {
+  // gap two 11px labels can take without touching. Walk DOWN the
+  // chart (highest value first, so y increases) and push each label
+  // further down only if it would collide with the one above. An
+  // earlier version tested the gap the other way round and pushed
+  // every label UP by 11, stacking all five at the top of the chart
+  // while their ticks stayed where the lines actually ended.
+  marks.sort((a, b) => b.v - a.v);
+  let prevY = -Infinity;
+  marks.forEach(m => {
     let yy = y(m.v);
-    if (prevY - yy < 11) yy = prevY - 11;
-    m.y = Math.max(P.t + 4, yy); prevY = m.y;
+    if (yy - prevY < 11) yy = prevY + 11;
+    m.y = Math.min(H - P.b - 2, yy); prevY = m.y;
   });
   marks.forEach(m => {
+    // where a label had to move to clear its neighbour, a leader
+    // joins it back to its own dash - otherwise a displaced number
+    // reads as belonging to the line above it.
+    if (Math.abs(m.y - y(m.v)) > 1) {
+      svg += '<path d="M' + (W - P.r + 5) + ' ' + y(m.v) + 'L'
+        + (W - P.r + 7) + ' ' + m.y + '" fill="none" stroke="' + m.col
+        + '" stroke-width="1" opacity="0.6"/>';
+    }
     svg += '<line x1="' + (W - P.r) + '" x2="' + (W - P.r + 5) + '" y1="'
       + y(m.v) + '" y2="' + y(m.v) + '" stroke="' + m.col
       + '" stroke-width="2"/>'
@@ -4276,7 +4289,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.64.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.65.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
