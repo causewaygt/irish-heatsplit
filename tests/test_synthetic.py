@@ -4555,6 +4555,29 @@ def test_lever_closed_form_matches_appraisal_at_corners():
     assert r.returncode == 0, r.stderr.decode()[:400]
 
 
+def test_frontispiece_lands_where_the_renderer_reads_it():
+    """
+    IT SHIPPED IN THE WRONG PLACE ONCE. The block was written at
+    document level beside why_heat while the renderer reads
+    D.derived.frontispiece, so the page showed its fallback line for a
+    full day with every test passing - the derivation was correct and
+    nothing checked where it was published.
+
+    This pins the contract between the two: the key must be in
+    derived, and must carry both jurisdictions.
+    """
+    import build as B
+    src = (B.ROOT / "scripts" / "build.py").read_text()
+    assert 'derived["frontispiece"]' in src, (
+        "frontispiece must be published into derived, where "
+        "docs/index.html reads it")
+    assert '"frontispiece": derive_frontispiece' not in src, (
+        "and not at document level, where the renderer will not "
+        "find it")
+    fp = B.derive_frontispiece({})
+    assert set(fp["jur"]) == {"roi", "ni"}
+
+
 def test_frontispiece_restates_the_panels_and_never_leads_them():
     """
     The frontispiece is a SUMMARY, not a source. Every figure must
@@ -4620,6 +4643,21 @@ def test_constrained_wind_is_ni_only_and_severable():
     # decays to zero inside the horizon: erosion must be shorter than
     # the appraisal, or the "not flat for sixty years" claim is false
     assert B.VFM_CONSTRAINED_WIND["erosion_years"] < B.VFM_HORIZON_YEARS
+    # THE VOLUME IS SOURCED, NOT ASSERTED. It must come from the
+    # dispatch-down series for a COMPLETE stated year, and it must
+    # exceed the fleet draw - if the cap ever binds again, the stream
+    # rests on the constraint figure rather than on the fleet, and
+    # that changes what has to be defended.
+    assert "constraint_twh" not in B.VFM_CONSTRAINED_WIND, (
+        "constraint energy must be read from the series, not hardcoded")
+    year = B.VFM_CONSTRAINED_WIND["constraint_basis_year"]
+    vol = B.vfm_constraint_twh()
+    assert vol and 0.3 < vol < 1.5, vol
+    sc, st = B.derive_vfm_scenario(), B.derive_vfm_stages()
+    draw = sc["jur"]["ni"]["network_twh"] / st["jur"]["ni"]["spf"]
+    assert vol > draw, (
+        f"{year} constraint {vol:.3f} TWh no longer exceeds the fleet "
+        f"draw {draw:.3f} - the cap binds and the panel text is wrong")
 
 
 def test_waste_heat_is_capex_avoidance_only():
