@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.69.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.70.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -4282,17 +4282,18 @@ function frontispiece(f){
     if (g.n !== 1 || !hv || !hv.twh) return g;
     const sym = FRONTJUR === "ni" ? "\u00a3" : "\u20ac";
     const bill = FRONTJUR === "ni" ? hv.bill_g : hv.bill_e;
+    // HEAT ONLY. The hero card totals heat AND cooling; this figure
+    // is about the heat bill, so it takes panel 1's heat split when
+    // panel 1 has it and falls back to the total only if it does not.
+    const hb = (FRONTJUR === "ni" ? hv.bill_heat_g : hv.bill_heat_e);
+    const useHeat = hv.heat_twh && hb;
     return Object.assign({}, g, {
-      v: sym + (bill / 1000).toFixed(1) + "bn",
-      unit: "on " + hv.twh.toFixed(1) + " TWh",
-      body: "Heat and cooling bought over the last twelve months, "
-        + "the same window and the same figures as the panel below"
-        + (hv.heat_twh ? " - heat alone is " + hv.heat_twh.toFixed(1)
-             + " TWh at " + sym
-             + ((FRONTJUR === "ni" ? hv.bill_heat_g : hv.bill_heat_e)
-                / 1000).toFixed(1) + "bn" : "")
-        + ". Most of it is still combustion: oil, gas and peat burned "
-        + "in buildings."
+      v: sym + ((useHeat ? hb : bill) / 1000).toFixed(1) + "bn",
+      unit: "on " + (useHeat ? hv.heat_twh : hv.twh).toFixed(1) + " TWh",
+      body: "Heat bought over the last twelve months, the same window "
+        + "and the same figures as the panel below. Most of it is "
+        + "still combustion: oil, gas and peat burned in boilers, "
+        + "stoves and fireplaces."
     });
   });
   box.innerHTML = '<div class="fgrid">' + figs.map(g =>
@@ -4398,7 +4399,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.69.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.70.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
