@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.66.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.67.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -2436,11 +2436,11 @@ function drawVol(rows, state, geom){
   let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" '
     + 'height="' + H + '" role="img" aria-label="GWh of delivered heat '
     + 'per day, space heating and hot water">'
-    + '<text transform="rotate(-90 26 ' + (H / 2) + ')" x="26" y="'
+    + '<text transform="rotate(-90 24 ' + (H / 2) + ')" x="24" y="'
     + (H / 2) + '" text-anchor="middle" font-size="13" '
     + 'font-weight="600" fill="#fff" font-family="Lato, sans-serif">'
-    + '<tspan x="18" dy="-0.2em">GWh of delivered</tspan>'
-    + '<tspan x="18" dy="1.1em">heat per day</tspan></text>';
+    + '<tspan x="15" dy="-0.2em">GWh of delivered</tspan>'
+    + '<tspan x="15" dy="1.1em">heat per day</tspan></text>';
   const vt = niceTicks(hi, 3);
   vt.values.forEach(v => {
     svg += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(v)
@@ -2542,7 +2542,11 @@ function drawCost(){
   }
   // r leaves room for the trailing weighted means. drawVol is
   // handed the same r below, so both charts keep one x-axis.
-  const W = 1000, H = 320, P = {t:14, r:74, b:26, l:62};
+  // l is the shared left gutter. It carries the cost chart's own
+  // axis label AND the volume chart's two-line one, which is the
+  // wider of the two - at 62 its second line ran into the tick
+  // numbers on the volume chart.
+  const W = 1000, H = 320, P = {t:14, r:74, b:26, l:80};
   const vals = [];
   rows.forEach(r => COST_ROUTES.forEach(([k]) => vals.push(r[key][k] * PER_MWH)));
   const hi = Math.max.apply(null, vals) * 1.06, lo = 0;
@@ -4296,7 +4300,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.66.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.67.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
