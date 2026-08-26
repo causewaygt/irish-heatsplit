@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-08-26T18:21:26+00:00",
+ "built_utc": "2026-08-26T18:57:58+00:00",
  "derived": {
   "anchor_epoch": 8,
   "calibration": {
@@ -3844,20 +3844,20 @@
      "currency": "GBP",
      "figures": [
       {
-       "body": "Residential and services heat a year, of which 88% is still combustion - oil, gas and peat burned in buildings.",
-       "claim": "Building heat is the biggest thing Northern Ireland burns.",
+       "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.",
+       "claim": "Heat is the biggest thing Northern Ireland buys.",
        "n": 1,
-       "to": "why",
-       "unit": "TWh",
-       "v": "13.0"
+       "to": "cost",
+       "unit": "on 11.1 TWh",
+       "v": "\u00a31.1bn"
       },
       {
-       "body": "Network seasonal performance of 5.0 against 2.8 for a network-scale air-source energy centre - 1.79x the heat per unit of electricity, from a source that does not cool when the weather does.",
-       "claim": "The ground is a better heat source than the air, and the gap is the whole case.",
+       "body": "Per MWh delivered over the same twelve months, \u00a349 against \u00a3108. Network seasonal performance of 5.0 against 2.8 for a network-scale air-source energy centre - 1.79x the heat per unit of electricity, from a source that does not cool when the weather does.",
+       "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.",
        "n": 2,
-       "to": "vfm",
-       "unit": "vs 2.8",
-       "v": "5.0"
+       "to": "cost",
+       "unit": "cheaper heat",
+       "v": "55%"
       },
       {
        "body": "2.15 TWh of building heat on networks - 19.7% of the total - over a ten-year build, LENT to a jurisdiction that has set no target of its own.",
@@ -3868,12 +3868,12 @@
        "v": "538"
       },
       {
-       "body": "Electricity for service-sector cooling, with a fifth of it on ambient loops instead of air-cooled chillers - the heat rejected in summer stored and recovered in winter, which is the same asset working twice.",
-       "claim": "One asset heats and cools the same building.",
+       "body": "Arrives with the next build.",
+       "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.",
        "n": 4,
-       "to": "cooling",
-       "unit": "% less",
-       "v": "11.8"
+       "to": "grid",
+       "unit": "fits at the tightest hour",
+       "v": "-"
       },
       {
        "body": "In 2025, 85% of it transmission constraint - wind that cannot leave where it is generated, against roughly half that share in the Republic. A heat load sited inside the constraint absorbs it.",
@@ -3897,20 +3897,20 @@
      "currency": "EUR",
      "figures": [
       {
-       "body": "Residential and services heat a year, of which 88% is still combustion - oil, gas and peat burned in buildings.",
-       "claim": "Building heat is the biggest thing the Republic burns.",
+       "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.",
+       "claim": "Heat is the biggest thing the Republic of Ireland buys.",
        "n": 1,
-       "to": "why",
-       "unit": "TWh",
-       "v": "30.8"
+       "to": "cost",
+       "unit": "on 25.8 TWh",
+       "v": "\u20ac3.9bn"
       },
       {
-       "body": "Network seasonal performance of 4.0 against 2.8 for a network-scale air-source energy centre - 1.43x the heat per unit of electricity, from a source that does not cool when the weather does.",
-       "claim": "The ground is a better heat source than the air, and the gap is the whole case.",
+       "body": "Per MWh delivered over the same twelve months, \u20ac66 against \u20ac133. Network seasonal performance of 4.0 against 2.8 for a network-scale air-source energy centre - 1.43x the heat per unit of electricity, from a source that does not cool when the weather does.",
+       "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.",
        "n": 2,
-       "to": "vfm",
-       "unit": "vs 2.8",
-       "v": "4.0"
+       "to": "cost",
+       "unit": "cheaper heat",
+       "v": "50%"
       },
       {
        "body": "5.00 TWh of building heat on networks - 19.7% of the total - over a ten-year build.",
@@ -3921,12 +3921,12 @@
        "v": "1250"
       },
       {
-       "body": "Electricity for service-sector cooling, with a fifth of it on ambient loops instead of air-cooled chillers - the heat rejected in summer stored and recovered in winter, which is the same asset working twice.",
-       "claim": "One asset heats and cools the same building.",
+       "body": "Arrives with the next build.",
+       "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.",
        "n": 4,
-       "to": "cooling",
-       "unit": "% less",
-       "v": "11.8"
+       "to": "grid",
+       "unit": "fits at the tightest hour",
+       "v": "-"
       },
       {
        "body": "The Climate Action Plan milestone. The question this site asks is not whether to build networks but what sits at the head of them - and that is decided scheme by scheme, as each one is designed.",
@@ -4766,7 +4766,7 @@
     },
     {
      "air_source": 25,
-     "demand_mw": 4833,
+     "demand_mw": 4862,
      "geothermal_network": 19,
      "ground_source": 39,
      "heat_mw": 929,
@@ -4888,15 +4888,6 @@
    ],
    "falcon_complete": 11,
    "hourly": [
-    {
-     "air_source": 26,
-     "demand_mw": 5218,
-     "geothermal_network": 19,
-     "ground_source": 39,
-     "heat_mw": 926,
-     "t": "2026-08-19T19",
-     "temp_c": 16.3
-    },
     {
      "air_source": 27,
      "demand_mw": 5148,
@@ -6353,7 +6344,7 @@
      "ground_source": 39,
      "heat_mw": 926,
      "t": "2026-08-26T13",
-     "temp_c": 19.1
+     "temp_c": 18.8
     },
     {
      "air_source": 21,
@@ -6362,7 +6353,7 @@
      "ground_source": 39,
      "heat_mw": 926,
      "t": "2026-08-26T14",
-     "temp_c": 19.5
+     "temp_c": 19.3
     },
     {
      "air_source": 21,
@@ -6371,7 +6362,7 @@
      "ground_source": 39,
      "heat_mw": 926,
      "t": "2026-08-26T15",
-     "temp_c": 19.7
+     "temp_c": 19.4
     },
     {
      "air_source": 21,
@@ -6389,16 +6380,25 @@
      "ground_source": 39,
      "heat_mw": 926,
      "t": "2026-08-26T17",
-     "temp_c": 19.7
+     "temp_c": 19.5
     },
     {
-     "air_source": 21,
+     "air_source": 22,
      "demand_mw": 5408,
      "geothermal_network": 19,
      "ground_source": 39,
      "heat_mw": 926,
      "t": "2026-08-26T18",
-     "temp_c": 19.5
+     "temp_c": 19.2
+    },
+    {
+     "air_source": 22,
+     "demand_mw": 5404,
+     "geothermal_network": 19,
+     "ground_source": 39,
+     "heat_mw": 926,
+     "t": "2026-08-26T19",
+     "temp_c": 18.7
     }
    ],
    "monthly": [
@@ -6512,10 +6512,10 @@
     },
     {
      "air_source": 42,
-     "demand_mw": 4512,
+     "demand_mw": 4513,
      "geothermal_network": 31,
      "ground_source": 64,
-     "heat_mw": 1503,
+     "heat_mw": 1502,
      "t": "2026-08",
      "temp_c": 16.4
     }
@@ -6523,7 +6523,7 @@
    "share": 0.2,
    "span": [
     "2025-08-01T00",
-    "2026-08-26T18"
+    "2026-08-26T19"
    ]
   },
   "heat_cost_series": {
@@ -28627,7 +28627,7 @@
       14.33,
       13.71,
       13.45,
-      13.14
+      13.17
      ],
      "dhw_share": [
       0.458,
@@ -33363,7 +33363,7 @@
       15.36,
       14.78,
       14.53,
-      14.22
+      14.25
      ],
      "dhw_share": [
       1.0,
@@ -38099,7 +38099,7 @@
       13.35,
       12.78,
       12.54,
-      12.25
+      12.27
      ],
      "dhw_share": [
       0.458,
@@ -42835,7 +42835,7 @@
       7.78,
       6.93,
       6.65,
-      6.32
+      6.35
      ],
      "dhw_share": [
       0.0,
@@ -48359,7 +48359,7 @@
      14.4,
      15.93,
      16.6,
-     17.42
+     17.34
     ],
     "vol_ni": {
      "dhw": [
@@ -51527,7 +51527,7 @@
   },
   "heat_emissions": {
    "grid_days": 14,
-   "grid_g_per_kwh": 215.6,
+   "grid_g_per_kwh": 215.5,
    "network_spf_island": 4.252,
    "routes": [
     {
@@ -51543,7 +51543,7 @@
      "spf": null
     },
     {
-     "g_per_useful_kwh": 215.6,
+     "g_per_useful_kwh": 215.5,
      "key": "resistive",
      "label": "Resistive electric",
      "spf": 1.0
@@ -51581,7 +51581,7 @@
     "oil_boiler": 11.84
    },
    "roi": {
-    "ashp": 13.14,
+    "ashp": 13.17,
     "day": "2026-08-26",
     "gap_days": 730,
     "gap_median": 5.32,
@@ -51854,7 +51854,7 @@
     "bill_heat_eur_m": 42.0,
     "bill_heat_gbp_m": 35.9,
     "cold_gwh": 120.3,
-    "emissions_cold_kt": 26.0,
+    "emissions_cold_kt": 25.9,
     "emissions_heat_kt": 77.0,
     "emissions_kt_co2": 103.0,
     "heat_gwh": 325.5,
@@ -51867,10 +51867,10 @@
     "bill_gbp_m": 27.2,
     "comfort_shaped_by_odh": false,
     "elec_gwh": 120.3,
-    "emissions_kt_co2": 26.0,
+    "emissions_kt_co2": 25.9,
     "served_gwh": 337.3
    },
-   "ef_electricity_g_per_kwh": 215.6,
+   "ef_electricity_g_per_kwh": 215.5,
    "ef_electricity_source": "live grid intensity, 14-day mean",
    "elec_indigenous_source": "anchor (SEAI RES-E / DfE)",
    "emissions_kt_co2": 77.0,
@@ -52018,7 +52018,7 @@
      "bill_heat_eur_m": 29.8,
      "bill_heat_gbp_m": 25.5,
      "cold_gwh": 97.2,
-     "emissions_cold_kt": 21.0,
+     "emissions_cold_kt": 20.9,
      "emissions_heat_kt": 52.3,
      "emissions_kt_co2": 73.3,
      "heat_gwh": 219.8,
@@ -52031,7 +52031,7 @@
      "bill_gbp_m": 21.7,
      "comfort_shaped_by_odh": false,
      "elec_gwh": 97.2,
-     "emissions_kt_co2": 21.0,
+     "emissions_kt_co2": 20.9,
      "served_gwh": 289.5,
      "service_factor": 2.98
     },
@@ -63658,7 +63658,7 @@
    "heat_vs_block_ratio": 1.32,
    "hour": "2026-01-05T18",
    "hour_cop_air": 2.47,
-   "hours_considered": 9378,
+   "hours_considered": 9379,
    "observed_mw": 7180,
    "observed_peak_mw": 7502,
    "routes_that_fit": [
@@ -64703,7 +64703,7 @@
     "2026-08-25",
     "2026-08-26"
    ],
-   "fetched_utc": "2026-08-26T18:20:56+00:00",
+   "fetched_utc": "2026-08-26T18:57:29+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -66807,7 +66807,7 @@
     "2025-S2": 0.87073,
     "2026-S1": 0.8672
    },
-   "fetched_utc": "2026-08-26T18:20:33+00:00",
+   "fetched_utc": "2026-08-26T18:57:02+00:00",
    "gbp_eur": 1.16805,
    "latest_day": "2026-08-26",
    "rate_date": "2026-08-26",
@@ -67394,7 +67394,7 @@
     "2026-08-23": 225.6,
     "2026-08-24": 206.3,
     "2026-08-25": 216.6,
-    "2026-08-26": 222.3
+    "2026-08-26": 221.1
    },
    "demand_gwh_daily": {
     "island": {
@@ -67466,7 +67466,7 @@
      "2026-08-23": 102.05,
      "2026-08-24": 109.48,
      "2026-08-25": 115.98,
-     "2026-08-26": 115.64
+     "2026-08-26": 116.68
     },
     "ni": {
      "2026-06-19": 19.11,
@@ -67537,7 +67537,7 @@
      "2026-08-23": 17.16,
      "2026-08-24": 18.84,
      "2026-08-25": 19.3,
-     "2026-08-26": 20.0
+     "2026-08-26": 20.07
     },
     "roi": {
      "2026-06-19": 93.91,
@@ -67608,10 +67608,10 @@
      "2026-08-23": 84.89,
      "2026-08-24": 90.64,
      "2026-08-25": 96.69,
-     "2026-08-26": 96.36
+     "2026-08-26": 96.62
     }
    },
-   "fetched_utc": "2026-08-26T18:20:27+00:00",
+   "fetched_utc": "2026-08-26T18:56:55+00:00",
    "latest_day": "2026-08-26",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
@@ -67622,13 +67622,13 @@
     "18mo": "HISTORIC CARBON RETURNED",
     "24mo": "HISTORIC CARBON RETURNED"
    },
-   "fetched_utc": "2026-08-26T18:21:25+00:00",
+   "fetched_utc": "2026-08-26T18:57:57+00:00",
    "latest_day": "2026-08-26",
    "source": "EirGrid Smart Grid Dashboard (probe, round 3)",
    "status": "ok"
   },
   "entsog_probe": {
-   "fetched_utc": "2026-08-26T18:20:57+00:00",
+   "fetched_utc": "2026-08-26T18:57:30+00:00",
    "greater_belfast_gwh_daily": {
     "2026-07-20": 4.22306,
     "2026-07-21": 4.827287,
@@ -67821,7 +67821,7 @@
    }
   },
   "gb_oil": {
-   "fetched_utc": "2026-08-26T18:20:57+00:00",
+   "fetched_utc": "2026-08-26T18:57:30+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -70923,7 +70923,7 @@
     "2026-03-30": 10.62,
     "2026-03-31": 10.21
    },
-   "fetched_utc": "2026-08-26T18:20:35+00:00",
+   "fetched_utc": "2026-08-26T18:57:03+00:00",
    "latest_day": "2026-03-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -83127,7 +83127,7 @@
     "2026-08-23": 5.801,
     "2026-08-24": 7.465
    },
-   "fetched_utc": "2026-08-26T18:20:56+00:00",
+   "fetched_utc": "2026-08-26T18:57:27+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-08-24",
    "ndm_gwh": {
@@ -83700,7 +83700,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-08-26T18:20:30+00:00",
+   "fetched_utc": "2026-08-26T18:56:58+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -88393,7 +88393,7 @@
     "2026-08-23": 14.2,
     "2026-08-24": 15.68,
     "2026-08-25": 16.42,
-    "2026-08-26": 17.24
+    "2026-08-26": 17.19
    },
    "temp_ni": {
     "2023-07-03": 12.58,
@@ -90699,12 +90699,12 @@
     "2026-08-23": 14.4,
     "2026-08-24": 15.93,
     "2026-08-25": 16.6,
-    "2026-08-26": 17.42
+    "2026-08-26": 17.34
    },
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-08-26T18:20:44+00:00",
+   "fetched_utc": "2026-08-26T18:57:14+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -91049,7 +91049,7 @@
    "status": "ok"
   },
   "sem_mix": {
-   "fetched_utc": "2026-08-26T18:20:59+00:00",
+   "fetched_utc": "2026-08-26T18:57:32+00:00",
    "indigenous_share_daily": {
     "2026-06-25": 47.93,
     "2026-06-26": 46.75,
@@ -95013,7 +95013,7 @@
     "2026-08-24T22": 215.37,
     "2026-08-24T23": 170.37
    },
-   "fetched_utc": "2026-08-26T18:20:40+00:00",
+   "fetched_utc": "2026-08-26T18:57:09+00:00",
    "latest_day": "2026-08-24",
    "markets": {
     "NI-DA": {
@@ -95481,7 +95481,7 @@
   }
  },
  "notes": "Feed statuses - ok: fetched and current; lagging: fetched, source publishes on a lag; stale: fetch failed, previous values retained. Judgement figures are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com",
- "pipeline_version": "5.54.0",
+ "pipeline_version": "5.55.0",
  "why_heat": {
   "basis": "Annual, all-island, whole-economy - dagger throughout. Services: SEAI Energy in Ireland 2025 (ROI TFC ~143 TWh) + NI dagger; heat includes industrial heat. Imports: allocation of 81.2%-imported primary energy, 220.7 TWh PES (Causeway island Sankey 2024). Emissions: SEAI + NI dagger. Challenge and input welcome at contact@causewaygt.com",
   "emissions_mt": {
