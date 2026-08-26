@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.57.0"
+PIPELINE_VERSION = "5.58.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5644,6 +5644,15 @@ VFM_SHALLOW_NTH_FLOOR = None   # DECIDED 22 Aug 2026: stays None. The
 # actually happening) sits inside the shortfall lever like waste heat.
 # CURTAILMENT stays excluded - the morning's anti-correlation finding
 # stands; only the local-constraint component rides here.
+# Heat per Irish home per year, MWh. SEAI Energy in Ireland puts
+# residential heat demand at 22.3 TWh (2024) across roughly 1.85m
+# occupied dwellings = 12.1 MWh; SEAI's residential statistics give
+# 17.15 MWh of energy per home (2022) of which 74% is non-electric,
+# about 12.7 MWh. Two routes, same answer to the nearest MWh, so the
+# figure is published rather than judged - the dagger on the panel
+# marks the CONVERSION (rejected heat to homes served), not this.
+HOME_HEAT_MWH = 12.0
+
 VFM_CONSTRAINED_WIND = {
     # CONSTRAINT ENERGY IS READ FROM OUR OWN SERIES, not asserted -
     # docs/dispatch_down_monthly.json, EirGrid's half-hourly wind
@@ -6816,7 +6825,7 @@ def vfm_constraint_twh(year=None):
 
 
 def derive_frontispiece(feeds, hcs=None, th=None, he=None,
-                        anchors=None):
+                        hr=None, anchors=None):
     """
     Six figures that state the case, per jurisdiction.
 
@@ -6969,7 +6978,7 @@ def derive_frontispiece(feeds, hcs=None, th=None, he=None,
                        f"against an oil boiler, on today's grid. Oil is "
                        f"{100 * a[j]['fuel_shares']['oil']:.0f}% of "
                        + ("Northern Ireland" if j == "ni"
-                          else "the Republic")
+                          else "the Republic of Ireland")
                        + "'s building heat today, and the gap closes "
                        "further as the grid decarbonises.")
                       if cut else "Arrives with the next build."),
@@ -7001,17 +7010,43 @@ def derive_frontispiece(feeds, hcs=None, th=None, he=None,
              "to": "grid"},
         ]
         if j == "roi":
+            # THE WIDE VERSION, by decision 26 Aug 2026. The
+            # frontispiece states the PRIZE - all the heat data
+            # centres reject, and what it would serve if recovered.
+            # Panel 6 prices the conservative version: waste heat
+            # enters the appraisal as capex avoidance on a small
+            # coupled share, and nothing here changes that. The two
+            # are different questions and the body says which is
+            # which.
+            dc = None
+            if hr:
+                dc = next((r for r in hr.get("rows", [])
+                           if r["key"] == "datacentres"), None)
+            # TWh -> MWh is 1e6, not 1e3. The first version divided
+            # by a thousand too few and printed 1,000 homes for 6.4
+            # TWh, which is off by three orders of magnitude.
+            homes = (dc["rejected_twh"] * 1e6 / HOME_HEAT_MWH
+                     if dc else None)
             figs.append(
-                {"n": 5, "v": f"{s['milestone_twh']:.1f}", "unit": "TWh by "
-                 + str(s["milestone_year"]),
-                 "claim": "The Republic has committed. The gap is "
-                          "delivery, not ambition.",
-                 "body": ("The Climate Action Plan milestone. The "
-                          "question this site asks is not whether to "
-                          "build networks but what sits at the head "
-                          "of them - and that is decided scheme by "
-                          "scheme, as each one is designed."),
-                 "to": "vfm"})
+                {"n": 5,
+                 "v": (f"{dc['rejected_twh']:.1f}" if dc else "-"),
+                 "unit": "TWh rejected by data centres",
+                 "claim": "The Republic already makes more waste heat "
+                          "than its networks would need.",
+                 "body": ((f"Growing to {COOL_DC_GROWTH[1]:.1f} TWh by "
+                           f"{COOL_DC_GROWTH[2]}. Recovered, stored "
+                           "and upgraded through geothermal networks, "
+                           "today's rejection alone is the heat of "
+                           f"about {homes / 1000:.0f},000 homes at "
+                           f"{HOME_HEAT_MWH:.0f} MWh a year"
+                           "\u2020. This is the whole prize, not a "
+                           "forecast of recovery: the value-for-money "
+                           "panel prices a far smaller coupled share, "
+                           "and prices it as capital avoided rather "
+                           "than heat delivered.")
+                          if dc and homes else "Arrives with the next "
+                          "build."),
+                 "to": "cooling"})
         else:
             figs.append(
                 {"n": 5, "v": f"{ddpct:.1f}", "unit": "% of wind spilled",
@@ -7034,7 +7069,12 @@ def derive_frontispiece(feeds, hcs=None, th=None, he=None,
                       "and a programme shortfall. Measured against an "
                       "air-source network, not a gas boiler: an "
                       "efficiency and capacity case, not a carbon "
-                      "one."),
+                      "one."
+                      + (" Over a ten-year build extrapolated from "
+                         "the government's own 2.7 TWh commitment for "
+                         "2030 - a build starting now reaches 2.5 TWh "
+                         "by then, most of the way to it."
+                         if j == "roi" else "")),
              "to": "vfm"})
         out["jur"][j] = {"currency": cur, "figures": figs}
 
@@ -10003,7 +10043,8 @@ def main():
     # which is a static constant and reads D.why_heat.
     fp = derive_frontispiece(feeds, locals().get("hcs"),
                              derived.get("tightest_hour"),
-                             derived.get("heat_emissions"))
+                             derived.get("heat_emissions"),
+                             derived.get("heat_rejected"))
     if fp:
         derived["frontispiece"] = fp
 
@@ -10087,7 +10128,8 @@ def main():
         # panel whose data was sitting in the same payload.
         fp2 = derive_frontispiece(feeds, locals().get("hcs"),
                                   derived["tightest_hour"],
-                                  derived.get("heat_emissions"))
+                                  derived.get("heat_emissions"),
+                                  derived.get("heat_rejected"))
         if fp2:
             derived["frontispiece"] = fp2
             log("frontispiece: rebuilt with the binding-hour figure")
