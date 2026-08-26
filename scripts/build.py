@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.52.0"
+PIPELINE_VERSION = "5.54.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -5645,15 +5645,28 @@ VFM_SHALLOW_NTH_FLOOR = None   # DECIDED 22 Aug 2026: stays None. The
 # CURTAILMENT stays excluded - the morning's anti-correlation finding
 # stands; only the local-constraint component rides here.
 VFM_CONSTRAINED_WIND = {
-    # NI wind ~2.9 TWh x 22.0% published dispatch-down x ~0.68
-    # constraint share of NI dispatch-down = 0.43 TWh. DERIVED, not
-    # read from a table - REPLACE with the EirGrid/SONI Annual
-    # Constraint and Curtailment Report figure before the banner
-    # comes off.
-    "constraint_twh": 0.43,
-    # siting share x hour overlap x storage dispatchability. Causeway
-    # judgement, daggered, hard-wired (not a slider - the panel holds
-    # at four).
+    # CONSTRAINT ENERGY IS READ FROM OUR OWN SERIES, not asserted -
+    # docs/dispatch_down_monthly.json, EirGrid's half-hourly wind
+    # files, TRANS_CONSTR_MWH only (the transmission-constraint reason
+    # code), NI, for the stated basis year below. This replaced a
+    # derived 0.43 TWh (2.9 TWh x 22.0% x ~0.68) that UNDERSTATED it:
+    # the actual NI constraint share of dispatch-down is 83-89%, not
+    # 68%, because loss-of-tie-line dispatch-down is classed as NI
+    # constraint and is the dominant component.
+    #
+    # A STATED YEAR, not "latest" or a trailing window: dispatch-down
+    # is trending hard (409 GWh in 2023, 817 in 2024, 563 in 2025) and
+    # a moving basis on an advocacy-adjacent stream is cherry-pickable.
+    # 2025 is the most recent COMPLETE year and matches the 22.0%
+    # already cited on the grid panel. Moving this to 2026 is a
+    # decision, and it edits the test that pins it.
+    "constraint_basis_year": "2025",
+    # siting share x hour overlap x storage dispatchability. ONE LOW
+    # CONSERVATIVE NUMBER, accepted 25 Aug 2026 rather than decomposed:
+    # the hour-overlap term is empirical from the same series (half the
+    # spill falls outside the heating season, 44% between midnight and
+    # six), the dispatchability term is a design-basis judgement. Still
+    # daggered, still hard-wired - the panel holds at four sliders.
     "coincidence": 0.15, "coincidence_range": (0.0, 0.40),
     # constraint is not permanent: the North-West reinforcement
     # pipeline erodes it. Linear decay to zero over this horizon -
@@ -5670,8 +5683,11 @@ VFM_WASTE_HEAT = {
     "connection_relcost_range": (0.15, 0.60),
     "note": "share of shallow-class schemes coupled to waste heat; "
             "connection_relcost is the interconnection's cost as a "
-            "fraction of the subsurface it displaces. Judgement "
-            "figures pending a per-jurisdiction source inventory",
+            "fraction of the subsurface it displaces. Causeway "
+            "judgement, ACCEPTED 25 Aug 2026 as deliberately small "
+            "and conservative rather than derived from a source "
+            "inventory - the shares understate the coupling "
+            "opportunity and are meant to",
 }
 # AIR-SOURCE COUNTERFACTUAL. Danish Energy Agency technology catalogue
 # via PyPSA, and HIR Hamburg. The DEA boundary is the complete energy
@@ -6262,11 +6278,12 @@ def derive_vfm_phased(anchors=None):
         # horizon; ramped with the build; scaled by keep like every
         # benefit. See VFM_CONSTRAINED_WIND for the exclusions.
         cw_pv = 0.0
-        if k == "ni":
+        cw_constraint = vfm_constraint_twh()
+        if k == "ni" and cw_constraint:
             cw = VFM_CONSTRAINED_WIND
             draw_twh = min(sc["jur"][k]["network_twh"]
                            / st["jur"][k]["spf"],
-                           cw["constraint_twh"])
+                           cw_constraint)
             for t in range(1, VFM_HORIZON_YEARS + 1):
                 decay = max(0.0, 1.0 - (t - 1) / cw["erosion_years"])
                 if decay <= 0.0:
@@ -6773,6 +6790,29 @@ def derive_vfm_stages(anchors=None, geo=None):
             f"{100*v['shortfall_range'][1]:.0f}%)"
             for k, v in out["jur"].items()))
     return out
+
+
+def vfm_constraint_twh(year=None):
+    """
+    NI transmission-constraint energy for the stated basis year, TWh,
+    read from our own dispatch-down series rather than asserted.
+
+    Returns None if the file or the year is missing - the caller then
+    prices no constrained-wind stream at all, which is the right
+    failure: a stream whose volume cannot be sourced should not be in
+    the appraisal.
+    """
+    y = year or VFM_CONSTRAINED_WIND["constraint_basis_year"]
+    if not DD_PATH.exists():
+        return None
+    d = json.loads(DD_PATH.read_text())
+    idx = [i for i, m in enumerate(d["months"]) if m.startswith(y)]
+    if len(idx) != 12:
+        log(f"constrained wind: {y} is not a complete year "
+            f"({len(idx)} months) - stream declines")
+        return None
+    ni = d["jurisdictions"]["NI"]
+    return sum(ni["cons"][i] for i in idx) / 1000.0
 
 
 def derive_frontispiece(feeds, anchors=None):
@@ -9867,6 +9907,13 @@ def main():
             hg["ni"]["breakeven_spf_vs_oil"], "ROI",
             hg["roi"]["breakeven_spf_vs_oil"])
 
+    # the frontispiece renderer reads D.derived.frontispiece - it
+    # belongs in DERIVED, not at document level beside why_heat,
+    # which is a static constant and reads D.why_heat.
+    fp = derive_frontispiece(feeds)
+    if fp:
+        derived["frontispiece"] = fp
+
     doc = {
         "pipeline_version": PIPELINE_VERSION,
         "built_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -9877,7 +9924,6 @@ def main():
                 "hardware": derive_geo_hardware(),
                 "targets": derive_geo_targets()},
         "why_heat": WHY_HEAT,
-        "frontispiece": derive_frontispiece(feeds),
         "notes": ("Feed statuses - ok: fetched and current; lagging: fetched, "
                   "source publishes on a lag; stale: fetch failed, previous "
                   "values retained. Judgement figures are current Causeway "
