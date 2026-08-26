@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.54.0"
+PIPELINE_VERSION = "5.55.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6815,7 +6815,7 @@ def vfm_constraint_twh(year=None):
     return sum(ni["cons"][i] for i in idx) / 1000.0
 
 
-def derive_frontispiece(feeds, anchors=None):
+def derive_frontispiece(feeds, hcs=None, th=None, anchors=None):
     """
     Six figures that state the case, per jurisdiction.
 
@@ -6862,6 +6862,32 @@ def derive_frontispiece(feeds, anchors=None):
             ddpct = round(100.0 * tot / av, 1) if av else None
             ddcons = round(100.0 * cons / tot) if tot else None
 
+    # PANEL 2'S OWN TRAILING YEAR. Volume, spend and the price gap all
+    # come from the same rows the cost chart draws, over the same 365
+    # days, so a reader who checks the chart finds these figures in it.
+    # Spend is the heat-weighted mean price times the volume, which is
+    # the same arithmetic the chart's end labels print.
+    def _year(j):
+        if not hcs:
+            return None
+        vk, pk = "vol_" + j, j
+        rows = [r for r in hcs[-365:] if r.get(vk) and r.get(pk)]
+        if len(rows) < 300:
+            return None
+        gwh = sum(r[vk]["space"] + r[vk]["dhw"] for r in rows)
+        if gwh <= 0:
+            return None
+        def wmean(route):
+            return (sum(r[pk][route] * 10.0
+                        * (r[vk]["space"] + r[vk]["dhw"]) for r in rows)
+                    / gwh)
+        net, ash = wmean("network"), wmean("ashp")
+        blend = wmean("gas_boiler")  # the counterfactual actually bought
+        return {"days": len(rows), "twh": gwh / 1000.0,
+                "spend_bn": (blend * gwh * 1000.0) / 1e9,
+                "network": net, "ashp": ash,
+                "cheaper_pct": (100.0 * (ash - net) / ash) if ash else None}
+
     out = {"jur": {}}
     for j in ("roi", "ni"):
         heat = (a[j]["residential_heat_twh"]
@@ -6871,25 +6897,44 @@ def derive_frontispiece(feeds, anchors=None):
         s, t, p = sc["jur"][j], st["jur"][j], ph["jur"][j]
         cur = "GBP" if p.get("currency") == "GBP" else "EUR"
 
+        yr = _year(j)
+        thf = (th or {}).get("share_that_fits_pct") or {}
+        cy = "\u00a3" if cur == "GBP" else "\u20ac"
+        where = "the Republic of Ireland" if j == "roi" \
+            else "Northern Ireland"
         figs = [
-            {"n": 1, "v": f"{heat:.1f}", "unit": "TWh",
-             "claim": "Building heat is the biggest thing "
-                      + ("the Republic" if j == "roi"
-                         else "Northern Ireland") + " burns.",
-             "body": ("Residential and services heat a year, of which "
-                      + f"{comb:.0f}% is still combustion - oil, gas "
-                      "and peat burned in buildings."),
-             "to": "why"},
-            {"n": 2, "v": f"{t['spf']:.1f}", "unit": f"vs {t['spf_counterfactual']}",
-             "claim": "The ground is a better heat source than the "
-                      "air, and the gap is the whole case.",
-             "body": (f"Network seasonal performance of {t['spf']:.1f} "
+            # SPEND, not volume, as the opening figure: what the place
+            # PAYS is the number that lands. Both halves are panel 2's,
+            # over its trailing year, so they reconcile against the
+            # chart rather than against a separate anchor.
+            {"n": 1,
+             "v": (f"{cy}{yr['spend_bn']:.1f}bn" if yr
+                   else f"{heat:.1f} TWh"),
+             "unit": (f"on {yr['twh']:.1f} TWh" if yr else ""),
+             "claim": f"Heat is the biggest thing {where} buys.",
+             "body": ("Delivered heat over the last twelve months and "
+                      "what it cost at the gas-boiler price most of it "
+                      f"is actually bought at, of which {comb:.0f}% is "
+                      "still combustion - oil, gas and peat burned in "
+                      "buildings."),
+             "to": "cost"},
+            {"n": 2,
+             "v": (f"{yr['cheaper_pct']:.0f}%" if yr and yr["cheaper_pct"]
+                   else f"{t['spf']:.1f}"),
+             "unit": ("cheaper heat" if yr and yr["cheaper_pct"]
+                      else f"vs {t['spf_counterfactual']}"),
+             "claim": "Geothermal heat is cheaper than air-source "
+                      "heat, not just cleaner.",
+             "body": ((f"Per MWh delivered over the same twelve months, "
+                       f"{cy}{yr['network']:.0f} against "
+                       f"{cy}{yr['ashp']:.0f}. " if yr else "")
+                      + f"Network seasonal performance of {t['spf']:.1f} "
                       f"against {t['spf_counterfactual']} for a "
-                      "network-scale air-source "
-                      f"energy centre - {t['spf_gain']:.2f}x the heat per "
-                      "unit of electricity, from a source that does "
-                      "not cool when the weather does."),
-             "to": "vfm"},
+                      "network-scale air-source energy centre - "
+                      f"{t['spf_gain']:.2f}x the heat per unit of "
+                      "electricity, from a source that does not cool "
+                      "when the weather does."),
+             "to": "cost"},
             {"n": 3, "v": f"{s['plant_mw']:.0f}", "unit": "MW",
              "claim": "The scenario is a programme, not a pilot.",
              "body": (f"{s['network_twh']:.2f} TWh of building heat on "
@@ -6900,14 +6945,31 @@ def derive_frontispiece(feeds, anchors=None):
                          "target of its own")
                       + "."),
              "to": "vfm"},
-            {"n": 4, "v": f"{ct['geo_saving_pct']:.1f}", "unit": "% less",
-             "claim": "One asset heats and cools the same building.",
-             "body": ("Electricity for service-sector cooling, with a "
-                      "fifth of it on ambient loops instead of "
-                      "air-cooled chillers - the heat rejected in "
-                      "summer stored and recovered in winter, which "
-                      "is the same asset working twice."),
-             "to": "cooling"},
+            # DISPLACES the cooling figure, 26 Aug 2026. The binding
+            # hour is the harder test and the one a system operator
+            # asks first. Ground routes clear it; air source does not,
+            # which is the comparison that matters.
+            {"n": 4,
+             "v": (f"{thf['geothermal_network']:.0f}%"
+                   if thf and thf.get("geothermal_network") else "-"),
+             "unit": "fits at the tightest hour",
+             "claim": "At the tightest hour on record, the ground "
+                      "routes fit inside the grid. Air source does "
+                      "not.",
+             "body": (("All of " + where + "'s building heat, "
+                       "electrified through networks, against the "
+                       "headroom in the all-island block at the "
+                       "tightest hour observed - there is no separate "
+                       "northern ceiling, because there is one "
+                       "dispatch. Ground source alone reaches "
+                       + (f"{thf['ground_source']:.0f}%"
+                          if thf.get("ground_source") else "less")
+                       + ", air source "
+                       + (f"{thf['air_source']:.0f}%"
+                          if thf.get("air_source") else "less")
+                       + ".") if thf else "Arrives with the next "
+                      "build."),
+             "to": "grid"},
         ]
         if j == "roi":
             figs.append(
@@ -9910,7 +9972,8 @@ def main():
     # the frontispiece renderer reads D.derived.frontispiece - it
     # belongs in DERIVED, not at document level beside why_heat,
     # which is a static constant and reads D.why_heat.
-    fp = derive_frontispiece(feeds)
+    fp = derive_frontispiece(feeds, locals().get("hcs"),
+                             derived.get("tightest_hour"))
     if fp:
         derived["frontispiece"] = fp
 
