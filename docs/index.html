@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.68.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.69.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -262,6 +262,20 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .iofoot{font-family:'IBM Plex Mono',monospace;font-size:.76rem;color:var(--muted);margin-top:8px}
 .iofoot b{color:var(--green)}
 .note{font-size:.8rem;color:var(--faint);margin-top:12px}
+.archfig{margin:18px 0 4px}
+.archfig img{display:block;border:1px solid var(--line);border-radius:4px;
+  background:#fff}
+/* the floating jump buttons sit over the page, so the footer needs
+   room or they cover the version stamp at the very bottom */
+footer{padding-bottom:86px}
+#jumpNav{position:fixed;right:18px;bottom:18px;z-index:40;display:flex;
+  flex-direction:column;gap:8px}
+#jumpNav button{font:inherit;font-size:.78rem;font-family:'IBM Plex Mono',monospace;
+  padding:.42rem .8rem;border:1px solid var(--green);border-radius:4px;
+  background:rgba(12,18,16,.92);color:var(--green);cursor:pointer;
+  backdrop-filter:blur(3px)}
+#jumpNav button:hover{background:var(--green);color:#0C1210}
+@media (max-width:640px){#jumpNav{right:10px;bottom:10px}}
 .pngbtn{margin-top:10px;padding:.3rem .8rem;font-family:'IBM Plex Mono',monospace;
   font-size:.76rem;background:transparent;color:var(--muted);
   border:1px solid var(--line);border-radius:3px;cursor:pointer}
@@ -672,6 +686,12 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     </div>
     <div id="gridChart" class="chart"></div>
     <div class="legend" id="gridLegend"></div>
+    <p class="note" id="gridAxisNote"><b>Two axes.</b> The filled band
+      is total building heat delivered, read against the LEFT axis in
+      GWh. The heat-pump lines are the electricity that would draw,
+      read against the RIGHT axis - a different quantity in different
+      units, which is the point: the heat is large and the electricity
+      to deliver it is small, and how small depends on the route.</p>
     <div id="gridPanel">The grid layer arrives with a coming build. The
       binding-hour computation runs and is logged today; it is not
       published until the three views below it are built.</div>
@@ -883,7 +903,43 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     regimes, one island.</p>
 </section>
 
+<section id="archetypes" aria-labelledby="arch-h">
+  <h3 id="arch-h" style="font-family:'Lato',sans-serif">Geothermal
+    archetypes</h3>
+  <div class="panelbox">
+    <p style="max-width:720px">Geothermal is not one technology. What
+    this site prices is the left-hand pair: heat and cooling from the
+    shallow subsurface, and heat from the deeper aquifers, both
+    delivered through a heat pump and both able to STORE as well as
+    supply. Power generation needs temperatures the island does not
+    have at drillable depth, which is why it appears here only to be
+    set aside.</p>
+    <figure class="archfig">
+      <img src="geothermal-archetypes.png" width="100%" loading="lazy"
+           alt="Cross-section of geothermal archetypes: shallow
+                heating, cooling and storage from -5 to 80 degrees;
+                deep heating and storage from 50 to 150 degrees; and
+                deep power and storage from 130 to 180 degrees, with
+                source temperatures by depth">
+      <figcaption class="note">Source temperature rises with depth,
+      and with it what the resource can do. The shallow class runs on
+      ground at 10&ndash;17&nbsp;&deg;C and makes useful heat of it
+      with a heat pump; intermediate depths reach above
+      25&nbsp;&deg;C and then 60&nbsp;&deg;C; power needs granite
+      above 130&nbsp;&deg;C. After Todd et al. 2026.</figcaption>
+    </figure>
+  </div>
+</section>
+
 </main>
+
+<!-- FLOATING JUMP NAV. The page is long and the argument starts at the
+     top; a reader deep in panel 6 should not have to scroll back
+     through five panels to re-read the six figures or panel 1. -->
+<nav id="jumpNav" aria-label="Jump to">
+  <button type="button" data-jump="front">&uarr; The case</button>
+  <button type="button" data-jump="hero">&uarr; The starting point</button>
+</nav>
 
 <footer>
   <div class="wrap">
@@ -2999,6 +3055,19 @@ function heroCards(h, HIST){
       ];
       const TK2=[['purchased_gwh','down'],['indigenous_pct','up'],
         ['bill_eur_m','down'],['emissions_kt','down']];
+      // PANEL 1'S FIGURES, CAPTURED FOR THE FRONTISPIECE. The
+      // frontispiece is supposed to restate the panels; its opening
+      // figure was computing its own trailing year in the pipeline
+      // while this one is aggregated in the browser from the history
+      // block, so the two could never agree. Store what panel 1
+      // actually shows, keyed by jurisdiction and window, and let the
+      // frontispiece quote it rather than recompute it.
+      HEROV[state] = {win: WIN, twh: wv.purchased / 1000,
+                      bill_e: wv.bill_e, bill_g: wv.bill_g,
+                      heat_twh: S ? S.heat / 1000 : null,
+                      bill_heat_e: S ? S.bh : null,
+                      bill_heat_g: S ? S.bhg : null};
+      if (typeof frontispiece === "function") frontispiece(FRONTD);
       el('heroCards').innerHTML = cards2.map((c,i)=>
         '<div class="hstat"><div class="hval">'+c[0]+'</div>'+
         '<div class="hlab">'+c[1]+'</div>'+
@@ -3350,6 +3419,12 @@ document.querySelectorAll("[data-vfmjur]").forEach(b=>{
 });
 {const pb=document.getElementById("pngBtn");
  if(pb && pb.addEventListener) pb.addEventListener("click", panel2Png);}
+document.querySelectorAll("[data-jump]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    const t = document.getElementById(b.dataset.jump);
+    if(t) t.scrollIntoView({behavior:"smooth", block:"start"});
+  });
+});
 document.querySelectorAll("[data-frontjur]").forEach(b=>{
   b.addEventListener("click", ()=>{
     FRONTJUR = b.dataset.frontjur;
@@ -4186,6 +4261,8 @@ function panel2Png(){
 // this moves with it. The jurisdiction toggle is its own - it sits
 // above the panels and cannot borrow one of theirs.
 let FRONTJUR = "roi", FRONTD = null;
+// panel 1's window figures, by jurisdiction, filled in as it renders
+const HEROV = {};
 const FRONT_TO = {why:"Why heat?", vfm:"the value-for-money panel",
                   cooling:"cooling, and what heat costs",
                   grid:"the grid panel"};
@@ -4197,7 +4274,28 @@ function frontispiece(f){
     return;
   }
   const cur = f.jur[FRONTJUR];
-  box.innerHTML = '<div class="fgrid">' + cur.figures.map(g =>
+  // Figure 1 is panel 1's own number when panel 1 has drawn it - the
+  // frontispiece RESTATES, it does not recompute. The payload figure
+  // is the fallback for the first paint, before panel 1 has run.
+  const hv = HEROV[FRONTJUR];
+  const figs = cur.figures.map(g => {
+    if (g.n !== 1 || !hv || !hv.twh) return g;
+    const sym = FRONTJUR === "ni" ? "\u00a3" : "\u20ac";
+    const bill = FRONTJUR === "ni" ? hv.bill_g : hv.bill_e;
+    return Object.assign({}, g, {
+      v: sym + (bill / 1000).toFixed(1) + "bn",
+      unit: "on " + hv.twh.toFixed(1) + " TWh",
+      body: "Heat and cooling bought over the last twelve months, "
+        + "the same window and the same figures as the panel below"
+        + (hv.heat_twh ? " - heat alone is " + hv.heat_twh.toFixed(1)
+             + " TWh at " + sym
+             + ((FRONTJUR === "ni" ? hv.bill_heat_g : hv.bill_heat_e)
+                / 1000).toFixed(1) + "bn" : "")
+        + ". Most of it is still combustion: oil, gas and peat burned "
+        + "in buildings."
+    });
+  });
+  box.innerHTML = '<div class="fgrid">' + figs.map(g =>
     '<div class="fig">'
     + '<div class="fnum">' + String(g.n).padStart(2,"0") + '</div>'
     + '<div class="fval">' + esc(String(g.v))
@@ -4300,7 +4398,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.68.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.69.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
