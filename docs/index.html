@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.70.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.71.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -265,6 +265,7 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .archfig{margin:18px 0 4px}
 .archfig img{display:block;border:1px solid var(--line);border-radius:4px;
   background:#fff}
+.archfig.imgfail figcaption::before{content:'[diagram not loaded \2014 geothermal_archetypes.png is missing from this deploy] ';color:var(--amber)}
 /* the floating jump buttons sit over the page, so the footer needs
    room or they cover the version stamp at the very bottom */
 footer{padding-bottom:86px}
@@ -908,14 +909,22 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     archetypes</h3>
   <div class="panelbox">
     <p style="max-width:720px">Geothermal is not one technology. What
-    this site prices is the left-hand pair: heat and cooling from the
-    shallow subsurface, and heat from the deeper aquifers, both
+    this site prices is the green box: heat and cooling from the
+    shallow subsurface, and heat from the intermediate aquifers, both
     delivered through a heat pump and both able to STORE as well as
     supply. Power generation needs temperatures the island does not
     have at drillable depth, which is why it appears here only to be
     set aside.</p>
     <figure class="archfig">
-      <img src="geothermal-archetypes.png" width="100%" loading="lazy"
+      <!-- FILENAME MATCHES THE SOURCE FILE EXACTLY, underscores and
+           all. It was renamed to hyphens once; uploading the original
+           then put the underscore name in the repo and every request
+           for the hyphenated one 404'd, which showed as a white box.
+           onerror leaves the caption visible so a missing image reads
+           as missing rather than as a blank panel. -->
+      <img src="geothermal_archetypes.png" width="100%" loading="lazy"
+           onerror="this.style.display='none';
+                    this.closest('figure').classList.add('imgfail');"
            alt="Cross-section of geothermal archetypes: shallow
                 heating, cooling and storage from -5 to 80 degrees;
                 deep heating and storage from 50 to 150 degrees; and
@@ -924,9 +933,9 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <figcaption class="note">Source temperature rises with depth,
       and with it what the resource can do. The shallow class runs on
       ground at 10&ndash;17&nbsp;&deg;C and makes useful heat of it
-      with a heat pump; intermediate depths reach above
-      25&nbsp;&deg;C and then 60&nbsp;&deg;C; power needs granite
-      above 130&nbsp;&deg;C. After Todd et al. 2026.</figcaption>
+      with a heat pump; the intermediate class reaches above
+      25&nbsp;&deg;C and then 60&nbsp;&deg;C, and supplies heat
+      directly; power needs granite above 130&nbsp;&deg;C. After Todd et al. 2026.</figcaption>
     </figure>
   </div>
 </section>
@@ -4399,7 +4408,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.70.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.71.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
