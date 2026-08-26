@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.56.0"
+PIPELINE_VERSION = "5.57.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6922,7 +6922,12 @@ def derive_frontispiece(feeds, hcs=None, th=None, he=None,
              "v": (f"{cy}{yr['spend_bn']:.1f}bn" if yr
                    else f"{heat:.1f} TWh"),
              "unit": (f"on {yr['twh']:.1f} TWh" if yr else ""),
-             "claim": f"Heat is the biggest thing {where} buys.",
+             # NOT "the biggest thing X buys": the Why heat footnote
+             # says heat RIVALS transport as the largest service and
+             # carries the smallest bill per unit delivered. The
+             # frontispiece must not overstate what the footnote says.
+             "claim": f"Heat rivals transport as the largest energy "
+                      f"service {where} buys.",
              "body": ("Delivered heat over the last twelve months and "
                       "what it cost at the gas-boiler price most of it "
                       f"is actually bought at, of which {comb:.0f}% is "
