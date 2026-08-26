@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.65.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.66.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -4079,13 +4079,20 @@ function panel2Png(){
   const src1 = el("costChart") && el("costChart").querySelector("svg");
   const src2 = el("volChart") && el("volChart").querySelector("svg");
   if(!src1){ return; }
-  const PAD = 28, GAP = 16, LEGH = 30, TITLEH = 58, FOOTH = 26;
+  const PAD = 28, GAP = 16, LEGH = 38, TITLEH = 70, FOOTH = 32;
+  // The charts are drawn for a panel the width of a browser window
+  // and then land in a slide at a third of that, where 11px axis type
+  // is unreadable. The clone's text is scaled up here rather than on
+  // screen, since the screen sizes are right for the screen.
+  const FS = 1.45;
   function tint(svg, isVol){
     let x = new XMLSerializer().serializeToString(svg);
     Object.keys(PNG_LIGHT).forEach(k=>{
       x = x.split(k).join(PNG_LIGHT[k]); });
     if(isVol){ Object.keys(PNG_VOL).forEach(k=>{
       x = x.split(k).join(PNG_VOL[k]); }); }
+    x = x.replace(/font-size="([\d.]+)"/g,
+      (m, n) => 'font-size="' + Math.round(+n * FS) + '"');
     // strip the outer <svg> wrapper - the parts are re-nested below
     return x.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
   }
@@ -4106,12 +4113,12 @@ function panel2Png(){
   function legendRow(items, y){
     let g = "", x = PAD;
     items.forEach(([name, col])=>{
-      g += '<rect x="'+x+'" y="'+(y-9)+'" width="11" height="11" rx="2" '
+      g += '<rect x="'+x+'" y="'+(y-11)+'" width="14" height="14" rx="2" '
          + 'fill="'+col+'"/>'
-         + '<text x="'+(x+16)+'" y="'+y+'" font-size="13" fill="#33403C" '
+         + '<text x="'+(x+20)+'" y="'+y+'" font-size="17" fill="#33403C" '
          + 'font-family="Lato, Helvetica, Arial, sans-serif">'
          + name.replace(/&/g,"&amp;")+'</text>';
-      x += 22 + name.length*7.1;
+      x += 28 + name.length*9.2;
     });
     return g;
   }
@@ -4119,10 +4126,10 @@ function panel2Png(){
   let out = '<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" '
     + 'height="'+H+'" viewBox="0 0 '+W+' '+H+'">'
     + '<rect width="'+W+'" height="'+H+'" fill="#ffffff"/>'
-    + '<text x="'+PAD+'" y="'+(PAD+20)+'" font-size="19" font-weight="700" '
+    + '<text x="'+PAD+'" y="'+(PAD+22)+'" font-size="26" font-weight="700" '
     + 'fill="#1A2320" font-family="Lato, Helvetica, Arial, sans-serif">'
     + 'What ' + where + ' heat costs</text>'
-    + '<text x="'+PAD+'" y="'+(PAD+42)+'" font-size="13" fill="#55635E" '
+    + '<text x="'+PAD+'" y="'+(PAD+48)+'" font-size="17" fill="#55635E" '
     + 'font-family="Lato, Helvetica, Arial, sans-serif">'
     + unit + ' per MWh of delivered heat \u00b7 ' + svc + ' \u00b7 '
     + basis + ' \u00b7 ' + CWIN + ' days</text>'
@@ -4136,7 +4143,7 @@ function panel2Png(){
     y += b2.h + LEGH - 8;
     out += legendRow(VOL_PARTS.map(v=>[v[1], PNG_VOL[v[2]] || v[2]]), y);
   }
-  out += '<text x="'+PAD+'" y="'+(H-PAD+4)+'" font-size="11" '
+  out += '<text x="'+PAD+'" y="'+(H-PAD+4)+'" font-size="14" '
     + 'fill="#6E7B78" font-family="IBM Plex Mono, monospace">'
     + 'causewaygt.com/irish-heatsplit \u00b7 '
     + new Date().toISOString().slice(0,10) + '</text></svg>';
@@ -4289,7 +4296,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.65.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.66.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
