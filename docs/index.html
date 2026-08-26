@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.60.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 5.62.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -3585,9 +3585,11 @@ function vfmTes(v){
            + 'dispatch-down payment is a transfer and is NOT priced; '
            + 'the resource saving is. Coincident fraction 15% '
            + '(siting \u00d7 hours \u00d7 dispatchability), Causeway '
-           + 'judgement\u2020; constraint energy derived at 0.43 TWh '
-           + 'pending the published constraint and curtailment '
-           + 'table; the stream DECAYS to zero over 25 years as '
+           + 'judgement\u2020; constraint energy 0.56 TWh, the 2025 '
+           + 'transmission-constraint volume from the series in '
+           + 'the grid panel above, which exceeds the fleet draw '
+           + 'so the draw is what binds; the stream DECAYS to '
+           + 'zero over 25 years as '
            + 'reinforcement erodes the constraint, and delivery '
            + 'risk sits inside the shortfall lever.</p>'
          : '')
@@ -4115,7 +4117,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.60.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 5.62.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
