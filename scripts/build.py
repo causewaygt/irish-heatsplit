@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.55.0"
+PIPELINE_VERSION = "5.56.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -6815,7 +6815,8 @@ def vfm_constraint_twh(year=None):
     return sum(ni["cons"][i] for i in idx) / 1000.0
 
 
-def derive_frontispiece(feeds, hcs=None, th=None, anchors=None):
+def derive_frontispiece(feeds, hcs=None, th=None, he=None,
+                        anchors=None):
     """
     Six figures that state the case, per jurisdiction.
 
@@ -6899,6 +6900,16 @@ def derive_frontispiece(feeds, hcs=None, th=None, anchors=None):
 
         yr = _year(j)
         thf = (th or {}).get("share_that_fits_pct") or {}
+        # emissions cut against oil, from the emissions panel's
+        # own per-route intensities - not recomputed here
+        cut = None
+        if he and he.get("routes"):
+            byk = {r["key"]: r["g_per_useful_kwh"]
+                   for r in he["routes"]}
+            oil = byk.get("oil_boiler")
+            net = byk.get("network") or byk.get("geothermal_network")
+            if oil and net is not None and oil > 0:
+                cut = 100.0 * (oil - net) / oil
         cy = "\u00a3" if cur == "GBP" else "\u20ac"
         where = "the Republic of Ireland" if j == "roi" \
             else "Northern Ireland"
@@ -6925,26 +6936,39 @@ def derive_frontispiece(feeds, hcs=None, th=None, anchors=None):
                       else f"vs {t['spf_counterfactual']}"),
              "claim": "Geothermal heat is cheaper than air-source "
                       "heat, not just cleaner.",
-             "body": ((f"Per MWh delivered over the same twelve months, "
-                       f"{cy}{yr['network']:.0f} against "
-                       f"{cy}{yr['ashp']:.0f}. " if yr else "")
-                      + f"Network seasonal performance of {t['spf']:.1f} "
-                      f"against {t['spf_counterfactual']} for a "
-                      "network-scale air-source energy centre - "
-                      f"{t['spf_gain']:.2f}x the heat per unit of "
-                      "electricity, from a source that does not cool "
+             # PENCE PER kWh, not currency per MWh: a bill is read in
+             # pence and the panel is arguing about bills. Same
+             # numbers, divided by ten.
+             "body": ((f"Per kWh delivered over the same twelve months, "
+                       f"geothermal heat {yr['network'] / 10:.1f}"
+                       + ("p" if cur == "GBP" else "c")
+                       + f" against {yr['ashp'] / 10:.1f}"
+                       + ("p" if cur == "GBP" else "c")
+                       + " for an air-source heat pump network. "
+                       if yr else "")
+                      + "Clean heat from a source that does not cool "
                       "when the weather does."),
              "to": "cost"},
-            {"n": 3, "v": f"{s['plant_mw']:.0f}", "unit": "MW",
-             "claim": "The scenario is a programme, not a pilot.",
-             "body": (f"{s['network_twh']:.2f} TWh of building heat on "
-                      f"networks - {s['network_pct_of_heat']:.1f}% of "
-                      "the total - over a ten-year build"
-                      + ("" if s.get("committed") else
-                         ", LENT to a jurisdiction that has set no "
-                         "target of its own")
-                      + "."),
-             "to": "vfm"},
+            # REPLACED the programme-scale figure, 26 Aug 2026. Scale
+            # is a claim about ambition; this is a claim about the
+            # thing being displaced, which is oil, and it is the
+            # emissions panel's own arithmetic.
+            {"n": 3,
+             "v": (f"{cut:.0f}%" if cut else "-"),
+             "unit": "less carbon than oil",
+             "claim": "Against the oil boilers most of "
+                      + ("Northern Ireland" if j == "ni"
+                         else "the Republic")
+                      + "'s heat still comes from.",
+             "body": (("Grams of CO2 per useful kWh, geothermal network "
+                       f"against an oil boiler, on today's grid. Oil is "
+                       f"{100 * a[j]['fuel_shares']['oil']:.0f}% of "
+                       + ("Northern Ireland" if j == "ni"
+                          else "the Republic")
+                       + "'s building heat today, and the gap closes "
+                       "further as the grid decarbonises.")
+                      if cut else "Arrives with the next build."),
+             "to": "cost"},
             # DISPLACES the cooling figure, 26 Aug 2026. The binding
             # hour is the harder test and the one a system operator
             # asks first. Ground routes clear it; air source does not,
@@ -6997,7 +7021,7 @@ def derive_frontispiece(feeds, hcs=None, th=None, anchors=None):
         figs.append(
             {"n": 6, "v": f"{p['bcr']:.2f}", "unit": "benefit-cost ratio",
              "claim": "Against an air-source-led network, the "
-                      "subsurface pays for itself.",
+                      "subsurface investment pays for itself.",
              "body": ("Over sixty years on "
                       + ("the Public Spending Code" if j == "roi"
                          else "Green Book")
@@ -9973,7 +9997,8 @@ def main():
     # belongs in DERIVED, not at document level beside why_heat,
     # which is a static constant and reads D.why_heat.
     fp = derive_frontispiece(feeds, locals().get("hcs"),
-                             derived.get("tightest_hour"))
+                             derived.get("tightest_hour"),
+                             derived.get("heat_emissions"))
     if fp:
         derived["frontispiece"] = fp
 
@@ -10048,6 +10073,19 @@ def main():
     # write and making the weekly tracker depend on the hourly store.
     grid_keys = [k for k in ("tightest_hour", "grid_views")
                  if derived.get(k)]
+    if derived.get("tightest_hour"):
+        # THE FRONTISPIECE IS BUILT TWICE ON PURPOSE. Its binding-hour
+        # figure needs derive_tightest_hour(), which runs in the hourly
+        # block BELOW the first build - so the first pass publishes the
+        # figure as pending and this one fills it in. Building it once,
+        # early, is what shipped "Arrives with the next build" on a
+        # panel whose data was sitting in the same payload.
+        fp2 = derive_frontispiece(feeds, locals().get("hcs"),
+                                  derived["tightest_hour"],
+                                  derived.get("heat_emissions"))
+        if fp2:
+            derived["frontispiece"] = fp2
+            log("frontispiece: rebuilt with the binding-hour figure")
     if grid_keys:
         DATA_PATH.write_text(json.dumps(doc, indent=1, sort_keys=True))
         log(f"wrote {DATA_PATH} again with the grid layer "
