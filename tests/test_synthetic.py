@@ -4599,14 +4599,22 @@ def test_frontispiece_restates_the_panels_and_never_leads_them():
         assert set(figs) == {1, 2, 3, 4, 5, 6}
         a = B.ANCHORS[j]
         heat = a["residential_heat_twh"] + a["services_heat_twh"]
-        assert figs[1]["v"] == f"{heat:.1f}"
+        # 1 and 2 come from panel 2's trailing year and need the cost
+        # series, which this call does not have - they fall back to
+        # the anchor and the SPF, and that fallback is what is pinned
+        # here. The series path is pinned in the front-end suite,
+        # where the fixture supplies rows.
+        assert figs[1]["v"] in (f"{heat:.1f} TWh",)
         assert figs[2]["v"] == f"{st['jur'][j]['spf']:.1f}"
         assert figs[3]["v"] == f"{sc['jur'][j]['plant_mw']:.0f}"
-        assert figs[4]["v"] == f"{ct['geo_saving_pct']:.1f}"
         assert figs[6]["v"] == f"{ph['jur'][j]['bcr']:.2f}"
+        # 4 is the binding-hour fit, which displaced the cooling
+        # figure - cooling is no longer one of the six
+        assert figs[4]["to"] == "grid"
+        assert "cooling" not in {f["to"] for f in figs.values()}
         # every figure points somewhere the reader can check it
         for f in figs.values():
-            assert f["to"] in {"why", "vfm", "cooling", "grid"}
+            assert f["to"] in {"why", "vfm", "cost", "grid"}
             assert f["claim"] and f["body"]
     roi5 = {f["n"]: f for f in fp["jur"]["roi"]["figures"]}[5]
     ni5 = {f["n"]: f for f in fp["jur"]["ni"]["figures"]}[5]
