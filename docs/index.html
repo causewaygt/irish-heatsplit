@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 6.3.1
+<!-- IRISH HEAT SPLIT - SITE_VERSION 6.3.2
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -2557,9 +2557,18 @@ function drawVol(rows, state, geom){
     if (seen[m] === undefined) seen[m] = i; });
   const months = Object.keys(seen);
   const mstep = Math.max(1, Math.ceil(months.length / 6));
+  // A window that opens on the last day or two of a month puts two
+  // month labels a pixel apart - "Jul 26" and "Aug 26" printed over
+  // each other as JulA2u6g 26. Drop a label that would collide with
+  // the one before it: the axis is for orientation, and a month with
+  // one day in the window does not need naming.
+  let lastLabelX = -1e9;
   months.forEach((m, k) => {
     if (k % mstep) return;
-    svg += '<text x="' + x(seen[m]) + '" y="' + (H - 6) + '" '
+    const lx = x(seen[m]);
+    if (lx - lastLabelX < 54) return;
+    lastLabelX = lx;
+    svg += '<text x="' + lx + '" y="' + (H - 6) + '" '
       + 'text-anchor="middle" font-size="11" fill="var(--muted)" '
       + 'font-family="IBM Plex Mono, monospace">' + monthLabel(m) + '</text>';
   });
@@ -2664,9 +2673,16 @@ function drawCost(){
     if (seen[m] === undefined) seen[m] = i; });
   const months = Object.keys(seen);
   const mstep = Math.max(1, Math.ceil(months.length / 6));
+  // same collision guard as the volume chart below it: a window that
+  // opens on the last day of a month printed two labels over each
+  // other as JulA2u6g 26
+  let lastLabelX = -1e9;
   months.forEach((m, k) => {
     if (k % mstep) return;
-    svg += '<text x="' + x(seen[m]) + '" y="' + (H - 6) + '" '
+    const lx = x(seen[m]);
+    if (lx - lastLabelX < 54) return;
+    lastLabelX = lx;
+    svg += '<text x="' + lx + '" y="' + (H - 6) + '" '
       + 'text-anchor="middle" font-size="11" fill="var(--muted)" '
       + 'font-family="IBM Plex Mono, monospace">' + monthLabel(m) + '</text>';
   });
@@ -4515,7 +4531,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 6.3.1 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 6.3.2 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
