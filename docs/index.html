@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 6.1.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 6.2.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -263,9 +263,11 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .iofoot b{color:var(--green)}
 .note{font-size:.8rem;color:var(--faint);margin-top:12px}
 .archfig{margin:18px 0 4px}
-.archfig{background:#fff;border-radius:6px;padding:14px}
-.archfig img{display:block;border:0;border-radius:2px}
-.archfig figcaption{color:#55635E}
+/* NO CARD. The export carries whatever background it carries -
+   the UK sibling shows the same file with no plate behind it
+   and it reads correctly. Caption is the page's own text. */
+.archfig img{display:block;border:0}
+.archfig figcaption{color:#fff}
 /* the export carries its own white artboard; no plate behind it,
    which is what made a failed load look like a design choice */
 .archfig.imgfail figcaption::before{content:'[diagram not loaded \2014 geothermal_archetypes.png is missing from this deploy] ';color:var(--amber)}
@@ -710,11 +712,15 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       <button data-ddjur="IE">REPUBLIC OF IRELAND</button>
     </div>
     <div id="ddChart"></div>
+    <button id="ddPngBtn" class="pngbtn" type="button">&darr; PNG of
+      this chart, on white</button>
     <p class="note" id="ddNote"></p>
     <h3 class="foldh">What that energy was worth
       <span class="sub">&mdash; at the prices of the hours it was actually
       spilled</span></h3>
     <div id="ddValue"></div>
+    <button id="ddValPngBtn" class="pngbtn" type="button">&darr; PNG of
+      this chart, on white</button>
     <p class="note" id="ddValueNote"></p>
     <h3 class="foldh">What it would take to use it
       <span class="sub">&mdash; two worked examples, sizing the load rather
@@ -782,10 +788,10 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <h3 class="foldh">The same fleets, calibrated
       <span class="sub">&mdash; share of each country&rsquo;s own
       buildings heat</span></h3>
-    <button id="geoPngBtn" class="pngbtn" type="button">&darr; PNG of
-      both charts, on white</button>
     <div id="geoCalib"></div>
     <p class="note" id="geoCalibNote"></p>
+    <button id="geoPngBtn" class="pngbtn" type="button">&darr; PNG of
+      both charts, on white</button>
     <details class="fold">
       <summary>What the bars price, and where the comparators come
         from</summary>
@@ -917,7 +923,7 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   <h3 id="arch-h" style="font-family:'Lato',sans-serif">Geothermal
     archetypes</h3>
   <div class="panelbox">
-    <p style="max-width:720px">Geothermal is not one technology. What
+    <p style="max-width:720px;color:#fff">Geothermal is not one technology. What
     this site prices is the green box: heat and cooling from the
     shallow subsurface, and heat from the intermediate aquifers, both
     delivered through a heat pump and both able to STORE as well as
@@ -3473,10 +3479,11 @@ document.querySelectorAll("[data-vfmjur]").forEach(b=>{
    file:"grid-"+(GVIEW||"view")+"-"+GJUR}));}
 {const gp=document.getElementById("geoPngBtn");
  if(gp && gp.addEventListener) gp.addEventListener("click", ()=>panel2Png({
-   id1:"geoTargets", id2:"geoHardware", btn:"geoPngBtn", noVolTint:true,
-   title:"Irish geothermal: targets and installed hardware",
-   subtitle:"where the island is against its own targets, and against "
-     + "the comparators",
+   // geoTargets is an HTML block, not an SVG chart - passing it as
+   // id1 meant the exporter found no svg and returned silently.
+   id1:"geoHardware", id2:"geoCalib", btn:"geoPngBtn", noVolTint:true,
+   title:"Irish geothermal: installed hardware and calibration",
+   subtitle:"against the European comparators",
    legend1:[], legend2:[], file:"geothermal-benchmarks-"+GEOJUR}));}
 {const pb=document.getElementById("pngBtn");
  if(pb && pb.addEventListener) pb.addEventListener("click", panel2Png);}
@@ -4468,7 +4475,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 6.1.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 6.2.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
