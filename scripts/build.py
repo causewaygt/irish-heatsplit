@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "5.58.0"
+PIPELINE_VERSION = "6.0.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -7030,9 +7030,11 @@ def derive_frontispiece(feeds, hcs=None, th=None, he=None,
             figs.append(
                 {"n": 5,
                  "v": (f"{dc['rejected_twh']:.1f}" if dc else "-"),
-                 "unit": "TWh rejected by data centres",
-                 "claim": "The Republic already makes more waste heat "
-                          "than its networks would need.",
+                 # SHORT unit. It carried the whole phrase and the
+                 # claim wrapped onto the same line as the number.
+                 "unit": "TWh rejected",
+                 "claim": "Data centres already reject more heat than "
+                          "the Republic's networks would need.",
                  "body": ((f"Growing to {COOL_DC_GROWTH[1]:.1f} TWh by "
                            f"{COOL_DC_GROWTH[2]}. Recovered, stored "
                            "and upgraded through geothermal networks, "
@@ -7040,10 +7042,7 @@ def derive_frontispiece(feeds, hcs=None, th=None, he=None,
                            f"about {homes / 1000:.0f},000 homes at "
                            f"{HOME_HEAT_MWH:.0f} MWh a year"
                            "\u2020. This is the whole prize, not a "
-                           "forecast of recovery: the value-for-money "
-                           "panel prices a far smaller coupled share, "
-                           "and prices it as capital avoided rather "
-                           "than heat delivered.")
+                           "forecast of recovery.")
                           if dc and homes else "Arrives with the next "
                           "build."),
                  "to": "cooling"})
@@ -7062,14 +7061,12 @@ def derive_frontispiece(feeds, hcs=None, th=None, he=None,
             {"n": 6, "v": f"{p['bcr']:.2f}", "unit": "benefit-cost ratio",
              "claim": "Against an air-source-led network, the "
                       "subsurface investment pays for itself.",
-             "body": ("Over sixty years on "
-                      + ("the Public Spending Code" if j == "roi"
+             "body": ("By "
+                      + ("Public Spending Code" if j == "roi"
                          else "Green Book")
                       + " conventions, after optimism bias on capital "
-                      "and a programme shortfall. Measured against an "
-                      "air-source network, not a gas boiler: an "
-                      "efficiency and capacity case, not a carbon "
-                      "one."
+                      "and a programme shortfall. Measured against "
+                      "air-source counterfactuals."
                       + (" Over a ten-year build extrapolated from "
                          "the government's own 2.7 TWh commitment for "
                          "2030 - a build starting now reaches 2.5 TWh "
@@ -9781,13 +9778,12 @@ def regenerate_panel6(path="docs/panel6.html"):
            + json.dumps(old, separators=(", ", ": "))
            + src[payload_m.end(2):])
 
-    banner = (
-        '<!-- panel6-banner --><div style="background:#8a5a00;color:'
-        '#fff;padding:.55rem 1rem;text-align:center;font-weight:600">'
-        'UNDER CONSTRUCTION &mdash; a working appraisal, published '
-        'while it is still being built. Figures move as streams are '
-        'added; the fold below records what is in the arithmetic and '
-        'what is not.</div><!-- /panel6-banner -->')
+    # BANNER REMOVED 26 Aug 2026 by decision - the appraisal stands
+    # without it and the method fold still records what is in the
+    # arithmetic and what is not. The markers stay so the generator
+    # keeps ownership of the slot: putting a banner back is a one-line
+    # change here, not an edit to the shipped page.
+    banner = "<!-- panel6-banner --><!-- /panel6-banner -->"
     if "<!-- panel6-banner -->" in src:
         src = _re.sub(r'<!-- panel6-banner -->.*?<!-- /panel6-banner -->',
                       lambda _m: banner, src, flags=_re.S)
