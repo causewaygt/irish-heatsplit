@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 6.2.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 6.3.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -701,6 +701,8 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       read against the RIGHT axis - a different quantity in different
       units, which is the point: the heat is large and the electricity
       to deliver it is small, and how small depends on the route.</p>
+    <button id="capPngBtn" class="pngbtn" type="button">&darr; PNG of
+      the capacity limits chart, on white</button>
     <div id="gridPanel">The grid layer arrives with a coming build. The
       binding-hour computation runs and is logged today; it is not
       published until the three views below it are built.</div>
@@ -3452,18 +3454,26 @@ document.querySelectorAll("[data-vfmjur]").forEach(b=>{
     if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD); }
   });
 });
+{const cb2=document.getElementById("capPngBtn");
+ if(cb2 && cb2.addEventListener) cb2.addEventListener("click", ()=>panel2Png({
+   id1:"gridPanel", id2:null, btn:"capPngBtn", legend1:[],
+   title:"What fits at the tightest hour",
+   subtitle:"all-island headroom against the what-if, by route",
+   file:"capacity-limits"}));}
 {const db=document.getElementById("ddPngBtn");
  if(db && db.addEventListener) db.addEventListener("click", ()=>panel2Png({
    id1:"ddChart", id2:null, btn:"ddPngBtn", legend1:[],
    title:"Wind that was thrown away",
-   subtitle:(DDJUR==="ni"?"Northern Ireland":"Republic of Ireland")
+   subtitle:(String(DDJUR).toUpperCase()==="NI"?"Northern Ireland"
+       :"Republic of Ireland")
      + " \u00b7 monthly, by reason, since 2021",
    file:"dispatch-down-"+DDJUR}));}
 {const dv=document.getElementById("ddValPngBtn");
  if(dv && dv.addEventListener) dv.addEventListener("click", ()=>panel2Png({
    id1:"ddValue", id2:null, btn:"ddValPngBtn", legend1:[],
    title:"What the spilled energy was worth",
-   subtitle:(DDJUR==="ni"?"Northern Ireland":"Republic of Ireland")
+   subtitle:(String(DDJUR).toUpperCase()==="NI"?"Northern Ireland"
+       :"Republic of Ireland")
      + " \u00b7 priced in the half-hours it was spilling",
    file:"dispatch-down-value-"+DDJUR}));}
 {const gb=document.getElementById("gridPngBtn");
@@ -4220,6 +4230,7 @@ const PNG_LIGHT = {
 };
 // the volume bands, re-chosen for white: same hue relationship, dark
 // enough to read. Space heating stays the heavier of the two.
+const PNG_ICON = "data:image/png;base64,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";
 const PNG_VOL = {"#8FA6A0":"#4E6B63", "#C9D6D0":"#9DB3AB"};
 
 // The one chart exporter. Panel 2 called it directly; panels 3 and
@@ -4228,11 +4239,16 @@ const PNG_VOL = {"#8FA6A0":"#4E6B63", "#C9D6D0":"#9DB3AB"};
 // scaling and the 2x canvas live.
 function panel2Png(opt){
   const O = opt || {};
-  const id1 = O.id1 || "costChart", id2 = O.id2 || "volChart";
+  // id2 === null means "one chart only". `||` treated that as
+  // absent and fell back to panel 2's volume chart, which is
+  // how the dispatch-down and grid exports came out with the
+  // heat-delivered chart stapled underneath.
+  const id1 = O.id1 || "costChart";
+  const id2 = ("id2" in O) ? O.id2 : "volChart";
   const src1 = el(id1) && el(id1).querySelector("svg");
   const src2 = id2 && el(id2) ? el(id2).querySelector("svg") : null;
   if(!src1){ return; }
-  const PAD = 28, GAP = 16, LEGH = 38, TITLEH = 70, FOOTH = 32;
+  const PAD = 28, GAP = 16, LEGH = 38, TITLEH = 70, FOOTH = 52;
   // The charts are drawn for a panel the width of a browser window
   // and then land in a slide at a third of that, where 11px axis type
   // is unreadable. The clone's text is scaled up here rather than on
@@ -4298,9 +4314,19 @@ function panel2Png(opt){
     out += legendRow(O.legend2
       || VOL_PARTS.map(v=>[v[1], PNG_VOL[v[2]] || v[2]]), y);
   }
-  out += '<text x="'+PAD+'" y="'+(H-PAD+4)+'" font-size="14" '
-    + 'fill="#6E7B78" font-family="IBM Plex Mono, monospace">'
-    + 'causewaygt.com/irish-heatsplit \u00b7 '
+  // Footer: the mark, the publication, and the licence - as the UK
+  // sibling carries. The icon is inlined as a data URI so the export
+  // needs no network fetch and works from a saved page.
+  out += '<image x="'+PAD+'" y="'+(H-PAD-30)+'" width="34" height="34" '
+    + 'href="'+PNG_ICON+'" xlink:href="'+PNG_ICON+'"/>'
+    + '<text x="'+(PAD+44)+'" y="'+(H-PAD-10)+'" font-size="15" '
+    + 'font-weight="700" fill="#20302B" '
+    + 'font-family="Lato, sans-serif">Irish Heat Split \u00b7 '
+    + 'Causeway Energies</text>'
+    + '<text x="'+(PAD+44)+'" y="'+(H-PAD+8)+'" font-size="12" '
+    + 'fill="#55635E" font-family="Lato, sans-serif">'
+    + 'Chart CC BY 4.0 \u00b7 Data: EirGrid/SONI, SEAI, DfE, SEMO, '
+    + 'Open-Meteo \u00b7 causewaygt.com/irish-heatsplit \u00b7 '
     + new Date().toISOString().slice(0,10) + '</text></svg>';
 
   const img = new Image();
@@ -4475,7 +4501,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 6.2.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 6.3.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
