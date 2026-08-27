@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 5.71.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 6.1.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -263,8 +263,11 @@ section > h2{font-family:'Lato',system-ui,sans-serif;font-size:24pt;
 .iofoot b{color:var(--green)}
 .note{font-size:.8rem;color:var(--faint);margin-top:12px}
 .archfig{margin:18px 0 4px}
-.archfig img{display:block;border:1px solid var(--line);border-radius:4px;
-  background:#fff}
+.archfig{background:#fff;border-radius:6px;padding:14px}
+.archfig img{display:block;border:0;border-radius:2px}
+.archfig figcaption{color:#55635E}
+/* the export carries its own white artboard; no plate behind it,
+   which is what made a failed load look like a design choice */
 .archfig.imgfail figcaption::before{content:'[diagram not loaded \2014 geothermal_archetypes.png is missing from this deploy] ';color:var(--amber)}
 /* the floating jump buttons sit over the page, so the footer needs
    room or they cover the version stamp at the very bottom */
@@ -493,7 +496,6 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 </g>
 </svg>
       <div class="btitle">IRISH HEAT <em class="msplit">SPLIT</em></div>
-      <div class="ucon">UNDER CONSTRUCTION</div>
     </div>
     <div class="sparkcol">
       <div class="spark" id="sparkBox">Loading the border&hellip;</div>
@@ -558,10 +560,12 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   </div>
   <div id="ioScale" class="ioscale"></div>
   <div id="ioBars"></div>
-  <p class="note" id="heroNote"></p>
   <details class="fold" id="heroMethod">
     <summary>How this is estimated, and why it is not metered</summary>
     <div class="foldbody">
+      <!-- the sourcing note that used to sit under the bars in fine
+           print - it is method, and it belongs in the method fold -->
+      <p class="note" id="heroNote" style="margin-top:0"></p>
       <p style="max-width:720px;margin-bottom:12px">Annual buildings-heat
         anchors – SEAI Energy in Ireland 2025 and National Energy Balance (ROI);
         DfE Energy in Northern Ireland and NISRA Continuous Household Survey
@@ -687,6 +691,8 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     </div>
     <div id="gridChart" class="chart"></div>
     <div class="legend" id="gridLegend"></div>
+    <button id="gridPngBtn" class="pngbtn" type="button">&darr; PNG of
+      this chart, on white</button>
     <p class="note" id="gridAxisNote"><b>Two axes.</b> The filled band
       is total building heat delivered, read against the LEFT axis in
       GWh. The heat-pump lines are the electricity that would draw,
@@ -776,6 +782,8 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
     <h3 class="foldh">The same fleets, calibrated
       <span class="sub">&mdash; share of each country&rsquo;s own
       buildings heat</span></h3>
+    <button id="geoPngBtn" class="pngbtn" type="button">&darr; PNG of
+      both charts, on white</button>
     <div id="geoCalib"></div>
     <p class="note" id="geoCalibNote"></p>
     <details class="fold">
@@ -789,15 +797,10 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
 <section id="vfm" aria-labelledby="vfm-h">
   <h2 id="vfm-h">6. Value for money &mdash; geothermal against an
     air-source-led network</h2>
-  <!-- UNCOVERED 23 Aug 2026, by decision, with the label below. The
-       appraisal is live while still being built; the fold records what
-       is in the arithmetic and what is not, and the label says so. -->
-  <div class="wipcover" style="border-style:solid;text-align:center">
-    <b>Under construction &mdash; a working appraisal</b>
-    <span>Published while it is still being built. Figures will move as
-    streams are added; the fold at the bottom of this panel records
-    what is in the arithmetic and what is not.</span>
-  </div>
+  <!-- The under-construction label was removed 26 Aug 2026 by
+       decision: the appraisal is complete enough to stand
+       without it. The method fold still records what is in
+       the arithmetic and what is not. -->
   <p class="scopeline">Not whether to build networks. Ireland has
     committed to that. Only what sits at the head of them.</p>
   <div class="panelbox">
@@ -860,7 +863,13 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
       delivered – and is therefore still fossil.</p>
     <div class="grid4" id="whyPies" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"></div>
   </div>
-  <p class="note" id="whyNote"></p>
+  <!-- the sourcing paragraph is long and it is method, not finding -
+       folded, like every other panel's method block -->
+  <details class="fold">
+    <summary>Where these figures come from</summary>
+    <div class="foldbody"><p class="note" id="whyNote"
+      style="margin-top:0"></p></div>
+  </details>
 </section>
 
 <section id="oil" aria-labelledby="oil-h">
@@ -3071,11 +3080,22 @@ function heroCards(h, HIST){
       // block, so the two could never agree. Store what panel 1
       // actually shows, keyed by jurisdiction and window, and let the
       // frontispiece quote it rather than recompute it.
-      HEROV[state] = {win: WIN, twh: wv.purchased / 1000,
-                      bill_e: wv.bill_e, bill_g: wv.bill_g,
-                      heat_twh: S ? S.heat / 1000 : null,
-                      bill_heat_e: S ? S.bh : null,
-                      bill_heat_g: S ? S.bhg : null};
+      // FOR EVERY JURISDICTION, not just the one panel 1 is showing.
+      // The hero defaults to ALL ISLAND, so keying only on the
+      // rendered state left the frontispiece with nothing for ROI or
+      // NI and it fell back to its own pipeline figures - which is
+      // the mismatch that started this. windowed() already takes a
+      // scope, so ask it for each.
+      ["roi", "ni"].forEach(function(sc){
+        const w = SUMN[WIN] > 0 ? windowed(SUMN[WIN], sc) : null;
+        if (!w) return;
+        const sp = w.split;
+        HEROV[sc] = {win: WIN, twh: w.purchased / 1000,
+                     bill_e: w.bill_e, bill_g: w.bill_g,
+                     heat_twh: sp ? sp.heat / 1000 : null,
+                     bill_heat_e: sp ? sp.bh : null,
+                     bill_heat_g: sp ? sp.bhg : null};
+      });
       if (typeof frontispiece === "function") frontispiece(FRONTD);
       el('heroCards').innerHTML = cards2.map((c,i)=>
         '<div class="hstat"><div class="hval">'+c[0]+'</div>'+
@@ -3426,6 +3446,38 @@ document.querySelectorAll("[data-vfmjur]").forEach(b=>{
     if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD); }
   });
 });
+{const db=document.getElementById("ddPngBtn");
+ if(db && db.addEventListener) db.addEventListener("click", ()=>panel2Png({
+   id1:"ddChart", id2:null, btn:"ddPngBtn", legend1:[],
+   title:"Wind that was thrown away",
+   subtitle:(DDJUR==="ni"?"Northern Ireland":"Republic of Ireland")
+     + " \u00b7 monthly, by reason, since 2021",
+   file:"dispatch-down-"+DDJUR}));}
+{const dv=document.getElementById("ddValPngBtn");
+ if(dv && dv.addEventListener) dv.addEventListener("click", ()=>panel2Png({
+   id1:"ddValue", id2:null, btn:"ddValPngBtn", legend1:[],
+   title:"What the spilled energy was worth",
+   subtitle:(DDJUR==="ni"?"Northern Ireland":"Republic of Ireland")
+     + " \u00b7 priced in the half-hours it was spilling",
+   file:"dispatch-down-value-"+DDJUR}));}
+{const gb=document.getElementById("gridPngBtn");
+ if(gb && gb.addEventListener) gb.addEventListener("click", ()=>panel2Png({
+   id1:"gridChart", id2:null, btn:"gridPngBtn",
+   title:(GJUR==="ni"?"Northern Ireland":"The Republic of Ireland")
+     + ": what the 20% what-if does to the grid",
+   subtitle:"heat delivered on the left axis, heat-pump electricity "
+     + "on the right \u00b7 " + (GVIEW||"hourly") + " view",
+   legend1:[["Building heat delivered","#8FA6A0"],
+            ["Air source","#4FA3C7"],["Ground source","#8E7CC3"],
+            ["Geothermal network","#3AAA35"]],
+   file:"grid-"+(GVIEW||"view")+"-"+GJUR}));}
+{const gp=document.getElementById("geoPngBtn");
+ if(gp && gp.addEventListener) gp.addEventListener("click", ()=>panel2Png({
+   id1:"geoTargets", id2:"geoHardware", btn:"geoPngBtn", noVolTint:true,
+   title:"Irish geothermal: targets and installed hardware",
+   subtitle:"where the island is against its own targets, and against "
+     + "the comparators",
+   legend1:[], legend2:[], file:"geothermal-benchmarks-"+GEOJUR}));}
 {const pb=document.getElementById("pngBtn");
  if(pb && pb.addEventListener) pb.addEventListener("click", panel2Png);}
 document.querySelectorAll("[data-jump]").forEach(b=>{
@@ -4163,9 +4215,15 @@ const PNG_LIGHT = {
 // enough to read. Space heating stays the heavier of the two.
 const PNG_VOL = {"#8FA6A0":"#4E6B63", "#C9D6D0":"#9DB3AB"};
 
-function panel2Png(){
-  const src1 = el("costChart") && el("costChart").querySelector("svg");
-  const src2 = el("volChart") && el("volChart").querySelector("svg");
+// The one chart exporter. Panel 2 called it directly; panels 3 and
+// 5 pass their own chart ids, title, subtitle, legend and filename
+// so there is a single place where the white artboard, the font
+// scaling and the 2x canvas live.
+function panel2Png(opt){
+  const O = opt || {};
+  const id1 = O.id1 || "costChart", id2 = O.id2 || "volChart";
+  const src1 = el(id1) && el(id1).querySelector("svg");
+  const src2 = id2 && el(id2) ? el(id2).querySelector("svg") : null;
   if(!src1){ return; }
   const PAD = 28, GAP = 16, LEGH = 38, TITLEH = 70, FOOTH = 32;
   // The charts are drawn for a panel the width of a browser window
@@ -4177,7 +4235,7 @@ function panel2Png(){
     let x = new XMLSerializer().serializeToString(svg);
     Object.keys(PNG_LIGHT).forEach(k=>{
       x = x.split(k).join(PNG_LIGHT[k]); });
-    if(isVol){ Object.keys(PNG_VOL).forEach(k=>{
+    if(isVol && !O.noVolTint){ Object.keys(PNG_VOL).forEach(k=>{
       x = x.split(k).join(PNG_VOL[k]); }); }
     x = x.replace(/font-size="([\d.]+)"/g,
       (m, n) => 'font-size="' + Math.round(+n * FS) + '"');
@@ -4216,20 +4274,22 @@ function panel2Png(){
     + '<rect width="'+W+'" height="'+H+'" fill="#ffffff"/>'
     + '<text x="'+PAD+'" y="'+(PAD+22)+'" font-size="26" font-weight="700" '
     + 'fill="#1A2320" font-family="Lato, Helvetica, Arial, sans-serif">'
-    + 'What ' + where + ' heat costs</text>'
+    + (O.title || ('What ' + where + ' heat costs')) + '</text>'
     + '<text x="'+PAD+'" y="'+(PAD+48)+'" font-size="17" fill="#55635E" '
     + 'font-family="Lato, Helvetica, Arial, sans-serif">'
-    + unit + ' per MWh of delivered heat \u00b7 ' + svc + ' \u00b7 '
-    + basis + ' \u00b7 ' + CWIN + ' days</text>'
+    + (O.subtitle || (unit + ' per MWh of delivered heat \u00b7 '
+       + svc + ' \u00b7 ' + basis + ' \u00b7 ' + CWIN + ' days'))
+    + '</text>'
     + '<g transform="translate('+PAD+','+y+')">' + tint(src1, false) + '</g>';
   y += b1.h + LEGH - 8;
-  out += legendRow(COST_ROUTES.map(r=>[r[1], r[2]]), y);
+  out += legendRow(O.legend1 || COST_ROUTES.map(r=>[r[1], r[2]]), y);
   if(src2){
     y += GAP;
     out += '<g transform="translate('+PAD+','+y+')">'
          + tint(src2, true) + '</g>';
     y += b2.h + LEGH - 8;
-    out += legendRow(VOL_PARTS.map(v=>[v[1], PNG_VOL[v[2]] || v[2]]), y);
+    out += legendRow(O.legend2
+      || VOL_PARTS.map(v=>[v[1], PNG_VOL[v[2]] || v[2]]), y);
   }
   out += '<text x="'+PAD+'" y="'+(H-PAD+4)+'" font-size="14" '
     + 'fill="#6E7B78" font-family="IBM Plex Mono, monospace">'
@@ -4250,15 +4310,15 @@ function panel2Png(){
     c.toBlob(function(b){
       const a = document.createElement("a");
       a.href = URL.createObjectURL(b);
-      a.download = "heat-cost-" + CJUR + "-" + CWIN + "d-"
-                 + new Date().toISOString().slice(0,10) + ".png";
+      a.download = (O.file || ("heat-cost-" + CJUR + "-" + CWIN + "d"))
+                 + "-" + new Date().toISOString().slice(0,10) + ".png";
       a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
     }, "image/png");
   };
   img.onerror = function(){
     URL.revokeObjectURL(url);
-    const btn = el("pngBtn");
+    const btn = el(O.btn || "pngBtn");
     if(btn) btn.textContent = "PNG export failed";
   };
   img.src = url;
@@ -4408,7 +4468,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 5.71.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 6.1.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
