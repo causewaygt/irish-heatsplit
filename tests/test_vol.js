@@ -489,8 +489,39 @@ ok(order[0] === "front",
    "the frontispiece is the first section on the page");
 ok(order.indexOf("grid") === order.indexOf("hero") + 2,
    "Panel 3 still sits two behind the hero");
-ok(order.indexOf("oil") === order.length - 1,
-   "the oil ticker has moved to the foot of the page");
+ok(order.indexOf("oil") > order.indexOf("footnotes"),
+   "the oil ticker sits under Footnotes at the foot of the page");
+ok(order.indexOf("archetypes") > order.indexOf("footnotes"),
+   "and so does the geothermal archetypes note");
+// THE IMAGE FILENAME MUST MATCH THE FILE SHIPPED. It was renamed to
+// hyphens once while the source file used underscores; uploading the
+// original then 404'd every request and the panel showed a white box
+// with no clue why. Pin the reference against the file on disk.
+{
+  const m = html.match(/<img src="(geothermal[^"]+\.png)"/);
+  ok(!!m, "the archetypes figure references an image");
+  ok(fs.existsSync(require("path").join(__dirname, "..", "docs", m[1])),
+     "and that image is actually in docs/, under exactly that name");
+  ok(/onerror=/.test(html),
+     "with a fallback so a missing image says so instead of "
+     + "rendering a blank white panel");
+  ok(/\.archfig\{background:#fff/.test(html),
+     "presented as a white figure card, because the diagram is "
+     + "authored on white and its own labels need it");
+}
+// PNG EXPORT IS ONE FUNCTION, three buttons. Panels 3 and 5 pass
+// their own charts and titles rather than carrying copies of the
+// artboard, font scaling and canvas code.
+{
+  ok(/id="pngBtn"/.test(html) && /id="gridPngBtn"/.test(html)
+     && /id="geoPngBtn"/.test(html),
+     "panels 2, 3 and 5 each offer a PNG button");
+  ok((html.match(/function panel2Png/g) || []).length === 1,
+     "and they share one exporter");
+  ok(/id1:"gridChart"/.test(html) && /id1:"geoTargets"/.test(html)
+     && /id2:"geoHardware"/.test(html),
+     "panel 3 exports its grid chart, panel 5 its two together");
+}
 ok(order.indexOf("why") < order.indexOf("oil"),
    "and sits beneath Why heat");
 ok(html.split("<section ").length === html.split("</section>").length,
@@ -1601,20 +1632,22 @@ ok(/against interest/.test(vm), "and the interest declaration");
 vfmPanel({});
 ok(/coming build/.test(DOM.vfmStages.textContent),
    "and it declines cleanly without the block");
-// THE PANEL IS LIVE ON THE PUBLIC PAGE, UNDER A LABEL - uncovered
-// 23 Aug 2026 by decision. These assertions are the INVERSE of the
-// cover checks that stood while the appraisal was half finished: the
-// label must say the work is unfinished, the containers must exist
-// for the renderer, and the daily payload must be exposed for the
-// lever widget. If the label ever comes off, that must be a decision
-// that edits this test, not an accident.
+// THE PANEL IS LIVE AND UNLABELLED. It went: covered, then live
+// under an under-construction label, then - 26 Aug 2026, by decision
+// - live with the label removed. These assertions have been inverted
+// twice with it, and that is the point: the label's state is a
+// DECISION, and changing it has to edit this test rather than happen
+// by accident. What survives every version is that the containers
+// exist, the payload is exposed, and the method fold still says what
+// is in the arithmetic and what is not.
 {
   const sec = html.slice(html.indexOf('<section id="vfm"'),
-                         html.indexOf('<section id="why"'));
-  ok(/wipcover/.test(sec), "Panel 6 carries the under-construction label");
-  ok(/working appraisal/i.test(sec), "and calls itself a working appraisal");
-  ok(/id="vfmStages"/.test(sec) && /id="vfmStreams"/.test(sec)
-     && /id="vfmTes"/.test(sec) && /id="vfmMethod"/.test(sec),
+                         html.indexOf('<section id="footnotes"'));
+  ok(!/wipcover/.test(sec),
+     "Panel 6 no longer carries the under-construction label");
+  ok(!/UNDER CONSTRUCTION/i.test(html),
+     "and neither does the masthead");
+  ok(/id="vfmStages"/.test(sec) && /id="vfmMethod"/.test(sec),
      "its containers are present, so the renderer runs");
   ok(/data-vfmjur="roi"/.test(sec) && /data-vfmjur="ni"/.test(sec),
      "with both jurisdiction toggles");
@@ -1622,6 +1655,9 @@ ok(/coming build/.test(DOM.vfmStages.textContent),
      "and the daily payload is exposed for the lever widget");
   ok(html.indexOf("<!-- panel6-widget -->") !== -1,
      "which is injected by the generator, not by hand");
+  ok(/what is still missing/.test(sec),
+     "and the method fold still declares what is not in the "
+     + "arithmetic, which is what the label used to do");
 }
 
 // THE WIDGET MOUNTS. The lever widget crashed on its own init for two
@@ -1741,20 +1777,28 @@ ok(/coming build/.test(DOM.vfmStages.textContent),
 // payload and the page showed its fallback for a day.
 ["frontGrid"].forEach(k=>{DOM[k]=null; el(k);});
 __page.FRONTJUR = "roi";
-frontispiece({"jur": {"roi": {"currency": "EUR", "figures": [{"n": 1, "v": "\u20ac2.7bn", "unit": "on 33.6 TWh", "claim": "Heat is the biggest thing the Republic of Ireland buys.", "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.", "to": "cost"}, {"n": 2, "v": "33%", "unit": "cheaper heat", "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.", "body": "Per MWh delivered over the same twelve months, \u20ac44 against \u20ac66. Network seasonal performance of 4.0 against 2.8 for a network-scale air-source energy centre - 1.43x the heat per unit of electricity, from a source that does not cool when the weather does.", "to": "cost"}, {"n": 3, "v": "1250", "unit": "MW", "claim": "The scenario is a programme, not a pilot.", "body": "5.00 TWh of building heat on networks - 19.7% of the total - over a ten-year build.", "to": "vfm"}, {"n": 4, "v": "103%", "unit": "fits at the tightest hour", "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.", "body": "All of the Republic of Ireland's building heat, electrified through networks, against the headroom in the all-island block at the tightest hour observed - there is no separate northern ceiling, because there is one dispatch. Ground source alone reaches 96%, air source 78%.", "to": "grid"}, {"n": 5, "v": "2.7", "unit": "TWh by 2030", "claim": "The Republic has committed. The gap is delivery, not ambition.", "body": "The Climate Action Plan milestone. The question this site asks is not whether to build networks but what sits at the head of them - and that is decided scheme by scheme, as each one is designed.", "to": "vfm"}, {"n": 6, "v": "1.57", "unit": "benefit-cost ratio", "claim": "Against an air-source-led network, the subsurface pays for itself.", "body": "Over sixty years on the Public Spending Code conventions, after optimism bias on capital and a programme shortfall. Measured against an air-source network, not a gas boiler: an efficiency and capacity case, not a carbon one.", "to": "vfm"}]}, "ni": {"currency": "GBP", "figures": [{"n": 1, "v": "\u00a31.1bn", "unit": "on 14.6 TWh", "claim": "Heat is the biggest thing Northern Ireland buys.", "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.", "to": "cost"}, {"n": 2, "v": "32%", "unit": "cheaper heat", "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.", "body": "Per MWh delivered over the same twelve months, \u00a341 against \u00a360. Network seasonal performance of 5.0 against 2.8 for a network-scale air-source energy centre - 1.79x the heat per unit of electricity, from a source that does not cool when the weather does.", "to": "cost"}, {"n": 3, "v": "538", "unit": "MW", "claim": "The scenario is a programme, not a pilot.", "body": "2.15 TWh of building heat on networks - 19.7% of the total - over a ten-year build, LENT to a jurisdiction that has set no target of its own.", "to": "vfm"}, {"n": 4, "v": "103%", "unit": "fits at the tightest hour", "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.", "body": "All of Northern Ireland's building heat, electrified through networks, against the headroom in the all-island block at the tightest hour observed - there is no separate northern ceiling, because there is one dispatch. Ground source alone reaches 96%, air source 78%.", "to": "grid"}, {"n": 5, "v": "22.0", "unit": "% of wind spilled", "claim": "Northern Ireland throws away wind it cannot move.", "body": "In 2025, 85% of it transmission constraint - wind that cannot leave where it is generated, against roughly half that share in the Republic. A heat load sited inside the constraint absorbs it.", "to": "grid"}, {"n": 6, "v": "1.93", "unit": "benefit-cost ratio", "claim": "Against an air-source-led network, the subsurface pays for itself.", "body": "Over sixty years on Green Book conventions, after optimism bias on capital and a programme shortfall. Measured against an air-source network, not a gas boiler: an efficiency and capacity case, not a carbon one.", "to": "vfm"}]}}});
+frontispiece({"jur": {"roi": {"currency": "EUR", "figures": [{"n": 1, "v": "\u20ac2.7bn", "unit": "on 33.6 TWh", "claim": "Heat rivals transport as the largest energy service the Republic of Ireland buys.", "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.", "to": "cost"}, {"n": 2, "v": "50%", "unit": "cheaper heat", "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.", "body": "Per kWh delivered over the same twelve months, geothermal heat 6.6c against 13.3c for an air-source heat pump network. Clean heat from a source that does not cool when the weather does.", "to": "cost"}, {"n": 3, "v": "84%", "unit": "less carbon than oil", "claim": "Against the oil boilers most of the Republic's heat still comes from.", "body": "Grams of CO2 per useful kWh, geothermal network against an oil boiler, on today's grid. Oil is 56% of the Republic of Ireland's building heat today, and the gap closes further as the grid decarbonises.", "to": "cost"}, {"n": 4, "v": "211%", "unit": "fits at the tightest hour", "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.", "body": "All of the Republic of Ireland's building heat, electrified through networks, against the headroom in the all-island block at the tightest hour observed - there is no separate northern ceiling, because there is one dispatch. Ground source alone reaches 103%, air source 70%.", "to": "grid"}, {"n": 5, "v": "6.4", "unit": "TWh rejected by data centres", "claim": "The Republic already makes more waste heat than its networks would need.", "body": "Growing to 14.6 TWh by 2034. Recovered, stored and upgraded through geothermal networks, today's rejection alone is the heat of about 533,000 homes at 12 MWh a year\u2020. This is the whole prize, not a forecast of recovery: the value-for-money panel prices a far smaller coupled share, and prices it as capital avoided rather than heat delivered.", "to": "cooling"}, {"n": 6, "v": "1.57", "unit": "benefit-cost ratio", "claim": "Against an air-source-led network, the subsurface investment pays for itself.", "body": "Over sixty years on the Public Spending Code conventions, after optimism bias on capital and a programme shortfall. Measured against an air-source network, not a gas boiler: an efficiency and capacity case, not a carbon one. Over a ten-year build extrapolated from the government's own 2.7 TWh commitment for 2030 - a build starting now reaches 2.5 TWh by then, most of the way to it.", "to": "vfm"}]}, "ni": {"currency": "GBP", "figures": [{"n": 1, "v": "\u00a31.1bn", "unit": "on 14.6 TWh", "claim": "Heat rivals transport as the largest energy service Northern Ireland buys.", "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.", "to": "cost"}, {"n": 2, "v": "55%", "unit": "cheaper heat", "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.", "body": "Per kWh delivered over the same twelve months, geothermal heat 4.9p against 10.8p for an air-source heat pump network. Clean heat from a source that does not cool when the weather does.", "to": "cost"}, {"n": 3, "v": "84%", "unit": "less carbon than oil", "claim": "Against the oil boilers most of Northern Ireland's heat still comes from.", "body": "Grams of CO2 per useful kWh, geothermal network against an oil boiler, on today's grid. Oil is 62% of Northern Ireland's building heat today, and the gap closes further as the grid decarbonises.", "to": "cost"}, {"n": 4, "v": "211%", "unit": "fits at the tightest hour", "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.", "body": "All of Northern Ireland's building heat, electrified through networks, against the headroom in the all-island block at the tightest hour observed - there is no separate northern ceiling, because there is one dispatch. Ground source alone reaches 103%, air source 70%.", "to": "grid"}, {"n": 5, "v": "22.0", "unit": "% of wind spilled", "claim": "Northern Ireland throws away wind it cannot move.", "body": "In 2025, 85% of it transmission constraint - wind that cannot leave where it is generated, against roughly half that share in the Republic. A heat load sited inside the constraint absorbs it.", "to": "grid"}, {"n": 6, "v": "1.93", "unit": "benefit-cost ratio", "claim": "Against an air-source-led network, the subsurface investment pays for itself.", "body": "Over sixty years on Green Book conventions, after optimism bias on capital and a programme shortfall. Measured against an air-source network, not a gas boiler: an efficiency and capacity case, not a carbon one.", "to": "vfm"}]}}});
 {
   const fg = DOM.frontGrid.innerHTML;
   ok(/class="fig"/.test(fg), "the frontispiece renders its figures");
   ok((fg.match(/class="fig"/g)||[]).length === 6, "six of them");
   ok(/1\.57/.test(fg), "carrying the ROI ratio from the payload");
-  ok(/2\.7/.test(fg) && /2030/.test(fg),
-     "and the delivery milestone, which is ROI's fifth figure");
+  ok(/rejected by data centres/.test(fg),
+     "ROI's fifth figure is the data-centre waste heat");
+  ok(/not a forecast of recovery/.test(fg),
+     "stated as the prize, with the appraisal's narrower claim named");
   ok(/bn/.test(fg) && /TWh/.test(fg),
      "figure 1 is spend on volume, both from panel 2's trailing year");
   ok(/cheaper heat/.test(fg),
      "figure 2 is the price gap against air source");
   ok(/fits at the tightest hour/.test(fg),
      "figure 4 is the binding-hour fit, which displaced cooling");
+  ok(/less carbon than oil/.test(fg),
+     "figure 3 is the emissions cut, which displaced programme scale");
+  ok(/per kWh delivered/i.test(fg) && /[\d.]+[pc] against/.test(fg),
+     "figure 2 quotes pence per kWh, which is how a bill reads");
+  ok(!/Arrives with the next build/.test(fg),
+     "and no figure is left pending when the payload is complete");
   ok(!/One asset heats and cools/.test(fg),
      "and the cooling figure is gone from the six");
   ok(!/undefined|NaN/.test(fg), "with no undefined or NaN anywhere");
@@ -1763,7 +1807,7 @@ frontispiece({"jur": {"roi": {"currency": "EUR", "figures": [{"n": 1, "v": "\u20
   ok(/href="#vfm"/.test(fg) && /href="#cost"/.test(fg),
      "ROI points at the panels it restates");
   __page.FRONTJUR = "ni";
-  frontispiece({"jur": {"roi": {"currency": "EUR", "figures": [{"n": 1, "v": "\u20ac2.7bn", "unit": "on 33.6 TWh", "claim": "Heat is the biggest thing the Republic of Ireland buys.", "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.", "to": "cost"}, {"n": 2, "v": "33%", "unit": "cheaper heat", "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.", "body": "Per MWh delivered over the same twelve months, \u20ac44 against \u20ac66. Network seasonal performance of 4.0 against 2.8 for a network-scale air-source energy centre - 1.43x the heat per unit of electricity, from a source that does not cool when the weather does.", "to": "cost"}, {"n": 3, "v": "1250", "unit": "MW", "claim": "The scenario is a programme, not a pilot.", "body": "5.00 TWh of building heat on networks - 19.7% of the total - over a ten-year build.", "to": "vfm"}, {"n": 4, "v": "103%", "unit": "fits at the tightest hour", "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.", "body": "All of the Republic of Ireland's building heat, electrified through networks, against the headroom in the all-island block at the tightest hour observed - there is no separate northern ceiling, because there is one dispatch. Ground source alone reaches 96%, air source 78%.", "to": "grid"}, {"n": 5, "v": "2.7", "unit": "TWh by 2030", "claim": "The Republic has committed. The gap is delivery, not ambition.", "body": "The Climate Action Plan milestone. The question this site asks is not whether to build networks but what sits at the head of them - and that is decided scheme by scheme, as each one is designed.", "to": "vfm"}, {"n": 6, "v": "1.57", "unit": "benefit-cost ratio", "claim": "Against an air-source-led network, the subsurface pays for itself.", "body": "Over sixty years on the Public Spending Code conventions, after optimism bias on capital and a programme shortfall. Measured against an air-source network, not a gas boiler: an efficiency and capacity case, not a carbon one.", "to": "vfm"}]}, "ni": {"currency": "GBP", "figures": [{"n": 1, "v": "\u00a31.1bn", "unit": "on 14.6 TWh", "claim": "Heat is the biggest thing Northern Ireland buys.", "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.", "to": "cost"}, {"n": 2, "v": "32%", "unit": "cheaper heat", "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.", "body": "Per MWh delivered over the same twelve months, \u00a341 against \u00a360. Network seasonal performance of 5.0 against 2.8 for a network-scale air-source energy centre - 1.79x the heat per unit of electricity, from a source that does not cool when the weather does.", "to": "cost"}, {"n": 3, "v": "538", "unit": "MW", "claim": "The scenario is a programme, not a pilot.", "body": "2.15 TWh of building heat on networks - 19.7% of the total - over a ten-year build, LENT to a jurisdiction that has set no target of its own.", "to": "vfm"}, {"n": 4, "v": "103%", "unit": "fits at the tightest hour", "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.", "body": "All of Northern Ireland's building heat, electrified through networks, against the headroom in the all-island block at the tightest hour observed - there is no separate northern ceiling, because there is one dispatch. Ground source alone reaches 96%, air source 78%.", "to": "grid"}, {"n": 5, "v": "22.0", "unit": "% of wind spilled", "claim": "Northern Ireland throws away wind it cannot move.", "body": "In 2025, 85% of it transmission constraint - wind that cannot leave where it is generated, against roughly half that share in the Republic. A heat load sited inside the constraint absorbs it.", "to": "grid"}, {"n": 6, "v": "1.93", "unit": "benefit-cost ratio", "claim": "Against an air-source-led network, the subsurface pays for itself.", "body": "Over sixty years on Green Book conventions, after optimism bias on capital and a programme shortfall. Measured against an air-source network, not a gas boiler: an efficiency and capacity case, not a carbon one.", "to": "vfm"}]}}});
+  frontispiece({"jur": {"roi": {"currency": "EUR", "figures": [{"n": 1, "v": "\u20ac2.7bn", "unit": "on 33.6 TWh", "claim": "Heat rivals transport as the largest energy service the Republic of Ireland buys.", "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.", "to": "cost"}, {"n": 2, "v": "50%", "unit": "cheaper heat", "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.", "body": "Per kWh delivered over the same twelve months, geothermal heat 6.6c against 13.3c for an air-source heat pump network. Clean heat from a source that does not cool when the weather does.", "to": "cost"}, {"n": 3, "v": "84%", "unit": "less carbon than oil", "claim": "Against the oil boilers most of the Republic's heat still comes from.", "body": "Grams of CO2 per useful kWh, geothermal network against an oil boiler, on today's grid. Oil is 56% of the Republic of Ireland's building heat today, and the gap closes further as the grid decarbonises.", "to": "cost"}, {"n": 4, "v": "211%", "unit": "fits at the tightest hour", "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.", "body": "All of the Republic of Ireland's building heat, electrified through networks, against the headroom in the all-island block at the tightest hour observed - there is no separate northern ceiling, because there is one dispatch. Ground source alone reaches 103%, air source 70%.", "to": "grid"}, {"n": 5, "v": "6.4", "unit": "TWh rejected by data centres", "claim": "The Republic already makes more waste heat than its networks would need.", "body": "Growing to 14.6 TWh by 2034. Recovered, stored and upgraded through geothermal networks, today's rejection alone is the heat of about 533,000 homes at 12 MWh a year\u2020. This is the whole prize, not a forecast of recovery: the value-for-money panel prices a far smaller coupled share, and prices it as capital avoided rather than heat delivered.", "to": "cooling"}, {"n": 6, "v": "1.57", "unit": "benefit-cost ratio", "claim": "Against an air-source-led network, the subsurface investment pays for itself.", "body": "Over sixty years on the Public Spending Code conventions, after optimism bias on capital and a programme shortfall. Measured against an air-source network, not a gas boiler: an efficiency and capacity case, not a carbon one. Over a ten-year build extrapolated from the government's own 2.7 TWh commitment for 2030 - a build starting now reaches 2.5 TWh by then, most of the way to it.", "to": "vfm"}]}, "ni": {"currency": "GBP", "figures": [{"n": 1, "v": "\u00a31.1bn", "unit": "on 14.6 TWh", "claim": "Heat rivals transport as the largest energy service Northern Ireland buys.", "body": "Delivered heat over the last twelve months and what it cost at the gas-boiler price most of it is actually bought at, of which 88% is still combustion - oil, gas and peat burned in buildings.", "to": "cost"}, {"n": 2, "v": "55%", "unit": "cheaper heat", "claim": "Geothermal heat is cheaper than air-source heat, not just cleaner.", "body": "Per kWh delivered over the same twelve months, geothermal heat 4.9p against 10.8p for an air-source heat pump network. Clean heat from a source that does not cool when the weather does.", "to": "cost"}, {"n": 3, "v": "84%", "unit": "less carbon than oil", "claim": "Against the oil boilers most of Northern Ireland's heat still comes from.", "body": "Grams of CO2 per useful kWh, geothermal network against an oil boiler, on today's grid. Oil is 62% of Northern Ireland's building heat today, and the gap closes further as the grid decarbonises.", "to": "cost"}, {"n": 4, "v": "211%", "unit": "fits at the tightest hour", "claim": "At the tightest hour on record, the ground routes fit inside the grid. Air source does not.", "body": "All of Northern Ireland's building heat, electrified through networks, against the headroom in the all-island block at the tightest hour observed - there is no separate northern ceiling, because there is one dispatch. Ground source alone reaches 103%, air source 70%.", "to": "grid"}, {"n": 5, "v": "22.0", "unit": "% of wind spilled", "claim": "Northern Ireland throws away wind it cannot move.", "body": "In 2025, 85% of it transmission constraint - wind that cannot leave where it is generated, against roughly half that share in the Republic. A heat load sited inside the constraint absorbs it.", "to": "grid"}, {"n": 6, "v": "1.93", "unit": "benefit-cost ratio", "claim": "Against an air-source-led network, the subsurface investment pays for itself.", "body": "Over sixty years on Green Book conventions, after optimism bias on capital and a programme shortfall. Measured against an air-source network, not a gas boiler: an efficiency and capacity case, not a carbon one.", "to": "vfm"}]}}});
   const fn = DOM.frontGrid.innerHTML;
   ok(/1\.93/.test(fn), "the North's ratio on toggle");
   ok(/22\.0/.test(fn) && /wind/.test(fn),
@@ -1837,6 +1881,59 @@ const VOL_FIX = __page.VOL_PARTS;
   });
   ok(/heat-weighted mean/.test(DOM.costspan.textContent),
      "and the caption says the figures are heat-weighted");
+  // EACH LABEL SITS ON ITS OWN DASH. An earlier version tested the
+  // collision gap in the wrong direction and pushed every label up by
+  // 11px, stacking all five at the top of the chart while their ticks
+  // stayed at the line ends. Pin the pairing, not just the presence.
+  {
+    const ticks = [...svg.matchAll(/<line x1="926" x2="931" y1="([\d.]+)"/g)]
+      .map(m => +m[1]);
+    const labs = [...svg.matchAll(/<text x="934" y="([\d.]+)"/g)]
+      .map(m => +m[1] - 4);
+    ok(ticks.length === 5 && labs.length === 5,
+       "five dashes and five labels at the right-hand edge");
+    ok(labs.every((v, i) => Math.abs(v - ticks[i]) < 16),
+       "every label sits on or beside its own dash, not stacked away "
+       + "from it");
+    ok(ticks.every((t, i) => i === 0 || t >= ticks[i - 1]),
+       "and the dashes are in value order down the chart");
+  ok(/Two axes/.test(html) && /LEFT axis/.test(html)
+     && /RIGHT axis/.test(html),
+     "panel 3 says which series reads against which axis");
+  }
+  // THE PNG IS FOR SLIDES. The charts are drawn for a full-width
+  // panel; dropped into a deck at a third of that, 11px axis type is
+  // unreadable, so the export scales the clone's text. Pinned because
+  // the scaling lives in a string replace that a later edit to the
+  // chart's own font sizes would silently bypass.
+  {
+    const px = [...html.matchAll(/font-size="(\d+)"/g)].map(m => +m[1]);
+    ok(html.indexOf('font-size="([\\d.]+)"') !== -1
+       || /font-size="\(\[\\d\.\]\+\)"/.test(html),
+       "the export rescales every font-size in the cloned chart");
+    ok(/const FS = 1\.\d+;/.test(html),
+       "by a stated factor, not a magic number at each call site");
+    ok(html.indexOf("font-size=\"26\" font-weight=\"700\"") !== -1,
+       "and its own title is sized for a slide, not a browser panel");
+  }
+  // THE LEFT GUTTER HOLDS TWO THINGS. The volume chart's axis label is
+  // two lines and sits beside the same gutter the tick numbers are
+  // right-anchored in; at the old width the label's second line ran
+  // through "80". Pin the clearance, not the numbers themselves.
+  {
+    const v = DOM.volChart.innerHTML;
+    const lab = [...v.matchAll(/<tspan x="(\d+)"/g)].map(m => +m[1]);
+    const tick = [...v.matchAll(/<text x="(\d+)"[^>]*text-anchor="end"/g)]
+      .map(m => +m[1]);
+    ok(lab.length === 2 && tick.length,
+       "the volume chart labels its axis and its ticks");
+    // label runs from its x for two ~13px lines; ticks end at their x
+    // and run back about 18px for a two-digit number
+    const labRight = Math.max.apply(null, lab) + 15;
+    const tickLeft = Math.min.apply(null, tick) - 18;
+    ok(tickLeft - labRight >= 8,
+       "with clear air between the axis label and the tick numbers");
+  }
   // volume absent: fall back to the plain mean, and SAY so
   __page.COST = rows.map(r => ({day: r.day, roi: r.roi}));
   __page.drawCost();

@@ -4578,6 +4578,26 @@ def test_frontispiece_lands_where_the_renderer_reads_it():
     assert set(fp["jur"]) == {"roi", "ni"}
 
 
+def test_frontispiece_is_rebuilt_after_the_hourly_block():
+    """
+    The binding-hour figure needs derive_tightest_hour(), which runs
+    AFTER the first frontispiece build - so the block is built twice
+    and the second pass fills that figure in. Building it once shipped
+    "Arrives with the next build" on a panel whose data was sitting in
+    the same payload.
+    """
+    import build as B
+    src = (B.ROOT / "scripts" / "build.py").read_text()
+    first = src.index("fp = derive_frontispiece(")
+    second = src.index("fp2 = derive_frontispiece(")
+    hourly = src.index('derived["tightest_hour"] = derive_tightest_hour')
+    assert first < hourly < second, (
+        "the frontispiece must be rebuilt after the hourly block, or "
+        "its binding-hour figure is always pending")
+    # and the rebuild must reach the payload, not a local
+    assert 'derived["frontispiece"] = fp2' in src
+
+
 def test_frontispiece_restates_the_panels_and_never_leads_them():
     """
     The frontispiece is a SUMMARY, not a source. Every figure must
@@ -4606,22 +4626,58 @@ def test_frontispiece_restates_the_panels_and_never_leads_them():
         # where the fixture supplies rows.
         assert figs[1]["v"] in (f"{heat:.1f} TWh",)
         assert figs[2]["v"] == f"{st['jur'][j]['spf']:.1f}"
-        assert figs[3]["v"] == f"{sc['jur'][j]['plant_mw']:.0f}"
+        # 3 is the emissions cut against oil, which needs the
+        # emissions block; without it the figure is pending
+        # the emissions bars live INSIDE the cost section, so the
+        # link must point there - #emit is not an anchor on the page
+        assert figs[3]["to"] == "cost"
         assert figs[6]["v"] == f"{ph['jur'][j]['bcr']:.2f}"
         # 4 is the binding-hour fit, which displaced the cooling
         # figure - cooling is no longer one of the six
         assert figs[4]["to"] == "grid"
-        assert "cooling" not in {f["to"] for f in figs.values()}
         # every figure points somewhere the reader can check it
         for f in figs.values():
-            assert f["to"] in {"why", "vfm", "cost", "grid"}
+            assert f["to"] in {"why", "vfm", "cost", "grid",
+                               "cooling"}
             assert f["claim"] and f["body"]
     roi5 = {f["n"]: f for f in fp["jur"]["roi"]["figures"]}[5]
     ni5 = {f["n"]: f for f in fp["jur"]["ni"]["figures"]}[5]
-    assert "TWh by" in roi5["unit"] and roi5["to"] == "vfm"
+    assert roi5["to"] == "cooling"
     assert "wind" in ni5["unit"] and ni5["to"] == "grid"
+
+
+def test_frontispiece_waste_heat_is_the_prize_not_a_recovery_claim():
+    """
+    ROI's fifth figure states the WHOLE data-centre rejection - the
+    Overton figure, by decision - while panel 6 prices a far smaller
+    coupled share as capital avoided. That gap is legitimate only if
+    the figure says so on its face, so the disclaimer is pinned with
+    the number, and the homes conversion is pinned against its own
+    anchor because it once shipped three orders of magnitude out.
+    """
+    import build as B
+    ct = B.derive_cooling_tiers()
+    hr = B.derive_heat_rejected(ct)
+    fp = B.derive_frontispiece({}, None, None, None, hr)
+    f5 = {f["n"]: f for f in fp["jur"]["roi"]["figures"]}[5]
+    dc = next(r for r in hr["rows"] if r["key"] == "datacentres")
+    assert f5["v"] == f"{dc['rejected_twh']:.1f}"
+    homes = dc["rejected_twh"] * 1e6 / B.HOME_HEAT_MWH
+    assert 400_000 < homes < 700_000, homes
+    assert f"{homes / 1000:.0f},000 homes" in f5["body"]
+    # The claim must not read as a recovery forecast. The longer
+    # disclaimer naming what panel 6 actually prices - a small coupled
+    # share, as capital avoided - was trimmed by the author on 26 Aug
+    # 2026; this shorter form is what remains, and it is the whole of
+    # the safeguard now, so it is pinned rather than assumed.
+    assert "not a forecast of recovery" in f5["body"]
+    assert "whole prize" in f5["body"]
+    assert "\u2020" in f5["body"] or "†" in f5["body"]
+    # NI does not carry it - its fifth figure is the wasted wind
+    ni_f5 = {f["n"]: f for f in fp["jur"]["ni"]["figures"]}[5]
+    assert ni_f5["to"] == "grid" and "wind" in ni_f5["unit"]
     # the NI wind figure must name a COMPLETE year, not "current"
-    assert any(y in ni5["body"] for y in ("2023", "2024", "2025", "2026"))
+    assert any(y in ni_f5["body"] for y in ("2023", "2024", "2025", "2026"))
 
 
 def test_constrained_wind_is_ni_only_and_severable():
