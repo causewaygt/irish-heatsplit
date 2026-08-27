@@ -1,5 +1,5 @@
 {
- "built_utc": "2026-08-27T15:17:25+00:00",
+ "built_utc": "2026-08-27T15:32:07+00:00",
  "derived": {
   "anchor_epoch": 8,
   "calibration": {
@@ -64761,7 +64761,7 @@
     "2026-08-26",
     "2026-08-27"
    ],
-   "fetched_utc": "2026-08-27T15:16:15+00:00",
+   "fetched_utc": "2026-08-27T15:30:29+00:00",
    "flags": [
     "Verification pending that parsed values are the NI average series, not a council-area series"
    ],
@@ -66872,7 +66872,7 @@
     "2025-S2": 0.87073,
     "2026-S1": 0.8672
    },
-   "fetched_utc": "2026-08-27T15:15:55+00:00",
+   "fetched_utc": "2026-08-27T15:29:59+00:00",
    "gbp_eur": 1.16632,
    "latest_day": "2026-08-27",
    "rate_date": "2026-08-27",
@@ -67533,7 +67533,7 @@
      "2026-08-24": 109.48,
      "2026-08-25": 115.98,
      "2026-08-26": 117.37,
-     "2026-08-27": 115.73
+     "2026-08-27": 115.98
     },
     "ni": {
      "2026-06-19": 19.11,
@@ -67605,7 +67605,7 @@
      "2026-08-24": 18.84,
      "2026-08-25": 19.3,
      "2026-08-26": 20.17,
-     "2026-08-27": 19.04
+     "2026-08-27": 19.1
     },
     "roi": {
      "2026-06-19": 93.91,
@@ -67677,10 +67677,10 @@
      "2026-08-24": 90.64,
      "2026-08-25": 96.69,
      "2026-08-26": 97.2,
-     "2026-08-27": 96.69
+     "2026-08-27": 96.88
     }
    },
-   "fetched_utc": "2026-08-27T15:15:50+00:00",
+   "fetched_utc": "2026-08-27T15:29:52+00:00",
    "latest_day": "2026-08-27",
    "source": "EirGrid Smart Grid Dashboard (/api/chart/)",
    "status": "ok"
@@ -67691,13 +67691,13 @@
     "18mo": "HISTORIC CARBON RETURNED",
     "24mo": "HISTORIC CARBON RETURNED"
    },
-   "fetched_utc": "2026-08-27T15:17:24+00:00",
+   "fetched_utc": "2026-08-27T15:32:06+00:00",
    "latest_day": "2026-08-27",
    "source": "EirGrid Smart Grid Dashboard (probe, round 3)",
    "status": "ok"
   },
   "entsog_probe": {
-   "fetched_utc": "2026-08-27T15:16:57+00:00",
+   "fetched_utc": "2026-08-27T15:31:36+00:00",
    "greater_belfast_gwh_daily": {
     "2026-07-20": 4.22306,
     "2026-07-21": 4.827287,
@@ -67737,7 +67737,7 @@
     "2026-08-24": 5.242779,
     "2026-08-25": 5.372922,
     "2026-08-26": 5.429252,
-    "2026-08-27": 2.26562
+    "2026-08-27": 1.809161
    },
    "ie_points": [
     "ITP-00090",
@@ -67823,7 +67823,8 @@
     "2026-08-22": 146.766667,
     "2026-08-23": 141.244444,
     "2026-08-24": 162.233333,
-    "2026-08-25": 188.408889
+    "2026-08-25": 188.4,
+    "2026-08-26": 189.813333
    },
    "ni_candidate_points": [
     "DIS-00015",
@@ -67913,11 +67914,11 @@
     "2026-08-24": 33.996944,
     "2026-08-25": 35.228889,
     "2026-08-26": 35.525278,
-    "2026-08-27": 10.68
+    "2026-08-27": 15.589444
    }
   },
   "gb_oil": {
-   "fetched_utc": "2026-08-27T15:16:16+00:00",
+   "fetched_utc": "2026-08-27T15:30:30+00:00",
    "flags": [
     "BoilerJuice site average of lowest quotes, not a survey average - basis differs from CCNI; ONS kj5u discontinued Jan 2025"
    ],
@@ -71020,7 +71021,7 @@
     "2026-03-30": 10.62,
     "2026-03-31": 10.21
    },
-   "fetched_utc": "2026-08-27T15:15:56+00:00",
+   "fetched_utc": "2026-08-27T15:30:01+00:00",
    "latest_day": "2026-03-31",
    "ldm_gwh": {
     "2018-01-01": 9.49,
@@ -83224,7 +83225,7 @@
     "2026-08-23": 5.801,
     "2026-08-24": 7.465
    },
-   "fetched_utc": "2026-08-27T15:16:14+00:00",
+   "fetched_utc": "2026-08-27T15:30:27+00:00",
    "jurisdiction_note": "DM/NDM carry no ROI prefix while LDM and Power Gen do - whether unprefixed series include NI exits is unconfirmed; regression remains on the confirmed-ROI calibration series until resolved",
    "latest_day": "2026-08-24",
    "ndm_gwh": {
@@ -83797,7 +83798,7 @@
   },
   "hdd": {
    "base_c": 15.5,
-   "fetched_utc": "2026-08-27T15:15:52+00:00",
+   "fetched_utc": "2026-08-27T15:29:55+00:00",
    "flags": [
     "Population weights are Causeway estimates"
    ],
@@ -90802,7 +90803,7 @@
    "weights_note": "Population weights are current Causeway Energies estimates - challenge and input welcome at contact@causewaygt.com"
   },
   "oil_bulletin": {
-   "fetched_utc": "2026-08-27T15:16:02+00:00",
+   "fetched_utc": "2026-08-27T15:30:14+00:00",
    "flags": [
     "Bulletin heading is gas oil; treated as ROI heating-oil (kerosene) price level - Causeway judgement"
    ],
@@ -91145,7 +91146,7 @@
    "status": "ok"
   },
   "sem_mix": {
-   "fetched_utc": "2026-08-27T15:16:58+00:00",
+   "fetched_utc": "2026-08-27T15:31:38+00:00",
    "indigenous_share_daily": {
     "2026-06-25": 47.93,
     "2026-06-26": 46.75,
@@ -95134,7 +95135,7 @@
     "2026-08-25T22": 257.0,
     "2026-08-25T23": 201.7
    },
-   "fetched_utc": "2026-08-27T15:15:58+00:00",
+   "fetched_utc": "2026-08-27T15:30:09+00:00",
    "latest_day": "2026-08-25",
    "markets": {
     "NI-DA": {
