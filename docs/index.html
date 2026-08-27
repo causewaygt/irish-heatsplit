@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 6.3.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 6.3.1
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -4317,9 +4317,11 @@ function panel2Png(opt){
   // Footer: the mark, the publication, and the licence - as the UK
   // sibling carries. The icon is inlined as a data URI so the export
   // needs no network fetch and works from a saved page.
-  out += '<image x="'+PAD+'" y="'+(H-PAD-30)+'" width="34" height="34" '
-    + 'href="'+PNG_ICON+'" xlink:href="'+PNG_ICON+'"/>'
-    + '<text x="'+(PAD+44)+'" y="'+(H-PAD-10)+'" font-size="15" '
+  // NO <image> HERE. An SVG rendered through <img> into a canvas is
+  // an isolated document: browsers refuse to load images inside it,
+  // data URI or not, and the whole render fails silently. The mark is
+  // drawn onto the canvas afterwards instead - see below.
+  out += '<text x="'+(PAD+44)+'" y="'+(H-PAD-10)+'" font-size="15" '
     + 'font-weight="700" fill="#20302B" '
     + 'font-family="Lato, sans-serif">Irish Heat Split \u00b7 '
     + 'Causeway Energies</text>'
@@ -4340,6 +4342,17 @@ function panel2Png(opt){
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,c.width,c.height);
     ctx.scale(S,S); ctx.drawImage(img,0,0);
     URL.revokeObjectURL(url);
+    // the mark, drawn straight onto the canvas. If it fails to load
+    // the chart still saves - a missing logo must never cost the
+    // export, which is exactly what embedding it in the SVG did.
+    const mark = new Image();
+    mark.onload = function(){
+      try { ctx.drawImage(mark, PAD, H-PAD-30, 34, 34); } catch(e){}
+      save();
+    };
+    mark.onerror = save;
+    mark.src = PNG_ICON;
+    function save(){
     c.toBlob(function(b){
       const a = document.createElement("a");
       a.href = URL.createObjectURL(b);
@@ -4348,6 +4361,7 @@ function panel2Png(opt){
       a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
     }, "image/png");
+    }
   };
   img.onerror = function(){
     URL.revokeObjectURL(url);
@@ -4501,7 +4515,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 6.3.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 6.3.1 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
