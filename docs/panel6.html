@@ -425,7 +425,7 @@ function sparkBox(D){
 // rather than only in a run log. The fraction is meaningless without
 // the SPF it was solved to reproduce, so both travel together.
 const CAL_ROUTES = [["ashp","Air source"],["gshp","Ground source"],
-                    ["network","Geothermal network"]];
+                    ["network","Geothermal"]];
 function calBoard(cal){
   const box = el("calBoard");
   if(!box) return;
@@ -573,7 +573,7 @@ gridJur();
 // is the same colour everywhere on the page.
 const GROUTES = [["air_source","Air source","#4FA3C7"],
                  ["ground_source","Ground source","#A98FD0"],
-                 ["geothermal_network","Geothermal network","#3AAA35"]];
+                 ["geothermal_network","Geothermal","#3AAA35"]];
 function gridPanel(th){
   const box = el("gridPanel");
   if(!box) return;
@@ -795,7 +795,7 @@ function gridPanel(th){
 // electricity into the floor.
 const GV_SERIES = [["air_source","Air source","#4FA3C7"],
                    ["ground_source","Ground source","#A98FD0"],
-                   ["geothermal_network","Geothermal network","#3AAA35"]];
+                   ["geothermal_network","Geothermal","#3AAA35"]];
 let GVIEW = "hourly";
 function gvLabel(t){
   return t.length === 13 ? monthLabel(t.slice(0,7)) + " " + t.slice(8,10)
@@ -1079,7 +1079,7 @@ function oddExamples(x){
     + '</div>';
   if(x.routes){
     const L = {ashp:"Air source", gshp:"Ground source",
-               network:"Geothermal network"},
+               network:"Geothermal"},
           C = {ashp:"#4FA3C7", gshp:"#A98FD0", network:"#3AAA35"};
     s += '<table class="caltab" style="margin-top:14px"><thead><tr>'
       + '<th>Route</th><th>SPF</th><th>Heat from the same spilled '
@@ -1722,7 +1722,9 @@ const COST_ROUTES = [
   ["gas_boiler", "Gas boiler", "#D98E2B"],
   ["ashp", "Air-source heat pump", "#4FA3C7"],
   ["gshp", "Ground source", "#8E7CC3"],
-  ["network", "Geothermal network", "#3AAA35"],
+  // the standalone page carries its own copy of panel 2's route
+  // table; it is not owned by the generator, so it is changed here
+  ["network", "Future Geothermal", "#3AAA35"],
 ];
 // CJUR is panel 2's OWN jurisdiction, not panel 1's. It used to read
 // HEROSTATE, which meant selecting ALL ISLAND up top silently showed
@@ -2704,9 +2706,25 @@ function vfmStages(v){
     + '<div class="hstat"><div class="hval">' + fmt(st.spf,1)
     + '<span style="font-size:.5em"> vs </span>'
     + fmt(st.spf_counterfactual,1) + '</div><div class="hlab">'
-    + 'network SPF against an air-source network \u00b7 a '
-    + fmt(st.spf_gain,2) + 'x gain, from a ' + fmt(st.source_c,1)
-    + '\u202f\u00b0C source</div></div></div>';
+    + 'SPF<span class="dag">*</span> against an air-source network '
+    + '\u00b7 a ' + fmt(st.spf_gain,2) + 'x gain, from a '
+    + fmt(st.source_c,1) + '\u202f\u00b0C source</div></div></div>'
+    // SPF* is not one machine's number. It is a blend across the
+    // archetypes in the class, and a reader who takes it for a rated
+    // figure will look for a product that matches it and not find one.
+    + '<p class="note">* The seasonal performance factor is an ASSUMED '
+    + 'BLEND across the geothermal archetypes in this class \u2014 '
+    + 'open loop, standing column, aquifer and borehole storage, with '
+    + 'waste-heat recovery where a source is available'
+    + (st.deep_weight > 0
+       ? ', and a deeper Permo-Triassic component weighted at '
+         + fmt(100*st.deep_weight,0) + '%'
+       : '')
+    + '. It is not the rating of any single machine, and it describes '
+    + 'a network-scale energy centre rather than a domestic unit. '
+    + 'Causeway judgement, and the largest single input in this '
+    + 'appraisal: the levers below move it through the capital and '
+    + 'shortfall terms rather than directly.</p>';
   // the two stages, as a table, because they are never summed
   s += '<table class="caltab"><thead><tr><th>Stage</th>'
     + '<th>What it decides</th><th>Capacity</th><th>Price exposure</th>'
