@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- IRISH HEAT SPLIT - SITE_VERSION 6.4.0
+<!-- IRISH HEAT SPLIT - SITE_VERSION 6.6.0
      x.y.z - x new source/panel, y source update, z wording/format.
      Causeway Energies - sibling of causewaygt.github.io/uk-heatsplit -->
 <html lang="en">
@@ -562,6 +562,8 @@ footer{padding:30px 0 46px;color:var(--faint);font-size:.82rem}
   </div>
   <div id="ioScale" class="ioscale"></div>
   <div id="ioBars"></div>
+  <button id="heroPngBtn" class="pngbtn" type="button">&darr; PNG of the
+    headline figures and the what-if, on white</button>
   <details class="fold" id="heroMethod">
     <summary>How this is estimated, and why it is not metered</summary>
     <div class="foldbody">
@@ -3479,6 +3481,92 @@ document.querySelectorAll("[data-vfmjur]").forEach(b=>{
     if(VFMD){ vfmStages(VFMD); vfmStreams(VFMD); vfmTes(VFMD); vfmAsks(VFMD); }
   });
 });
+{const hb=document.getElementById("heroPngBtn");
+ if(hb && hb.addEventListener) hb.addEventListener("click", ()=>{
+   // PANEL 1 HAS NO CHART TO CLONE. Its figures are HTML stat cards,
+   // so this export is DRAWN from the values the page has rendered -
+   // it therefore always says what the reader is looking at, and it
+   // follows the jurisdiction and window toggles.
+   //
+   // On white, the page's own greens are wrong twice over: the bright
+   // dark-theme green is thin on paper, and white label text vanishes.
+   // Ink is near-black, labels are grey, and the what-if block takes a
+   // deeper green that holds up in a slide and in print.
+   const INK="#14201C", GREY="#55635E", GRN="#2E7D32";
+   const cards=[...document.querySelectorAll("#heroCards .hstat")].map(c=>[
+     ((c.querySelector(".hval")||{}).textContent||"").trim(),
+     ((c.querySelector(".hlab")||{}).textContent||"")
+       .replace(/\s+/g," ").trim()]);
+   if(!cards.length) return;
+   const wcells=[...document.querySelectorAll("#whatifRow .wcell")].map(c=>[
+     ((c.querySelector(".val")||{}).textContent||"").trim(),
+     ((c.querySelector(".lab")||c).textContent||"")
+       .replace(/\s+/g," ").trim()]);
+   const wtitle=((el("whatif")||{}).querySelector
+     ? (el("whatif").querySelector(".wtitle")||{}).textContent||"" : "")
+     .replace(/\s+/g," ").trim();
+   const esc2=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+     .replace(/>/g,"&gt;");
+   // wrap on words rather than truncating: these labels carry the
+   // scope caveats, and a clipped one changes what the figure claims
+   function wrap(t, per){
+     const w=String(t).split(" "); const out=[]; let ln="";
+     w.forEach(x=>{ if((ln+" "+x).trim().length>per){ out.push(ln.trim());
+       ln=x; } else ln+=" "+x; });
+     if(ln.trim()) out.push(ln.trim());
+     return out;
+   }
+   function textLines(lines, x, y, size, fill, lh){
+     return lines.map((l,i)=>'<text x="'+x+'" y="'+(y+i*lh)+'" '
+       + 'font-size="'+size+'" fill="'+fill+'" font-family="Lato, '
+       + 'Helvetica, Arial, sans-serif">'+esc2(l)+'</text>').join("");
+   }
+   const COLW=430, PADX=0;
+   let g="", y=0;
+   // headline figures, two across
+   const rows=Math.ceil(cards.length/2);
+   let cardH=0;
+   cards.forEach((c,i)=>{
+     const cx=(i%2)*COLW, lines=wrap(c[1],46).slice(0,3);
+     const cy=Math.floor(i/2)*(126);
+     g += '<text x="'+cx+'" y="'+(cy+46)+'" font-size="44" '
+        + 'font-weight="700" fill="'+INK+'" font-family="IBM Plex Mono, '
+        + 'monospace">'+esc2(c[0])+'</text>'
+        + textLines(lines, cx, cy+74, 15, GREY, 19);
+     cardH=Math.max(cardH, cy+126);
+   });
+   y = cardH + 10;
+   // the what-if, in its own bordered block as on the page
+   if(wcells.length){
+     const bh = 60 + Math.ceil(wcells.length/2)*116;
+     g += '<rect x="-14" y="'+y+'" width="'+(COLW*2+14)+'" height="'+bh
+        + '" rx="10" fill="#F2F7F3" stroke="'+GRN+'" stroke-width="1.5"/>'
+        + '<text x="6" y="'+(y+34)+'" font-size="18" font-weight="700" '
+        + 'fill="'+GRN+'" font-family="IBM Plex Mono, monospace">'
+        + esc2(wtitle || "What if 20% of heat & cooling moved to "
+                       + "geothermal") + '</text>';
+     wcells.forEach((c,i)=>{
+       const cx=6+(i%2)*COLW, cy=y+56+Math.floor(i/2)*116;
+       g += '<text x="'+cx+'" y="'+(cy+40)+'" font-size="34" '
+          + 'font-weight="700" fill="'+GRN+'" font-family="IBM Plex Mono, '
+          + 'monospace">'+esc2(c[0])+'</text>'
+          + textLines(wrap(c[1],48).slice(0,3), cx, cy+64, 14, GREY, 18);
+     });
+     y += bh;
+   }
+   y += 4;
+   panel2Png({id1:null, id2:null, btn:"heroPngBtn", legend1:[],
+     body:{svg:'<g transform="translate(14,0)">'+g+'</g>',
+           w:COLW*2+28, h:y+6},
+     title:"How " + (((el("heroWhere")||{}).textContent)
+       || "the island of Ireland") + " heated and cooled itself",
+     // the page's own window label, unembellished. An earlier version
+     // appended "totals over the window, not one week", which reads
+     // as a contradiction whenever the window IS one week.
+     subtitle:(((el("heroWin")||{}).textContent)||"")
+       .replace(/\s+/g," ").trim(),
+     file:"heat-and-cooling-"+(HEROSTATE||"all")});
+ });}
 {const cb2=document.getElementById("capPngBtn");
  if(cb2 && cb2.addEventListener) cb2.addEventListener("click", ()=>panel2Png({
    id1:"gridPanel", id2:null, btn:"capPngBtn", legend1:[],
@@ -4288,7 +4376,10 @@ function panel2Png(opt){
   const id2 = ("id2" in O) ? O.id2 : "volChart";
   const src1 = el(id1) && el(id1).querySelector("svg");
   const src2 = id2 && el(id2) ? el(id2).querySelector("svg") : null;
-  if(!src1){ return; }
+  // O.body lets a caller supply DRAWN svg instead of cloning a chart.
+  // Panel 1 is HTML stat cards, so there is no <svg> to clone and the
+  // export has to be composed from the values on the page.
+  if(!src1 && !O.body){ return; }
   const PAD = 28, GAP = 16, LEGH = 38, TITLEH = 70, FOOTH = 52;
   // The charts are drawn for a panel the width of a browser window
   // and then land in a slide at a third of that, where 11px axis type
@@ -4310,7 +4401,8 @@ function panel2Png(opt){
     const a = (svg.getAttribute("viewBox")||"0 0 900 300").split(/\s+/);
     return {w:+a[2], h:+a[3]};
   }
-  const b1 = vb(src1), b2 = src2 ? vb(src2) : {w:b1.w, h:0};
+  const b1 = O.body ? {w:O.body.w, h:O.body.h} : vb(src1),
+        b2 = src2 ? vb(src2) : {w:b1.w, h:0};
   const W = Math.max(b1.w, b2.w) + PAD*2;
   const H = TITLEH + b1.h + LEGH + (src2 ? GAP + b2.h + LEGH : 0)
           + FOOTH + PAD*2;
@@ -4344,7 +4436,8 @@ function panel2Png(opt){
     + (O.subtitle || (unit + ' per MWh of delivered heat \u00b7 '
        + svc + ' \u00b7 ' + basis + ' \u00b7 ' + CWIN + ' days'))
     + '</text>'
-    + '<g transform="translate('+PAD+','+y+')">' + tint(src1, false) + '</g>';
+    + '<g transform="translate('+PAD+','+y+')">'
+    + (O.body ? O.body.svg : tint(src1, false)) + '</g>';
   y += b1.h + LEGH - 8;
   out += legendRow(O.legend1 || COST_ROUTES.map(r=>[r[1], r[2]]), y);
   if(src2){
@@ -4556,7 +4649,7 @@ fetch('data.json').then(r=>{
   frontispiece(FRONTD);
   whyHeat(D);
   feedTable(D.feeds||{});
-  el('buildStamp').textContent='Site 6.4.0 \u00b7 pipeline '+
+  el('buildStamp').textContent='Site 6.6.0 \u00b7 pipeline '+
     (D.pipeline_version||'?')+' \u00b7 built '+(D.built_utc||'?')+
     ' \u00b7 daily at 04:17 UTC';
 }).catch(e=>{
