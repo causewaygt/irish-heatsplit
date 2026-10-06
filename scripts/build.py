@@ -51,7 +51,7 @@ import requests
 # move - the panels are changing weekly and an x that tracked every
 # new one would say nothing. The "Under Construction" label on the
 # masthead and this freeze come off together.
-PIPELINE_VERSION = "6.0.0"
+PIPELINE_VERSION = "6.1.0"
 # 5.25.0: THE DEMAND SERIES DEFINITION, WRITTEN DOWN AND ENFORCED.
 #   EirGrid's demandactual is "the electricity production required to
 #   meet national electricity consumption" - so grid-connected solar
@@ -1395,7 +1395,145 @@ TARIFF_HISTORY = [
                     "gbp": {"electricity": 0.3216, "gas": 0.0739}}),
     ("2026-07-01", {"eur": None,
                     "gbp": {"electricity": 0.3416, "gas": 0.0770}}),
+    # 1 Oct 2026. Gas +16.2% weighted: SSE Airtricity +19.2% (Greater
+    # Belfast and West) and Firmus Ten Towns +9%, both from UREGNI's
+    # 4 Sep 2026 review. Power NI did not move, and the derivation
+    # reproducing 0.3416 exactly from the published bill is the check
+    # that the construction is still the right one. Firmus's Greater
+    # Belfast tariff rose 12.5% on 8 Oct but is NOT regulated by
+    # UREGNI, so it stays outside this series by construction.
+    # NOT included: DfE's combined NIRO and VAT discount (~GBP 63 from
+    # 6 Oct) and the oil card. Those are credits on a bill, not a
+    # change in the unit rate, and the Republic has no equivalent -
+    # putting them here would break the cross-border comparison.
+    ("2026-10-01", {"eur": None,
+                    "gbp": {"electricity": 0.3416, "gas": 0.0895}}),
 ]
+
+
+UREGNI_NEWS = "https://www.uregni.gov.uk/news"
+# UREGNI's tariff-review releases carry one table: average annual bills
+# at 3,200 kWh electricity and 12,000 kWh gas, standard credit customer,
+# VAT and standing charges in, for two NI supplier pairings and - on the
+# same basis - Great Britain and Ireland.
+UREGNI_ELEC_KWH = 3200.0
+UREGNI_GAS_KWH = 12000.0
+# regulated customer split, SSE Airtricity (Greater Belfast and West)
+# against Firmus Ten Towns. Firmus's Greater Belfast tariff is NOT
+# regulated by UREGNI and stays outside the series by construction.
+UREGNI_GAS_WEIGHTS = (0.7235, 0.2765)
+
+
+def fetch_uregni_tariffs():
+    """
+    The NI side of TARIFF_HISTORY, from UREGNI's own releases.
+
+    This is the step that was manual: each quarterly review was read by
+    hand and a row typed in. The construction has not changed - bill
+    divided by the published consumption, gas weighted by regulated
+    customer count - only who does the reading.
+
+    Returns {effective_date: {"gbp": {...}, "ie_check": {...}}} or None.
+    The Irish column is carried as a CROSS-CHECK, never as a source:
+    it is a regulator's estimate of another jurisdiction at a basis
+    that is not the Eurostat band the euro side is built on. See
+    check_ie_divergence.
+    """
+    try:
+        html = http_get(UREGNI_NEWS).text
+    except Exception as exc:
+        log(f"uregni: news index unreachable ({exc.__class__.__name__}) "
+            "- tariff table unchanged")
+        return None
+    links = re.findall(r'href="(/news-centre/[^"]*tariff[^"]*)"', html)
+    out = {}
+    for href in links[:6]:
+        try:
+            page = http_get("https://www.uregni.gov.uk" + href).text
+        except Exception:
+            continue
+        # STRIP TAGS FIRST. The release is an HTML table; matching on
+        # pipe-delimited text only works against a markdown rendering,
+        # which is not what http_get returns.
+        flat = re.sub(r"<[^>]+>", " ", page)
+        flat = html_mod.unescape(flat)
+        flat = re.sub(r"\s+", " ", flat)
+        eff = re.search(r"[Aa]verage annual bills from (\d{1,2} \w+ \d{4})",
+                        flat)
+        # each row: label then four money figures - two sterling NI
+        # pairings, sterling GB, euro Ireland
+        rows = re.findall(
+            r"(Electricity|Gas)\s+\u00a3([\d,]+)\s+\u00a3([\d,]+)"
+            r"\s+\u00a3([\d,]+)\s+\u20ac([\d,]+)", flat)
+        if not (eff and len(rows) == 2):
+            continue
+        vals = {k.lower(): [float(x.replace(",", "")) for x in v]
+                for k, *v in [(r[0], r[1], r[2], r[3], r[4]) for r in rows]}
+        try:
+            d = dt.datetime.strptime(eff.group(1), "%d %B %Y").date()
+        except ValueError:
+            continue
+        w_sse, w_fir = UREGNI_GAS_WEIGHTS
+        out[d.isoformat()] = {
+            "gbp": {
+                "electricity": round(vals["electricity"][0]
+                                     / UREGNI_ELEC_KWH, 4),
+                "gas": round((w_sse * vals["gas"][0]
+                              + w_fir * vals["gas"][1])
+                             / UREGNI_GAS_KWH, 4)},
+            # the Ireland column, same table, same basis - for the check
+            "ie_check": {
+                "electricity": round(vals["electricity"][3]
+                                     / UREGNI_ELEC_KWH, 4),
+                "gas": round(vals["gas"][3] / UREGNI_GAS_KWH, 4)}}
+    if not out:
+        log("uregni: no parseable tariff release found - table unchanged")
+        return None
+    log(f"uregni: parsed {len(out)} tariff release(s): "
+        + ", ".join(sorted(out)))
+    return out
+
+
+IE_DIVERGENCE_TOLERANCE = 0.12   # 12% before it is worth a look
+
+
+def check_ie_divergence(uregni, date_iso):
+    """
+    Cross-check the euro side against UREGNI's Ireland column.
+
+    NOT a source. The euro side is the Eurostat band series with the
+    government credits added back; this is a regulator's estimate of
+    another jurisdiction at a different consumption basis, so the two
+    are not expected to agree closely. What they should do is MOVE
+    TOGETHER. Persistent divergence beyond the tolerance means the
+    band series needs a new semester, or an Electric Ireland
+    announcement needs an IE_STEPS row - which is the manual step this
+    check exists to schedule.
+
+    Logs and returns the comparison; never changes a published figure.
+    """
+    if not uregni:
+        return None
+    latest = sorted(uregni)[-1]
+    chk = uregni[latest].get("ie_check") or {}
+    out = {"uregni_effective": latest, "basis_note":
+           "UREGNI 3,200 kWh / 12,000 kWh all-in; the euro side is the "
+           "Eurostat band series - levels differ by construction"}
+    for fuel, key in (("electricity", "domestic_electricity"),
+                      ("gas", "domestic_gas")):
+        ours = ie_domestic_eur(key, date_iso)
+        theirs = chk.get(fuel)
+        if ours is None or not theirs:
+            continue
+        d = theirs / ours - 1.0
+        out[fuel] = {"ours": ours, "uregni_ie": theirs,
+                     "divergence": round(d, 3)}
+        if abs(d) > IE_DIVERGENCE_TOLERANCE:
+            log(f"IE PRICE DIVERGENCE: {fuel} band series {ours:.4f} "
+                f"vs UREGNI's Irish column {theirs:.4f} "
+                f"({100*d:+.0f}%) - check for a new Eurostat semester "
+                "or an Electric Ireland announcement to add to IE_STEPS")
+    return out
 
 
 def tariffs_for(date_iso):
@@ -6537,6 +6675,18 @@ def derive_vfm_phased(anchors=None):
                    "works, boiler replacement cycles avoided"],
     }
     out["known_shortcuts"] = [
+        # STANDING MANUAL STEPS. The NI tariff table now updates itself
+        # from UREGNI's releases; these are what is left, and the
+        # divergence check in check_ie_divergence is what raises the
+        # second one rather than a diary note.
+        "NI tariffs are fetched from UREGNI's quarterly reviews; the "
+        "Irish side is the Eurostat band series and still needs a new "
+        "semester added when published, and an IE_STEPS row on an "
+        "Electric Ireland announcement",
+        "one-off bill credits - DfE's combined NIRO and VAT discount, "
+        "the oil card - are deliberately NOT in the unit rates, "
+        "because the Republic has no equivalent and including them "
+        "would break the cross-border comparison",
         "the shortfall is applied flat, not through a duration curve as "
         "the UK sibling does - harder on us, but it assumes every hour "
         "underdelivers equally",
